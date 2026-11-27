@@ -34,7 +34,55 @@ const openToken = (index: number): string => `MEMRYEMO${PROCESS_WORD}${index};`
 const closeToken = (index: number): string => `MEMRYEMC${PROCESS_WORD}${index};`
 const codeToken = (index: number): string => `MEMRYEMK${PROCESS_WORD}${index};`
 const TOKEN = new RegExp(`MEMRYEM([OCK])${PROCESS_WORD}(\\d+);`, 'g')
-const EDGES = /^((?:\\\n|\s)*)([\s\S]*?)((?:\\\n|\s)*)$/
+const underscoreToken = (index: number): string => `MEMRYEMU${PROCESS_WORD}${index};`
+const UNDERSCORE_TOKEN = new RegExp(`MEMRYEMU${PROCESS_WORD}(\\d+);`, 'g')
+const SPACE = /\s/
+
+/**
+ * The offsets after each quote marker a break carries onto its next line
+ * (`(?:[^\S\n]*>)*` from `at`), `at` first.
+ */
+function quoteMarkerStops(text: string, at: number): number[] {
+  const stops = [at]
+  for (let from = at; ;) {
+    let next = from
+    while (next < text.length && text[next] !== '\n' && SPACE.test(text[next])) next++
+    if (text[next] !== '>') return stops
+    from = next + 1
+    stops.push(from)
+  }
+}
+
+/**
+ * `text` split into its leading whitespace and breaks, its content, and its
+ * trailing whitespace, breaks and `<br>`s. A break inside a quote carries the
+ * quote's `>` prefix onto the next line. A `<br>` ending a run is a break the
+ * escaper spelled for a paragraph's end.
+ *
+ * It scans instead of matching one regex: a lazy middle against a repeated
+ * trailing group retried the tail at every offset, quadratic on a long run of
+ * tabs.
+ */
+function splitEdges(text: string): [before: string, content: string, after: string] {
+  let start = 0
+  for (;;) {
+    if (text.startsWith('\\\n', start)) start = quoteMarkerStops(text, start + 2).at(-1) ?? start
+    else if (start < text.length && SPACE.test(text[start])) start++
+    else break
+  }
+  // Whether the text from each offset on is trailing edge only.
+  const edge: boolean[] = []
+  edge[text.length] = true
+  for (let at = text.length - 1; at >= start; at--) {
+    edge[at] =
+      (SPACE.test(text[at]) && edge[at + 1]) ||
+      (text.startsWith('<br>', at) && edge[at + 4]) ||
+      (text.startsWith('\\\n', at) && quoteMarkerStops(text, at + 2).some((stop) => edge[stop]))
+  }
+  let end = start
+  while (!edge[end]) end++
+  return [text.slice(0, start), text.slice(start, end), text.slice(end)]
+}
 
 function holds(item: InlineItem, mark: EmphasisMark): boolean {
   if (Array.isArray(item.content)) {
@@ -169,11 +217,17 @@ function codeTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
  * (BBF-108) gained backslashes on every save. An address whose unescaped
  * parentheses balance is valid as written, so it travels as tokens. So does an
  * `href` with whitespace, which is the destination and title as written
- * (`link-destinations.ts`, BBF-109).
+ * (`link-destinations.ts`, BBF-109). The serializer writes a link whose text
+ * is its address as the bare address, which the parser reads as text, so that
+ * address travels as one token and the link keeps its brackets.
  */
 function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
   const href = item.href
-  if (item.type !== 'link' || !href || !/[\\()<>\s]/.test(href)) return item
+  if (item.type !== 'link' || !href) return item
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- content is `unknown`; the caller passes a link, whose content is always an array
+  const text = (item.content as InlineItem[]).map((child) => child.text ?? '').join('')
+  if (text === href) return { ...item, href: codeToken(marks.push({ code: href }) - 1) }
+  if (!/[\\()<>\s]/.test(href)) return item
   if (href !== href.trim() || href.includes('\n')) return item
   if (!/\s/.test(href) && href.startsWith('<')) return item
   let depth = 0
@@ -188,8 +242,36 @@ function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
   return { ...item, href: href.replace(/[\\()<>\s]/g, token) }
 }
 
-/** `items` with every run of a mark between tokens; `marks` maps each token to its span. */
-export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): InlineItem[] {
+/**
+ * A code run spelled with the shortest fence its backtick runs allow, as a
+ * token. The writer fences with one backtick more than the longest run, and
+ * three at a line start open a code block: `c``c` came back as one. The
+ * escaper has taken a run's breaks out (`codeBreaksApart`). A table cell is
+ * no line start, and the writer escapes the pipes in its text, a token's too,
+ * so a cell's code is left to it.
+ */
+function shortFencedCode(item: InlineItem, marks: Span[]): InlineItem {
+  const text = item.text ?? ''
+  if (item.type !== 'text' || item.styles?.code !== true) return item
+  const runs = new Set((text.match(/`+/g) ?? []).map((run) => run.length))
+  let fence = 1
+  while (runs.has(fence)) fence++
+  if (fence > Math.max(0, ...runs)) return item
+  const ticks = '`'.repeat(fence)
+  const padded = text.startsWith('`') || text.endsWith('`') ? ` ${text} ` : text
+  const { code: _code, ...styles } = item.styles
+  return { ...item, text: codeToken(marks.push({ code: `${ticks}${padded}${ticks}` }) - 1), styles }
+}
+
+/**
+ * `items` with every run of a mark between tokens; `marks` maps each token to
+ * its span. `cell`: the items are a table cell's.
+ */
+export function tokenizeEmphasisRuns(
+  items: InlineItem[],
+  marks: Span[],
+  cell = false
+): InlineItem[] {
   items = splitLinksAtBreaks(items)
   const out: InlineItem[] = []
   let at = 0
@@ -202,50 +284,213 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
     }
     if (!best) {
       const item = items[at++]
-      const children: InlineItem[] = Array.isArray(item.content) ? item.content : []
-      out.push(
-        Array.isArray(item.content)
-          ? {
-              ...hrefParenTokens(item, marks),
-              content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks))
-            }
-          : item
-      )
+      if (!Array.isArray(item.content)) {
+        out.push(cell ? item : shortFencedCode(item, marks))
+        continue
+      }
+      const children: InlineItem[] = item.content
+      out.push({
+        ...hrefParenTokens(item, marks),
+        content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks, cell))
+      })
       continue
     }
     const { mark, length } = best
     const index = marks.push(mark) - 1
     const run = items.slice(at, at + length).map((item) => without(item, mark))
     out.push({ type: 'text', text: openToken(index), styles: {} })
-    out.push(...tokenizeEmphasisRuns(run, marks))
+    out.push(...tokenizeEmphasisRuns(run, marks, cell))
     out.push({ type: 'text', text: closeToken(index), styles: {} })
     at += length
   }
   return out
 }
 
+/**
+ * Whether the parser misreads `delimiter` around `content`: three stars in a
+ * row open bold italic (`tryBoldItalic`), so an italic run whose edge meets an
+ * inner bold run (`***a** b*`, `*b **c***`) and a bold run ending in an inner
+ * italic (`**b *c***`) came back as text with stray stars. A run that is one
+ * inner run end to end (`lastRun`) is the `***x***` the parser reads, and an
+ * escaped star (`*a\**`) meets no delimiter.
+ */
+function meetsInnerStars(delimiter: string, content: string, lastRun: string): boolean {
+  if (content === lastRun) return false
+  let slashes = 0
+  while (content[content.length - 2 - slashes] === '\\') slashes++
+  const endsInStar = content.endsWith('*') && slashes % 2 === 0
+  if (delimiter === '*') return content.startsWith('*') || endsInStar
+  return delimiter === '**' && endsInStar
+}
+
+/** `parseDelimited` skips an escaped character, so only a bare `_` could close an underscore run early. */
+function hasBareUnderscore(content: string): boolean {
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === '\\') i++
+    else if (content[i] === '_') return true
+  }
+  return false
+}
+
+const isWord = (c: string | undefined): boolean => c !== undefined && /\w/.test(c)
+
+/**
+ * Whether a bare `_` before `at` in its paragraph could open a run, which would
+ * close on an underscore delimiter at `at`. The escaper escapes those in text
+ * (`spellsRunsWithUnderscores`), so this finds one in a code span or an address.
+ */
+function underscoreOpensBefore(markdown: string, at: number): boolean {
+  let start = 0
+  for (const blank of markdown.slice(0, at).matchAll(/\n[ \t>]*\n/g)) {
+    start = blank.index + blank[0].length
+  }
+  for (let i = start; i < at; i++) {
+    if (markdown[i] === '\\') i++
+    else if (markdown[i] === '_' && !(isWord(markdown[i - 1]) && isWord(markdown[i + 1]))) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Each underscore token pair spelled `_` or `__`, or with the stars it stands
+ * for where the parser would not read the underscores: `tryItalic` and
+ * `tryBold` refuse an opener between two word characters, and no run closes
+ * on an underscore next to another.
+ */
+function resolveUnderscores(markdown: string, delimiters: string[]): string {
+  if (delimiters.length === 0) return markdown
+  const openings = new Map<string, number>()
+  const readable = new Set<string>()
+  for (const token of markdown.matchAll(UNDERSCORE_TOKEN)) {
+    const at = openings.get(token[1])
+    if (at === undefined) {
+      openings.set(token[1], token.index)
+      continue
+    }
+    const before = markdown[at - 1]
+    const first = markdown[at + token[0].length]
+    const after = markdown[token.index + token[0].length]
+    const opens = !(isWord(before) && isWord(first)) && before !== '_'
+    if (opens && after !== '_' && !underscoreOpensBefore(markdown, at)) readable.add(token[1])
+  }
+  return markdown.replace(UNDERSCORE_TOKEN, (_token, index: string) => {
+    const delimiter = delimiters[Number(index)]
+    return readable.has(index) ? '_'.repeat(delimiter.length) : delimiter
+  })
+}
+
 /** Each token pair in `markdown` turned into its delimiters. */
 export function restoreEmphasisRuns(markdown: string, marks: Span[]): string {
-  const open: string[] = ['']
+  const { restored, underscored } = spellRuns(markdown, marks)
+  return resolveUnderscores(restored, underscored)
+}
+
+/**
+ * Whether house style spells a run of escaped `items` with underscores, see
+ * `meetsInnerStars`, once every bare `_` in their text is escaped too.
+ */
+export function spellsRunsWithUnderscores(items: InlineItem[]): boolean {
+  const spell = (list: InlineItem[]): string =>
+    list
+      .map((item) => {
+        if (Array.isArray(item.content)) return `[${spell(item.content)}](${item.href ?? ''})`
+        if (item.type !== 'text') return '\uFFFC'
+        const text = item.text ?? ''
+        if (item.styles?.code === true) return `\`${text}\``
+        return text.replace(/\\[\s\S]|_/g, (match) => (match === '_' ? '\\_' : match))
+      })
+      .join('')
+  const marks: Span[] = []
+  return spellRuns(spell(tokenizeEmphasisRuns(items, marks)), marks).underscored.length > 0
+}
+
+/** `markdown` with each run's delimiters, an underscore token pair where `meetsInnerStars`. */
+function spellRuns(markdown: string, marks: Span[]): { restored: string; underscored: string[] } {
+  // `lastRun` is the last run closed inside each open one, delimiters included,
+  // and `runEnd` the length of `text` right after it.
+  const open = [{ text: '', lastRun: '', runEnd: -1 }]
+  const underscored: string[] = []
   let last = 0
   for (const token of markdown.matchAll(TOKEN)) {
-    open[open.length - 1] += markdown.slice(last, token.index)
+    const top = open[open.length - 1]
+    top.text += markdown.slice(last, token.index)
     last = token.index + token[0].length
     const span = marks[Number(token[2])]
     if (token[1] === 'K') {
-      open[open.length - 1] += typeof span === 'object' ? span.code : ''
+      top.text += typeof span === 'object' ? span.code : ''
       continue
     }
     if (token[1] === 'O') {
-      open.push('')
+      open.push({ text: '', lastRun: '', runEnd: -1 })
       continue
     }
     if (open.length === 1) continue
-    const run = open.pop() ?? ''
-    const delimiter = typeof span === 'string' ? DELIMITERS[span] : ''
-    const [, before, content, after] = EDGES.exec(run) ?? []
-    open[open.length - 1] += content ? `${before}${delimiter}${content}${delimiter}${after}` : run
+    const run = open.pop() ?? top
+    const parent = open[open.length - 1]
+    const [before, content, after] = splitEdges(run.text)
+    if (!content) {
+      parent.text += run.text
+      continue
+    }
+    let delimiter: string = typeof span === 'string' ? DELIMITERS[span] : ''
+    // Stars against the stars of the run before (`*a***b**`) open bold italic too.
+    const touches = !before && parent.text.length === parent.runEnd && parent.lastRun.endsWith('*')
+    const misread =
+      meetsInnerStars(delimiter, content, run.lastRun) || (touches && delimiter.startsWith('*'))
+    if (misread && !hasBareUnderscore(content)) {
+      delimiter = underscoreToken(underscored.push(delimiter) - 1)
+    }
+    parent.lastRun = `${delimiter}${content}${delimiter}`
+    parent.text += `${before}${parent.lastRun}`
+    parent.runEnd = parent.text.length
+    parent.text += after
   }
   // A pair the serializer cut short keeps its text, without delimiters.
-  return open.join('') + markdown.slice(last)
+  return { restored: open.map((run) => run.text).join('') + markdown.slice(last), underscored }
+}
+
+/**
+ * `items` with the whitespace at each edge of a mark's run taken out of that
+ * mark, as `restoreEmphasisRuns` writes it: markdown has no spelling for
+ * `** x **`, so a bold run ending in a space came back with the space outside
+ * the bold on the next seed (`**see ![x](u)** now` lifts the image and leaves
+ * bold `see `). A space against a comment stays: it is how the writer
+ * tells a comment inside the run from one beside it (`html-comment.ts`).
+ */
+export function trimEmphasisEdges(items: InlineItem[]): InlineItem[] {
+  // A code span is written in backticks, so its spaces are never at the run's edge.
+  const plainText = (item: InlineItem, beside: InlineItem | undefined): boolean =>
+    item.type === 'text' && item.styles?.code !== true && beside?.type !== 'htmlComment'
+  let out = items
+  for (const mark of MARKS) {
+    const trimmed: InlineItem[] = []
+    let at = 0
+    while (at < out.length) {
+      const length = runLength(out, at, mark)
+      if (length === 0) {
+        trimmed.push(out[at++])
+        continue
+      }
+      const run = out.slice(at, at + length)
+      const first = run[0]
+      const lead = plainText(first, out[at - 1])
+        ? (/^[^\S\n]+/.exec(first.text ?? '')?.[0] ?? '')
+        : ''
+      if (lead) run[0] = { ...first, text: first.text?.slice(lead.length) }
+      const last = run[run.length - 1]
+      // Breaks after the space go with it: the writer moves both past the mark.
+      const tail = plainText(last, out[at + length])
+        ? (/(?<![^\S\n])[^\S\n]+\n*$/.exec(last.text ?? '')?.[0] ?? '')
+        : ''
+      if (tail) run[run.length - 1] = { ...last, text: last.text?.slice(0, -tail.length) }
+      if (lead) trimmed.push({ ...without(first, mark), text: lead })
+      trimmed.push(...run.filter((item) => item.type !== 'text' || item.text !== ''))
+      if (tail) trimmed.push({ ...without(last, mark), text: tail })
+      at += length
+    }
+    out = joinTexts(trimmed)
+  }
+  return out
 }

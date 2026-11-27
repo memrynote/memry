@@ -16,7 +16,8 @@ export async function parseMarkdownToBlocks(
   markdown: string
 ): Promise<Block[]> {
   return parseMarkdownToBlocksRepaired<Block>(editor, markdown, {
-    htmlComments: parsesHtmlComments()
+    htmlComments: parsesHtmlComments(),
+    losslessBlocks: readsLosslessBlocks()
   })
 }
 
@@ -35,4 +36,22 @@ export function parseDroppingHtmlComments<T>(parse: () => Promise<T>): Promise<T
 
 export function parsesHtmlComments(): boolean {
   return htmlCommentsDropped.getStore() !== true
+}
+
+const legacyBlocks = new AsyncLocalStorage<true>()
+
+/**
+ * Runs `parse` with blocks read as builds before lossless blocks did: a table
+ * row split on a code span's pipe and cut to its header's width, a quote or
+ * callout holding a table or a heading read as one flat quote, and a list
+ * item's images dropped. A source
+ * those builds recorded is read that way, so the cells and blocks their
+ * document never got do not read as ones the user deleted.
+ */
+export function parseWithLegacyBlocks<T>(parse: () => Promise<T>): Promise<T> {
+  return legacyBlocks.run(true, parse)
+}
+
+export function readsLosslessBlocks(): boolean {
+  return legacyBlocks.getStore() !== true
 }

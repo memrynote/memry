@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MASK_WORD } from './mask-word'
 import { maskHardBreaks, restoreHardBreakSpelling, unmaskHardBreaks } from './hard-breaks'
 
 describe('hard break masking', () => {
@@ -79,7 +80,7 @@ describe('hard break masking', () => {
   it('deletes a code-block token whose spelling was never recorded', () => {
     // #given the same safety property as `unmaskHardBreaks`: the one thing
     // that must never reach the user's file is the token.
-    expect(restoreHardBreakSpelling('one MEMRYHBK9; two', [])).toBe('one  two')
+    expect(restoreHardBreakSpelling(`one MEMRYHBK${MASK_WORD}9; two`, [])).toBe('one  two')
   })
 
   it('never carries a list item join across a code span, link or tag', () => {

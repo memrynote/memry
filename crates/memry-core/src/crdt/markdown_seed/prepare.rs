@@ -7,7 +7,11 @@
 //! ported: their presence routes the text to the fallback instead
 //! ([`document_fallback`], [`line_fallback`]).
 
-use crate::domain::journal_rules::js_trim;
+use crate::domain::journal_rules::{is_js_whitespace, js_trim};
+
+use super::block_starts::ends_paragraph_before;
+use super::markers::FenceTracker;
+use super::shapes::{leading_ws, skip_chars};
 
 /// Why a whole document is kept as literal text, or `None` when it can be
 /// parsed. These constructs change how desktop splits or rewrites the whole
@@ -16,14 +20,11 @@ use crate::domain::journal_rules::js_trim;
 pub(super) fn document_fallback(markdown: &str) -> Option<&'static str> {
     // JS line terminators other than `\n`, which the desktop regexes treat as
     // line ends while `split('\n')` does not; NUL and the object replacement
-    // character, which the HTML parser and BlockNote rewrite.
-    if markdown.contains(['\0', '\u{2028}', '\u{2029}', '\u{FFFC}']) {
+    // character, which the HTML parser and BlockNote rewrite; and the
+    // character the hard-break mask joins list-item lines with
+    // ([`super::hard_breaks::JOIN`]), which no source may already hold.
+    if markdown.contains(['\0', '\u{1}', '\u{2028}', '\u{2029}', '\u{FFFC}']) {
         return Some("line terminator or control character");
-    }
-    // The masking tokens desktop inserts and restores (`MEMRYHBK`, `MEMRYICO`,
-    // `MEMRYDLT`, `MEMRYTKN`): source text holding one would be rewritten.
-    if markdown.contains("MEMRY") {
-        return Some("masking token text");
     }
     if ["{++", "{--", "{~~", "{==", "{>>"]
         .iter()
@@ -37,7 +38,95 @@ pub(super) fn document_fallback(markdown: &str) -> Option<&'static str> {
     if markdown.split('\n').any(is_link_reference_definition) {
         return Some("link reference definition");
     }
+    // A marker sets the level of the text after it, and desktop lifts a run
+    // indented under an item into the marker form: neither is read here.
+    if markdown.split('\n').any(is_nesting_marker) {
+        return Some("block nesting marker");
+    }
+    if lifts_item_child_run(markdown) {
+        return Some("list item holding a callout, quote or math block");
+    }
     None
+}
+
+/// A superset of `BLOCK_NESTING_MARKER_REGEX`
+/// (`shared/block-nesting.ts`), `/^<!--\s*memry:block-nesting-level=(\d+)\s*-->$/`,
+/// which also matches one inside a fence.
+fn is_nesting_marker(line: &str) -> bool {
+    let Some(rest) = line.strip_prefix("<!--") else {
+        return false;
+    };
+    let Some(rest) = rest
+        .trim_start_matches(is_js_whitespace)
+        .strip_prefix("memry:block-nesting-level=")
+    else {
+        return false;
+    };
+    let digits = rest.chars().take_while(char::is_ascii_digit).count();
+    digits > 0 && rest[digits..].trim_start_matches(is_js_whitespace) == "-->"
+}
+
+/// `ITEM` of `liftItemChildRuns` (`blocks/item-children.ts`), `/^([-*+]|\d{1,9}[.)])
+/// (?:( {1,4})(?=\S)|[ \t]*$)/`: a top-level item's content column.
+fn item_column(line: &str) -> Option<usize> {
+    let marker = if line.starts_with(['-', '*', '+']) {
+        1
+    } else {
+        let digits = line.chars().take_while(char::is_ascii_digit).count();
+        if !(1..=9).contains(&digits) || !line[digits..].starts_with(['.', ')']) {
+            return None;
+        }
+        digits + 1
+    };
+    let rest = &line[marker..];
+    let spaces = rest.chars().take_while(|c| *c == ' ').count();
+    let text_follows = rest[spaces..]
+        .chars()
+        .next()
+        .is_some_and(|c| !is_js_whitespace(c));
+    if (1..=4).contains(&spaces) && text_follows {
+        Some(marker + spaces)
+    } else if rest.chars().all(|c| matches!(c, ' ' | '\t')) {
+        Some(marker + 1)
+    } else {
+        None
+    }
+}
+
+/// Whether `liftItemChildRuns` would lift a run: a line indented at least as
+/// far as an open top-level item's text, after a blank line, whose deindented
+/// text starts with `>` or is `$$`. A fence is skipped, and so is anything but
+/// a top-level item. Stops at the first, so what the lift does to the lines
+/// after it is not followed.
+fn lifts_item_child_run(markdown: &str) -> bool {
+    let lines: Vec<&str> = markdown.split('\n').collect();
+    let mut fence = FenceTracker::default();
+    // The open top-level item's content column, or 0 outside a list.
+    let mut column = 0;
+    for (index, line) in lines.iter().enumerate() {
+        let after_blank = index > 0 && js_trim(lines[index - 1]).is_empty();
+        if fence.consume(line) || js_trim(line).is_empty() {
+            continue;
+        }
+        let indent = leading_ws(line);
+        if indent == 0 {
+            if let Some(found) = item_column(line) {
+                column = found;
+            } else if after_blank || ends_paragraph_before(Some(line), None) {
+                column = 0;
+            }
+            continue;
+        }
+        let inner = skip_chars(line, column);
+        if column > 0
+            && after_blank
+            && indent >= column
+            && (inner.starts_with('>') || inner == "$$")
+        {
+            return true;
+        }
+    }
+    false
 }
 
 /// A superset of the lines `readColumnRegion` (`blocks/columns.ts`) opens a
@@ -301,97 +390,6 @@ fn indented_run_end(lines: &[&str], start: usize) -> usize {
     last_content
 }
 
-/// `maskHardBreaks` (`shared/empty-lines.ts`): a line ending in two spaces or
-/// tabs, or in a backslash, followed by a non-blank line, has that spelling
-/// replaced by `MEMRYHBK<n>;`. Returns the text and the spellings.
-pub(super) fn mask_hard_breaks(markdown: &str) -> (String, Vec<String>) {
-    let mut breaks = Vec::new();
-    let masked: String = split_by_code_fences(markdown)
-        .into_iter()
-        .map(|(text, is_code)| {
-            if is_code || (!text.contains("  ") && !text.contains('\t') && !text.contains('\\')) {
-                return text.to_owned();
-            }
-            let mut lines: Vec<String> = text.split('\n').map(str::to_owned).collect();
-            for index in 0..lines.len().saturating_sub(1) {
-                if js_trim(&lines[index + 1]).is_empty() || js_trim(&lines[index]).is_empty() {
-                    continue;
-                }
-                let line = &lines[index];
-                let blanks = line.len() - line.trim_end_matches([' ', '\t']).len();
-                let spelling = if blanks >= 2 {
-                    blanks
-                } else if blanks == 0 && line.ends_with('\\') {
-                    1
-                } else {
-                    continue;
-                };
-                let cut = line.len() - spelling;
-                breaks.push(line[cut..].to_owned());
-                lines[index] = format!("{}MEMRYHBK{};", &line[..cut], breaks.len() - 1);
-            }
-            lines.join("\n")
-        })
-        .collect();
-    if breaks.is_empty() {
-        (markdown.to_owned(), breaks)
-    } else {
-        (masked, breaks)
-    }
-}
-
-/// `unmaskHardBreaks`: a token followed by a newline becomes two newlines, a
-/// token that lost its newline is deleted.
-pub(super) fn unmask_hard_breaks(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(start) = rest.find("MEMRYHBK") {
-        let after = &rest[start + "MEMRYHBK".len()..];
-        let digits = after.chars().take_while(char::is_ascii_digit).count();
-        if digits == 0 || !after[digits..].starts_with(';') {
-            out.push_str(&rest[..start + "MEMRYHBK".len()]);
-            rest = after;
-            continue;
-        }
-        out.push_str(&rest[..start]);
-        let tail = &after[digits + 1..];
-        if let Some(tail) = tail.strip_prefix('\n') {
-            out.push_str("\n\n");
-            rest = tail;
-        } else {
-            rest = tail;
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
-/// `restoreHardBreakSpelling`: every token back to the spelling it replaced.
-pub(super) fn restore_hard_break_spelling(text: &str, breaks: &[String]) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(start) = rest.find("MEMRYHBK") {
-        let after = &rest[start + "MEMRYHBK".len()..];
-        let digits = after.chars().take_while(char::is_ascii_digit).count();
-        if digits == 0 || !after[digits..].starts_with(';') {
-            out.push_str(&rest[..start + "MEMRYHBK".len()]);
-            rest = after;
-            continue;
-        }
-        out.push_str(&rest[..start]);
-        let spelling = after[..digits]
-            .parse::<usize>()
-            .ok()
-            .and_then(|index| breaks.get(index));
-        if let Some(spelling) = spelling {
-            out.push_str(spelling);
-        }
-        rest = &after[digits + 1..];
-    }
-    out.push_str(rest);
-    out
-}
-
 /// `^ {0,3}(`{3,}|~{3,})(.*)$`: the fence character, the run length and the
 /// rest of the line.
 pub(super) fn fence_line(line: &str) -> Option<(char, usize, &str)> {
@@ -422,19 +420,6 @@ mod tests {
         assert_eq!(
             split_preserving_blanks("```\na\n\n\n\nb\n```"),
             vec![Piece::Content("```\na\n\n\n\nb\n```".to_owned())]
-        );
-    }
-
-    #[test]
-    fn a_hard_break_spelling_round_trips_through_its_token() {
-        let (masked, breaks) = mask_hard_breaks("a  \nb\\\nc  \n\nd");
-        assert_eq!(masked, "aMEMRYHBK0;\nbMEMRYHBK1;\nc  \n\nd");
-        assert_eq!(breaks, vec!["  ".to_owned(), "\\".to_owned()]);
-        assert_eq!(unmask_hard_breaks("aMEMRYHBK0;\nb"), "a\n\nb");
-        assert_eq!(unmask_hard_breaks("aMEMRYHBK0;"), "a");
-        assert_eq!(
-            restore_hard_break_spelling(&masked, &breaks),
-            "a  \nb\\\nc  \n\nd"
         );
     }
 

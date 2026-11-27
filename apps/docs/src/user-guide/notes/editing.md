@@ -298,6 +298,13 @@ first row is the header row, and it counts toward the rows you pick. The header
 row is part of the table, not a style: notes are stored as markdown, and a
 markdown table always writes its first row as the header.
 
+A table written in another app opens with every cell it holds. A row with more
+cells than the header row makes the table that much wider: the header row gets
+empty cells to match, and shorter rows get empty cells at their end. A `|`
+inside a code span, as in `` `a|b` ``, is part of the code and stays in its
+cell; memrynote writes it back as `\|`, the escaped form GitHub and Obsidian
+keep in one cell.
+
 Use the row and column handles on the edge of a table to toggle a header row or
 a header column on and off. The same table controls are available in task
 descriptions and in inbox items.
@@ -454,6 +461,10 @@ line. The types use the common Markdown callout names (summary is saved as `abst
 a `> [!note]` or `> [!tip]` callout written in another app opens as a callout here. A
 callout with a title after the marker, a type Memry does not have (such as `[!danger]`), or
 an uppercase marker such as GitHub's `> [!NOTE]` opens as a quote and keeps its bytes.
+A callout directly under a heading, a list, a table or a line of text, with no blank line
+between, opens as a callout too. So does one indented under a list item, the way
+Obsidian nests it: it opens inside that item. A callout can hold tables, headings, lists
+and code blocks, and they stay inside it.
 
 Click the arrow at a callout's right edge to fold it. A folded callout shows only its type
 name, and its body is hidden. The fold is saved in the note with Obsidian's marker:
@@ -584,7 +595,11 @@ $$
 ```
 
 That is the same block form Obsidian, GitHub and Pandoc read, so an equation written
-here is an equation there, and one written there opens here as a block.
+here is an equation there, and one written there opens here as a block. A block below
+a paragraph, a heading, a list or another equation, with a blank line between, is an
+equation too. So is one directly under a heading, a list, a table, a code block or a
+callout, or directly above one, with no blank line between. One indented under a list
+item opens inside that item. That includes Markdown you paste and a template you insert.
 
 Two shapes are deliberately left alone:
 

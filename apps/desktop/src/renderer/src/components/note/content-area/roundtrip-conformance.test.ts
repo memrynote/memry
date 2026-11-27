@@ -170,3 +170,23 @@ describe('task titles from the source, renderer pipeline', () => {
     expect(titles).toEqual(['**new**'])
   })
 })
+
+describe('math blocks, renderer pipeline', () => {
+  // Main reads these the same way; the markdown-seed vector
+  // 'math: a fence after another block' pins its document.
+  it.each([
+    ['a paragraph', 'one\n\n$$\nx\n$$', ['paragraph', 'mathBlock']],
+    ['a heading', '# H\n\n$$\nx\n$$', ['heading', 'mathBlock']],
+    ['a list item', '- a\n\n$$\nx\n$$', ['bulletListItem', 'mathBlock']],
+    ['another math block', '$$\nx\n$$\n\n$$\ny\n$$', ['mathBlock', 'mathBlock']],
+    ['a diagram', '```mermaid\ngraph TD\n```\n\n$$\nx\n$$', ['diagram', 'mathBlock']]
+  ])('reads a `$$` run after %s and a blank line as math', async (_, markdown, types) => {
+    const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
+    expect(parsed.map((block) => block.type)).toEqual(types)
+  })
+
+  it('keeps a `$$` run that continues a paragraph as text', async () => {
+    const parsed = await parseMarkdownPreservingBlanks(editor, 'one\n$$\nx\n$$')
+    expect(parsed.map((block) => block.type)).toEqual(['paragraph'])
+  })
+})

@@ -174,7 +174,9 @@ fn write_block(txn: &mut TransactionMut, container: &XmlElementRef, block: &Seed
             .iter()
             .filter_map(|piece| match piece {
                 SeedInline::Text { text, .. } => Some(text.as_str()),
-                SeedInline::HardBreak | SeedInline::InlineImage { .. } => None,
+                SeedInline::HardBreak { .. }
+                | SeedInline::InlineImage { .. }
+                | SeedInline::HtmlComment { .. } => None,
             })
             .collect();
         if !code.is_empty() {
@@ -228,9 +230,14 @@ fn write_inline(txn: &mut TransactionMut, element: &XmlElementRef, content: &[Se
                 // a plain insert would inherit the marks of the chunk before.
                 target.insert_with_attributes(txn, end, text, attributes(marks));
             }
-            SeedInline::HardBreak => {
+            SeedInline::HardBreak { .. } => {
                 run = None;
                 element.push_back(txn, XmlElementPrelim::empty("hardBreak"));
+            }
+            SeedInline::HtmlComment { source } => {
+                run = None;
+                let comment = element.push_back(txn, XmlElementPrelim::empty("htmlComment"));
+                comment.insert_attribute(txn, "source", text(source));
             }
             SeedInline::InlineImage { src, alt, width } => {
                 run = None;

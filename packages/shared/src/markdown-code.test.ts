@@ -127,6 +127,11 @@ describe('stripMarkdownComments', () => {
     expect(stripMarkdownComments(html)).toBe(html)
   })
 
+  it('reads a pipe in a code span inside a commented cell as part of the comment', () => {
+    const row = '| a | b |\n| --- | --- |\n| <!-- `x|y` --> | 2 |'
+    expect(stripMarkdownComments(row)).toBe('| a | b |\n| --- | --- |\n|  | 2 |')
+  })
+
   it('reads a comment inside one table cell as a comment, wikilink alias included', () => {
     expect(stripMarkdownComments('| a %% [[A|alias]] %% | b |')).toBe('| a  | b |')
     expect(stripMarkdownComments('| a <!-- [[A|alias]] --> | b |')).toBe('| a  | b |')

@@ -6,17 +6,17 @@
     "class": "markdown-seed",
     "canonical": "packages/contracts/scripts/fragment-canonical.ts",
     "fragmentName": "prosemirror",
-    "authoredBy": "desktop's markdownToYFragment path: LF line endings, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
+    "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 50
+    "caseCount": 173
   },
   "cases": [
     {
       "name": "journal: morning and gratitude",
-      "pins": "an empty check item and an empty numbered item; the last line is trimmed to `2.` first, so it is a paragraph",
+      "pins": "an empty check item and two empty numbered items: a marker alone on its line is an empty item, after a blank line or another item",
       "markdown": "## Morning\n- [ ] \n\n## Gratitude\n1. \n2. \n",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Morning\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Gratitude\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"2.\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Morning\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Gratitude\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\""
     },
     {
       "name": "journal: date heading after substitution",
@@ -194,9 +194,27 @@
     },
     {
       "name": "table: ragged rows and escaped pipes",
-      "pins": "short rows padded and long rows cut to the header width; an escaped pipe stays in its cell",
+      "pins": "a row wider than the header widens the table; short rows and the header get empty cells; an escaped pipe stays in its cell",
       "markdown": "| a | b |\n|---|---|\n| one |\n| x \\| y | z | extra |",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"one\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x | y\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"z\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"one\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x | y\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"z\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"extra\""
+    },
+    {
+      "name": "table: a code span holds its pipes",
+      "pins": "a pipe inside a code span splits no cell, in a header, beside a link, and spaced; an escaped one is the pipe",
+      "markdown": "| `a|b` | y |\n|---|---|\n| [l](https://e.com) | `p|q` |\n| `x\\|y` | ` | ` |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a|b\" code={}\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"y\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"l\" link={\"href\":\"https://e.com\"}\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"p|q\" code={}\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x|y\" code={}\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"|\" code={}"
+    },
+    {
+      "name": "table: rows wider than the header",
+      "pins": "a blank header stays absent; a table without outer pipes widens; a table in a list item widens to its own rows only",
+      "markdown": "|  |  |\n|---|---|\n| 1 | 2 | 3 |\n\na | b\n---|---\n1 | 2 | 3 | 4\n\n- x\n  | h |\n  |---|\n  | 1 | 2 |\n| 3 | 4 | 5 |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"2\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"3\"\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"2\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"3\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"4\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n2 element blockGroup\n3 element blockContainer\n4 element table textColor=\"default\"\n5 element tableRow\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"h\"\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n5 element tableRow\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"1\"\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"2\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"| 3 | 4 | 5 |\""
+    },
+    {
+      "name": "table: a header spelled like a delimiter row widens",
+      "pins": "a header row spelled like a delimiter row gains a column for each cell a body row has past it, as any header does",
+      "markdown": "| --- |\n|---|\n| 1 | 2 |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"---\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"2\""
     },
     {
       "name": "table: blank header and cell image",
@@ -238,7 +256,7 @@
       "name": "callout: shapes desktop leaves as quotes",
       "pins": "an uppercase or titled marker, or a body that does not serialize back byte for byte, stays a quote",
       "markdown": "> [!NOTE]\n> GitHub alert\n\n> [!info] Title\n> body\n\n> [!tip]\n> an _italic_ word",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!NOTE]\"\n3 element hardBreak\n3 text \"GitHub alert\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!info] Title\"\n3 element hardBreak\n3 text \"body\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!tip]\"\n3 element hardBreak\n3 text \"an \"\n3 text \"italic\" italic={}\n3 text \" word\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!NOTE]\"\n3 element hardBreak\n3 text \"GitHub alert\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!info] Title\"\n3 element hardBreak\n3 text \"body\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"an \"\n3 text \"italic\" italic={}\n3 text \" word\""
     },
     {
       "name": "callout: bare marker heals",
@@ -251,6 +269,12 @@
       "pins": "a `$$` fence in its written form is a mathBlock; inline and one-line dollars stay text",
       "markdown": "$$\n\\int_0^1 x\\,dx\n$$\n\nInline $x$ stays text\n\n$$ one line $$",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"\\\\int_0^1 x\\\\,dx\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Inline $x$ stays text\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"$$ one line $$\""
+    },
+    {
+      "name": "math: a fence after another block",
+      "pins": "a fence after a blank line is a mathBlock whatever block sits above; one that continues a paragraph stays text",
+      "markdown": "one\n\n$$\nx\n$$\n\n$$\ny\n$$\n\n- a\n\n$$\nz\n$$\n\ntwo\n$$\nw\n$$",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"one\"\n1 element blockContainer\n2 element mathBlock latex=\"x\"\n1 element blockContainer\n2 element mathBlock latex=\"y\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n1 element blockContainer\n2 element mathBlock latex=\"z\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"two\"\n3 element hardBreak\n3 text \"$$\"\n3 element hardBreak\n3 text \"w\"\n3 element hardBreak\n3 text \"$$\""
     },
     {
       "name": "quote: separated paragraphs",
@@ -295,6 +319,30 @@
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"b\" bold={}\n3 element hardBreak\n3 text \"plain\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"c\" code={}\n3 element hardBreak\n3 text \"[!tip] x\""
     },
     {
+      "name": "hard break: spaces before a backslash break",
+      "pins": "the whitespace before a hard break is part of the break's spelling, as with two trailing spaces",
+      "markdown": "foo \\\nbar\n\n**b** \t\\\nc",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"foo\"\n3 element hardBreak\n3 element hardBreak\n3 text \"bar\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\" bold={}\n3 element hardBreak\n3 element hardBreak\n3 text \"c\""
+    },
+    {
+      "name": "hard break: a lazy line after a list item joins it",
+      "pins": "a hard break in a list item keeps the lazy line after it in the item (BBF-99); a soft break does not",
+      "markdown": "- a  \nb\n- [ ] c\\\nd\n\n1. e  \nf  \ng\n\n- h\ni  \nj",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"b\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"c\"\n3 element hardBreak\n3 element hardBreak\n3 text \"d\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"e\"\n3 element hardBreak\n3 element hardBreak\n3 text \"f\"\n3 element hardBreak\n3 element hardBreak\n3 text \"g\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"h\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"i\"\n3 element hardBreak\n3 element hardBreak\n3 text \"j\""
+    },
+    {
+      "name": "hard break: a soft break inside list-item link text",
+      "pins": "the item keeps one link holding the break (BBF-106)",
+      "markdown": "- [a\nb](https://e.com)\n- x [c\nd\ne](https://e.com) y",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" link={\"href\":\"https://e.com\"}\n3 element hardBreak\n3 text \"b\" link={\"href\":\"https://e.com\"}\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x \"\n3 text \"c\" link={\"href\":\"https://e.com\"}\n3 element hardBreak\n3 text \"d\" link={\"href\":\"https://e.com\"}\n3 element hardBreak\n3 text \"e\" link={\"href\":\"https://e.com\"}\n3 text \" y\""
+    },
+    {
+      "name": "hard break: inside image alt text",
+      "pins": "an image's name gets the break's spelling back, never the token",
+      "markdown": "![a  \nb](https://e.com/i.png)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"a  \\nb\" showPreview=true textAlignment=\"left\" url=\"https://e.com/i.png\""
+    },
+    {
       "name": "hard break: inside a fence another fence closed",
       "pins": "a hard-break token that lands in a code block gets its spelling back, never the token",
       "markdown": "```\ncode\n```mermaid\na  \nb",
@@ -311,6 +359,696 @@
       "pins": "CRLF and a lone CR read as LF",
       "markdown": "# Title\r\n\r\n| a |\r\n|---|\r\n| 1 |\r\nlast\rline",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"Title\"\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"last\"\n3 element hardBreak\n3 text \"line\""
+    },
+    {
+      "name": "comment: %% inside a paragraph",
+      "pins": "an Obsidian comment is an htmlComment node whose source keeps its %% delimiters, however it is surrounded; two in a row are two nodes",
+      "markdown": "Tail %% [[Topic]] secret %% end.\n\n%% a %% and %% b %%\n\nx%%y%%z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Tail \"\n3 element htmlComment source=\"%% [[Topic]] secret %%\"\n3 text \" end.\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% a %%\"\n3 text \" and \"\n3 element htmlComment source=\"%% b %%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n3 element htmlComment source=\"%%y%%\"\n3 text \"z\""
+    },
+    {
+      "name": "comment: a stray %% stays text",
+      "pins": "a %% with no partner outside code is text; a %% in a code span or a fence is not a partner",
+      "markdown": "Save 50%% today\n\n`x %%`\n\n```\n%%\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Save 50%% today\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x %%\" code={}\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%%\""
+    },
+    {
+      "name": "comment: %% inside emphasis",
+      "pins": "the node sits between runs that keep the surrounding marks",
+      "markdown": "*a %% b %% c*\n\n**x %% y %% z**\n\n~~s %% t %% u~~",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a \" italic={}\n3 element htmlComment source=\"%% b %%\"\n3 text \" c\" italic={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x \" bold={}\n3 element htmlComment source=\"%% y %%\"\n3 text \" z\" bold={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"s \" strike={}\n3 element htmlComment source=\"%% t %%\"\n3 text \" u\" strike={}"
+    },
+    {
+      "name": "comment: %% block on its own lines",
+      "pins": "a multi-line comment is one node in a paragraph of its own, and the text after it a second paragraph",
+      "markdown": "%%\nblock [[Other]] secret\n%%\n\nText",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%%\\nblock [[Other]] secret\\n%%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Text\""
+    },
+    {
+      "name": "comment: %% glued to the line above and below",
+      "pins": "a comment on the line before or after a block kind joins that line into the paragraph it touches, as desktop masks it before any line is split",
+      "markdown": "one\n%% hidden %%\ntwo\n\n# H\n%% c %%\n\n%% d %%\n- item\n\n%% e %%\n> quote\n\n%% f %%\n---",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"one\"\n3 element hardBreak\n3 element htmlComment source=\"%% hidden %%\"\n3 element hardBreak\n3 text \"two\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% c %%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% d %%\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"item\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% e %%\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"quote\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% f %%\""
+    },
+    {
+      "name": "comment: %% in code stays code",
+      "pins": "a code span, a fence and an indented code block keep their %% as text",
+      "markdown": "`a %% b %% c`\n\n```\n%% x %%\n```\n\n    %% y %%\n\n~~~\n%%\n~~~",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a %% b %% c\" code={}\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%% x %%\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%% y %%\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%%\""
+    },
+    {
+      "name": "comment: %% holding a blank line and a fence",
+      "pins": "a comment is masked before any line is split, so a blank line or a fence inside it stays inside the one node",
+      "markdown": "%%\nline\n\n```\ncode\n```\n%%\nend",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%%\\nline\\n\\n```\\ncode\\n```\\n%%\"\n3 element hardBreak\n3 text \"end\""
+    },
+    {
+      "name": "comment: %% in list items, a heading and a link label",
+      "pins": "a comment is a node in a list item and a heading, and the plain text of a link label",
+      "markdown": "- item %% c %% tail\n- [ ] todo %% d %%\n\n## Title %% e %%\n\n[a %% b %% c](https://e.com) and `x`",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"item \"\n3 element htmlComment source=\"%% c %%\"\n3 text \" tail\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"todo \"\n3 element htmlComment source=\"%% d %%\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Title \"\n3 element htmlComment source=\"%% e %%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a %% b %% c\" link={\"href\":\"https://e.com\"}\n3 text \" and \"\n3 text \"x\" code={}"
+    },
+    {
+      "name": "comment: %% in a table cell",
+      "pins": "a comment that closes inside its cell is a node, one that crosses the cell end is text",
+      "markdown": "| a | b %% c %% |\n|---|---|\n| 1 | 2 %% open |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b \"\n6 element htmlComment source=\"%% c %%\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"2 %% open\""
+    },
+    {
+      "name": "comment: %% in a callout body and a quote",
+      "pins": "a callout or quote body holding a comment is not claimed: desktop serializes the comment back as its source, which is not the masked run, so the proof fails and the quote stays flat",
+      "markdown": "> [!note]\n> body %% c %%\n> more\n\n> quoted %% d %%",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"body \"\n3 element htmlComment source=\"%% c %%\"\n3 element hardBreak\n3 text \"more\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"quoted \"\n3 element htmlComment source=\"%% d %%\""
+    },
+    {
+      "name": "parity: image address through the DOM",
+      "pins": "an absolute address is the WHATWG serialization jsdom's img.src gives (lowercase scheme and host, no default port, resolved dot segments, a root path); a relative one stays as written",
+      "markdown": "![a](http://e.com)\n\n![b](HTTP://E.com:80/x/../y?q=1#f)\n\n![c](assets/x.png)\n\n![d](https://e.com/a%20b.png)\n\n![e](memry-file://Abc/v.png)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"a\" showPreview=true textAlignment=\"left\" url=\"http://e.com/\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"b\" showPreview=true textAlignment=\"left\" url=\"http://e.com/y?q=1#f\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"c\" showPreview=true textAlignment=\"left\" url=\"assets/x.png\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"d\" showPreview=true textAlignment=\"left\" url=\"https://e.com/a%20b.png\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"e\" showPreview=true textAlignment=\"left\" url=\"memry-file://Abc/v.png\""
+    },
+    {
+      "name": "parity: code span with a leading space on a pipe line",
+      "pins": "a line with a pipe hides its code spans whitespace from the repair, so the leading space stays; a line without one strips it as the parser does",
+      "markdown": "` |`é\n\n` a|`b\n\n- ` |`c\n\n` a`d",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" |\" code={}\n3 text \"é\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" a|\" code={}\n3 text \"b\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" |\" code={}\n3 text \"c\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" a\" code={}\n3 text \"d\""
+    },
+    {
+      "name": "parity: paragraph of whitespace-only code spans and breaks",
+      "pins": "a paragraph with no visible text is parsed with collapsed whitespace: leading, repeated and trailing blanks go, a blank right after a break goes, a blank between breaks stays",
+      "markdown": "`\n`\n`\n`\n\n`\n`\n`\n`\n`\n`\n\n`\n`\nx\n`\n`\n\n` `\\\n` `",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n3 text \" \" code={}\n3 element hardBreak\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" \" code={}\n3 element hardBreak\n3 text \"x\"\n3 element hardBreak\n3 text \" \" code={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" \" code={}\n3 element hardBreak\n3 element hardBreak\n3 text \" \" code={}"
+    },
+    {
+      "name": "callout: escaped markup in the body",
+      "pins": "a body whose escapes the writer puts back (paired `*`, backticks and `_`, a `#` or `1.` opening a line, `~~`, a `]` before `(`) serializes to its bytes, so each is a callout",
+      "markdown": "> [!note]\n> a \\*b\\* c \\`d\\` e \\_f\\_ g\n\n> [!tip]\n> first\n> \\# x\n> 1\\. y\n\n> [!info]\n> a \\~\\~z\\~\\~ and [w\\](v)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a *b* c `d` e _f_ g\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"first\"\n3 element hardBreak\n3 text \"# x\"\n3 element hardBreak\n3 text \"1. y\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"info\"\n3 text \"a ~~z~~ and [w](v)\""
+    },
+    {
+      "name": "callout: unpaired markup stays unescaped",
+      "pins": "text that pairs nothing keeps its bytes: a spaced `*`, an intraword `_`, a `_` in a wiki link, a lone `!`, `~` or `]` are written as they are, so each is a callout",
+      "markdown": "> [!note]\n> 5 * 3 and a_b_c and [[_draft]] and 2 * 4\n\n> [!tip]\n> a ! b ~ c ] d",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"5 * 3 and a_b_c and [[_draft]] and 2 * 4\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"a ! b ~ c ] d\""
+    },
+    {
+      "name": "quote: blank separator and escaped markup",
+      "pins": "a quote whose paragraphs hold escaped markup and a spaced `*` is claimed with its later paragraph as a child",
+      "markdown": "> lead \\*x\\* and \\`y\\`\n>\n> second \\_z\\_ and 5 * 3",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"lead *x* and `y`\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"second _z_ and 5 * 3\""
+    },
+    {
+      "name": "callout: hard break and escaped markup in the body",
+      "pins": "a hard break keeps its spelling in the proof, and the line after it opens with an escaped `*`, `-` or `>`",
+      "markdown": "> [!tip]\n> line one  \n> line \\*two\\*\n> \\- three\n\n> [!note]\n> soft\n> \\> four",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"line one\"\n3 element hardBreak\n3 element hardBreak\n3 text \"line *two*\"\n3 element hardBreak\n3 text \"- three\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"soft\"\n3 element hardBreak\n3 text \"> four\""
+    },
+    {
+      "name": "callout: a body holding a table",
+      "pins": "a callout body of any block is read as a structured run, and the callout is claimed when its canonical form settles, so the table stays a table inside it",
+      "markdown": "> [!note]\n> | a | b |\n> |---|---|\n> | c | d |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n2 element blockGroup\n3 element blockContainer\n4 element table textColor=\"default\"\n5 element tableRow\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"a\"\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"b\"\n5 element tableRow\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"c\"\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"d\""
+    },
+    {
+      "name": "quote: a run opening on a table",
+      "pins": "a quote needs no blank `>` line, nested level or list to be read: a first block that is not a paragraph leaves its own line empty and every block a child",
+      "markdown": "> | a | b |\n> |---|---|\n> | c | d |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n2 element blockGroup\n3 element blockContainer\n4 element table textColor=\"default\"\n5 element tableRow\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"a\"\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"b\"\n5 element tableRow\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"c\"\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"d\""
+    },
+    {
+      "name": "quote: a line then a heading",
+      "pins": "a heading under a quote line is a child of the quote, claimed through its canonical form, which gains the blank `>` line between blocks",
+      "markdown": "> a\n> # h",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n5 text \"h\""
+    },
+    {
+      "name": "quote: a line, a blank and a table",
+      "pins": "a blank `>` line then a table: the paragraph is the quote line and the table its child",
+      "markdown": "> x\n>\n> | a | b |\n> |---|---|\n> | c | d |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"x\"\n2 element blockGroup\n3 element blockContainer\n4 element table textColor=\"default\"\n5 element tableRow\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"a\"\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"b\"\n5 element tableRow\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"c\"\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"d\""
+    },
+    {
+      "name": "callout: a body in another spelling",
+      "pins": "a body that does not reproduce its bytes (`__bold__` is written `**bold**`) is still a callout, since its canonical form settles",
+      "markdown": "> [!tip]\n> Use __bold__",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"Use \"\n3 text \"bold\" bold={}"
+    },
+    {
+      "name": "quote: a quoted fence then a lazy line",
+      "pins": "a list marker inside a quoted fence is code, so the run ends at its last `>` line and the next line is a paragraph of its own",
+      "markdown": "> ```\n> - x\n> ```\nz",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"\"\n5 text \"- x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"z\""
+    },
+    {
+      "name": "empty blocks: headings and items with nothing on the line",
+      "pins": "a heading or item line with no text is an empty block, an item only after a blank line or another item (after paragraph text `-` stays text), never inside a fence, and `#######` is text",
+      "markdown": "#\n\n## \n\n-\n- \n*\n\n1.\n2. x\n3)\n\n- [x]\n\ntext\n-\n\n```\n-\n#\n```\n\n####### ",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=true plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"text\"\n3 element hardBreak\n3 text \"-\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"-\\n#\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"#######\""
+    },
+    {
+      "name": "empty blocks: a box after a number",
+      "pins": "a box after a number is the item's text, not a to-do; after a bullet it is an empty to-do",
+      "markdown": "1. [ ]\n\n- [ ]\n\n1. [ ] x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[ ]\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"x\""
+    },
+    {
+      "name": "table: a header row ending in a backslash",
+      "pins": "the header cell is a and a backslash: a table row is one line, so no hard break",
+      "markdown": "| a \\\n|---|\n| b |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a \\\\\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\""
+    },
+    {
+      "name": "table: a body row ending in a backslash",
+      "pins": "the second row's cell keeps its trailing backslash",
+      "markdown": "| a |\n|---|\n| b \\\n| c |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b \\\\\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c\""
+    },
+    {
+      "name": "empty heading: only a flush-left hash is empty",
+      "pins": "an empty heading is flush left; an indented hash is the text of a paragraph",
+      "markdown": " #\n\n  ##\n\n#\n\n##\t",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"##\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "empty heading: a hash inside a paragraph",
+      "pins": "a hash line under paragraph text stays that text, with no placeholder in it",
+      "markdown": "a  \n #\n\nb\\\n#",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"#\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "emphasis: a code span and edge spaces",
+      "pins": "the spaces beside the code spans leave the bold: code a, a space, bold x, a space, code c",
+      "markdown": "**`a` x `c`**",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" code={}\n3 text \" \"\n3 text \"x\" bold={}\n3 text \" \"\n3 text \"c\" code={}"
+    },
+    {
+      "name": "emphasis: edge space beside a lifted image",
+      "pins": "the bold ends at its last word; the space it held is plain text before the image",
+      "markdown": "**see ![x](u)** now",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see\" bold={}\n3 text \"  now\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"x\" showPreview=true textAlignment=\"left\" url=\"u\""
+    },
+    {
+      "name": "block starts: a callout right under a heading",
+      "pins": "a heading and a callout, not a quote holding the text [!tip]",
+      "markdown": "# H\n> [!tip]\n> d",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"d\""
+    },
+    {
+      "name": "block starts: a callout in the middle of text",
+      "pins": "a paragraph, a callout, and a paragraph: a quote line ends the paragraph above it",
+      "markdown": "one\n> [!tip]\n> d\ntwo",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"one\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"d\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"two\""
+    },
+    {
+      "name": "block starts: math right above a heading",
+      "pins": "a math block and a heading: the line after the closing $$ may be a heading",
+      "markdown": "$$\ny\n$$\n# H",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"y\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\""
+    },
+    {
+      "name": "block starts: a quote line without the space",
+      "pins": "a callout whose body is body and more: the space after > is optional",
+      "markdown": "> [!note]\n> body\n>more",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"body\"\n3 element hardBreak\n3 text \"more\""
+    },
+    {
+      "name": "block starts: a quote with a lazy line, then a callout",
+      "pins": "a quote a and lazy, then a callout: a quote line after lazy lines opens a new block",
+      "markdown": "> a\nlazy\n> [!tip]\n> d",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 text \"lazy\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"d\""
+    },
+    {
+      "name": "marker image: a youtube address lifted from text",
+      "pins": "a paragraph see and a youtube embed, as the marker line would read",
+      "markdown": "see ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see\"\n1 element blockContainer\n2 element youtubeEmbed alt=\"\" title=\"\" videoId=\"dQw4w9WgXcQ\" videoUrl=\"https://www.youtube.com/watch?v=dQw4w9WgXcQ\""
+    },
+    {
+      "name": "marker image: an indented whiteboard",
+      "pins": "a paragraph and a whiteboard block, not an image",
+      "markdown": "a\n\n  ![whiteboard](memry://canvas/abc)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n1 element blockContainer\n2 element whiteboard canvasId=\"abc\""
+    },
+    {
+      "name": "marker image: a file marker whose JSON does not read",
+      "pins": "a paragraph holding the comment, which keeps its bytes",
+      "markdown": "<!-- file:{bad} -->",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"<!-- file:{bad} -->\""
+    },
+    {
+      "name": "details markup: a quote holding a toggle's lines",
+      "pins": "a quote whose text keeps the details markup lines: the parser no longer drops them as raw HTML",
+      "markdown": "> <details>\n> <summary>O</summary>\n>\n> ob\n>\n> </details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>O</summary>\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"ob\"\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"</details>\""
+    },
+    {
+      "name": "details markup: a one-paragraph quote",
+      "pins": "a flat quote of the text <details> and <summary>O</summary>, which was O",
+      "markdown": "> <details>\n> <summary>O</summary>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>O</summary>\""
+    },
+    {
+      "name": "details markup: a callout body",
+      "pins": "a callout whose first line keeps the <details> text",
+      "markdown": "> [!info]\n> <details>\n>\n> b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"info\"\n3 text \"<details>\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"b\""
+    },
+    {
+      "name": "details markup: a closing tag in a heading",
+      "pins": "a heading holding </details>, which was an empty heading",
+      "markdown": "## </details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
+    },
+    {
+      "name": "callout marker: a quote whose text spells one",
+      "pins": "a quote of the text [!info] and c: an escaped bracket is no marker",
+      "markdown": "> \\[!info]\n> c",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!info]\"\n3 element hardBreak\n3 text \"c\""
+    },
+    {
+      "name": "callout marker: a folded one escaped",
+      "pins": "a quote of the text [!tip]-",
+      "markdown": "> \\[!tip]-",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!tip]-\""
+    },
+    {
+      "name": "callout marker: a torn one in a paragraph",
+      "pins": "a paragraph of the text [!info] and c",
+      "markdown": "\\[!info]\nc",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[!info]\"\n3 element hardBreak\n3 text \"c\""
+    },
+    {
+      "name": "emphasis: a marked run ending in a space and a break",
+      "pins": "the space and the break after it leave the italic: italic a, a space, a break, b",
+      "markdown": "*a \n*b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" italic={}\n3 text \" \"\n3 element hardBreak\n3 text \"b\""
+    },
+    {
+      "name": "emphasis: a marked run ending in a hard break",
+      "pins": "the two spaces of a hard break and the break leave the italic",
+      "markdown": "*a  \n*b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" italic={}\n3 element hardBreak\n3 element hardBreak\n3 text \"b\""
+    },
+    {
+      "name": "list item child: a callout",
+      "pins": "a list item a holding a callout child: a run indented under an item after a blank line is that block",
+      "markdown": "- a\n\n  > [!info]\n  > c",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"info\"\n5 text \"c\""
+    },
+    {
+      "name": "list item child: a math block",
+      "pins": "a list item a holding a mathBlock child",
+      "markdown": "- a\n\n  $$\n  x\n  $$",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element mathBlock latex=\"x\""
+    },
+    {
+      "name": "list item child: a structured quote",
+      "pins": "a list item a holding a structured quote child",
+      "markdown": "- a\n\n  > x\n  >\n  > y",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element quote backgroundColor=\"default\" textColor=\"default\"\n5 text \"x\"\n4 element blockGroup\n5 element blockContainer\n6 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n7 text \"y\""
+    },
+    {
+      "name": "list item child: a numbered item's callout",
+      "pins": "an item holding a callout, then a top-level paragraph: the run ends at the first line at the left edge",
+      "markdown": "1. a\n\n   > [!tip]\n   > d\n\nafter",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n5 text \"d\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"after\""
+    },
+    {
+      "name": "writer: an italic run ending in a star beside an underscore",
+      "pins": "a structured quote: the escaped star ends no run on a delimiter, so the writer keeps the stars, `*a\\**`, and the body settles",
+      "markdown": "> \\_\n> *a\\**\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"_\"\n3 element hardBreak\n3 text \"a*\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a bold run ending in a star then an underscore run",
+      "pins": "a structured quote: the bold run keeps its stars and the italic run against them is spelled with underscores, `**a\\***_a\\*_`",
+      "markdown": "> **a\\***_a\\*_\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a*\" bold={}\n3 text \"a*\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span between an underscore and an italic star",
+      "pins": "a structured quote of the text _, code c and an italic star",
+      "markdown": "> \\_*`c`\\**\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"_\"\n3 text \"c\" code={}\n3 text \"*\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: an italic run ending in a star",
+      "pins": "a structured quote: the escaped star ends no run on a delimiter, so the writer spells the run `*a\\**`, the source",
+      "markdown": "> *a\\**\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a*\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a bold run ending in a star",
+      "pins": "a structured quote: the writer spells the run `**a\\***`, the source",
+      "markdown": "> **a\\***\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a*\" bold={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "whitespace-only code span: a paragraph of it between paragraphs",
+      "pins": "a paragraph holding a code span of two spaces: the spaces travel hidden through the parse, so the paragraph keeps them",
+      "markdown": "x\n\n`  `\n\ny",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"  \" code={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"y\""
+    },
+    {
+      "name": "whitespace-only code span: a paragraph of it after a paragraph",
+      "pins": "a second paragraph holding a code span of one space",
+      "markdown": "x\n\n` `",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" \" code={}"
+    },
+    {
+      "name": "writer: a callout whose italic ends in an escaped star",
+      "pins": "a callout: the writer spells the run `*a\\**`, so the body reproduces",
+      "markdown": "> [!note]\n> *a\\**",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a*\" italic={}"
+    },
+    {
+      "name": "writer: a callout whose bold ends in an escaped star",
+      "pins": "a callout: the writer spells the run `**a\\***`, so the body reproduces",
+      "markdown": "> [!note]\n> **a\\***\n> y",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a*\" bold={}\n3 element hardBreak\n3 text \"y\""
+    },
+    {
+      "name": "writer: an underscore escaped beside runs spelled with underscores",
+      "pins": "a structured quote: a block whose runs the writer spells with underscores escapes every `_` in its text, so `snake_case` is written `snake\\_case`, and the body settles",
+      "markdown": "> snake_case *a*__b__\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"snake_case \"\n3 text \"a\" italic={}\n3 text \"b\" bold={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: an italic run touching a bold run",
+      "pins": "a structured quote: stars against the stars of the run before open bold italic, so the writer spells the second run with underscores, `*a*__b__`",
+      "markdown": "> *a*__b__\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\" italic={}\n3 text \"b\" bold={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a bold run touching an italic run in a callout",
+      "pins": "a callout: the italic run against the bold run is spelled `_b_`, and the line after the break keeps its escaped `#`",
+      "markdown": "> [!note]\n> **a**_b_\n> \\# x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a\" bold={}\n3 text \"b\" italic={}\n3 element hardBreak\n3 text \"# x\""
+    },
+    {
+      "name": "writer: an escaped star run touching a bold run",
+      "pins": "a structured quote: the second run is spelled with underscores against the first run's closing star",
+      "markdown": "> *a\\**__a__\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a*\" italic={}\n3 text \"a\" bold={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a bold run ending in an escaped star after an italic run",
+      "pins": "a structured quote: the bold run that ends in an escaped star keeps its stars against the underscore-spelled italic before it",
+      "markdown": "> _a_**a\\***\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\" italic={}\n3 text \"a*\" bold={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: touching runs in a heading of a quote",
+      "pins": "a structured quote whose first block is a heading with two runs against each other",
+      "markdown": "> ## *a\\**__a__\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n2 element blockGroup\n3 element blockContainer\n4 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n5 text \"a*\" italic={}\n5 text \"a\" bold={}\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span with an underscore before touching runs",
+      "pins": "a flat quote: a bare `_` in the code span could open a run that the underscore-spelled one would close, so the writer keeps stars, which the parser misreads, and the body does not settle",
+      "markdown": "> `a_` *b*__c__\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a_\" code={}\n3 text \" \"\n3 text \"b\" italic={}\n3 text \"c\" bold={}\n3 element hardBreak\n3 text \"z\""
+    },
+    {
+      "name": "writer: a block start after a bold run ending in a break in a callout",
+      "pins": "a callout: the writer writes the break after the bold run's closing stars, so the `#` is at a line start and stays escaped",
+      "markdown": "> [!note]\n> **b**\n> \\# x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"b\" bold={}\n3 element hardBreak\n3 text \"# x\""
+    },
+    {
+      "name": "writer: a rule line after an italic run ending in a break in a callout",
+      "pins": "a callout: the escaped rule line after the italic run keeps its backslash",
+      "markdown": "> [!note]\n> *i*\n> \\---",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"i\" italic={}\n3 element hardBreak\n3 text \"---\""
+    },
+    {
+      "name": "writer: a block start after a struck run ending in a break in a callout",
+      "pins": "a callout: the break is written after the strike's closing delimiter, so the `#` stays escaped",
+      "markdown": "> [!note]\n> ~~s~~\n> \\# x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"s\" strike={}\n3 element hardBreak\n3 text \"# x\""
+    },
+    {
+      "name": "writer: a list marker after a bold run ending in a break in a quote",
+      "pins": "a structured quote: the `-` after the bold run and its break stays escaped",
+      "markdown": "> lead\n>\n> **b**\n> \\- z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"lead\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"b\" bold={}\n5 element hardBreak\n5 text \"- z\""
+    },
+    {
+      "name": "writer: a block start after a link ending in a break in a callout",
+      "pins": "a callout: the break is written after the link's `](address)`, so the `-` stays escaped",
+      "markdown": "> [!note]\n> [l](https://e.com)\n> \\- z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"l\" link={\"href\":\"https://e.com\"}\n3 element hardBreak\n3 text \"- z\""
+    },
+    {
+      "name": "writer: a block start after a link with parentheses ending in a break",
+      "pins": "a callout: a link address with balanced parentheses, then a break and an escaped `#`",
+      "markdown": "> [!note]\n> [l](https://e.com/a(1))\n> \\# x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"l\" link={\"href\":\"https://e.com/a(1)\"}\n3 element hardBreak\n3 text \"# x\""
+    },
+    {
+      "name": "writer: a block start after a paragraph break",
+      "pins": "a paragraph of bold b, a break and the text `# x`",
+      "markdown": "**b**\n\\# x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\" bold={}\n3 element hardBreak\n3 text \"# x\""
+    },
+    {
+      "name": "writer: an escaped image mark before a link in a callout",
+      "pins": "a callout: the text `!`, a link x, a break and the text `# x`",
+      "markdown": "> [!note]\n> \\![x](y)\n> \\# x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"!\"\n3 text \"x\" link={\"href\":\"y\"}\n3 element hardBreak\n3 text \"# x\""
+    },
+    {
+      "name": "writer: an escaped image mark before a link in a quote",
+      "pins": "a structured quote: the text `!` and a link x",
+      "markdown": "> \\![x](y)\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"!\"\n3 text \"x\" link={\"href\":\"y\"}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "empty to-do: under a heading",
+      "pins": "an empty check item under a heading: a to-do has no text for a paragraph to hold, so it counts after any line",
+      "markdown": "# H\n- [ ]",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "empty to-do: under paragraph text",
+      "pins": "a checked empty item after paragraph text, not a bullet of the text `[x]`",
+      "markdown": "one\n- [x]",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"one\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=true plain=false textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "empty to-do: under a quote line",
+      "pins": "a quote line, then an empty check item",
+      "markdown": "> q\n- [ ]",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "empty to-do: under a table row",
+      "pins": "a paragraph of the row text and an empty check item after it",
+      "markdown": "| b |\n- [ ]",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"| b |\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "empty to-do: other bullets and an upper-case box",
+      "pins": "`*` with `[X]` and `+` with `[ ]`, each an empty check item after paragraph text, and trailing blanks ignored",
+      "markdown": "one\n* [X] \ntwo\n+ [ ]",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"one\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=true plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"two\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "empty to-do: an empty bullet under text is still a setext underline",
+      "pins": "a bullet marker without a box stays text under a paragraph line: a paragraph, a break and `-`",
+      "markdown": "one\n-",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"one\"\n3 element hardBreak\n3 text \"-\""
+    },
+    {
+      "name": "writer: three stars after an italic run",
+      "pins": "a structured quote: the parser reads the three stars as no italic, the text *a and a bold *b",
+      "markdown": "> *a***b**\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"*a\"\n3 text \"*b\" bold={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: three stars after a bold run",
+      "pins": "a structured quote of a bold a and an italic b: the writer spells the second run with underscores, which settles",
+      "markdown": "> **a***b*\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\" bold={}\n3 text \"b\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span holding a run of two backticks in a quote",
+      "pins": "a structured quote: the writer fences the code c``c with one backtick, the smallest count no run inside is, so the body reproduces; the longest run plus one would put three at a line start",
+      "markdown": "> `c``c`\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"c``c\" code={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span holding a run of two backticks in a callout",
+      "pins": "a callout whose code span c``c is fenced with one backtick, as in the source",
+      "markdown": "> [!note]\n> `c``c`",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"c``c\" code={}"
+    },
+    {
+      "name": "writer: a code span holding runs of one and three backticks",
+      "pins": "a structured quote: the fence is two backticks, shorter than the four the longest run plus one would give",
+      "markdown": "> ``a`b```c``\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a`b```c\" code={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span starting with a backtick and holding a run of three",
+      "pins": "a structured quote: the code starts with a backtick, so the two-backtick fence is padded with a space each side",
+      "markdown": "> `` `a```b ``\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"`a```b\" code={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span holding a run of one backtick",
+      "pins": "a callout: the fewest backticks no run holds is two, the longest run plus one, so the spacing stays BlockNote's",
+      "markdown": "> [!note]\n> `` a`b ``",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a`b\" code={}"
+    },
+    {
+      "name": "lazy quote line: an image on the line after a quote",
+      "pins": "a structured quote of the paragraph q, a break and see, owning the image: the lazy line joins the quote's last paragraph, so the image is kept as a child",
+      "markdown": "> q\nsee ![x](u)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n3 element hardBreak\n3 text \"see\"\n2 element blockGroup\n3 element blockContainer\n4 element image backgroundColor=\"default\" caption=\"\" name=\"x\" showPreview=true textAlignment=\"left\" url=\"u\""
+    },
+    {
+      "name": "lazy quote line: a lazy line after a quote of blocks",
+      "pins": "a structured quote whose second paragraph is r, a break and lazy: the lazy line is part of the last paragraph, not a paragraph after the quote",
+      "markdown": "> q\n>\n> r\nlazy",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"r\"\n5 element hardBreak\n5 text \"lazy\""
+    },
+    {
+      "name": "lazy quote line: a lazy line after a one-paragraph quote",
+      "pins": "a flat quote of q, a break and lazy, then a paragraph after the blank line",
+      "markdown": "> q\nlazy\n\nafter",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n3 element hardBreak\n3 text \"lazy\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"after\""
+    },
+    {
+      "name": "lazy quote line: a line after a quoted heading",
+      "pins": "a quote owning a heading h, then a paragraph z: a run whose last line opens a block takes no lazy line",
+      "markdown": "> # h\nz",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n2 element blockGroup\n3 element blockContainer\n4 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n5 text \"h\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"z\""
+    },
+    {
+      "name": "lazy quote line: a line after a callout",
+      "pins": "a callout c, then a paragraph z: a callout body ends at its last `>` line",
+      "markdown": "> [!note]\n> c\nz",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"c\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"z\""
+    },
+    {
+      "name": "lazy quote line: a list item ends the run",
+      "pins": "a structured quote of q and r, then a bullet item: a list item is no lazy line",
+      "markdown": "> q\n>\n> r\n- a",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"r\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\""
+    },
+    {
+      "name": "math above a setext heading: dashes",
+      "pins": "a math block y and a level 2 heading H: the parser ends a paragraph before a line with a setext underline below it, so the math owns its paragraph",
+      "markdown": "$$\ny\n$$\nH\n---",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"y\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\""
+    },
+    {
+      "name": "math above a setext heading: equals signs",
+      "pins": "a math block y and a level 1 heading H",
+      "markdown": "$$\ny\n$$\nH\n===",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"y\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\""
+    },
+    {
+      "name": "whitespace-only code span: a bullet item of it",
+      "pins": "a bullet item holding a code span of one space, then b",
+      "markdown": "- ` `\n- b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" \" code={}\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\""
+    },
+    {
+      "name": "whitespace-only code span: a numbered item and a quote of it",
+      "pins": "a numbered item holding two spaces and a quote holding a tab, each as code",
+      "markdown": "1. `  `\n\n> `\t`",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"  \" code={}\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"\\t\" code={}"
+    },
+    {
+      "name": "whitespace-only code span: bold around it",
+      "pins": "a code span drops the bold around it: one code run of a space",
+      "markdown": "**` `**",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" \" code={}"
+    },
+    {
+      "name": "empty-label link: in a line of text",
+      "pins": "a paragraph of x, an htmlComment node holding the link as written, and y: the address has no label to ride on",
+      "markdown": "x [](u) y",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x \"\n3 element htmlComment source=\"[](u)\"\n3 text \" y\""
+    },
+    {
+      "name": "empty-label link: a paragraph of it after a paragraph",
+      "pins": "a paragraph holding only an htmlComment node: the link is the block, so no empty paragraph follows",
+      "markdown": "kq0xkq1x\n\n[](u)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq0xkq1x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"[](u)\""
+    },
+    {
+      "name": "empty-label link: a blank label with a title",
+      "pins": "a paragraph holding the link as written, blank label and title included",
+      "markdown": "[ ](u \"t\")",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"[ ](u \\\"t\\\")\""
+    },
+    {
+      "name": "empty-label link: in a bullet item, a quote and bold",
+      "pins": "each holds an htmlComment node; the bold keeps b and c around the node",
+      "markdown": "- [](u)\n\n> a [](v)\n\n**b [](w) c**",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"[](u)\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a \"\n3 element htmlComment source=\"[](v)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b \" bold={}\n3 element htmlComment source=\"[](w)\"\n3 text \" c\" bold={}"
+    },
+    {
+      "name": "empty-label link: in a table cell",
+      "pins": "a cell holding an htmlComment node",
+      "markdown": "| a | b |\n| - | - |\n| [](u) | x |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 element htmlComment source=\"[](u)\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x\""
+    },
+    {
+      "name": "empty-label link: beside an image",
+      "pins": "an image has a node of its own and stays one, the link beside it is the htmlComment node",
+      "markdown": "a [](u) ![i](v)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a \"\n3 element htmlComment source=\"[](u)\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"i\" showPreview=true textAlignment=\"left\" url=\"v\""
+    },
+    {
+      "name": "empty-label link: in a code span and after an escape",
+      "pins": "a code span keeps the link as code, and an escaped bracket makes no link: both stay text",
+      "markdown": "`[](u)` \\[](v)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[](u)\" code={}\n3 text \" [](v)\""
+    },
+    {
+      "name": "placeholder text: table cell code spans",
+      "pins": "a code span holding text that spells a cell code span placeholder keeps it, and the spans beside it keep their spaces and pipes",
+      "markdown": "| `x|MEMRYCSP0X` | `MEMRYCSPSX MEMRYCSPTX` |\n| --- | --- |\n| `a b` | c |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x|MEMRYCSP0X\" code={}\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"MEMRYCSPSX MEMRYCSPTX\" code={}\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a b\" code={}\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c\""
+    },
+    {
+      "name": "placeholder text: a hard break token on its own line",
+      "pins": "the line spelling a hard break token is text after the hard break before it",
+      "markdown": "a  \nMEMRYHBK0;\nb",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"MEMRYHBK0;\"\n3 element hardBreak\n3 text \"b\""
+    },
+    {
+      "name": "placeholder text: a hard break token opening a line",
+      "pins": "the token spelling opens a line of text after a hard break, and a soft break follows it",
+      "markdown": "a  \nMEMRYHBK0;b\nc",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"MEMRYHBK0;b\"\n3 element hardBreak\n3 text \"c\""
+    },
+    {
+      "name": "placeholder text: table probe words before a widened table",
+      "pins": "a body row wider than the header widens the table whatever text spells the width probe",
+      "markdown": "MEMRYTBL0X\n\n| a |\n| --- |\n| b | MEMRYTBL1X | c |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"MEMRYTBL0X\"\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"MEMRYTBL1X\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c\""
+    },
+    {
+      "name": "placeholder text: every other placeholder shape",
+      "pins": "the shapes of the emphasis, link, comment, empty-block, token, colour, link card and details placeholders are text",
+      "markdown": "MEMRYEMO0; MEMRYEMC0; MEMRYEMK0; MEMRYEMU0; MEMRYLNK0X MEMRYCMT0aX MEMRYEMB MEMRYEMBCORE MEMRYTKN0X MEMRYICO0:y:MEMRYICC; MEMRYLINKCARD MEMRYDLT;",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"MEMRYEMO0; MEMRYEMC0; MEMRYEMK0; MEMRYEMU0; MEMRYLNK0X MEMRYCMT0aX MEMRYEMB MEMRYEMBCORE MEMRYTKN0X MEMRYICO0:y:MEMRYICC; MEMRYLINKCARD MEMRYDLT;\""
+    },
+    {
+      "name": "placeholder text: an empty item line beside the empty block placeholder",
+      "pins": "an item that spells the empty-block placeholder keeps it and the empty item beside it stays empty",
+      "markdown": "- MEMRYEMBCORE\n-\n- a",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"MEMRYEMBCORE\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\""
+    },
+    {
+      "name": "placeholder text: a details block another app wrote",
+      "pins": "a details block no toggle claims is text whose `<` is hidden behind a placeholder, and text spelling that placeholder stays as written",
+      "markdown": "<details>\n<summary>x</summary>\nMEMRYDLT;summary>\n</details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>x</summary>\"\n3 element hardBreak\n3 text \"MEMRYDLT;summary>\"\n3 element hardBreak\n3 text \"</details>\""
     }
   ]
 }

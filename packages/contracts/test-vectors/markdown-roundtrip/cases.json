@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 280,
+    "exportedCaseCount": 447,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 290,
+    "caseCount": 457,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -287,6 +287,97 @@
       "sha256": "8abdcea1f1e95b24d9e00c4921a01194367e95881ad0ff02063d0be96352a080"
     },
     {
+      "name": "quote whose text spells a callout marker",
+      "markdown": "> \\[!info]\n> c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ed050d7acf1f1692b0e27c742ffc09212be9fa1aecc2a00d3f0feedef6fb8854"
+    },
+    {
+      "name": "quote whose text spells a folded callout marker",
+      "markdown": "> \\[!tip]-",
+      "canonical": null,
+      "pending": null,
+      "sha256": "94a57436fb0e805ad35066c8eea1dfc645232508e65c80f376410900fd2d1038"
+    },
+    {
+      "name": "quote of blocks whose first line spells a callout marker",
+      "markdown": "> \\[!info]\n>\n> z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f97b8912479ed4e2e341a97f70e704064dd5e5464a63d30d91d95b99f6e948b7"
+    },
+    {
+      "name": "paragraph whose text spells a torn callout marker",
+      "markdown": "\\[!info]\nc",
+      "canonical": null,
+      "pending": null,
+      "sha256": "eb7f6a83fdb674bb3b312b5d009b4119fc2d847ca82c8b003f11086eed751b01"
+    },
+    {
+      "name": "callout line spelling a heading",
+      "markdown": "> [!note]\n> a\n> \\# x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4532bd77c8c9db8380bab0185b81f3672972c80aabf4dc4d5d000542bfdebfaa"
+    },
+    {
+      "name": "callout opening with a list item spelling",
+      "markdown": "> [!note]\n> \\- z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4c3f0e5d4a180f02326c058e6b2efe0045cdb2802a770dadbcef41dc730abcba"
+    },
+    {
+      "name": "callout line spelling a table row",
+      "markdown": "> [!note]\n> a\n> \\| a \\|",
+      "canonical": "> [!note]\n> a\n> \\| a |",
+      "pending": null,
+      "sha256": "e5d97123302dca500aaa7545d33adb05801e333d6e78089702afd34ea9243dfc"
+    },
+    {
+      "name": "callout line spelling a setext underline",
+      "markdown": "> [!note]\n> a\n> \\---",
+      "canonical": null,
+      "pending": null,
+      "sha256": "78e6515a3b2f4e530b2898676e20e14a39fe9da8af8014a008af7545e929a7e9"
+    },
+    {
+      "name": "heading spelling after a bold run ending in a break",
+      "markdown": "**b**\n\\# x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9a5796c4329eec6c9f73e843d3f752645b805f0cead5450b91dbce9312b6ca9c"
+    },
+    {
+      "name": "list item spelling after an italic run ending in a break",
+      "markdown": "*b*\n\\- z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "250a2e83e3a8c7b797832c76646bd0bcac89c7050284ca0b1850071d2b6b2595"
+    },
+    {
+      "name": "list item spelling after a link ending in a break",
+      "markdown": "[l](https://e.com)\n\\- z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "39f82f2be03d6d0d385030f69020ca481ac03e75bf37f48ef9af27e421424670"
+    },
+    {
+      "name": "callout line spelling a heading after a link",
+      "markdown": "> [!note]\n> [l](https://e.com)\n> \\# x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d8201d13bdd075c77bc9194246dbc11e499006835558aa39e296744b105fa4f7"
+    },
+    {
+      "name": "quote line spelling a heading after a bold run",
+      "markdown": "> lead\n>\n> **b**\n> \\# x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4131e4e6e2f7f044be92704508f7c231b9b627f50fd6e61f68f6f528ae54cc0b"
+    },
+    {
       "name": "callout with a title after the marker",
       "markdown": "> [!info] Title here\n> Body",
       "canonical": null,
@@ -420,6 +511,48 @@
       "sha256": "8ae71606eee2deeb2998ec27799c3bccf3dcfbc005f28909a9313614ffce4170"
     },
     {
+      "name": "callout holding a table",
+      "markdown": "> [!note]\n> | a | b |\n> |---|---|\n> | c | d |",
+      "canonical": "> [!note]\n> | a | b |\n> | - | - |\n> | c | d |",
+      "pending": null,
+      "sha256": "e5e83c1a7bff255bdecc10adcc5dba8b0c9e764014601b2855f188448714f885"
+    },
+    {
+      "name": "quote opening on a table",
+      "markdown": "> | a | b |\n> |---|---|\n> | c | d |",
+      "canonical": "> | a | b |\n> | - | - |\n> | c | d |",
+      "pending": null,
+      "sha256": "0f519bb533ee1f079c3ab91f0c799e3db727e8251c0394c903d388047f6fd85d"
+    },
+    {
+      "name": "quote line then a heading",
+      "markdown": "> a\n> # h",
+      "canonical": "> a\n>\n> # h",
+      "pending": null,
+      "sha256": "ef2b996c4e19403a1ed590f174d5ad96f859f5dd6ff85a5cded32790d45c54b5"
+    },
+    {
+      "name": "quote line then a table",
+      "markdown": "> x\n>\n> | a | b |\n> |---|---|\n> | c | d |",
+      "canonical": "> x\n>\n> | a | b |\n> | - | - |\n> | c | d |",
+      "pending": null,
+      "sha256": "1374e4808d88d30b4391b14c3a4ab83af0638624801e088d85e91850164c03be"
+    },
+    {
+      "name": "quoted list item holding a paragraph",
+      "markdown": "> - a\n>\n>   para\n> - c",
+      "canonical": "> - a\n>\n> para\n>\n> - c",
+      "pending": null,
+      "sha256": "5bc1beec4b54933bfb2dce487ec76e5e42cac0244384122502c3e1ae777cda98"
+    },
+    {
+      "name": "callout body in another spelling",
+      "markdown": "> [!tip]\n> Use __bold__",
+      "canonical": "> [!tip]\n> Use **bold**",
+      "pending": null,
+      "sha256": "b64a54ce5fcb6baa4eeb0f062f3ddcb994aa0dbd76408ad09c2c0f2e9f0b72b6"
+    },
+    {
       "name": "empty toggle",
       "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n</details>",
       "canonical": null,
@@ -504,6 +637,181 @@
       "sha256": "d93da2c32e9fa407006d28d8d232f010d1b6fc5e27f0866b05aabe9d23a8cb7e"
     },
     {
+      "name": "callout under a paragraph line",
+      "markdown": "one\n> [!tip]\n> d",
+      "canonical": "one\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "bcce763a495e94d40a1c6cfbb1400d6dcfed4d71986ea5be4c23ceda79a58594"
+    },
+    {
+      "name": "callout under a heading",
+      "markdown": "# H\n> [!tip]\n> d",
+      "canonical": "# H\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "d69d97654d925c7f774f8c831790bf7d8aa5bc25833d6d79774c56d8dbb4fe2b"
+    },
+    {
+      "name": "callout under a list item",
+      "markdown": "- a\n> [!tip]-\n> d",
+      "canonical": "- a\n\n> [!tip]-\n> d",
+      "pending": null,
+      "sha256": "60e7d31cbbb2afb023bfdcefe9ce3c73cc623ed529f98e60b883fffcbbe4f6ba"
+    },
+    {
+      "name": "callout under a table",
+      "markdown": "| a |\n| - |\n| 1 |\n> [!tip]\n> d",
+      "canonical": "| a |\n| - |\n| 1 |\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "f30898af53305e7b83cc121a4dbcb01e326f1611cee811421b6c74084d887dda"
+    },
+    {
+      "name": "callout line without its space",
+      "markdown": "> [!note]\n> body\n>more",
+      "canonical": "> [!note]\n> body\n> more",
+      "pending": null,
+      "sha256": "8c9aeaa6cd1fd1fc31b0a460f181979d4b0636870a7d3b0b3323c29e03e09b17"
+    },
+    {
+      "name": "callout after a quote and its lazy line",
+      "markdown": "> a\nlazy\n> [!tip]\n> d",
+      "canonical": "> a\n> lazy\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "5176b0e8cdaf203fe552a51b939c32f7e67e8be954fa8da6589805ffa80799e3"
+    },
+    {
+      "name": "math under a heading",
+      "markdown": "# H\n$$\ny\n$$",
+      "canonical": "# H\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "4c223d86eb012d95ce1c756cea1e640420a4d5bb1e9ba53b430a48c3a9a983b1"
+    },
+    {
+      "name": "math above a heading",
+      "markdown": "$$\ny\n$$\n# H",
+      "canonical": "$$\ny\n$$\n\n# H",
+      "pending": null,
+      "sha256": "b359905aa448ccd7fe4f203001e8a338ff3e509c867380f8ac022109592870e8"
+    },
+    {
+      "name": "math above a setext heading",
+      "markdown": "$$\ny\n$$\nH\n---",
+      "canonical": "$$\ny\n$$\n\n## H",
+      "pending": null,
+      "sha256": "04ec237c5a36e5a27a8d9eac170366b96ad29ae4243409086db1d01334e45d58"
+    },
+    {
+      "name": "math above a setext heading underlined with equals",
+      "markdown": "$$\ny\n$$\nH\n===",
+      "canonical": "$$\ny\n$$\n\n# H",
+      "pending": null,
+      "sha256": "c3a62b532b8c23deb88ef82aae167b88aff72725b5e11e5b5f1f7a922785de9f"
+    },
+    {
+      "name": "math under a list item",
+      "markdown": "- a\n$$\ny\n$$",
+      "canonical": "- a\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "f7367d8efd2e02927aca8000a5795a08167bfe47c1d5b80ad90868066dea0d5f"
+    },
+    {
+      "name": "math under a callout",
+      "markdown": "> [!info]\n> c\n$$\ny\n$$",
+      "canonical": "> [!info]\n> c\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "562222ead2933c2308b9d97d08ca4c45b19b92dbbcc0e0e3cc03dca2b05efd07"
+    },
+    {
+      "name": "math under a fence",
+      "markdown": "```js\nx\n```\n$$\ny\n$$",
+      "canonical": "```js\nx\n```\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "8881b5c4236e2069aa23d2a7b9a7ed7d1eb56ee41eab82669cad837241cba6ca"
+    },
+    {
+      "name": "math under a table",
+      "markdown": "| a |\n| - |\n| 1 |\n$$\ny\n$$",
+      "canonical": "| a |\n| - |\n| 1 |\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "873555d7562ab0759cd9ef4374c327d9a4bf7da5a6723b6ee40f26aef485de3d"
+    },
+    {
+      "name": "math fences inside a paragraph stay its text",
+      "markdown": "text\n$$\nx\n$$",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9dfafcf4fb47bdef5f032362f847dfefc7aa6033227cbfffa66e345f8a89ba56"
+    },
+    {
+      "name": "youtube image inside text",
+      "markdown": "see ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "canonical": "see\n\n![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "pending": null,
+      "sha256": "477e1f73c050a94fc0aefbd08cef8aa409254da72f89c5d56ce7d936ff235017"
+    },
+    {
+      "name": "indented whiteboard line",
+      "markdown": "a\n\n  ![whiteboard](memry://canvas/abc)",
+      "canonical": "a\n\n![whiteboard](memry://canvas/abc)",
+      "pending": null,
+      "sha256": "717c7a93adc69072bd41cdf76e6e5bb33eb95a959e17ee19bf0da485c800d8cf"
+    },
+    {
+      "name": "image without an address",
+      "markdown": "![x]()",
+      "canonical": "![x](<>)",
+      "pending": null,
+      "sha256": "b307fa7d57c326c3400a159e0dad7b2f2f994579ce08dcecfe49386ec232afbd"
+    },
+    {
+      "name": "file marker whose JSON does not read",
+      "markdown": "<!-- file:{bad} -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "95281fce0d7be2a6d42d71c478298047ee5b907264b2f56a3fc2b6b6051f6419"
+    },
+    {
+      "name": "bold run around a lifted image",
+      "markdown": "**see ![x](attachments/x.png)** now",
+      "canonical": "**see**  now\n\n![x](attachments/x.png)",
+      "pending": null,
+      "sha256": "fbd03b762df009f96c62e1be96ebd5886de6967e33ea254d037cd6cae20cb3b2"
+    },
+    {
+      "name": "header row ending in a backslash",
+      "markdown": "| a \\\n|---|\n| b |",
+      "canonical": "| a \\\\ |\n| ---- |\n| b    |",
+      "pending": null,
+      "sha256": "fa7d2668df17f9a997b079363710113cbf31719416ece3fa36d56409e86b236f"
+    },
+    {
+      "name": "body row ending in a backslash",
+      "markdown": "| a |\n|---|\n| b \\\n| c |",
+      "canonical": "| a    |\n| ---- |\n| b \\\\ |\n| c    |",
+      "pending": null,
+      "sha256": "12c52efd572f3f1e22fcb890f77c3b956997275b9fc7acf00fdd6b6e5841b74c"
+    },
+    {
+      "name": "blank line ending a note",
+      "markdown": "Hello\n\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d9cd8d02c17c5dfa76991d216db8511c5b57f5c01cffa2e3378e183f4855259b"
+    },
+    {
+      "name": "two blank lines ending a note",
+      "markdown": "Hello\n\n\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "14e02244f008be46edaabe1b86733d7660c9b513c798b4e7a8e6ea1ebb9019c1"
+    },
+    {
+      "name": "blank lines after a toggle ending a note",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody line\n\n</details>\n\n\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d049f95979adcbeff95857c99158beea9d57871ac7ae5ff8f5d15efaa4e1a7c8"
+    },
+    {
       "name": "extra blank line before a colored toggle survives",
       "markdown": "Before\n\n\n<!-- colors:{\"backgroundColor\":\"blue\"} -->\n<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody line\n\n</details>",
       "canonical": null,
@@ -558,6 +866,76 @@
       "canonical": null,
       "pending": null,
       "sha256": "2bcc11f0dce249aeaa97314b32ff80a6b62dba3e64f4f7c9f5de347e5f4746cb"
+    },
+    {
+      "name": "details markup in a quote",
+      "markdown": "> <details>\n> <summary>O</summary>\n>\n> ob\n>\n> </details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ad6e807b0c772181cc85514095527ea58e3792349c127146ddaaebe5852ec642"
+    },
+    {
+      "name": "details markup in a one-paragraph quote",
+      "markdown": "> <details>\n> <summary>O</summary>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "520add0c89b6cf51e7ef3d5d380554e4e4038c3b5d04e7c9060b6d6758fbe9ea"
+    },
+    {
+      "name": "details markup in a callout",
+      "markdown": "> [!info]\n> <details>\n>\n> b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "730554f688f42e5edb1a5832adf351ef83ec1df8ab3eb9ac4b0b5f275beb8ac3"
+    },
+    {
+      "name": "details lines under a quote line",
+      "markdown": "> q\n<details>\n<summary>O</summary>\n\nob\n\n</details>",
+      "canonical": "> q\n> <details>\n> <summary>O</summary>\n\nob\n\n</details>",
+      "pending": null,
+      "sha256": "011b608171476e6c222e2e052af649ef5eba6a3ef41118286c7506a086c2efe9"
+    },
+    {
+      "name": "details markup quote line, then a lazy line holding an image",
+      "markdown": "> <details>\nsee ![x](u)",
+      "canonical": "> <details>\n> see\n>\n> ![x](u)",
+      "pending": null,
+      "sha256": "026d8871df6df7f0887b7fb7bd5c1a8106ca953cfca2f804a33a4ff5d2bf145a"
+    },
+    {
+      "name": "details markup quote line ending in a hard break",
+      "markdown": "> <details>\n<br>b",
+      "canonical": "> <details>  \n> b",
+      "pending": null,
+      "sha256": "403cf1f25f88830549ff58d4cf52e34feeb9ef059d89eb825a41e873f9565737"
+    },
+    {
+      "name": "details markup line before three breaks",
+      "markdown": "<details>\n<br>b",
+      "canonical": "<details><br><br><br>b",
+      "pending": null,
+      "sha256": "031dc2869a3ef5956d1b5537dae03808f8ac4b3e5ec454de0c2d4d5937cb7d1e"
+    },
+    {
+      "name": "details closing tag before three breaks",
+      "markdown": "<details>\n<summary>S</summary>\n\nb\n\n</details>\n<br>b",
+      "canonical": "<details>\n<summary>S</summary>\n\nb\n\n</details><br><br><br>b",
+      "pending": null,
+      "sha256": "10829758c1a61cd3d5df39a160b662f063b8a33d8bc52008116bf47634291c38"
+    },
+    {
+      "name": "details closing tag as a heading",
+      "markdown": "## </details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d21c6d04786b37169a2d7950717bc4f13173117d0f573fd3c3fe532a191de921"
+    },
+    {
+      "name": "details closing tag over a setext underline",
+      "markdown": "<details>\n<summary>O</summary>\n\nob\n\n</details>\n---",
+      "canonical": "<details>\n<summary>O</summary>\n\nob\n\n## </details>",
+      "pending": null,
+      "sha256": "e7e1f721a5d853112ebb05f977187995940531dfcdc38933f38f38fb2a6d6d4a"
     },
     {
       "name": "math block",
@@ -910,6 +1288,83 @@
       "sha256": "57cc158d8adac3e7bb8f67fc85f2ec3d48901bb6c3fcccb3502cd974082d4300"
     },
     {
+      "name": "callout indented under a list item",
+      "markdown": "- a\n\n  > [!info]\n  > c",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "09807061addad6a25371c88c2f656fc88d03d2aeeefac7079b4ed247d6cda74a"
+    },
+    {
+      "name": "math indented under a list item",
+      "markdown": "- a\n\n  $$\n  x\n  $$",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "c08a1443bb7b5d68d318d5e3ad82bd435de6b0ca6fd9b2df1271dce151142679"
+    },
+    {
+      "name": "math indented under a numbered item",
+      "markdown": "1. a\n\n   $$\n   x\n   $$",
+      "canonical": "1. a\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "dcaf4bd99c233cdbfab3c9877d2dd870e1343de8304a80a19def999008edc5cd"
+    },
+    {
+      "name": "math indented under a to-do item",
+      "markdown": "- [ ] t\n\n  $$\n  x\n  $$",
+      "canonical": "- [ ] t\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "121038c0d4a9363496683f81396afaf7164c74164ee42f6d6e5cd3b3d1d0ed48"
+    },
+    {
+      "name": "quote of two paragraphs indented under a list item",
+      "markdown": "- a\n\n  > x\n  >\n  > y",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> x\n\n<!-- memry:block-nesting-level=2 -->\n\ny\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "55d4a2c05b989965470d7114984d540d8aa323366da1de8bef117862906adfb6"
+    },
+    {
+      "name": "callout indented under a list item, then the next item",
+      "markdown": "- a\n\n  > [!info]\n  > c\n- b",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->\n\n- b",
+      "pending": null,
+      "sha256": "f763dbe7990debbf6d590dc82f4491c6503986da94f922ddff9609b771efaaaf"
+    },
+    {
+      "name": "paragraph then a callout indented under a list item",
+      "markdown": "- a\n\n  para\n\n  > [!info]\n  > c",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\npara\n\n> [!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "67bf437b5dc701e557b2d2d80d74b08a9c3b2971fc808adcf9b12280e9012d17"
+    },
+    {
+      "name": "callout then an item indented under a list item",
+      "markdown": "- a\n\n  > [!info]\n  > c\n\n  - sub\n\nafter",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n- sub\n\n<!-- memry:block-nesting-level=0 -->\n\nafter",
+      "pending": null,
+      "sha256": "66017a04536e3e193e9e42b980c4c3614cba492baab8fe94987c36494be0f7cf"
+    },
+    {
+      "name": "quote line in a code block under a list item stays code",
+      "markdown": "- a\n\n  ```\n  > [!info]\n  ```",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n```\n> [!info]\n```\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "28501f8360aebfdc0d41c86a1adff9527e5c0be5629f9a426ee6d74fcbd47cfc"
+    },
+    {
+      "name": "math then a paragraph nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\npara\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "974a0cb4c33024f0788f2a331a2f1298e4bd7ff4ed31a7735b3ac9a5fe725d70"
+    },
+    {
+      "name": "callout then an item nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n- sub\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4b059df56aadaed3e4755d1ea3c1245b86b6732ec0fdeefdce784907b4a12b1e"
+    },
+    {
       "name": "mermaid fence",
       "markdown": "```mermaid\ngraph TD\n    A[Start] --> B[Stop]\n```",
       "canonical": null,
@@ -1183,6 +1638,62 @@
       "sha256": "76bda9a912c970ca372668fb84abfb3dbea969e3c198f9e829146e89f937e1db"
     },
     {
+      "name": "image between the words of a list item",
+      "markdown": "- a ![photo.png](attachments/photo.png) b\n- c",
+      "canonical": "- a b\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->\n\n- c",
+      "pending": null,
+      "sha256": "e9d4f04fec7626fe3ae56ca02a24dfda75b1de26f72a00ff7744c5334b1244f2"
+    },
+    {
+      "name": "image in a quote line",
+      "markdown": "> a ![photo.png](attachments/photo.png) b",
+      "canonical": "> a b\n>\n> ![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "b9ebb8a3484b38977a739a9295558ebf3f42fdb23c4959aca62fb85dfe36dcfc"
+    },
+    {
+      "name": "image in a quoted list item",
+      "markdown": "> - a\n>   - b ![photo.png](attachments/photo.png)\n> - c",
+      "canonical": "> - a\n>   - b\n>\n> ![photo.png](attachments/photo.png)\n>\n> - c",
+      "pending": null,
+      "sha256": "24218c19dda3cc62f9882314b9b2c319e2f68eca99dae838e0729c2310fc2c8d"
+    },
+    {
+      "name": "list item holding only an image",
+      "markdown": "- ![photo.png](attachments/photo.png)",
+      "canonical": "-\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "e506b83ec6124d6e9f8f3af293632c99deb027ab8a0e2fa2d6e223b88a32d546"
+    },
+    {
+      "name": "numbered item holding only an image",
+      "markdown": "1. ![photo.png](attachments/photo.png)",
+      "canonical": "1.\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "6d04b66990a5826fe8c1eba61fc7d9283706b9ebc1ae95a2e89ced31853e9a8d"
+    },
+    {
+      "name": "heading holding only an image",
+      "markdown": "# ![photo.png](attachments/photo.png)",
+      "canonical": "#\n\n![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "5a63127bce95db2df341134d700431eb8a616b14f5fe517cc4d27edd3aa74c21"
+    },
+    {
+      "name": "image address with a space",
+      "markdown": "![photo](<attachments/a b.png>)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d200eb23156fae529105b101aff887d16fee90c94bf058b2a51fc00808829e0e"
+    },
+    {
+      "name": "image in a callout list item",
+      "markdown": "> [!note]\n> - a ![photo.png](attachments/photo.png) b",
+      "canonical": "> [!note]\n> - a b\n>\n> ![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "25256ae30fbd0ee38bca8613753928b72018725a003cc11fc7fd08e83bc0af5a"
+    },
+    {
       "name": "two column region",
       "markdown": "--- start-multi-column: r1\n```column-settings\nNumber of Columns: 2\n```\n\nLeft\n\n--- end-column ---\n\nRight\n\n--- end-multi-column",
       "canonical": null,
@@ -1323,6 +1834,118 @@
       "sha256": "982c1ffb7ad859a49b41693d9a8e7fdceb0e895a47d67ee5934d00083da7a42e"
     },
     {
+      "name": "italic sentence opening with bold",
+      "markdown": "_**Note:** this matters_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2f36ee792174c492b5c89d02ffedeb0dbb2f85f6f1e6df3459b71a93d90f7ad3"
+    },
+    {
+      "name": "italic ending in bold",
+      "markdown": "x _this **matters**_ y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d228c85f3acb8149a9069b95f707a6a85d12ef16b151151c959216f45d7d3ab1"
+    },
+    {
+      "name": "italic with bold at both ends",
+      "markdown": "_**a** b **c**_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7f6dcace9142c1165a692ec02bca8f04de2eb60792ddefce78ec940708014db3"
+    },
+    {
+      "name": "bold ending in italic",
+      "markdown": "**this _matters_**",
+      "canonical": "__this *matters*__",
+      "pending": null,
+      "sha256": "a627c666cf9ab4b270749f0867f1acbecdbd19f4e6c4fbe52cb21b06b6868170"
+    },
+    {
+      "name": "italic ending in bold before a word",
+      "markdown": "a _b **c**_d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5812227c7a73e66f5211c5e4a8fdb42c70cf14e7f411f558396609f68aec124b"
+    },
+    {
+      "name": "bold opening with italic",
+      "markdown": "**_x_ y**",
+      "canonical": "***x* y**",
+      "pending": null,
+      "sha256": "6d50138f39f9f2f303397477c28145071a38ead4a2a2ad817fd59da74142c140"
+    },
+    {
+      "name": "italic run ending in an escaped star",
+      "markdown": "*a\\**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dccf53a7f923f5dd916746df2e905cfca921cc3385c21494cf31633432f51eb4"
+    },
+    {
+      "name": "bold run ending in an escaped star",
+      "markdown": "**a\\***",
+      "canonical": null,
+      "pending": null,
+      "sha256": "30e95dd9d458ace04524233c8e6de3ecb15b432c5ea3c1c11a6221bf72728303"
+    },
+    {
+      "name": "italic run then a bold run",
+      "markdown": "*a*__b__",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4928d03ebb5381b6338c1c5e9b113f330842fbc91ffed2772093443efe71f46e"
+    },
+    {
+      "name": "escaped image mark before a link in a bold run",
+      "markdown": "**c \\![x](y)**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7cb524eedb08ec736dd4986d2be43ce24c1e6197714858a82042301303498f32"
+    },
+    {
+      "name": "bold run then an italic run",
+      "markdown": "**a**_b_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7e9ba39cfee07548af24c8e2638eb6fe335c69f3bc0c0c78b0c064e0007f3807"
+    },
+    {
+      "name": "italic run then a bold run in a quote of blocks",
+      "markdown": "> *a*__b__\n>\n> z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ac8ee7e3f052edbf310f88dd2df1b4f16418cfc46fea1b0f81cd6f639b1ff768"
+    },
+    {
+      "name": "escaped edge star beside a word underscore",
+      "markdown": "*a\\** b_c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1a589a376c6334d9bb4bfec0ff83debb42156777533e68f4341881120dc29e50"
+    },
+    {
+      "name": "underscore line above an italic run opening with bold",
+      "markdown": "\\_\n_**a** b_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5928dffff79d6140d8002dacc6adde828b865abf34ebc4951020bc0e0490dac3"
+    },
+    {
+      "name": "underscore inside an italic run opening with bold",
+      "markdown": "_**Note:** use snake\\_case_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "721ba0c7c584cc7551fba75035838860185921098bf3197ea081a3aaf7cec4ad"
+    },
+    {
+      "name": "underscore line in a quote above an italic run",
+      "markdown": "> \\_\n> *a\\**\n>\n> z",
+      "canonical": "> _\n> *a\\**\n>\n> z",
+      "pending": null,
+      "sha256": "0cd818909aa0050f61996a60bbb3628c901b8ee8c15e7b526c4ce7d5f7affd4f"
+    },
+    {
       "name": "bold stops at a code span (BBF-62)",
       "markdown": "**`a` x `c`**",
       "canonical": "`a` **x** `c`",
@@ -1400,6 +2023,55 @@
       "sha256": "4e8fea3619e676c88a01ca6d5227c772ac6f02807400bab330c243fa894c387c"
     },
     {
+      "name": "bold run then a break ending a paragraph",
+      "markdown": "**a**<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9277c32b2c26c502340a13ac765d7b798c9687508d4ed683d0b7cf61c8796b40"
+    },
+    {
+      "name": "bold run then a break between paragraphs",
+      "markdown": "x\n\n**a**<br>\n\ny",
+      "canonical": null,
+      "pending": null,
+      "sha256": "57ac508b292c61b61405d8d9ac1314929b1cf28057a2452940cac83024135c44"
+    },
+    {
+      "name": "bold run ending in two breaks",
+      "markdown": "**a<br>**",
+      "canonical": "**a**<br><br>",
+      "pending": null,
+      "sha256": "c6a4e7f4bee12361c47aa4be63404b78e6cecc6eb3e887f7c203b3e861a98687"
+    },
+    {
+      "name": "italic run ending in a soft break",
+      "markdown": "*a\n*",
+      "canonical": "*a*<br>",
+      "pending": null,
+      "sha256": "556ae53c7e0c4dcf6cfd4df1d7c9e7ebc27190e472161be9bbb489df34484a6f"
+    },
+    {
+      "name": "strike run ending in a soft break",
+      "markdown": "~~a\n~~",
+      "canonical": "~~a~~<br>",
+      "pending": null,
+      "sha256": "1c633a0b69abcfbb4d27ba52586219474893f31b4e7e4b14ea59e1073fb97bce"
+    },
+    {
+      "name": "italic run ending in a space and a break",
+      "markdown": "*a \n*b",
+      "canonical": "*a* \nb",
+      "pending": null,
+      "sha256": "858cce1018dcdf77d0bea16acf86c8c22929b5fee4390e8f696aca4bca85cca1"
+    },
+    {
+      "name": "italic run ending a paragraph in a space and a break",
+      "markdown": "_a \n_",
+      "canonical": "*a* <br>",
+      "pending": null,
+      "sha256": "f51258ebd8268c205c29d0a8b2f8624add162ea28939dab4bb4859b6e8ab9adb"
+    },
+    {
       "name": "html break inside a quote stays soft (BBF-85)",
       "markdown": "> a<br>b",
       "canonical": "> a\n> b",
@@ -1412,6 +2084,27 @@
       "canonical": "> a\n> b\n> c",
       "pending": null,
       "sha256": "8d1db2a4d797eed81ba3d0b897bb678c33ad1e0b124fd47c6567064edb6a33fd"
+    },
+    {
+      "name": "image on a lazy quote line",
+      "markdown": "> q\nsee ![x](https://e.com/a.png)",
+      "canonical": "> q\n> see\n>\n> ![x](https://e.com/a.png)",
+      "pending": null,
+      "sha256": "ce4fa433c6efddf5876dfa64ad01408b63135228668665afec287dd0b81cb916"
+    },
+    {
+      "name": "lazy line after a quote of blocks",
+      "markdown": "> q\n>\n> r\nlazy",
+      "canonical": "> q\n>\n> r\n> lazy",
+      "pending": null,
+      "sha256": "adfbd9351a8689b4985369157adbd43593e48a6c72d2f8575b9360402b18ced0"
+    },
+    {
+      "name": "line after a quoted heading is no lazy line",
+      "markdown": "> # h\nz",
+      "canonical": "> # h\n\nz",
+      "pending": null,
+      "sha256": "2e6a1397997a165bb765b953a18b4c21a178f99abffa99a13de961f8942903a4"
     },
     {
       "name": "hard break inside a quote (BBF-99)",
@@ -1696,7 +2389,7 @@
     {
       "name": "quoted fence, lazy line (BBF-113)",
       "markdown": "> ```\n> - x\n> ```\nz",
-      "canonical": "> - xz",
+      "canonical": "> ```\n> - x\n> ```\n\nz",
       "pending": null,
       "sha256": "0e7e0968dd25467e2bd31238367c7c330b81d6c7805174e29b6ce8a32b0d9611"
     },
@@ -1864,9 +2557,44 @@
     {
       "name": "html break opening a list-item link text line (BBF-106)",
       "markdown": "- [a\n<br>b](u)",
-      "canonical": "- [a\n\nb](u)",
+      "canonical": "- [a\n\n<br><br>b](u)",
       "pending": null,
       "sha256": "5c40cbe1fb64c844a3fdafee494ae5bdae752f7781c23d7baf84bbdb20615f80"
+    },
+    {
+      "name": "html break opening a line under a list item",
+      "markdown": "- x\n<br>b",
+      "canonical": "- x\n\n<br><br>b",
+      "pending": null,
+      "sha256": "de08d0659b5e7db391df4ba02544ae91d3e7134fc0f6c3b5861dd91c91638638"
+    },
+    {
+      "name": "html break alone as a paragraph",
+      "markdown": "a\n\n<br>\n\nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "791e88c8efdd1aaff5367f2a008ce359e8bc9e562aaa75c52070310bd800599a"
+    },
+    {
+      "name": "html break alone ending a note",
+      "markdown": "a\n\n<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "673eb023d3af5df6a54f3988f439c7bb74e916b00359df070ee28463caa2f01a"
+    },
+    {
+      "name": "html break alone as the note",
+      "markdown": "<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "65aef1adba8672a5fe7932d9f9f0dc35c2435893f65112acac628d2dc17a0bcf"
+    },
+    {
+      "name": "html break alone under a list item",
+      "markdown": "- x\n<br>",
+      "canonical": "- x\n\n<br>",
+      "pending": null,
+      "sha256": "059281ea9144249dcd5d386a7fbb91bbe0f3034fa6b72ab9e94f50fe00028b35"
     },
     {
       "name": "bold before a soft break inside list-item link text (BBF-106)",
@@ -1906,7 +2634,7 @@
     {
       "name": "html break in a table row with no leading pipe (BBF-85)",
       "markdown": "a | b\n--|--\nc<br>d | e",
-      "canonical": "| a   | b |\n| --- | - |\n| c d | e |",
+      "canonical": "| a      | b |\n| ------ | - |\n| c<br>d | e |",
       "pending": null,
       "sha256": "e585300e05890a5d402055e02a6bf396022a28a1907196a317856d329d469671"
     },
@@ -1920,7 +2648,7 @@
     {
       "name": "code span with a leading space after a cell break (BBF-90)",
       "markdown": "| h |\n| - |\n| a<br>` x` |",
-      "canonical": "| h      |\n| ------ |\n| a ` x` |",
+      "canonical": "| h         |\n| --------- |\n| a<br>` x` |",
       "pending": null,
       "sha256": "ec640c131a85ba0922d3b317bc879f03f6546fe7d9b0e23544f5ede41c982c8f"
     },
@@ -1937,6 +2665,447 @@
       "canonical": null,
       "pending": null,
       "sha256": "33684f5b3474c71db4876658eba6f11090159af8748697eee1645d64c1e6dd5b"
+    },
+    {
+      "name": "pipe inside a code span in a cell",
+      "markdown": "| x | y |\n| - | - |\n| a | `p|q` |",
+      "canonical": "| x | y      |\n| - | ------ |\n| a | `p\\|q` |",
+      "pending": null,
+      "sha256": "2bd788024e921519f3fb4baa6b87b3141b89d254c44eebfc3ca0d411991a18fb"
+    },
+    {
+      "name": "table row wider than its header",
+      "markdown": "| a | b |\n| - | - |\n| 1 | 2 | 3 | extra |",
+      "canonical": "| a | b |   |       |\n| - | - | - | ----- |\n| 1 | 2 | 3 | extra |",
+      "pending": null,
+      "sha256": "f6f613c19b1cc9eba3b286e275fc8a06670fafa4189be99d309cc26e608dca2f"
+    },
+    {
+      "name": "table row wider than a header spelled like a delimiter row",
+      "markdown": "| --- |\n|---|\n| 1 | 2 |",
+      "canonical": "| --- |   |\n| --- | - |\n| 1   | 2 |",
+      "pending": null,
+      "sha256": "d028fa0fd9bfecd020c260859d57504d2d975ad6f9f0e1283a9e69fa3dea87c4"
+    },
+    {
+      "name": "comment holding a piped code span in a cell",
+      "markdown": "| a              | b |\n| -------------- | - |\n| <!-- `x|y` --> | 2 |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "37e6efc297c310ed56952e8d3ea63c7e9d706fa356d276616f4dafb72697adca"
+    },
+    {
+      "name": "line break in a table cell",
+      "markdown": "| h      |\n| ------ |\n| x<br>y |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7118305f85e6dada5547f40888b71fbceabe67ee18718752af19e45a0b6ffd38"
+    },
+    {
+      "name": "line break in a heading",
+      "markdown": "## a<br>b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1132c1cd71420e6c0d00e8835d481e9b8590cfaa0424abe85db37e804dcd7639"
+    },
+    {
+      "name": "escaped backticks in two cells",
+      "markdown": "| a   |     |\n| --- | --- |\n| \\`n | m\\` |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "580fb48ea33b8449504fed5bbf9e1d6b664be1612fc2e3a7174d46b8736f6ee4"
+    },
+    {
+      "name": "escaped backticks around a cell pipe",
+      "markdown": "| a |\n|---|\n| \\`n|m\\` |",
+      "canonical": "| a   |     |\n| --- | --- |\n| \\`n | m\\` |",
+      "pending": null,
+      "sha256": "0fcf9852937cf8668a3d39b539ff9f11d6ca3862aa853c2a4cc08a750d6e864e"
+    },
+    {
+      "name": "escaped markup in a paragraph",
+      "markdown": "a \\`n\\` b \\*x\\* \\_y\\_ \\~\\~z\\~\\~",
+      "canonical": null,
+      "pending": null,
+      "sha256": "430032172a59b2b35de9172958ad2ea5979cacd62dad3c4c2333a274c8ed6259"
+    },
+    {
+      "name": "escaped markup in a table cell",
+      "markdown": "| h       |\n| ------- |\n| \\*x\\* y |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3670e3691b340ea26c3457c810ea2c30be6750acbd5c2e7607a52e4baa1e81ea"
+    },
+    {
+      "name": "escaped link syntax",
+      "markdown": "a \\[x\\](y) and \\![i\\](y)",
+      "canonical": "a [x\\](y) and \\![i\\](y)",
+      "pending": null,
+      "sha256": "11df466be7d732a6f26c8eb291986c5b9f91ed00d15f6f9337efb7fba82789ca"
+    },
+    {
+      "name": "escaped block openers at line starts",
+      "markdown": "\\# h\n\n\\- l\n\n1\\. n\n\n\\> q\n\n\\*\\*\\*\n\n\\[x]: https://e.com",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c77c0bf93de19b73bd6d98fcd547ac82b4884659fa960a7a1304ecab01979dca"
+    },
+    {
+      "name": "escaped block opener after a hard break",
+      "markdown": "a  \n\\# b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3f9865ea60e2b9ebf9e61a5892494c2653f694261798cff642f38cb076a9295c"
+    },
+    {
+      "name": "escaped list marker in a quote",
+      "markdown": "> \\- x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f00dffe2bab3226497191728481d5eac5dd548dba7510b7c4962771ab896a8c5"
+    },
+    {
+      "name": "empty list item between two items",
+      "markdown": "- a\n-\n- b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b5dda828f305e19289a43c3f451c727bed4272d6872483041ee355369340d977"
+    },
+    {
+      "name": "empty numbered items",
+      "markdown": "1.\n2.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8883dec5970d1e3ece36ba49d3a6e68514a75edc3e136e4dc1134be797f00fec"
+    },
+    {
+      "name": "numbered item holding a box",
+      "markdown": "1. [ ]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e45ea89c44841a336e27959bdd603a64d39c378ffc37bbfb1f72225323f8ccb3"
+    },
+    {
+      "name": "empty to-do between two items",
+      "markdown": "- [ ]\n- [x]\n- b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0906ab7a439b501bfc94d093fe7c8a912d1288e1bd9725f4ac439a85faea7b51"
+    },
+    {
+      "name": "empty to-do under a heading",
+      "markdown": "# H\n- [ ]",
+      "canonical": "# H\n\n- [ ]",
+      "pending": null,
+      "sha256": "793d88d28afcf1c7505ba90b33102536f534012304aef2a11effc9ba9c23341d"
+    },
+    {
+      "name": "empty to-do under a line of text",
+      "markdown": "one\n- [x]",
+      "canonical": "one\n\n- [x]",
+      "pending": null,
+      "sha256": "7e62ff562bd4945eee6b5421e2f0d35aaee6eb53466149546ec054249ebd8c89"
+    },
+    {
+      "name": "empty to-do under a quote",
+      "markdown": "> q\n- [ ]",
+      "canonical": "> q\n\n- [ ]",
+      "pending": null,
+      "sha256": "18bfdbb46f3eda9cc0b8f46cccce7f21c0d1058b43f94ad6ffb5cb9a326dbcc8"
+    },
+    {
+      "name": "empty heading",
+      "markdown": "#\n\nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "480d589c06d04fef4825adbdb49acb2fd54460f40b006d0a9812c71e9d958eb3"
+    },
+    {
+      "name": "indented hash alone",
+      "markdown": "a\n\n #",
+      "canonical": "a\n\n\\#",
+      "pending": null,
+      "sha256": "7cdef67ea55d68f28054629474827888181d5368cac456209364ed5588ac2005"
+    },
+    {
+      "name": "indented hash after a hard break",
+      "markdown": "a  \n #",
+      "canonical": "a  \n\\#",
+      "pending": null,
+      "sha256": "e5b52d60ecdbd96cd1b43fa3e1957e68404b586b0f094188162e0147885f662c"
+    },
+    {
+      "name": "link whose text is its address",
+      "markdown": "see [https://e.com](https://e.com)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1bce592049cc8e44bf8df7cbe553c1cecbd35d0c16f21db373c16e6b1abfe665"
+    },
+    {
+      "name": "link whose text is its address in a callout",
+      "markdown": "> [!tip]\n> see [https://e.com](https://e.com)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c0bf64932aea880eae9e7a6e8c1ecce7ce3695c8057aa00a8c9920c0a85c0b1e"
+    },
+    {
+      "name": "empty-label link in a line",
+      "markdown": "x [](u) y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "99d2996bbc6e1ee93479ab77fa755eeb208f2dd6d5d1c2ab42720f28d0f2fc3f"
+    },
+    {
+      "name": "empty-label link alone",
+      "markdown": "[](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b2e265ef2e0d0da34e8f7b4ad51a2f48f8725c75491538dc44424b3b990cda96"
+    },
+    {
+      "name": "empty-label link after a paragraph",
+      "markdown": "kq0xkq1x\n\n[](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3ec6b7b81f178944499f95958b02ae4c2458eb69afdc2334bcf9f54c4242ee7c"
+    },
+    {
+      "name": "blank-label link alone, with a title",
+      "markdown": "[ ](u \"t\")",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5c484e9b7d09371c16f61430e0cc754051c3a8b77593e60389172e8d397c48b1"
+    },
+    {
+      "name": "empty-label link in a list item",
+      "markdown": "- [](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7fe700d70c59594fe47f60e3012ecc8b5c3040ff2d34cf20ec152c94d298175e"
+    },
+    {
+      "name": "empty-label link in bold",
+      "markdown": "a **b [](u) c** d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "956f9fcfafd15f8c3307d514b76dbf67c26ddd3e67c6687f403ab87b89df841d"
+    },
+    {
+      "name": "empty-label link in a table cell",
+      "markdown": "| a     |\n| ----- |\n| [](u) |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "613dfbd57708aaf4cfa9218b6e46e88b8ea8e0a961c9721b5bfd50cf581b23ba"
+    },
+    {
+      "name": "code span of one space alone",
+      "markdown": "` `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "301d6e188c2e66adef392f657d08754b3c6c21457f87e48055f91c78e3c5c05a"
+    },
+    {
+      "name": "code span of spaces alone before a paragraph",
+      "markdown": "`  `\n\nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c89d014c82349743742e80b250a7ca19ba7342b6817e59f71ec6b29f8aed40c4"
+    },
+    {
+      "name": "list item holding a code span of spaces",
+      "markdown": "- `  `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "05d9d01f26fe48fd72a2ea8ff652cf2739168bb7042299475009a18402c83c79"
+    },
+    {
+      "name": "numbered item holding a code span of a space",
+      "markdown": "1. ` `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1719bf52a56e15a993ba6537ddafe927e135fb57308f2113181765c1bda68dc0"
+    },
+    {
+      "name": "code span of a space in bold",
+      "markdown": "**` `**",
+      "canonical": "` `",
+      "pending": null,
+      "sha256": "2704c03fad03de2b98501d8c2877c92a701146acb12abc290f87657c089a6d2d"
+    },
+    {
+      "name": "code span with a space at both ends",
+      "markdown": "a `  b  ` c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dbf53e1b5b4c0a891f52944a9cb5eaceab2c1bc10066596196519b57a301237e"
+    },
+    {
+      "name": "code span holding two backticks at a paragraph start",
+      "markdown": "`c``c` d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "93c84d023491089364955301bd32b7825cb49d2afdf405e7bd75be20f27b5c98"
+    },
+    {
+      "name": "code span holding a fence at a paragraph start",
+      "markdown": "` ```js `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "23ab2fecda80697296fac929a3ad503b5862eb1449906e37291d783e5e4f40c0"
+    },
+    {
+      "name": "code span holding two backticks mid-line",
+      "markdown": "a `c``c` d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3b26b4f606ef2a2a4e69ed55e6d1cc08a13f7acb43b7b4f02d1f042496689da4"
+    },
+    {
+      "name": "code span holding two backticks before a break",
+      "markdown": "`c``c`\ny",
+      "canonical": null,
+      "pending": null,
+      "sha256": "221b9d312e689897b0333f15d792c9e1a05973c93fe7d611be861df2eccc7f2d"
+    },
+    {
+      "name": "code span holding two backticks and a pipe in a cell",
+      "markdown": "| h |\n| --- |\n| `a``\\|b` |",
+      "canonical": "| h            |\n| ------------ |\n| ```a``\\|b``` |",
+      "pending": null,
+      "sha256": "9c231b6e24a3c8065ab14a4b270702f950476d435599184a7b2529ee10e46536"
+    },
+    {
+      "name": "code span holding two backticks on a quote line",
+      "markdown": "> `c``c`\n> y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5f0a34814a55c102c0f66bf6aed723d7e036ef8412b600276b7ab1e4ef5cf929"
+    },
+    {
+      "name": "code span then three breaks",
+      "markdown": "`a`<br><br><br>b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "28e82bd23385129b93eb724d7c8f59e801050589aab3f06135d33e61d9fce26e"
+    },
+    {
+      "name": "code span then a break ending the paragraph",
+      "markdown": "`a`<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "32fa918eaf500edca92f30d53caa2bdd2bac30aea7c9efb1e12aa49e397a43de"
+    },
+    {
+      "name": "code spans of a led line and of spaces across a break",
+      "markdown": "x ` y`\n`  `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9c4a90a61565e41ab933edbd85cde1b6782ca8dba905a30c18d9313a9fed8320"
+    },
+    {
+      "name": "code span with a space at both ends after a break",
+      "markdown": "`a`\n`  b  `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "24cf577333d3b9d6645f5b04d36fef4a2f3bfc3305434de1fc24fd2e5dc97ec7"
+    },
+    {
+      "name": "code span with a leading space opening a paragraph",
+      "markdown": "` *a` b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2324ca71b2c23a35654698a41de70d3533b3bb6ed6376518b6438acc17cdae8d"
+    },
+    {
+      "name": "code span of one space opening a paragraph",
+      "markdown": "` ` b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "601d23c42bebdd5f45186d640ce4f0fce6ae64b48f683434cda003b26f621169"
+    },
+    {
+      "name": "code span with a leading space opening a list item",
+      "markdown": "- ` a` b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b0316fd6919cb3fa4b42b2e3655c4f834f62dd29a24ab3633101a1c5464c5f47"
+    },
+    {
+      "name": "bold line then a plain line in a callout",
+      "markdown": "> [!note]\n> **b**\n> plain",
+      "canonical": null,
+      "pending": null,
+      "sha256": "468cea31f8283c121b4e7cdfa818ce9f57bd993886732fdfb58ec212a3cad9c7"
+    },
+    {
+      "name": "italic line then a plain line in a quote",
+      "markdown": "> *c*\n> d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e2fc5913dc97fb6082286232dc4ba9f4e762c248b83f26c220cb1613f0dccbf2"
+    },
+    {
+      "name": "backslash ending a paragraph",
+      "markdown": "a \\",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7e6651914bd8880dd6f57976d456fc4bca07802dec3a940043f2b7a74edc7775"
+    },
+    {
+      "name": "backslash alone in a list item",
+      "markdown": "- \\",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8d2c978245f023cbd15402488cef93a5ff613eee7ddad7658a2da2565cb011ba"
+    },
+    {
+      "name": "html break ending a paragraph",
+      "markdown": "a<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "df25bec7504ca5cc76e63be0c0651d22b82c7f70ca2079eecc25683a3d9ff1d1"
+    },
+    {
+      "name": "html break opening a quote",
+      "markdown": "> <br>a",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5ea770656412cc7f3839f149a8689e79315f73598c0fb8a410a48edb55e51859"
+    },
+    {
+      "name": "two hard breaks in a row",
+      "markdown": "a\\\n\\\nb",
+      "canonical": "a<br><br><br><br>b",
+      "pending": null,
+      "sha256": "8a2dc7d192f62956d95a422752f5c07b9ee95f829d8f48246ae0cc062a469cf8"
+    },
+    {
+      "name": "paragraph line left reading as a table row",
+      "markdown": "x | y\n![i](attachments/i.png) | z |",
+      "canonical": "x | y\n\\| z |\n\n![i](attachments/i.png)",
+      "pending": null,
+      "sha256": "e06e28f2b8e081dd71ea9e83b4d4a5d5c1928c2aca970d696a1b3ac1d6b71e8b"
+    },
+    {
+      "name": "paragraph line left reading as a table row after a code span",
+      "markdown": "``a|`b``\n![i](attachments/i.png) | v |",
+      "canonical": "``a|`b``\n\\| v |\n\n![i](attachments/i.png)",
+      "pending": null,
+      "sha256": "ad42eb7498cdfa36f7357c2bca9f976f6ee2a30a932991404243b1978927b0f6"
+    },
+    {
+      "name": "unpaired markup characters stay as written",
+      "markdown": "a_b_c and 5 * 3 and [[_draft]]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4ab124a35f3c95bc2248a7f2c0423b3763522bc1e862949c90b0b54378b6c0fb"
+    },
+    {
+      "name": "table pipe line after a hard break in a paragraph",
+      "markdown": "| a  \nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3f0b327fe1b6977d423473f8159fe5bd414cd765d2eb18d18631b5f148781f64"
     },
     {
       "name": "comment after a link inside bold (BBF-62)",

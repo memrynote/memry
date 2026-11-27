@@ -55,8 +55,10 @@ export function splitMarkdownPreservingBlanks(markdown: string): MarkdownSegment
  * Content segments are joined by `\n\n` (standard paragraph break) plus
  * N extra `\n` characters for each gap between them.
  *
- * Round-trip guarantee: `assemble(split(md)) === md` for all well-formed
- * markdown where extra blank lines only appear outside code fences.
+ * A gap ending the note is one newline shorter: the seed reads each newline
+ * after the last block's own as one empty paragraph, so `Hello\n\n` is one.
+ * Spelled like a gap between blocks, a note ending in a blank line came back
+ * one line longer on every write.
  */
 export function assembleMarkdownWithBlanks(segments: MarkdownSegment[]): string {
   if (segments.length === 0) return ''
@@ -64,7 +66,7 @@ export function assembleMarkdownWithBlanks(segments: MarkdownSegment[]): string 
   let result = ''
   let prevWasContent = false
 
-  for (const seg of segments) {
+  for (const [index, seg] of segments.entries()) {
     if (seg.type === 'content') {
       if (prevWasContent) {
         result += '\n\n'
@@ -72,11 +74,8 @@ export function assembleMarkdownWithBlanks(segments: MarkdownSegment[]): string 
       result += seg.text
       prevWasContent = true
     } else {
-      if (prevWasContent) {
-        result += '\n\n' + '\n'.repeat(seg.extraLines)
-      } else {
-        result += '\n\n' + '\n'.repeat(seg.extraLines)
-      }
+      const last = index === segments.length - 1
+      result += (last ? '\n' : '\n\n') + '\n'.repeat(seg.extraLines)
       prevWasContent = false
     }
   }
@@ -352,41 +351,6 @@ export function normalizeSerializedMarkdown(markdown: string): string {
 const BACKSLASH_BREAK_RUN = /(?:\\\n([^\S\n]*(?:>[^\S\n]?)*))+/g
 const HARD_BREAK = '  \n'
 
-/** A line that opens a table row. Its cells may not span more than one line. */
-const TABLE_ROW_START = /^[ \t]*\|/
-
-/**
- * Put a table row that a line break split back onto one line.
- *
- * A GFM row IS a line: the break ends the row, and everything after it stops
- * being part of the table. BlockNote 0.51+ writes a line break inside a cell
- * as the backslash form it uses everywhere else, so pasting two lines into a
- * cell serialized as
- *
- *   | Review first\
- *   second | Nobody |
- *
- * and the table was gone from the file on the next read — with it, every row
- * below the break. Measured on the real write-back, not inferred.
- *
- * The break becomes a space, which is what the cell already meant: one line of
- * text. Lossy in the sense that the two lines become one, and that is the
- * trade a single-line grammar forces; the alternative on disk today is losing
- * the table.
- */
-function joinBrokenTableRows(lines: string[]): string[] {
-  const out: string[] = []
-  for (const line of lines) {
-    const previous = out[out.length - 1]
-    if (previous !== undefined && previous.endsWith('\\') && TABLE_ROW_START.test(previous)) {
-      out[out.length - 1] = `${previous.slice(0, -1)} ${line}`
-      continue
-    }
-    out.push(line)
-  }
-  return out
-}
-
 const LIST_ITEM_PREFIX = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]+/
 
 /**
@@ -414,7 +378,7 @@ function indentListItemBreaks(lines: string[]): string[] {
 }
 
 function normalizeProseMarkdown(text: string): string {
-  const lines = indentListItemBreaks(joinBrokenTableRows(text.split('\n')))
+  const lines = indentListItemBreaks(text.split('\n'))
     .join('\n')
     .replace(BACKSLASH_BREAK_RUN, (run, prefix: string) => {
       const count = run.split('\n').length - 1
@@ -438,9 +402,15 @@ function normalizeProseMarkdown(text: string): string {
         continue
       }
     }
-    // `*`/`+` bullet marker → `-` (needs the trailing space, so `*emphasis*` and
-    // `***` thematic breaks are untouched).
-    out.push(line.replace(/^([ \t]*)[*+](\s)/, '$1-$2'))
+    // `*`/`+` bullet marker → `-` (needs the trailing space or the line's end,
+    // so `*emphasis*` and `***` thematic breaks are untouched; a literal `*`
+    // alone on a line is written escaped).
+    // An empty item or heading keeps no space after its marker.
+    out.push(
+      line
+        .replace(/^([ \t]*)[*+](\s|$)/, '$1-$2')
+        .replace(/^([ \t]*(?:-(?: \[[ xX]\])?|\d{1,9}[.)])| {0,3}#{1,6})[ \t]+$/, '$1')
+    )
   }
   return compactTables(out).join('\n')
 }

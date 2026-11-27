@@ -18,9 +18,16 @@
 
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { MASK_WORD } from '@memry/shared/mask-word'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
+import { DETAILS_LINE_TAIL, DETAILS_MARKUP, endsParagraphBefore } from './block-starts.ts'
 import { isCalloutTypeName } from './callout-types.ts'
-import { itemHoldsNonList, readStructuredQuoteRun, serializeQuoteBlock } from './quote.ts'
+import {
+  itemHoldsNonList,
+  readStructuredQuoteRun,
+  serializeQuoteBlock,
+  withItemBlocksAfterItems
+} from './quote.ts'
 
 // ---------------------------------------------------------------------------
 // callout — `> [!type]` followed by the content, one `> ` per line
@@ -89,6 +96,25 @@ export function serializeCalloutBlock(
   return `${marker}\n${serializeQuoteBlock(body)}`
 }
 
+/**
+ * Whether a `blockType` block whose first line reads `line` would be read
+ * back as a callout: a quote by its marker, a paragraph by the torn form.
+ */
+export function spellsCalloutMarker(blockType: string, line: string, onlyLine: boolean): boolean {
+  if (blockType === 'quote') return matchCalloutMarker(`> ${line}`) !== null
+  return blockType === 'paragraph' && !onlyLine && BARE_CALLOUT_MARKER_REGEX.test(line)
+}
+
+/**
+ * A quote that owns blocks: `serializeQuoteBlock` over their markdown, its first
+ * line escaped where it would read back as a callout marker. That line is
+ * written as a paragraph's, which the escaper does not judge as a quote's.
+ */
+export function serializeQuoteOfBlocks(innerMarkdown: string): string {
+  const quoted = serializeQuoteBlock(innerMarkdown)
+  return matchCalloutMarker(quoted.split('\n', 1)[0]) ? `> \\${quoted.slice(2)}` : quoted
+}
+
 export interface CalloutRun {
   type: string
   fold: CalloutFold
@@ -101,12 +127,15 @@ export interface CalloutRun {
   /** The damaged shape #1846 heals: marker without its `> `. */
   bare: boolean
   /**
-   * The body holds a list or a `> >` level. Declining it is not free: the quote
-   * fallback drops the list markers or the nesting, so a one-step
-   * normalization that settles is claimed instead (same rule as
-   * `resolveQuoteRun`).
+   * Declining the body is not free: the quote fallback turns `[!note]` into
+   * text and flattens every block in the body, a table into its cells' text,
+   * so a one-step normalization that settles is claimed instead (same rule as
+   * `resolveQuoteRun`). A legacy read grants it only to a body holding a list
+   * or a `> >` level.
    */
   reshapes: boolean
+  /** Read as this build reads callouts, see `QuoteRun.lossless`. */
+  lossless: boolean
 }
 
 /**
@@ -126,7 +155,8 @@ export interface CalloutRun {
 export function readCalloutRun(
   lines: readonly string[],
   start: number,
-  atParagraphStart: boolean
+  atParagraphStart: boolean,
+  lossless = true
 ): CalloutRun | null {
   if (!atParagraphStart) return null
 
@@ -135,7 +165,7 @@ export function readCalloutRun(
     // A body with a blank `>` line, a list or a `> >` level is read the way a
     // structured quote is, lazy list continuations included (BBF-110), so it
     // can become the callout's child blocks (#3186).
-    const structured = readStructuredQuoteRun(lines, start + 1)
+    const structured = readStructuredQuoteRun(lines, start + 1, lossless)
     if (structured) {
       return {
         type: quoted[1],
@@ -144,7 +174,8 @@ export function readCalloutRun(
         raw: lines.slice(start, structured.end).join('\n'),
         end: structured.end,
         bare: false,
-        reshapes: structured.listed || structured.nested
+        reshapes: lossless || structured.listed || structured.nested,
+        lossless
       }
     }
     const contentLines: string[] = []
@@ -163,7 +194,8 @@ export function readCalloutRun(
       raw: lines.slice(start, end).join('\n'),
       end,
       bare: false,
-      reshapes: false
+      reshapes: false,
+      lossless
     }
   }
 
@@ -183,7 +215,8 @@ export function readCalloutRun(
       raw: lines.slice(start, end).join('\n'),
       end,
       bare: true,
-      reshapes: false
+      reshapes: false,
+      lossless
     }
   }
 
@@ -211,8 +244,8 @@ export interface ResolvedCallout {
  * later block a child; a body that opens on another block (a list, a heading)
  * has an empty own line (#3186).
  *
- * A body with a list or a `> >` level may also claim when its canonical form
- * settles, because the quote fallback would drop the markers or the nesting.
+ * A body that does not reproduce may also claim when its canonical form
+ * settles, because the quote fallback would flatten it (`reshapes`).
  * A bare damaged run heals only into a single paragraph, as before. A
  * checkbox in the body stays a checkbox: the editor never promotes one inside
  * a callout or a quote to a task, so claiming writes no task id (#3192).
@@ -224,6 +257,7 @@ export async function resolveCalloutRun(
 ): Promise<ResolvedCallout | null> {
   const content = run.contentLines.join('\n')
   if (content === '') return { type: run.type, fold: run.fold, content: [], children: [] }
+  if (run.lossless) parseMarkdown = withItemBlocksAfterItems(parseMarkdown)
 
   const body = await parseCalloutBody(content, parseMarkdown, serializeBlocks)
   if (!body) return null
@@ -523,12 +557,15 @@ export interface MathRun {
  * The run must also OWN its paragraph, at both ends. A fence that starts or
  * stops mid-paragraph belongs to that paragraph's bytes, and claiming it would
  * split one paragraph into two blocks — which the write-back rejoins with a
- * blank line between them, rewriting a file Memry never wrote.
+ * blank line between them, rewriting a file Memry never wrote. A lossless read
+ * takes BlockNote's paragraph ends (`endsParagraphBefore`), so `$$` against a
+ * heading below is claimed; a legacy read wants a blank line.
  */
 export function readMathRun(
   lines: readonly string[],
   start: number,
-  atParagraphStart: boolean
+  atParagraphStart: boolean,
+  lossless = true
 ): MathRun | null {
   if (!atParagraphStart) return null
   if (lines[start] !== MATH_FENCE_LINE) return null
@@ -536,7 +573,14 @@ export function readMathRun(
   let end = start + 1
   while (end < lines.length && lines[end] !== MATH_FENCE_LINE) end++
   if (end >= lines.length) return null
-  if (end + 1 < lines.length && lines[end + 1].trim() !== '') return null
+  const after = lines[end + 1]
+  if (
+    lossless
+      ? !endsParagraphBefore(after, lines[end + 2])
+      : after !== undefined && after.trim() !== ''
+  ) {
+    return null
+  }
 
   const raw = lines.slice(start, end + 1).join('\n')
   const latex = lines.slice(start + 1, end).join('\n')
@@ -648,11 +692,20 @@ export function serializeToggleBlock(
 }
 
 /**
- * The three whole-line shapes `<details>` markup takes on disk. Matched against
- * the raw line, never a trimmed one: an indented `<details>` is inside a code
- * block or a list item, and those bytes are not this function's to touch.
+ * A details markup line, matched against the raw line, never a trimmed one: an
+ * indented `<details>` is inside a code block or a list item, and those bytes
+ * are not this function's to touch.
  */
-const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>)$/
+const DETAILS_MARKUP_LINE_REGEX = new RegExp(`^(?:${DETAILS_MARKUP})$`)
+/**
+ * The same line behind quote markers or a heading's `#`s, which the parser
+ * drops as raw HTML too: a quote's own markup, the body of a quote or callout
+ * run, and `## </details>`, a closing tag read over a setext underline. The
+ * breaks after it stay on its line.
+ */
+const PREFIXED_DETAILS_LINE_REGEX = new RegExp(
+  `^((?:>[ \t]?)*|#{1,6}[ \t]+)(${DETAILS_MARKUP})(${DETAILS_LINE_TAIL})$`
+)
 
 /**
  * The `<` of a declined `<details>` line, while it crosses the parser.
@@ -670,7 +723,7 @@ const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summa
  * exist. Nothing needs escaping on the way out — a text node holding
  * `<details>` serializes to `<details>` bare.
  */
-const DETAILS_LT_TOKEN = 'MEMRYDLT;'
+const DETAILS_LT_TOKEN = `MEMRYDLT${MASK_WORD};`
 
 /**
  * Hide the `<` of a `<details>` markup line that no toggle claimed, so the
@@ -693,6 +746,19 @@ const DETAILS_LT_TOKEN = 'MEMRYDLT;'
 function escapeDetailsMarkup(line: string): string {
   if (!DETAILS_MARKUP_LINE_REGEX.test(line)) return line
   return line.split('<').join(DETAILS_LT_TOKEN)
+}
+
+/** `markdown` with every details markup line escaped, prefixed or not; fenced code keeps its bytes. */
+export function escapePrefixedDetailsMarkup(markdown: string): string {
+  if (!/<(?:details|summary>|\/details>)/.test(markdown)) return markdown
+  const fence = createFenceTracker()
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const match = fence.consume(line) ? null : PREFIXED_DETAILS_LINE_REGEX.exec(line)
+      return match ? match[1] + match[2].split('<').join(DETAILS_LT_TOKEN) + match[3] : line
+    })
+    .join('\n')
 }
 
 /**

@@ -258,6 +258,32 @@ describe('pasting markdown as plain text', () => {
     ])
   })
 
+  it('builds an equation below a paragraph and a blank line', async () => {
+    const editor = mountEditor([{ type: 'paragraph' }])
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': 'one\n\n$$\nx\n$$' })
+    await settled(editor, before)
+
+    expect(outline(editor.document)).toEqual([
+      ['paragraph', 'one'],
+      ['mathBlock', 'x']
+    ])
+  })
+
+  it('claims a callout on the line under an image, as the vault converter does', async () => {
+    const editor = mountEditor([{ type: 'paragraph' }])
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': '![A cat](https://example.com/cat.png)\n> [!info]\n> Seen.' })
+    await settled(editor, before)
+
+    expect(outline(editor.document)).toEqual([
+      ['image', 'https://example.com/cat.png'],
+      ['callout', 'info: Seen.']
+    ])
+  })
+
   it('reads Windows line endings the same way', async () => {
     const editor = mountEditor([{ type: 'paragraph' }])
     const before = JSON.stringify(editor.document)

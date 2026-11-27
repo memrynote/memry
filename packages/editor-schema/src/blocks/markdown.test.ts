@@ -424,7 +424,8 @@ describe('readStructuredQuoteRun', () => {
       raw: '> One\n>\n> Two',
       end: 3,
       nested: false,
-      listed: false
+      listed: false,
+      lossless: true
     })
   })
 
@@ -443,8 +444,11 @@ describe('readStructuredQuoteRun', () => {
     expect(read('> Outer\n> > Inner')?.innerMarkdown).toBe('Outer\n> Inner')
   })
 
-  it('declines a flat run, which BlockNote already round-trips', () => {
-    expect(read('> One\n> Two')).toBeNull()
+  // `resolveQuoteRun` declines it once it parses to one paragraph; a heading
+  // or a table on its second line is a block the flat quote would lose.
+  it('reads a flat run, which a legacy read declines', () => {
+    expect(read('> One\n> Two')?.innerMarkdown).toBe('One\nTwo')
+    expect(readStructuredQuoteRun(['> One', '> Two'], 0, false)).toBeNull()
   })
 
   it('reads a quoted list, with the line that continues its item lazily', () => {
@@ -461,8 +465,12 @@ describe('readStructuredQuoteRun', () => {
     expect(read('Just text')).toBeNull()
   })
 
-  it('refuses the whole run on a `>text` line rather than tearing it in two', () => {
-    expect(read('> One\n>\n>Two')).toBeNull()
+  it('reads a `>text` line as a quote line, its space being optional', () => {
+    expect(read('> One\n>\n>Two')?.innerMarkdown).toBe('One\n\nTwo')
+  })
+
+  it('refuses the whole run on a `>text` line in a legacy read', () => {
+    expect(readStructuredQuoteRun(['> One', '>', '>Two'], 0, false)).toBeNull()
   })
 
   it('stops at the first line outside the quote', () => {

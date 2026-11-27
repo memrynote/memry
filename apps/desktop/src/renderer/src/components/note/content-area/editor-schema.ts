@@ -1,6 +1,6 @@
 import { defaultBlockSpecs } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
-import { withImageWidthInAlt } from '@memry/editor-schema/blocks'
+import { withImageWidthInAlt, withNoteRelativeImageSource } from '@memry/editor-schema/blocks'
 import { withImageCornerHandles } from './image-corner-handles'
 import { withImageCropView } from './image-crop-view'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
@@ -53,7 +53,9 @@ export const editorSchema = createMemrySchema({
     // The factory's image (width carried in the alt) plus corner grips that
     // drive BlockNote's side grips (#2696), shown through its crop (#3170).
     // Same node, same props.
-    image: withImageCornerHandles(withImageCropView(withImageWidthInAlt(defaultBlockSpecs.image))),
+    image: withImageCornerHandles(
+      withImageCropView(withNoteRelativeImageSource(withImageWidthInAlt(defaultBlockSpecs.image)))
+    ),
     callout: createCalloutBlock(),
     youtubeEmbed: createYoutubeEmbedBlock(),
     bookmark: createBookmarkBlock(),

@@ -3,25 +3,35 @@
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::code_spans::{restore_code_whitespace, space_token, tab_token};
+use super::collapse::collapse_blank_paragraph;
+use super::hard_breaks::unmask_hard_breaks;
 use super::inline::{Html, Tag};
 use super::links::allowed_href;
 use super::media::{Media, alt_width};
-use super::prepare::unmask_hard_breaks;
 use super::{SeedInline, SeedMarks};
 
 /// One stage-3 run: styled text, a link holding styled text, or an inline
 /// node.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Run {
+pub(super) enum Run {
     Text(String, SeedMarks),
     Link(String, Vec<(String, SeedMarks)>),
     Node(SeedInline),
 }
 
 /// A paragraph-like block's runs: stage 2, then ProseMirror's parse with its
-/// whitespace preserved.
-pub(super) fn block_content(mut html: Vec<Html>, breaks: &[String]) -> Vec<SeedInline> {
+/// whitespace preserved, unless the paragraph shows no text
+/// ([`collapse_blank_paragraph`]).
+pub(super) fn block_content(
+    mut html: Vec<Html>,
+    breaks: &[String],
+    paragraph: bool,
+) -> Vec<SeedInline> {
     normalize_whitespace(&mut html);
+    if paragraph {
+        collapse_blank_paragraph(&mut html);
+    }
     let mut nodes = Vec::new();
     flatten(&html, &SeedMarks::default(), false, &mut nodes);
     finish(nodes, breaks)
@@ -31,7 +41,7 @@ pub(super) fn block_content(mut html: Vec<Html>, breaks: &[String]) -> Vec<SeedI
 /// `preserveWhitespace`, so ProseMirror's `addTextNode` collapses every
 /// whitespace run to one space, drops a leading space at the start, after a
 /// break or after whitespace, and `finish` drops the trailing whitespace.
-/// `code_kept`: `maskCellCodeSpaces` hid the code spans' whitespace from it
+/// `code_kept`: `maskCellCodeSpans` hid the code spans' whitespace from it
 /// and from the repair, behind tokens restored last.
 pub(super) fn cell_content(html: Vec<Html>, breaks: &[String], code_kept: bool) -> Vec<SeedInline> {
     let mut flat = Vec::new();
@@ -45,7 +55,7 @@ pub(super) fn cell_content(html: Vec<Html>, breaks: &[String], code_kept: bool) 
             continue;
         };
         if kept(&marks) {
-            let masked = text.replace(' ', SPACE_TOKEN).replace('\t', TAB_TOKEN);
+            let masked = text.replace(' ', space_token()).replace('\t', tab_token());
             nodes.push(PmNode::Text(masked, marks));
             continue;
         }
@@ -79,26 +89,23 @@ pub(super) fn cell_content(html: Vec<Html>, breaks: &[String], code_kept: bool) 
             nodes.pop();
         }
     }
-    let mut content = finish(nodes, breaks);
-    for piece in &mut content {
-        if let SeedInline::Text { text, .. } = piece
-            && text.contains("MEMRYCSP")
-        {
-            *text = text.replace(SPACE_TOKEN, " ").replace(TAB_TOKEN, "\t");
-        }
-    }
-    content
+    finish(nodes, breaks)
 }
 
-/// `maskCellCodeSpaces`' placeholders. Source text holding `MEMRY` never gets
-/// here (`prepare::document_fallback`), so a token is always ours.
-const SPACE_TOKEN: &str = "MEMRYCSPSX";
-const TAB_TOKEN: &str = "MEMRYCSPTX";
-
+/// Stage 4 and the end of `maskCellCodeSpans`: the placeholders come back
+/// after the repair, which never sees the whitespace they hide.
 fn finish(nodes: Vec<PmNode>, breaks: &[String]) -> Vec<SeedInline> {
     let mut runs = to_runs(nodes);
     repair(&mut runs, breaks);
-    expand(runs)
+    let mut content = expand(runs);
+    for piece in &mut content {
+        if let SeedInline::Text { text, .. } = piece
+            && (text.contains(space_token()) || text.contains(tab_token()))
+        {
+            *text = restore_code_whitespace(text);
+        }
+    }
+    content
 }
 
 /// Stage 2: a text node holding a newline has each whitespace run collapsed.
@@ -283,7 +290,7 @@ fn repair(runs: &mut Vec<Run>, breaks: &[String]) {
     runs.retain_mut(|run| {
         let keep = match run {
             Run::Text(text, marks) => {
-                let opens_line = first || (!marks.code && previous_ends_line);
+                let opens_line = !marks.code && (first || previous_ends_line);
                 !repair_text(text, opens_line, breaks)
             }
             Run::Link(_, content) => {
@@ -343,12 +350,14 @@ fn repair_text(text: &mut String, opens_line: bool, breaks: &[String]) -> bool {
 
 /// `inlineContentToNodes`: text split on `\n` into hard breaks, empty pieces
 /// dropped, a link's mark added to its text.
-fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
+pub(super) fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
     let mut out = Vec::new();
     let split = |out: &mut Vec<SeedInline>, text: &str, marks: &SeedMarks| {
         for (index, piece) in text.split('\n').enumerate() {
             if index > 0 {
-                out.push(SeedInline::HardBreak);
+                out.push(SeedInline::HardBreak {
+                    marks: marks.clone(),
+                });
             }
             if !piece.is_empty() {
                 out.push(SeedInline::Text {
@@ -374,4 +383,35 @@ fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_code_span_at_a_blocks_start_keeps_its_leading_space() {
+        let content = block_content(
+            vec![Html::Code(" *a".to_owned()), Html::Text(" b".to_owned())],
+            &[],
+            true,
+        );
+        let code = SeedMarks {
+            code: true,
+            ..SeedMarks::default()
+        };
+        assert_eq!(
+            content,
+            vec![
+                SeedInline::Text {
+                    text: " *a".to_owned(),
+                    marks: code
+                },
+                SeedInline::Text {
+                    text: " b".to_owned(),
+                    marks: SeedMarks::default()
+                }
+            ]
+        );
+    }
 }

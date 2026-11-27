@@ -6,8 +6,10 @@
  * `## [![i](u)](l)`), so the images are moved out of the text block in the HTML
  * the markdown parses to, each into a block of its own right after it.
  *
- * Only top-level `<p>` and `<h1>`..`<h6>` are touched. A paragraph holding
- * nothing but images already parses to image blocks, so it is left as it is.
+ * Only top-level `<p>` and `<h1>`..`<h6>` are touched, and with `listItems` a
+ * list item's `<p>`, whose images become the item's child blocks. A paragraph
+ * holding nothing but images already parses to image blocks, so it is left as
+ * it is.
  * A link wrapped around nothing but an image stays in the text block with the
  * image's alt text (or, without one, its target) as its label, so the target
  * is kept.
@@ -39,11 +41,11 @@ const ALT_ATTRIBUTE = /\salt="([^"]*)"/i
 const HREF_ATTRIBUTE = /\shref="([^"]*)"/i
 
 /** The HTML with every lifted image moved, or null when there was none to lift. */
-export function liftImagesOutOfTextBlocks(html: string): string | null {
+export function liftImagesOutOfTextBlocks(html: string, listItems: boolean): string | null {
   let out = ''
   let copied = 0
-  let depth = 0
-  let block: { tag: string; innerStart: number } | null = null
+  const open: string[] = []
+  let block: { tag: string; innerStart: number; depth: number } | null = null
 
   for (const match of html.matchAll(TAG)) {
     const [token, closing, rawTag] = match
@@ -51,15 +53,16 @@ export function liftImagesOutOfTextBlocks(html: string): string | null {
     const tag = rawTag.toLowerCase()
     if (VOID_TAGS.has(tag)) continue
     if (!closing) {
-      if (depth === 0 && TEXT_BLOCK_TAG.test(tag)) {
-        block = { tag, innerStart: match.index + token.length }
+      const inItem = listItems && tag === 'p' && open.at(-1) === 'li'
+      if (!block && TEXT_BLOCK_TAG.test(tag) && (open.length === 0 || inItem)) {
+        block = { tag, innerStart: match.index + token.length, depth: open.length }
       }
-      depth++
+      open.push(tag)
       continue
     }
-    depth = Math.max(0, depth - 1)
-    if (depth > 0) continue
-    if (block?.tag === tag) {
+    open.pop()
+    if (block?.depth !== open.length) continue
+    if (block.tag === tag) {
       const split = splitImagesOut(html.slice(block.innerStart, match.index), tag !== 'p')
       if (split) {
         out += html.slice(copied, block.innerStart) + split.text + token + split.images.join('')

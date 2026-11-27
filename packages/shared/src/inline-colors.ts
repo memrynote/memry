@@ -29,6 +29,7 @@
  */
 
 import { isObject } from './is-record.ts'
+import { MASK_WORD } from './mask-word.ts'
 
 export interface InlineColorStyles {
   textColor?: string
@@ -74,9 +75,9 @@ function isTableContent(content: unknown): content is TableContent {
   return isObject(content) && content.type === 'tableContent'
 }
 
-const openToken = (index: number): string => `MEMRYICO${index}:`
-const CLOSE_TOKEN = ':MEMRYICC;'
-const TOKEN_REGEX = /MEMRYICO(\d+):|:MEMRYICC;/g
+const openToken = (index: number): string => `MEMRYICO${MASK_WORD}${index}:`
+const CLOSE_TOKEN = `:MEMRYICC${MASK_WORD};`
+const TOKEN_REGEX = new RegExp(`MEMRYICO${MASK_WORD}(\\d+):|:MEMRYICC${MASK_WORD};`, 'g')
 
 function pickColorStyles(styles: Record<string, unknown>): InlineColorStyles | null {
   const colors: InlineColorStyles = {}
@@ -311,8 +312,28 @@ export interface MaskedColorSpan {
 
 const SPAN_OPEN_REGEX = /<span style="([^"]*)">/g
 const SPAN_CLOSE_REGEX = /<\/span>/g
-// Inline code spans: a backtick run, non-backtick content, matching run.
-const INLINE_CODE_REGEX = /(`+)[^`]*?\1/g
+/**
+ * The inline code spans in `line` as `[start, end)` offsets: a backtick run,
+ * non-backtick content, and a run at least as long that closes it, else the
+ * first half of the run itself. This is `` /(`+)[^`]*?\1/g `` read in one
+ * pass; the regex compared every shorter split of a long run against the rest
+ * of the line, quadratic in its length.
+ */
+function inlineCodeSpans(line: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = []
+  for (let at = line.indexOf('`'); at !== -1;) {
+    let run = 0
+    while (line[at + run] === '`') run++
+    const closer = line.indexOf('`', at + run)
+    let closing = 0
+    if (closer !== -1) while (closing < run && line[closer + closing] === '`') closing++
+    const end = closing === run ? closer + run : run > 1 ? at + run - (run % 2) : -1
+    if (end === -1) break
+    spans.push([at, end])
+    at = line.indexOf('`', end)
+  }
+  return spans
+}
 
 function parseColorDecls(style: string): InlineColorStyles | null {
   const colors: InlineColorStyles = {}
@@ -358,10 +379,9 @@ export function maskInlineColorSpans(markdown: string): {
     // Skip inline code segments so literal span text inside backticks survives.
     let out = ''
     let last = 0
-    INLINE_CODE_REGEX.lastIndex = 0
-    for (const match of line.matchAll(INLINE_CODE_REGEX)) {
-      out += maskSegment(line.slice(last, match.index)) + match[0]
-      last = match.index + match[0].length
+    for (const [start, end] of inlineCodeSpans(line)) {
+      out += maskSegment(line.slice(last, start)) + line.slice(start, end)
+      last = end
     }
     return out + maskSegment(line.slice(last))
   }

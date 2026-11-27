@@ -5,12 +5,20 @@ use crate::domain::journal_rules::js_trim;
 
 use crate::domain::journal_rules::is_js_whitespace;
 
+use super::code_spans::keep_code_whitespace;
+use super::collapse::is_blank_paragraph;
+use super::comment_nodes::{into_nodes, source_lines};
+use super::comments;
+use super::emphasis_edges::trim_blocks;
+use super::empty_blocks::{
+    drop_empty_block_placeholders, leaks_placeholder, mask_empty_block_lines,
+};
+use super::hard_breaks::{JOIN, mask_hard_breaks, restore_hard_break_spelling};
 use super::inline::{Html, holds_media, inline_content};
 use super::lift::lift_images;
 use super::media::media_block;
-use super::prepare::{
-    fence_indented_code, line_fallback, mask_hard_breaks, restore_hard_break_spelling,
-};
+use super::nesting::{MAX_NESTING, TOO_DEEP};
+use super::prepare::{fence_indented_code, line_fallback};
 use super::runs::block_content;
 use super::table::{escape_wiki_link_pipes_in_table_rows, table_block};
 use super::tokens::{ListType, Token, TokenKind, tokenize};
@@ -27,11 +35,18 @@ pub(super) fn parse_chunk(
     if js_trim(chunk).is_empty() {
         return;
     }
-    let fenced = fence_indented_code(&escape_wiki_link_pipes_in_table_rows(chunk));
+    // `parseMarkdownToBlocksRepaired` masks its own text again: a chunk is
+    // trimmed and cut from the lines around it, so what it holds can differ.
+    let chunk = comments::mask(chunk).text;
+    let first_block = out.len();
+    let first_fallback = fallbacks.len();
+    let fenced = fence_indented_code(&escape_wiki_link_pipes_in_table_rows(&chunk));
     let (masked, breaks) = mask_hard_breaks(&fenced);
     let lines: Vec<&str> = masked.split('\n').collect();
     let mut list = ListState::default();
-    for token in tokenize(&masked) {
+    // The parser holds a placeholder on each empty item or heading line; the
+    // source lines a fallback keeps are the ones without it.
+    for token in tokenize(&mask_empty_block_lines(&masked)) {
         let converted = check_lines(&token, &lines).and_then(|()| match &token.kind {
             TokenKind::Paragraph { content } => {
                 list = ListState::default();
@@ -41,17 +56,15 @@ pub(super) fn parse_chunk(
                 list = ListState::default();
                 text_block(SeedKind::Heading { level: *level }, content, &breaks)
             }
-            _ => convert(&token, &breaks, &mut list).map(|block| vec![block]),
+            _ => convert(&token, &breaks, &mut list, 0).map(|block| vec![block]),
         });
         match converted {
             Ok(blocks) => out.extend(blocks),
             Err(Unsupported(reason)) => {
                 list = ListState::default();
-                let kept: Vec<String> = lines[token.start..token.end.min(lines.len())]
-                    .iter()
-                    .map(|line| js_trim(&restore_hard_break_spelling(line, &breaks)).to_owned())
-                    .filter(|line| !line.is_empty())
-                    .collect();
+                // A list-item join is a line split again here: one literal
+                // paragraph per source line.
+                let kept = source_text(&lines[token.start..token.end.min(lines.len())], &breaks);
                 out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
                 fallbacks.push(SeedFallback {
                     reason,
@@ -60,6 +73,33 @@ pub(super) fn parse_chunk(
             }
         }
     }
+    drop_empty_block_placeholders(&mut out[first_block..]);
+    if leaks_placeholder(&out[first_block..]) {
+        out.truncate(first_block);
+        fallbacks.truncate(first_fallback);
+        let kept = source_text(&lines, &breaks);
+        out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
+        fallbacks.push(SeedFallback {
+            reason: "empty item or heading inside a paragraph",
+            lines: kept,
+        });
+    }
+    into_nodes(&mut out[first_block..]);
+    trim_blocks(&mut out[first_block..]);
+}
+
+/// The source lines of masked `lines`, hard-break spelling restored: a
+/// list-item join is a line split again, one literal paragraph per line.
+fn source_text(lines: &[&str], breaks: &[String]) -> Vec<String> {
+    lines
+        .iter()
+        .flat_map(|line| {
+            restore_hard_break_spelling(line, breaks)
+                .split(JOIN)
+                .flat_map(source_lines)
+                .collect::<Vec<_>>()
+        })
+        .collect()
 }
 
 /// A top-level paragraph or heading, and the media blocks its images become:
@@ -70,9 +110,16 @@ fn text_block(
     content: &str,
     breaks: &[String],
 ) -> Result<Vec<SeedBlock>, Unsupported> {
-    let html = super::inline::parse(content)?;
+    let html = super::inline::parse(&keep_code_whitespace(content))?;
+    let paragraph = kind == SeedKind::Paragraph;
+    if paragraph && is_blank_paragraph(&html) {
+        return Err(Unsupported("paragraph of only whitespace"));
+    }
     if !holds_media(&html) {
-        return Ok(vec![SeedBlock::new(kind, block_content(html, breaks))]);
+        return Ok(vec![SeedBlock::new(
+            kind,
+            block_content(html, breaks, paragraph),
+        )]);
     }
     let lift_when_alone = kind != SeedKind::Paragraph;
     if let Some((text, media)) = lift_images(&html, lift_when_alone) {
@@ -80,15 +127,20 @@ fn text_block(
             // A video beside text, which desktop's parse drops.
             return Err(Unsupported("video beside text"));
         }
-        let mut blocks = vec![SeedBlock::new(kind, block_content(text, breaks))];
-        blocks.extend(media.iter().map(media_block));
+        let mut blocks = vec![SeedBlock::new(kind, block_content(text, breaks, paragraph))];
+        for found in &media {
+            blocks.push(media_block(found, breaks)?);
+        }
         return Ok(blocks);
     }
     let mut media = Vec::new();
     if lift_when_alone || !media_only(&html, &mut media) {
         return Err(Unsupported("media beside text"));
     }
-    Ok(media.into_iter().map(media_block).collect())
+    media
+        .into_iter()
+        .map(|found| media_block(found, breaks))
+        .collect()
 }
 
 /// Whether `nodes` hold only images, videos and whitespace, collecting the
@@ -125,18 +177,24 @@ struct ListState {
     open: Option<bool>,
 }
 
-fn convert_all(tokens: &[Token], breaks: &[String]) -> Result<Vec<SeedBlock>, Unsupported> {
+fn convert_all(
+    tokens: &[Token],
+    breaks: &[String],
+    depth: usize,
+) -> Result<Vec<SeedBlock>, Unsupported> {
     let mut list = ListState::default();
     tokens
         .iter()
-        .map(|token| convert(token, breaks, &mut list))
+        .map(|token| convert(token, breaks, &mut list, depth))
         .collect()
 }
 
+/// `depth` is how many list items hold `token`.
 fn convert(
     token: &Token,
     breaks: &[String],
     list: &mut ListState,
+    depth: usize,
 ) -> Result<SeedBlock, Unsupported> {
     let TokenKind::ListItem {
         list: list_type,
@@ -150,6 +208,9 @@ fn convert(
         return convert_block(&token.kind, breaks);
     };
 
+    if depth >= MAX_NESTING {
+        return Err(TOO_DEEP);
+    }
     let ordered = *list_type == ListType::Ordered;
     let opens = list.open != Some(ordered);
     list.open = Some(ordered);
@@ -180,7 +241,7 @@ fn convert(
             }
         }
     };
-    let content = inline_content(content, breaks)?;
+    let content = inline_content(content, breaks, false)?;
     // An empty `<p>` lets ProseMirror's fitting pull the first child up into
     // the item, or push it out beside it, depending on the item type.
     if content.is_empty() && nested_lists == 0 && !child_tokens.is_empty() {
@@ -189,7 +250,7 @@ fn convert(
     Ok(SeedBlock {
         kind,
         content,
-        children: convert_all(&child_tokens, breaks)?,
+        children: convert_all(&child_tokens, breaks, depth + 1)?,
     })
 }
 
@@ -197,17 +258,19 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
     let block = match kind {
         TokenKind::Heading { level, content } => SeedBlock::new(
             SeedKind::Heading { level: *level },
-            inline_content(content, breaks)?,
+            inline_content(content, breaks, false)?,
         ),
         TokenKind::Paragraph { content } => {
-            SeedBlock::new(SeedKind::Paragraph, inline_content(content, breaks)?)
+            SeedBlock::new(SeedKind::Paragraph, inline_content(content, breaks, true)?)
         }
         TokenKind::Code { language, code } => {
             // A token in a fence the mask did not see as one (a fence another
             // fence's opener closed) gets its spelling back: the bytes of a
             // code block are literal (`repairRuns`, `unmaskRun`), and so do
             // its string props, the language among them (`repairBlocks`).
-            let code = restore_hard_break_spelling(code, breaks);
+            // A join inside such a fence is the `<br>` desktop writes there
+            // (`repairRuns` restores the token only), so it is one here.
+            let code = restore_hard_break_spelling(code, breaks).replace(JOIN, "<br>");
             let language = restore_hard_break_spelling(language, breaks);
             let content = if code.is_empty() {
                 Vec::new()
@@ -237,7 +300,7 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
                     kind: TokenKind::Paragraph { content },
                     ..
                 },
-            ] => SeedBlock::new(SeedKind::Quote, inline_content(content, breaks)?),
+            ] => SeedBlock::new(SeedKind::Quote, inline_content(content, breaks, false)?),
             _ => return Err(Unsupported("structured quote")),
         },
         TokenKind::Rule => SeedBlock::new(SeedKind::Divider, Vec::new()),

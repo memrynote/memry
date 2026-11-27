@@ -11,8 +11,12 @@
 
 use std::collections::HashMap;
 
+use super::backtick_runs::BacktickRuns;
+
 pub(super) struct Closers<'t> {
     text: &'t [char],
+    /// How many spans enclose `text`.
+    depth: usize,
     /// Whether each character is the second of a backslash pair.
     escaped: Option<Vec<bool>>,
     /// By opening character: the closer that brings each opener's depth
@@ -21,16 +25,24 @@ pub(super) struct Closers<'t> {
     /// By delimiter character and length: the first closer at or after each
     /// position, `text.len()` when there is none.
     delimiters: HashMap<(char, usize), Vec<usize>>,
+    /// The code span closers, found on the first backtick.
+    ticks: Option<BacktickRuns>,
 }
 
 impl<'t> Closers<'t> {
-    pub(super) fn new(text: &'t [char]) -> Self {
+    pub(super) fn new(text: &'t [char], depth: usize) -> Self {
         Self {
             text,
+            depth,
             escaped: None,
             matches: HashMap::new(),
             delimiters: HashMap::new(),
+            ticks: None,
         }
+    }
+
+    pub(super) fn depth(&self) -> usize {
+        self.depth
     }
 
     pub(super) fn text(&self) -> &'t [char] {
@@ -114,5 +126,17 @@ impl<'t> Closers<'t> {
         let after_open = start + len;
         let found = self.delimiters[&key][after_open + 1];
         (found < text.len()).then_some(found)
+    }
+
+    /// `parseInlineCode` from the backtick at `start`: the span's opening
+    /// run ends at `.0`, and the first run past it that is as long as the
+    /// part of the run from `start` begins at `.1`.
+    pub(super) fn code_span(&mut self, start: usize) -> Option<(usize, usize)> {
+        let text = self.text;
+        let ticks = self
+            .ticks
+            .get_or_insert_with(|| BacktickRuns::of_chars(text));
+        let from = ticks.end_of(start);
+        ticks.closing(from, from - start).map(|close| (from, close))
     }
 }

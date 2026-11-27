@@ -1,16 +1,17 @@
 //! Pipe tables: BlockNote's `tryParseTable` and `emitTable`
-//! (`markdownToHtml.ts`), the table parse (`Table/block.ts`), and the two
-//! masks desktop puts around them (`escapeWikiLinkPipesInTableRows`,
-//! `maskCellCodeSpaces`).
+//! (`markdownToHtml.ts`), the table parse (`Table/block.ts`), and what
+//! desktop does around them: `escapeWikiLinkPipesInTableRows`,
+//! `maskCellCodeSpans` and `widenTables`.
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::backtick_runs::BacktickRuns;
 use super::inline::cell_content;
 use super::prepare::split_by_code_fences;
 use super::shapes::is_table_separator;
 use super::{SeedBlock, SeedCell, SeedKind, SeedRow, Unsupported};
 
-/// One source row's cells, and whether `maskCellCodeSpaces` masked its code
+/// One source row's cells, and whether `maskCellCodeSpans` masked its code
 /// spans' whitespace.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PipeRow {
@@ -19,22 +20,32 @@ pub(super) struct PipeRow {
 }
 
 /// `tryParseTable`: the header row, the body rows and the line after the
-/// table, or `None` when `lines[start]` does not open one.
+/// table, or `None` when `lines[start]` does not open one. A pipe inside a
+/// code span is hidden from it, as `maskCellCodeSpans` hides it, so it
+/// neither opens a table nor continues one.
+///
+/// `widenTables`: the header row gets an empty cell for each column the
+/// widest body row has past it, one spelled like a delimiter row included.
 pub(super) fn try_parse_table(
     lines: &[&str],
     start: usize,
 ) -> Option<(PipeRow, Vec<PipeRow>, usize)> {
     let separator = lines.get(start + 1)?;
-    if !separator.contains('|') || !is_table_separator(separator) || !lines[start].contains('|') {
+    if !separator.contains('|') || !is_table_separator(separator) || !has_cell_pipe(lines[start]) {
         return None;
     }
     let mut end = start + 2;
     let mut rows = Vec::new();
-    while end < lines.len() && lines[end].contains('|') {
+    while end < lines.len() && has_cell_pipe(lines[end]) {
         rows.push(pipe_row(lines[end]));
         end += 1;
     }
-    Some((pipe_row(lines[start]), rows, end))
+    let mut header = pipe_row(lines[start]);
+    let widest = rows.iter().map(|row| row.cells.len()).max().unwrap_or(0);
+    if widest > header.cells.len() {
+        header.cells.resize(widest, String::new());
+    }
+    Some((header, rows, end))
 }
 
 fn pipe_row(line: &str) -> PipeRow {
@@ -44,9 +55,48 @@ fn pipe_row(line: &str) -> PipeRow {
     }
 }
 
-/// `maskCellCodeSpaces`' `UNSAFE_LINE`, `/[[\]]|<(?!br\s*\/?>)/i`: a row it
-/// leaves unmasked.
-fn unsafe_for_code_mask(line: &str) -> bool {
+fn has_cell_pipe(line: &str) -> bool {
+    let chars: Vec<char> = line.chars().collect();
+    let hidden = code_span_pipes(&chars);
+    chars
+        .iter()
+        .zip(hidden)
+        .any(|(ch, hidden)| *ch == '|' && !hidden)
+}
+
+/// `maskCellCodeSpans`' pipes: for each char of `line`, whether it is a `|`
+/// inside a code span, which splits no cell. Outside a code span a backslash
+/// escapes the char after it; inside one, a `\|` is no such pipe, and the
+/// splitter turns it into the pipe the writer escaped.
+fn code_span_pipes(line: &[char]) -> Vec<bool> {
+    let mut hidden = vec![false; line.len()];
+    let ticks = BacktickRuns::of_chars(line);
+    let mut i = 0;
+    while i < line.len() {
+        if line[i] == '\\' && i + 1 < line.len() {
+            i += 2;
+            continue;
+        }
+        if line[i] != '`' {
+            i += 1;
+            continue;
+        }
+        let run = line[i..].iter().take_while(|ch| **ch == '`').count();
+        let Some(close) = ticks.closing(i + run, run) else {
+            i += run;
+            continue;
+        };
+        for at in i + run..close {
+            hidden[at] = line[at] == '|' && line[at - 1] != '\\';
+        }
+        i = close + run;
+    }
+    hidden
+}
+
+/// `maskCellCodeSpans`' `UNSAFE_LINE`, `/[[\]]|<(?!br\s*\/?>)/i`: a row whose
+/// code spans keep their whitespace unmasked.
+pub(super) fn unsafe_for_code_mask(line: &str) -> bool {
     if line.contains(['[', ']']) {
         return true;
     }
@@ -66,12 +116,15 @@ fn unsafe_for_code_mask(line: &str) -> bool {
 }
 
 /// `parsePipeCells`: the line trimmed, one outer pipe off each end, split on
-/// the unescaped pipes, each cell trimmed.
+/// the unescaped pipes outside code spans, each cell trimmed. An outer pipe
+/// is never inside a code span: only whitespace comes before the first, and
+/// a code span closes after the last.
 fn parse_pipe_cells(line: &str) -> Vec<String> {
     let trimmed = js_trim(line);
     let trimmed = trimmed.strip_prefix('|').unwrap_or(trimmed);
     let content = trimmed.strip_suffix('|').unwrap_or(trimmed);
     let chars: Vec<char> = content.chars().collect();
+    let hidden = code_span_pipes(&chars);
     let mut cells = Vec::new();
     let mut current = String::new();
     let mut i = 0;
@@ -81,7 +134,7 @@ fn parse_pipe_cells(line: &str) -> Vec<String> {
             i += 2;
             continue;
         }
-        if chars[i] == '|' {
+        if chars[i] == '|' && !hidden[i] {
             cells.push(js_trim(&current).to_owned());
             current.clear();
         } else {
@@ -95,7 +148,7 @@ fn parse_pipe_cells(line: &str) -> Vec<String> {
 
 /// `emitTable` and the parse of the HTML it prints: a header row of
 /// `tableHeader` cells unless every header cell is blank, then one row of
-/// `tableCell`s per body row, each cut or padded to the header's width.
+/// `tableCell`s per body row, each padded to the header's width.
 pub(super) fn table_block(
     header: &PipeRow,
     rows: &[PipeRow],
@@ -205,6 +258,16 @@ mod tests {
         assert_eq!(parse_pipe_cells("| a | b\\|c |"), vec!["a", "b|c"]);
         assert_eq!(parse_pipe_cells("a | b"), vec!["a", "b"]);
         assert_eq!(parse_pipe_cells("|  |"), vec![""]);
+    }
+
+    #[test]
+    fn only_a_closed_code_span_holds_its_pipes() {
+        assert_eq!(
+            parse_pipe_cells("| ``a|`b`` | `x\\|y` |"),
+            vec!["``a|`b``", "`x|y`"]
+        );
+        assert_eq!(parse_pipe_cells("| \\`n|m\\` |"), vec!["\\`n", "m\\`"]);
+        assert_eq!(parse_pipe_cells("| `u | v |"), vec!["`u", "v"]);
     }
 
     #[test]

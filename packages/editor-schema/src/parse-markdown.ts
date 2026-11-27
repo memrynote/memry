@@ -11,12 +11,16 @@ import {
   maskHtmlComments,
   splitHtmlCommentTokens
 } from '@memry/shared/html-comments'
-import { restoreDetailsMarkup } from './blocks/markdown'
-import { maskCellCodeSpaces, restoreCellCodeSpaces } from './inline/cell-code-spaces'
+import { escapePrefixedDetailsMarkup, restoreDetailsMarkup } from './blocks/markdown'
+import { dropEmptyBlockPlaceholders, maskEmptyBlockLines } from './empty-blocks'
+import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
+import { maskEmptyLinks } from './inline/empty-links'
+import { type InlineItem, trimEmphasisEdges } from './inline/emphasis-runs'
 import { linkCodeAsText } from './inline/link-code-spans'
 import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
+import { widenTables } from './table-width'
 
 /**
  * Markdown to blocks, with BlockNote 0.51+'s markdown regressions repaired.
@@ -109,8 +113,8 @@ interface Masks {
   breaks: string[]
   /** The `((…))` payloads, by placeholder index. */
   tokens: string[]
-  /** The whitespace masked in table-cell code spans, by placeholder index. */
-  spaces: string[]
+  /** The whitespace and pipes masked in table-row code spans, by placeholder index. */
+  codeChars: string[]
   /** The spaced link destinations, by placeholder index. */
   destinations: string[]
 }
@@ -141,13 +145,22 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     // Link text is prose too, and a hard break in it carries a token (BBF-103).
     const linkContent = (run as StyledRun)?.type === 'link' ? (run as StyledRun).content : null
     const link = run as StyledRun | undefined
-    if (link?.href) link.href = restoreLinkDestinations(link.href, masks.destinations)
+    if (link?.href) {
+      link.href = restoreLinkDestinations(
+        restoreCellCodeSpans(link.href, masks.codeChars),
+        masks.destinations
+      )
+    }
+    // An inline node's props: an image in a table cell keeps its address and
+    // alt here, and a masked pipe can sit in either.
+    if (run) restoreStringProps(run, (value) => restoreCellCodeSpans(value, masks.codeChars))
     // A leading space in link text is the author's: CommonMark keeps it.
     if (Array.isArray(linkContent)) repairRuns(linkContent, code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
-    // CommonMark keeps a code span's one-sided leading space: it is the author's.
+    // CommonMark keeps a code span's one-sided leading space: it is the author's,
+    // at a block's start too.
     const codeSpan = (run as StyledRun).styles?.code === true
-    const opensLine = (index === 0 && startsLine) || (!codeSpan && endsLine(runs[index - 1]))
+    const opensLine = !codeSpan && ((index === 0 && startsLine) || endsLine(runs[index - 1]))
     // A newline followed by a space is the parser's artifact in prose and the
     // author's own indentation in a code block, so the strip is prose-only.
     const original = run.text
@@ -165,9 +178,9 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     // Every restore is unconditional: a placeholder that survives into a block
     // is written into the vault as literal text.
     run.text = restoreLinkDestinations(
-      restoreCellCodeSpaces(
+      restoreCellCodeSpans(
         restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
-        masks.spaces
+        masks.codeChars
       ),
       masks.destinations
     )
@@ -254,11 +267,12 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   for (const block of blocks) {
     const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
     // An image's alt text is a prop, not a run: it gets the author's spelling back.
-    for (const [key, value] of Object.entries(block.props ?? {})) {
-      if (typeof value === 'string' && block.props && masks.breaks.length > 0) {
-        block.props[key] = restoreHardBreakSpelling(value, masks.breaks)
-      }
-    }
+    restoreStringProps(block, (value) =>
+      restoreCellCodeSpans(
+        masks.breaks.length > 0 ? restoreHardBreakSpelling(value, masks.breaks) : value,
+        masks.codeChars
+      )
+    )
     if (Array.isArray(block.content)) {
       repairRuns(block.content, code, masks)
       block.content = withHtmlCommentNodes(block.content, code)
@@ -283,6 +297,41 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
 }
 
 /**
+ * Each block's runs, table cells included, with the whitespace at a bold,
+ * italic or strike run's edge outside it, as the writer spells it.
+ */
+function trimBlockEmphasisEdges(blocks: BlockLike[]): void {
+  for (const block of blocks) {
+    if (LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')) continue
+    if (Array.isArray(block.content)) {
+      const runs: InlineItem[] = block.content
+      block.content = trimEmphasisEdges(runs)
+    } else if (block.content && typeof block.content === 'object') {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- as in repairBlocks: a table's content is the TableContent shape
+      for (const row of (block.content as TableContent).rows ?? []) {
+        const cells = row?.cells ?? []
+        for (const [index, cell] of cells.entries()) {
+          const runs = cellRuns(cell)
+          if (!runs) continue
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a parsed run always carries its type
+          const trimmed = trimEmphasisEdges(runs as InlineItem[])
+          if (Array.isArray(cell)) cells[index] = trimmed
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- as in repairBlocks: a non-array cell holds its runs in `content`
+          else (cell as { content: unknown }).content = trimmed
+        }
+      }
+    }
+    if (Array.isArray(block.children)) trimBlockEmphasisEdges(block.children)
+  }
+}
+
+function restoreStringProps(node: BlockLike, restore: (value: string) => string): void {
+  for (const [key, value] of Object.entries(node.props ?? {})) {
+    if (typeof value === 'string' && node.props) node.props[key] = restore(value)
+  }
+}
+
+/**
  * Parse `markdown` into blocks through `editor`, repairing what 0.51+ breaks.
  *
  * Every markdown→blocks conversion on either surface goes through here, so a
@@ -290,12 +339,18 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
  * treatment.
  *
  * `htmlComments: false` parses as builds before #2741 did, dropping every
- * comment, for reading a source the way an older build read it.
+ * comment, and `losslessBlocks: false` as builds before lossless blocks did,
+ * splitting a table row on a code span's pipe, cutting it to its header's
+ * width, dropping a list item's images and reading an empty list item or
+ * heading as text, for reading a source the way an older build read it.
  */
 export async function parseMarkdownToBlocksRepaired<T>(
   editor: MarkdownParsingEditor,
   markdown: string,
-  { htmlComments = true }: { htmlComments?: boolean } = {}
+  {
+    htmlComments = true,
+    losslessBlocks = true
+  }: { htmlComments?: boolean; losslessBlocks?: boolean } = {}
 ): Promise<T[]> {
   // A `[[target|alias]]` already in a vault table has to be escaped before the
   // parse or 0.51's table parser splits the row on it and drops the alias.
@@ -303,8 +358,17 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // HTML comments come off first, as one token each (AF-015). The callers that
   // split a note into blocks before this mask them already; a caller that
   // hands in raw markdown (paste, a template) gets the same treatment here.
-  const commentsMasked = htmlComments ? maskHtmlComments(markdown) : markdown
-  const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
+  const commentsMasked = htmlComments
+    ? maskHtmlComments(markdown, { losslessTables: losslessBlocks })
+    : markdown
+  const wikiEscaped = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
+  // A link with no label has no text to hold its address, so it travels as a
+  // comment's token too. After the pipe escape, which still reads a `[[` that
+  // opens in front of one.
+  const fenced = losslessBlocks ? maskEmptyLinks(wikiEscaped) : wikiEscaped
+  // `<details>` markup in a quote stays text, before a break masks the two
+  // spaces the writer ends its line with.
+  const source = losslessBlocks ? escapePrefixedDetailsMarkup(fenced) : fenced
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
   const { markdown: breaksMasked, breaks } = maskHardBreaks(source)
@@ -313,8 +377,16 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // `((mention:…))` and `((date:…))` are opaque payloads the parser will apply
   // intraword emphasis inside.
   const { markdown: tokensMasked, tokens } = maskInlineTokens(masked)
-  // A table cell collapses the whitespace in its code spans.
-  const { markdown: withTokensMasked, spaces } = maskCellCodeSpaces(tokensMasked)
+  // A table cell collapses the whitespace in its code spans, and a row splits
+  // on the pipes in them.
+  const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
+    pipes: losslessBlocks
+  })
+  // A row wider than its table's header keeps its extra cells, and an empty
+  // list item or heading stays one.
+  const withTokensMasked = losslessBlocks
+    ? maskEmptyBlockLines(widenTables(codeMasked))
+    : codeMasked
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes
   // nothing but the lifted images and the code in link text, and a note with
@@ -324,14 +396,18 @@ export async function parseMarkdownToBlocksRepaired<T>(
     linkCode || /!\[|<img\b/i.test(withTokensMasked) ? markdownToHTML(withTokensMasked) : null
   const lifted =
     html !== null && /!\[|<img\b/i.test(withTokensMasked)
-      ? (liftImagesOutOfTextBlocks(html) ?? html)
+      ? (liftImagesOutOfTextBlocks(html, losslessBlocks) ?? html)
       : html
   const repaired = lifted === null ? null : linkCodeAsText(lifted)
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parsing editor returns unknown[]; BlockNote's blocks are what BlockLike describes, and repairBlocks only reads the fields it declares
   const parsed = (await (repaired === null || repaired === html
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
-  repairBlocks(parsed, { breaks, tokens, spaces, destinations })
+  repairBlocks(parsed, { breaks, tokens, codeChars, destinations })
+  if (losslessBlocks) {
+    dropEmptyBlockPlaceholders(parsed)
+    trimBlockEmphasisEdges(parsed)
+  }
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T is the caller's block type, which this package cannot name without its schema
   return parsed as T[]
 }

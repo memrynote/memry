@@ -38,6 +38,7 @@ import {
   type Span,
   type InlineItem
 } from './emphasis-runs'
+import { escapeMarkdownText } from './markdown-escapes'
 
 export const htmlCommentConfig = {
   type: 'htmlComment' as const,
@@ -54,7 +55,27 @@ export function createHtmlCommentContent(source: string) {
 let markdownWrites = 0
 
 type Styles = Record<string, unknown>
-type BlockItem = { type?: string; content?: unknown; children?: BlockItem[] }
+type BlockItem = {
+  type?: string
+  props?: Record<string, unknown>
+  content?: unknown
+  children?: BlockItem[]
+}
+
+/**
+ * An image address with a space, in angle brackets: the writer writes
+ * `![a](u)` as it is, and the parser ends the address at the space, so
+ * `![a](<a b.png>)` came back `a`. An empty address with alt text is `<>`
+ * too, since the writer drops an image without one: `![a]()` was lost. The
+ * editor's empty image block has no alt text and is still written as nothing.
+ */
+function angledImageUrl(block: BlockItem): BlockItem['props'] {
+  const url = block.props?.url
+  if (block.type !== 'image' || typeof url !== 'string') return block.props
+  if (/\s/.test(url) || (url === '' && block.props?.name))
+    return { ...block.props, url: `<${url}>` }
+  return block.props
+}
 
 function textNeighbour(items: InlineItem[], index: number, step: 1 | -1): InlineItem | undefined {
   let at = index + step
@@ -148,14 +169,16 @@ function mapInline(blocks: BlockItem[], inline: Inline): BlockItem[] {
       }
     }
     if (block.children) next.children = mapInline(block.children, inline)
+    if (block.props) next.props = angledImageUrl(block)
     return next
   })
 }
 
 /**
  * Runs a blocks-to-markdown serialization of `blocks` with every comment
- * written as its token, inside the marks it sat in, and each run of emphasis
- * written as one span. The scope is synchronous: whatever
+ * written as its token, inside the marks it sat in, each run of emphasis
+ * written as one span, and text that would read back as markup escaped
+ * (`escapeMarkdownText`). The scope is synchronous: whatever
  * `serialize` exports after it returns writes nothing for the node.
  */
 export function writeHtmlCommentTokens<B>(blocks: B[], serialize: (blocks: B[]) => string): string
@@ -171,12 +194,16 @@ export function writeHtmlCommentTokens<B>(
   // SAFETY: only `content` and `children` are read and replaced, with values of
   // the same shape, so every other field of `B` passes through as it was.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- B is the caller's block type; only content and children are touched (see SAFETY above)
-  const marked = mapInline(blocks as BlockItem[], (items, blockType) =>
-    tokenizeEmphasisRuns(
-      commentsInMarks(LIST_ITEMS.has(blockType ?? '') ? listLinkBreakTokens(items, marks) : items),
-      marks
+  const marked = mapInline(blocks as BlockItem[], (items, blockType) => {
+    const escaped = escapeMarkdownText(items, blockType)
+    return tokenizeEmphasisRuns(
+      commentsInMarks(
+        LIST_ITEMS.has(blockType ?? '') ? listLinkBreakTokens(escaped, marks) : escaped
+      ),
+      marks,
+      blockType === undefined
     )
-  ) as B[]
+  }) as B[]
   const restore = (markdown: string): string => restoreEmphasisRuns(markdown, marks)
   markdownWrites++
   try {

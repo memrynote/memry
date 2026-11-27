@@ -16,8 +16,13 @@
 use crate::domain::journal_rules::js_trim;
 
 use super::closers::Closers;
+use super::code_spans::keep_code_whitespace;
+use super::comment_nodes::has_token;
+use super::comments::encode;
+use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
 use super::media::{self, Media};
+use super::nesting::{MAX_NESTING, TOO_DEEP};
 use super::runs;
 use super::{SeedInline, Unsupported};
 
@@ -48,19 +53,20 @@ pub(super) enum Html {
 pub(super) fn inline_content(
     text: &str,
     breaks: &[String],
+    paragraph: bool,
 ) -> Result<Vec<SeedInline>, Unsupported> {
-    let html = parse(text)?;
+    let html = parse(&keep_code_whitespace(text))?;
     if holds_media(&html) {
         // Desktop's parse drops it, or makes it a child block of a list item.
         return Err(Unsupported("image in a list or quote"));
     }
-    Ok(runs::block_content(html, breaks))
+    Ok(runs::block_content(html, breaks, paragraph))
 }
 
 /// `parseInline` on one block's text.
 pub(super) fn parse(text: &str) -> Result<Vec<Html>, Unsupported> {
     let chars: Vec<char> = text.chars().collect();
-    parse_inline(&chars)
+    parse_inline(&chars, 0)
 }
 
 pub(super) fn holds_media(nodes: &[Html]) -> bool {
@@ -76,7 +82,7 @@ fn holds(nodes: &[Html], test: &dyn Fn(&Media) -> bool) -> bool {
 }
 
 /// The inline content of one table cell (`Table/block.ts`
-/// `parseTableContent`). `code_kept` is whether `maskCellCodeSpaces` masked
+/// `parseTableContent`). `code_kept` is whether `maskCellCodeSpans` masked
 /// the whitespace of the cell's row, which keeps its code spans' spaces.
 pub(super) fn cell_content(
     text: &str,
@@ -106,13 +112,16 @@ pub(super) fn collect(chars: &[char]) -> String {
     chars.iter().collect()
 }
 
-const SPECIAL: &[char] = &['\\', '`', '!', '[', '~', '*', '_', '\n', '<'];
+const SPECIAL: &[char] = &['\\', '`', '!', '[', '~', '*', '_', '\n', '<', JOIN];
 const ESCAPABLE: &str = "\\`*_{}[]()#+-.!~|>";
 
-/// `parseInline`.
-fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
+/// `parseInline`. `depth` is how many links and spans enclose `text`.
+fn parse_inline(text: &[char], depth: usize) -> Result<Vec<Html>, Unsupported> {
+    if depth > MAX_NESTING {
+        return Err(TOO_DEEP);
+    }
     let mut nodes = Vec::new();
-    let mut closers = Closers::new(text);
+    let mut closers = Closers::new(text, depth);
     let mut i = 0;
     while i < text.len() {
         if text[i] == '\n' && i >= 2 && text[i - 1] == ' ' && text[i - 2] == ' ' {
@@ -164,7 +173,7 @@ fn inline_token(
         }
     }
     if text[i] == '`'
-        && let Some((code, end)) = inline_code(text, i)
+        && let Some((code, end)) = inline_code(closers, i)
     {
         nodes.push(Html::Code(code));
         return Ok(Some(end));
@@ -179,7 +188,21 @@ fn inline_token(
     if text[i] == '['
         && let Some((href, inner, end)) = link(closers, i)
     {
-        let children = parse_inline(inner)?;
+        // A link with no label has no text to hold its address: it travels as
+        // a comment's token, a node once the blocks exist, as desktop's
+        // `maskEmptyLinks` does (`editor-schema/src/inline/empty-links.ts`).
+        if inner.iter().all(|c| matches!(c, ' ' | '\t')) {
+            if text[i..end].contains(&'\n') {
+                // Desktop reads the address as it stands on one line only.
+                return Err(Unsupported("empty-label link across lines"));
+            }
+            push_text(nodes, &encode(&collect(&text[i..end])));
+            return Ok(Some(end));
+        }
+        if has_token(&href) {
+            return Err(Unsupported("comment in a link address"));
+        }
+        let children = parse_inline(inner, closers.depth() + 1)?;
         if contains_link(&children) {
             return Err(Unsupported("nested link"));
         }
@@ -221,6 +244,12 @@ fn inline_token(
         push_text(nodes, "\n");
         return Ok(Some(i + 1));
     }
+    // A raw `<br>` passes through `tryInlineHtml` as it is, with no newline
+    // after it, unlike a soft break (`hard_breaks` module docs).
+    if text[i] == JOIN {
+        nodes.push(Html::Br);
+        return Ok(Some(i + 1));
+    }
     Ok(None)
 }
 
@@ -238,6 +267,10 @@ fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, 
     };
     let (url, title) = destination_and_title(&text[alt_end + 2..paren_end]);
     let alt = collect(&text[start + 2..alt_end]);
+    if has_token(&alt) || has_token(&url) {
+        // Desktop leaves its masked word in an image's props.
+        return Err(Unsupported("comment in an image"));
+    }
     Ok(Some((media::media(url, alt, title)?, paren_end + 1)))
 }
 
@@ -256,35 +289,20 @@ fn intraword(text: &[char], i: usize, len: usize) -> bool {
 }
 
 /// `parseInlineCode`.
-fn inline_code(text: &[char], start: usize) -> Option<(String, usize)> {
-    let open = text[start..].iter().take_while(|c| **c == '`').count();
-    let from = start + open;
-    let mut j = from;
-    while j < text.len() {
-        if text[j] != '`' {
-            j += 1;
-            continue;
-        }
-        let close_start = j;
-        while j < text.len() && text[j] == '`' {
-            j += 1;
-        }
-        if j - close_start == open {
-            let mut code: Vec<char> = text[from..close_start]
-                .iter()
-                .map(|c| if *c == '\n' { ' ' } else { *c })
-                .collect();
-            if code.len() >= 2
-                && code[0] == ' '
-                && code[code.len() - 1] == ' '
-                && code.iter().any(|c| *c != ' ')
-            {
-                code = code[1..code.len() - 1].to_vec();
-            }
-            return Some((collect(&code), j));
-        }
+fn inline_code(closers: &mut Closers, start: usize) -> Option<(String, usize)> {
+    let (from, close) = closers.code_span(start)?;
+    let mut code: Vec<char> = closers.text()[from..close]
+        .iter()
+        .map(|c| if *c == '\n' { ' ' } else { *c })
+        .collect();
+    if code.len() >= 2
+        && code[0] == ' '
+        && code[code.len() - 1] == ' '
+        && code.iter().any(|c| *c != ' ')
+    {
+        code = code[1..code.len() - 1].to_vec();
     }
-    None
+    Some((collect(&code), close + (from - start)))
 }
 
 fn delimited(
@@ -315,7 +333,7 @@ fn delimited_with(
     let Some(close) = closers.delimiter(start, len) else {
         return Ok(None);
     };
-    let children = parse_inline(&text[after_open..close])?;
+    let children = parse_inline(&text[after_open..close], closers.depth() + 1)?;
     nodes.push(wrap(children));
     Ok(Some(close + len))
 }
@@ -335,16 +353,22 @@ mod tests {
 
     #[test]
     fn a_soft_break_is_one_hard_break_and_loses_the_next_lines_indent() {
-        let content = inline_content("a\n b  c", &[]).expect("supported");
+        let content = inline_content("a\n b  c", &[], false).expect("supported");
         assert_eq!(
             content,
-            vec![plain("a"), SeedInline::HardBreak, plain("b c")]
+            vec![
+                plain("a"),
+                SeedInline::HardBreak {
+                    marks: SeedMarks::default()
+                },
+                plain("b c")
+            ]
         );
     }
 
     #[test]
     fn a_code_span_drops_every_other_mark() {
-        let content = inline_content("**`x`**", &[]).expect("supported");
+        let content = inline_content("**`x`**", &[], false).expect("supported");
         let code = SeedMarks {
             code: true,
             ..SeedMarks::default()
@@ -365,8 +389,31 @@ mod tests {
         assert!(allowed_href("u"));
         assert!(allowed_href("#frag"));
         assert!(allowed_href("mailto:a@b.c"));
-        let content = inline_content("[a](javascript:x)", &[]).expect("supported");
+        let content = inline_content("[a](javascript:x)", &[], false).expect("supported");
         assert_eq!(content, vec![plain("a")]);
+    }
+
+    #[test]
+    fn an_empty_label_link_is_a_comment_node_with_its_bytes() {
+        let plan = super::super::plan("x [ ](u \"t\") y");
+        assert!(plan.fallbacks.is_empty());
+        assert_eq!(
+            plan.blocks[0].content,
+            vec![
+                plain("x "),
+                SeedInline::HtmlComment {
+                    source: "[ ](u \"t\")".to_owned()
+                },
+                plain(" y")
+            ]
+        );
+    }
+
+    #[test]
+    fn an_empty_label_link_across_lines_stays_literal_text() {
+        let plan = super::super::plan("[](u\nv)");
+        assert_eq!(plan.fallbacks.len(), 1);
+        assert_eq!(plan.blocks.len(), 2);
     }
 
     /// A paste is planned on the main thread, so a long run of openers no

@@ -179,7 +179,7 @@ fn a_new_day_is_created_with_the_substituted_template_and_its_document() {
                 "checkListItem",
                 "heading",
                 "numberedListItem",
-                "paragraph"
+                "numberedListItem"
             ]
         );
         Ok(())

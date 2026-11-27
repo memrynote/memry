@@ -174,6 +174,38 @@ const calloutCases: RoundtripCase[] = [
     name: 'uppercase > [!NOTE] alert passes through untouched',
     markdown: '> [!NOTE]\n> A GitHub alert'
   },
+  // A quote or a paragraph whose text spells a callout marker came back a callout.
+  { name: 'quote whose text spells a callout marker', markdown: '> \\[!info]\n> c' },
+  { name: 'quote whose text spells a folded callout marker', markdown: '> \\[!tip]-' },
+  {
+    name: 'quote of blocks whose first line spells a callout marker',
+    markdown: '> \\[!info]\n>\n> z'
+  },
+  { name: 'paragraph whose text spells a torn callout marker', markdown: '\\[!info]\nc' },
+  // A callout's text line, and a line after a run that ends in a break, that
+  // spells a block start came back as that block.
+  { name: 'callout line spelling a heading', markdown: '> [!note]\n> a\n> \\# x' },
+  { name: 'callout opening with a list item spelling', markdown: '> [!note]\n> \\- z' },
+  {
+    name: 'callout line spelling a table row',
+    markdown: '> [!note]\n> a\n> \\| a \\|',
+    canonical: '> [!note]\n> a\n> \\| a |'
+  },
+  { name: 'callout line spelling a setext underline', markdown: '> [!note]\n> a\n> \\---' },
+  { name: 'heading spelling after a bold run ending in a break', markdown: '**b**\n\\# x' },
+  { name: 'list item spelling after an italic run ending in a break', markdown: '*b*\n\\- z' },
+  {
+    name: 'list item spelling after a link ending in a break',
+    markdown: '[l](https://e.com)\n\\- z'
+  },
+  {
+    name: 'callout line spelling a heading after a link',
+    markdown: '> [!note]\n> [l](https://e.com)\n> \\# x'
+  },
+  {
+    name: 'quote line spelling a heading after a bold run',
+    markdown: '> lead\n>\n> **b**\n> \\# x'
+  },
   {
     name: 'callout with a title after the marker',
     markdown: '> [!info] Title here\n> Body'
@@ -253,6 +285,39 @@ const calloutCases: RoundtripCase[] = [
     // The flat fallback used to drop the outer level (#1896).
     name: 'nested quote with no outer paragraph keeps both levels',
     markdown: '> > Inner only'
+  },
+  // Any block a flat quote cannot hold is claimed once its canonical form
+  // settles: the fallback turned a table into its cells' text and a callout
+  // into a quote with `[!note]` in it.
+  {
+    name: 'callout holding a table',
+    markdown: '> [!note]\n> | a | b |\n> |---|---|\n> | c | d |',
+    canonical: '> [!note]\n> | a | b |\n> | - | - |\n> | c | d |'
+  },
+  {
+    name: 'quote opening on a table',
+    markdown: '> | a | b |\n> |---|---|\n> | c | d |',
+    canonical: '> | a | b |\n> | - | - |\n> | c | d |'
+  },
+  {
+    name: 'quote line then a heading',
+    markdown: '> a\n> # h',
+    canonical: '> a\n>\n> # h'
+  },
+  {
+    name: 'quote line then a table',
+    markdown: '> x\n>\n> | a | b |\n> |---|---|\n> | c | d |',
+    canonical: '> x\n>\n> | a | b |\n> | - | - |\n> | c | d |'
+  },
+  {
+    name: 'quoted list item holding a paragraph',
+    markdown: '> - a\n>\n>   para\n> - c',
+    canonical: '> - a\n>\n> para\n>\n> - c'
+  },
+  {
+    name: 'callout body in another spelling',
+    markdown: '> [!tip]\n> Use __bold__',
+    canonical: '> [!tip]\n> Use **bold**'
   }
 ]
 
@@ -308,6 +373,108 @@ const toggleCases: RoundtripCase[] = [
     name: 'two extra blank lines before a toggle survive',
     markdown: `Before\n\n\n\n${serializeToggleBlock('Summary', 'Body line')}`
   },
+  // A callout or math block against the block above it opens where the
+  // parser opens a block. Read as text there, it became the block on the
+  // next seed of its canonical form, which puts a blank line between them.
+  {
+    name: 'callout under a paragraph line',
+    markdown: 'one\n> [!tip]\n> d',
+    canonical: 'one\n\n> [!tip]\n> d'
+  },
+  {
+    name: 'callout under a heading',
+    markdown: '# H\n> [!tip]\n> d',
+    canonical: '# H\n\n> [!tip]\n> d'
+  },
+  {
+    name: 'callout under a list item',
+    markdown: '- a\n> [!tip]-\n> d',
+    canonical: '- a\n\n> [!tip]-\n> d'
+  },
+  {
+    name: 'callout under a table',
+    markdown: '| a |\n| - |\n| 1 |\n> [!tip]\n> d',
+    canonical: '| a |\n| - |\n| 1 |\n\n> [!tip]\n> d'
+  },
+  {
+    name: 'callout line without its space',
+    markdown: '> [!note]\n> body\n>more',
+    canonical: '> [!note]\n> body\n> more'
+  },
+  {
+    name: 'callout after a quote and its lazy line',
+    markdown: '> a\nlazy\n> [!tip]\n> d',
+    canonical: '> a\n> lazy\n\n> [!tip]\n> d'
+  },
+  { name: 'math under a heading', markdown: '# H\n$$\ny\n$$', canonical: '# H\n\n$$\ny\n$$' },
+  { name: 'math above a heading', markdown: '$$\ny\n$$\n# H', canonical: '$$\ny\n$$\n\n# H' },
+  // The parser ends a paragraph before a line with a setext underline below it.
+  {
+    name: 'math above a setext heading',
+    markdown: '$$\ny\n$$\nH\n---',
+    canonical: '$$\ny\n$$\n\n## H'
+  },
+  {
+    name: 'math above a setext heading underlined with equals',
+    markdown: '$$\ny\n$$\nH\n===',
+    canonical: '$$\ny\n$$\n\n# H'
+  },
+  { name: 'math under a list item', markdown: '- a\n$$\ny\n$$', canonical: '- a\n\n$$\ny\n$$' },
+  {
+    name: 'math under a callout',
+    markdown: '> [!info]\n> c\n$$\ny\n$$',
+    canonical: '> [!info]\n> c\n\n$$\ny\n$$'
+  },
+  {
+    name: 'math under a fence',
+    markdown: '```js\nx\n```\n$$\ny\n$$',
+    canonical: '```js\nx\n```\n\n$$\ny\n$$'
+  },
+  {
+    name: 'math under a table',
+    markdown: '| a |\n| - |\n| 1 |\n$$\ny\n$$',
+    canonical: '| a |\n| - |\n| 1 |\n\n$$\ny\n$$'
+  },
+  { name: 'math fences inside a paragraph stay its text', markdown: 'text\n$$\nx\n$$' },
+  // An image the parser lifts or reads indented is written on a line of its
+  // own, which the next seed reads as the marker block it spells.
+  {
+    name: 'youtube image inside text',
+    markdown: 'see ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
+    canonical: 'see\n\n![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)'
+  },
+  {
+    name: 'indented whiteboard line',
+    markdown: 'a\n\n  ![whiteboard](memry://canvas/abc)',
+    canonical: 'a\n\n![whiteboard](memry://canvas/abc)'
+  },
+  { name: 'image without an address', markdown: '![x]()', canonical: '![x](<>)' },
+  { name: 'file marker whose JSON does not read', markdown: '<!-- file:{bad} -->' },
+  {
+    name: 'bold run around a lifted image',
+    markdown: '**see ![x](attachments/x.png)** now',
+    canonical: '**see**  now\n\n![x](attachments/x.png)'
+  },
+  // A table row is one line, so a backslash ending it is the last cell's text,
+  // which the hard-break mask took.
+  {
+    name: 'header row ending in a backslash',
+    markdown: '| a \\\n|---|\n| b |',
+    canonical: '| a \\\\ |\n| ---- |\n| b    |'
+  },
+  {
+    name: 'body row ending in a backslash',
+    markdown: '| a |\n|---|\n| b \\\n| c |',
+    canonical: '| a    |\n| ---- |\n| b \\\\ |\n| c    |'
+  },
+  // A blank line ending a note came back one line longer on every write: the
+  // writer spelled a trailing gap like a gap between two blocks.
+  { name: 'blank line ending a note', markdown: 'Hello\n\n' },
+  { name: 'two blank lines ending a note', markdown: 'Hello\n\n\n' },
+  {
+    name: 'blank lines after a toggle ending a note',
+    markdown: `${serializeToggleBlock('Summary', 'Body line')}\n\n\n`
+  },
   {
     // The colors marker sits between the gap and the toggle, and finding it
     // must not eat the gap on the way past.
@@ -353,6 +520,53 @@ const toggleCases: RoundtripCase[] = [
     // before and after, and fails if the escaping ever over-reaches.
     name: 'declined details markup keeps a backslash away from its bracket',
     markdown: '<details>\n<summary>C:\\Users\\me</summary>\n\nBody\n\n</details>'
+  },
+  // The parser drops a `<details>` line as raw HTML, so in a quote, a callout
+  // or a heading the markup went as it did in a paragraph before #1883.
+  {
+    name: 'details markup in a quote',
+    markdown: '> <details>\n> <summary>O</summary>\n>\n> ob\n>\n> </details>'
+  },
+  {
+    name: 'details markup in a one-paragraph quote',
+    markdown: '> <details>\n> <summary>O</summary>'
+  },
+  { name: 'details markup in a callout', markdown: '> [!info]\n> <details>\n>\n> b' },
+  {
+    name: 'details lines under a quote line',
+    markdown: '> q\n<details>\n<summary>O</summary>\n\nob\n\n</details>',
+    canonical: '> q\n> <details>\n> <summary>O</summary>\n\nob\n\n</details>'
+  },
+  // A quote's paragraph runs on past its details line, which is text, so the
+  // image on its lazy line was dropped with the flat quote.
+  {
+    name: 'details markup quote line, then a lazy line holding an image',
+    markdown: '> <details>\nsee ![x](u)',
+    canonical: '> <details>\n> see\n>\n> ![x](u)'
+  },
+  // The writer spells a break after the markup as two spaces, which hid the
+  // line from the escape, and the parser dropped it.
+  {
+    name: 'details markup quote line ending in a hard break',
+    markdown: '> <details>\n<br>b',
+    canonical: '> <details>  \n> b'
+  },
+  // Three breaks or more are written `<br>`, on the markup's own line.
+  {
+    name: 'details markup line before three breaks',
+    markdown: '<details>\n<br>b',
+    canonical: '<details><br><br><br>b'
+  },
+  {
+    name: 'details closing tag before three breaks',
+    markdown: '<details>\n<summary>S</summary>\n\nb\n\n</details>\n<br>b',
+    canonical: '<details>\n<summary>S</summary>\n\nb\n\n</details><br><br><br>b'
+  },
+  { name: 'details closing tag as a heading', markdown: '## </details>' },
+  {
+    name: 'details closing tag over a setext underline',
+    markdown: '<details>\n<summary>O</summary>\n\nob\n\n</details>\n---',
+    canonical: '<details>\n<summary>O</summary>\n\nob\n\n## </details>'
   }
 ]
 
@@ -517,6 +731,64 @@ const nestedUnderListCases: RoundtripCase[] = [
   {
     name: 'bookmark marker nested under a list item',
     markdown: nestedUnderBullet('![bookmark](https://example.com/a)')
+  },
+  // A callout, a quote or math indented in a list item read as BlockNote reads
+  // it, a quote holding `[!info]` and a paragraph holding `$$`, and its
+  // canonical form, under nesting markers, read as the block.
+  {
+    name: 'callout indented under a list item',
+    markdown: '- a\n\n  > [!info]\n  > c',
+    canonical: nestedUnderBullet('> [!info]\n> c').replace('- parent', '- a')
+  },
+  {
+    name: 'math indented under a list item',
+    markdown: '- a\n\n  $$\n  x\n  $$',
+    canonical: nestedUnderBullet('$$\nx\n$$').replace('- parent', '- a')
+  },
+  {
+    name: 'math indented under a numbered item',
+    markdown: '1. a\n\n   $$\n   x\n   $$',
+    canonical: nestedUnderBullet('$$\nx\n$$').replace('- parent', '1. a')
+  },
+  {
+    name: 'math indented under a to-do item',
+    markdown: '- [ ] t\n\n  $$\n  x\n  $$',
+    canonical: nestedUnderBullet('$$\nx\n$$').replace('- parent', '- [ ] t')
+  },
+  {
+    name: 'quote of two paragraphs indented under a list item',
+    markdown: '- a\n\n  > x\n  >\n  > y',
+    canonical:
+      '- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> x\n\n<!-- memry:block-nesting-level=2 -->\n\ny\n\n<!-- memry:block-nesting-level=0 -->'
+  },
+  {
+    name: 'callout indented under a list item, then the next item',
+    markdown: '- a\n\n  > [!info]\n  > c\n- b',
+    canonical: `${nestedUnderBullet('> [!info]\n> c').replace('- parent', '- a')}\n\n- b`
+  },
+  {
+    name: 'paragraph then a callout indented under a list item',
+    markdown: '- a\n\n  para\n\n  > [!info]\n  > c',
+    canonical: nestedUnderBullet('para\n\n> [!info]\n> c').replace('- parent', '- a')
+  },
+  {
+    name: 'callout then an item indented under a list item',
+    markdown: '- a\n\n  > [!info]\n  > c\n\n  - sub\n\nafter',
+    canonical: `${nestedUnderBullet('> [!info]\n> c\n\n- sub').replace('- parent', '- a')}\n\nafter`
+  },
+  {
+    name: 'quote line in a code block under a list item stays code',
+    markdown: '- a\n\n  ```\n  > [!info]\n  ```',
+    canonical: nestedUnderBullet('```\n> [!info]\n```').replace('- parent', '- a')
+  },
+  // The blocks after a claimed one went to the top level.
+  {
+    name: 'math then a paragraph nested under a list item',
+    markdown: nestedUnderBullet('$$\nx\n$$\n\npara')
+  },
+  {
+    name: 'callout then an item nested under a list item',
+    markdown: nestedUnderBullet('> [!info]\n> c\n\n- sub')
   }
 ]
 
@@ -858,6 +1130,49 @@ const inlineImageCases: RoundtripCase[] = [
     name: 'linked image in a heading',
     markdown: '## [![logo.png](attachments/logo.png)](https://example.com/home)',
     canonical: '## [logo.png](https://example.com/home)\n\n![logo.png](attachments/logo.png)'
+  },
+  // In a list item the image becomes the item's child block. A quote cannot
+  // hold an item's child blocks, so there it follows the item.
+  {
+    name: 'image between the words of a list item',
+    markdown: '- a ![photo.png](attachments/photo.png) b\n- c',
+    canonical:
+      '- a b\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->\n\n- c'
+  },
+  {
+    name: 'image in a quote line',
+    markdown: '> a ![photo.png](attachments/photo.png) b',
+    canonical: '> a b\n>\n> ![photo.png](attachments/photo.png)'
+  },
+  {
+    name: 'image in a quoted list item',
+    markdown: '> - a\n>   - b ![photo.png](attachments/photo.png)\n> - c',
+    canonical: '> - a\n>   - b\n>\n> ![photo.png](attachments/photo.png)\n>\n> - c'
+  },
+  // An item or heading holding only an image keeps its empty line, which the
+  // parser read as the text `*` or `#`.
+  {
+    name: 'list item holding only an image',
+    markdown: '- ![photo.png](attachments/photo.png)',
+    canonical:
+      '-\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->'
+  },
+  {
+    name: 'numbered item holding only an image',
+    markdown: '1. ![photo.png](attachments/photo.png)',
+    canonical:
+      '1.\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->'
+  },
+  {
+    name: 'heading holding only an image',
+    markdown: '# ![photo.png](attachments/photo.png)',
+    canonical: '#\n\n![photo.png](attachments/photo.png)'
+  },
+  { name: 'image address with a space', markdown: '![photo](<attachments/a b.png>)' },
+  {
+    name: 'image in a callout list item',
+    markdown: '> [!note]\n> - a ![photo.png](attachments/photo.png) b',
+    canonical: '> [!note]\n> - a b\n>\n> ![photo.png](attachments/photo.png)'
   }
 ]
 
@@ -891,6 +1206,40 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'obsidian comment inside italic (BBF-52)', markdown: '*a %% b %% c*' },
   { name: 'italic nested in bold (BBF-62)', markdown: '**alpha *x y* omega**' },
   { name: 'bold nested in italic (BBF-62)', markdown: '*alpha **x** omega*' },
+  // Three stars in a row read as bold italic, so a run whose edge meets an
+  // inner run's stars came back as text with stray stars.
+  { name: 'italic sentence opening with bold', markdown: '_**Note:** this matters_' },
+  { name: 'italic ending in bold', markdown: 'x _this **matters**_ y' },
+  { name: 'italic with bold at both ends', markdown: '_**a** b **c**_' },
+  {
+    name: 'bold ending in italic',
+    markdown: '**this _matters_**',
+    canonical: '__this *matters*__'
+  },
+  { name: 'italic ending in bold before a word', markdown: 'a _b **c**_d' },
+  { name: 'bold opening with italic', markdown: '**_x_ y**', canonical: '***x* y**' },
+  // An escaped star at a run's edge meets no delimiter, and an underscore in
+  // the block would pair with underscore delimiters unless it is escaped.
+  { name: 'italic run ending in an escaped star', markdown: '*a\\**' },
+  { name: 'bold run ending in an escaped star', markdown: '**a\\***' },
+  // Runs side by side whose stars would touch read as bold italic.
+  { name: 'italic run then a bold run', markdown: '*a*__b__' },
+  // A run's delimiters are written around the link that continues it, so the
+  // `!` before them sits against the `[`.
+  { name: 'escaped image mark before a link in a bold run', markdown: '**c \\![x](y)**' },
+  { name: 'bold run then an italic run', markdown: '**a**_b_' },
+  { name: 'italic run then a bold run in a quote of blocks', markdown: '> *a*__b__\n>\n> z' },
+  { name: 'escaped edge star beside a word underscore', markdown: '*a\\** b_c' },
+  { name: 'underscore line above an italic run opening with bold', markdown: '\\_\n_**a** b_' },
+  {
+    name: 'underscore inside an italic run opening with bold',
+    markdown: '_**Note:** use snake\\_case_'
+  },
+  {
+    name: 'underscore line in a quote above an italic run',
+    markdown: '> \\_\n> *a\\**\n>\n> z',
+    canonical: '> _\n> *a\\**\n>\n> z'
+  },
   {
     name: 'bold stops at a code span (BBF-62)',
     markdown: '**`a` x `c`**',
@@ -919,6 +1268,20 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: 'a  \nb  \nc'
   },
   { name: 'html break inside bold (BBF-85)', markdown: '**a<br>b**', canonical: '**a  \nb**' },
+  // A break closing a run at a paragraph's end was written inside the run's
+  // delimiters, which the writer trims, or after them, as a blank line.
+  { name: 'bold run then a break ending a paragraph', markdown: '**a**<br>' },
+  { name: 'bold run then a break between paragraphs', markdown: 'x\n\n**a**<br>\n\ny' },
+  { name: 'bold run ending in two breaks', markdown: '**a<br>**', canonical: '**a**<br><br>' },
+  { name: 'italic run ending in a soft break', markdown: '*a\n*', canonical: '*a*<br>' },
+  { name: 'strike run ending in a soft break', markdown: '~~a\n~~', canonical: '~~a~~<br>' },
+  // The space before such a break went outside the run on the next seed.
+  { name: 'italic run ending in a space and a break', markdown: '*a \n*b', canonical: '*a* \nb' },
+  {
+    name: 'italic run ending a paragraph in a space and a break',
+    markdown: '_a \n_',
+    canonical: '*a* <br>'
+  },
   {
     // In a quote the tag keeps the soft break it always parsed to.
     name: 'html break inside a quote stays soft (BBF-85)',
@@ -930,6 +1293,23 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'html break on a lazy quote line stays soft (BBF-85)',
     markdown: '> a\nb<br>c',
     canonical: '> a\n> b\n> c'
+  },
+  // The flat quote dropped an image on its lazy line, and a quote of blocks
+  // ended at one.
+  {
+    name: 'image on a lazy quote line',
+    markdown: '> q\nsee ![x](https://e.com/a.png)',
+    canonical: '> q\n> see\n>\n> ![x](https://e.com/a.png)'
+  },
+  {
+    name: 'lazy line after a quote of blocks',
+    markdown: '> q\n>\n> r\nlazy',
+    canonical: '> q\n>\n> r\n> lazy'
+  },
+  {
+    name: 'line after a quoted heading is no lazy line',
+    markdown: '> # h\nz',
+    canonical: '> # h\n\nz'
   },
   { name: 'hard break inside a quote (BBF-99)', markdown: '> a  \n> b' },
   {
@@ -1062,12 +1442,12 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '> [!note]\n> - [a\n> b](u)'
   },
   // A fence in a quote stays a fence: `- ` inside it is code, not a list, and
-  // an untagged fence stays untagged (BBF-113). A fence-only quote keeps main's
-  // flat bytes, the same in both pipelines.
+  // an untagged fence stays untagged (BBF-113). A line after the closed fence
+  // continues no paragraph, so it is a paragraph of its own.
   {
     name: 'quoted fence, lazy line (BBF-113)',
     markdown: '> ```\n> - x\n> ```\nz',
-    canonical: '> - xz'
+    canonical: '> ```\n> - x\n> ```\n\nz'
   },
   {
     name: 'quoted item, bare fence (BBF-113)',
@@ -1133,10 +1513,22 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '- [a\n\nb  \nc](u)'
   },
   {
+    // The parser ends the item at the lazy line, so the `<br>` opens a
+    // paragraph: a hard break, where it read a soft one the writer dropped.
     name: 'html break opening a list-item link text line (BBF-106)',
     markdown: '- [a\n<br>b](u)',
-    canonical: '- [a\n\nb](u)'
+    canonical: '- [a\n\n<br><br>b](u)'
   },
+  {
+    name: 'html break opening a line under a list item',
+    markdown: '- x\n<br>b',
+    canonical: '- x\n\n<br><br>b'
+  },
+  // A paragraph of one break was written as nothing, a blank line.
+  { name: 'html break alone as a paragraph', markdown: 'a\n\n<br>\n\nb' },
+  { name: 'html break alone ending a note', markdown: 'a\n\n<br>' },
+  { name: 'html break alone as the note', markdown: '<br>' },
+  { name: 'html break alone under a list item', markdown: '- x\n<br>', canonical: '- x\n\n<br>' },
   {
     name: 'bold before a soft break inside list-item link text (BBF-106)',
     markdown: '- [**a**\nb](u)'
@@ -1149,7 +1541,7 @@ const htmlCommentCases: RoundtripCase[] = [
   {
     name: 'html break in a table row with no leading pipe (BBF-85)',
     markdown: 'a | b\n--|--\nc<br>d | e',
-    canonical: '| a   | b |\n| --- | - |\n| c d | e |'
+    canonical: '| a      | b |\n| ------ | - |\n| c<br>d | e |'
   },
   {
     // CommonMark keeps a code span's one-sided space, so the line-start strip skips code.
@@ -1157,10 +1549,10 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: 'a  \n` x` y'
   },
   {
-    // The cell break collapses to a space; the code span keeps its own leading space.
+    // The cell break stays a break; the code span keeps its own leading space.
     name: 'code span with a leading space after a cell break (BBF-90)',
     markdown: '| h |\n| - |\n| a<br>` x` |',
-    canonical: '| h      |\n| ------ |\n| a ` x` |'
+    canonical: '| h         |\n| --------- |\n| a<br>` x` |'
   },
   {
     name: 'code span with two inner spaces in a cell (BBF-90)',
@@ -1170,6 +1562,154 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'code span with a trailing space in a cell (BBF-90)',
     markdown: '| h      |\n| ------ |\n| `x ` b |'
   },
+  {
+    // A code span is one piece of text: its pipe splits no cell, and the writer escapes it.
+    name: 'pipe inside a code span in a cell',
+    markdown: '| x | y |\n| - | - |\n| a | `p|q` |',
+    canonical: '| x | y      |\n| - | ------ |\n| a | `p\\|q` |'
+  },
+  {
+    // The cells past the header become columns; the header gains empty ones.
+    name: 'table row wider than its header',
+    markdown: '| a | b |\n| - | - |\n| 1 | 2 | 3 | extra |',
+    canonical: '| a | b |   |       |\n| - | - | - | ----- |\n| 1 | 2 | 3 | extra |'
+  },
+  {
+    name: 'table row wider than a header spelled like a delimiter row',
+    markdown: '| --- |\n|---|\n| 1 | 2 |',
+    canonical: '| --- |   |\n| --- | - |\n| 1   | 2 |'
+  },
+  {
+    // The pipe in the comment's code span ends no cell, so the comment stays one node.
+    name: 'comment holding a piped code span in a cell',
+    markdown: '| a              | b |\n| -------------- | - |\n| <!-- `x|y` --> | 2 |'
+  },
+  { name: 'line break in a table cell', markdown: '| h      |\n| ------ |\n| x<br>y |' },
+  { name: 'line break in a heading', markdown: '## a<br>b' },
+  {
+    // An escaped backtick pairs with nothing, in its own cell or the next one.
+    name: 'escaped backticks in two cells',
+    markdown: '| a   |     |\n| --- | --- |\n| \\`n | m\\` |'
+  },
+  {
+    name: 'escaped backticks around a cell pipe',
+    markdown: '| a |\n|---|\n| \\`n|m\\` |',
+    canonical: '| a   |     |\n| --- | --- |\n| \\`n | m\\` |'
+  },
+  { name: 'escaped markup in a paragraph', markdown: 'a \\`n\\` b \\*x\\* \\_y\\_ \\~\\~z\\~\\~' },
+  { name: 'escaped markup in a table cell', markdown: '| h       |\n| ------- |\n| \\*x\\* y |' },
+  {
+    name: 'escaped link syntax',
+    markdown: 'a \\[x\\](y) and \\![i\\](y)',
+    canonical: 'a [x\\](y) and \\![i\\](y)'
+  },
+  {
+    name: 'escaped block openers at line starts',
+    markdown: '\\# h\n\n\\- l\n\n1\\. n\n\n\\> q\n\n\\*\\*\\*\n\n\\[x]: https://e.com'
+  },
+  { name: 'escaped block opener after a hard break', markdown: 'a  \n\\# b' },
+  { name: 'escaped list marker in a quote', markdown: '> \\- x' },
+  { name: 'empty list item between two items', markdown: '- a\n-\n- b' },
+  { name: 'empty numbered items', markdown: '1.\n2.' },
+  // A box after a number is the item's text: only a bullet opens a to-do.
+  { name: 'numbered item holding a box', markdown: '1. [ ]' },
+  { name: 'empty to-do between two items', markdown: '- [ ]\n- [x]\n- b' },
+  // A box is no setext underline, so a to-do opens under any line.
+  { name: 'empty to-do under a heading', markdown: '# H\n- [ ]', canonical: '# H\n\n- [ ]' },
+  { name: 'empty to-do under a line of text', markdown: 'one\n- [x]', canonical: 'one\n\n- [x]' },
+  { name: 'empty to-do under a quote', markdown: '> q\n- [ ]', canonical: '> q\n\n- [ ]' },
+  { name: 'empty heading', markdown: '#\n\nb' },
+  // The parser opens a heading only flush left, so an indented `#` is text,
+  // and the placeholder an empty heading line holds came out in it.
+  { name: 'indented hash alone', markdown: 'a\n\n #', canonical: 'a\n\n\\#' },
+  { name: 'indented hash after a hard break', markdown: 'a  \n #', canonical: 'a  \n\\#' },
+  // The writer wrote a link whose text is its address as the bare address,
+  // which reads back as text.
+  { name: 'link whose text is its address', markdown: 'see [https://e.com](https://e.com)' },
+  {
+    name: 'link whose text is its address in a callout',
+    markdown: '> [!tip]\n> see [https://e.com](https://e.com)'
+  },
+  // A link with no text has nothing to hold its address in a document, and the
+  // parser dropped the whole link.
+  { name: 'empty-label link in a line', markdown: 'x [](u) y' },
+  { name: 'empty-label link alone', markdown: '[](u)' },
+  { name: 'empty-label link after a paragraph', markdown: 'kq0xkq1x\n\n[](u)' },
+  { name: 'blank-label link alone, with a title', markdown: '[ ](u "t")' },
+  { name: 'empty-label link in a list item', markdown: '- [](u)' },
+  { name: 'empty-label link in bold', markdown: 'a **b [](u) c** d' },
+  {
+    name: 'empty-label link in a table cell',
+    markdown: '| a     |\n| ----- |\n| [](u) |'
+  },
+  // A block holding only a code span of spaces lost the span, and with it the block.
+  { name: 'code span of one space alone', markdown: '` `' },
+  { name: 'code span of spaces alone before a paragraph', markdown: '`  `\n\nb' },
+  { name: 'list item holding a code span of spaces', markdown: '- `  `' },
+  { name: 'numbered item holding a code span of a space', markdown: '1. ` `' },
+  // A code span drops the bold around it.
+  { name: 'code span of a space in bold', markdown: '**` `**', canonical: '` `' },
+  // The parser strips one space off each end of a code span with one at both.
+  { name: 'code span with a space at both ends', markdown: 'a `  b  ` c' },
+  // The writer fenced a code span with one backtick more than its longest run,
+  // and three at a line start open a code block.
+  { name: 'code span holding two backticks at a paragraph start', markdown: '`c``c` d' },
+  { name: 'code span holding a fence at a paragraph start', markdown: '` ```js `' },
+  { name: 'code span holding two backticks mid-line', markdown: 'a `c``c` d' },
+  { name: 'code span holding two backticks before a break', markdown: '`c``c`\ny' },
+  // A cell is no line start, and the writer escapes the pipes in its code.
+  {
+    name: 'code span holding two backticks and a pipe in a cell',
+    markdown: '| h |\n| --- |\n| `a``\\|b` |',
+    canonical: '| h            |\n| ------------ |\n| ```a``\\|b``` |'
+  },
+  { name: 'code span holding two backticks on a quote line', markdown: '> `c``c`\n> y' },
+  // Breaks right after a code span sit in its run, where the writer had no
+  // `<br>` for them.
+  { name: 'code span then three breaks', markdown: '`a`<br><br><br>b' },
+  { name: 'code span then a break ending the paragraph', markdown: '`a`<br>' },
+  // A break splits a code run into one span per line, each stripped on its own.
+  { name: 'code spans of a led line and of spaces across a break', markdown: 'x ` y`\n`  `' },
+  { name: 'code span with a space at both ends after a break', markdown: '`a`\n`  b  `' },
+  // A code span opening a paragraph lost the leading space CommonMark keeps.
+  { name: 'code span with a leading space opening a paragraph', markdown: '` *a` b' },
+  { name: 'code span of one space opening a paragraph', markdown: '` ` b' },
+  { name: 'code span with a leading space opening a list item', markdown: '- ` a` b' },
+  // A bold run ending at a break closed on the quote's next line.
+  { name: 'bold line then a plain line in a callout', markdown: '> [!note]\n> **b**\n> plain' },
+  { name: 'italic line then a plain line in a quote', markdown: '> *c*\n> d' },
+  // The writer read a backslash ending the block as a break and dropped it.
+  { name: 'backslash ending a paragraph', markdown: 'a \\' },
+  { name: 'backslash alone in a list item', markdown: '- \\' },
+  // The writer trimmed a break at a block's edge.
+  { name: 'html break ending a paragraph', markdown: 'a<br>' },
+  { name: 'html break opening a quote', markdown: '> <br>a' },
+  // Three breaks or more in a row had no spelling but blank lines, which
+  // split the paragraph.
+  {
+    name: 'two hard breaks in a row',
+    markdown: 'a\\\n\\\nb',
+    canonical: 'a<br><br><br><br>b'
+  },
+  // A line that starts and ends with a pipe ends a paragraph, so once a lifted
+  // image leaves one behind, its pipe is escaped.
+  {
+    name: 'paragraph line left reading as a table row',
+    markdown: 'x | y\n![i](attachments/i.png) | z |',
+    canonical: 'x | y\n\\| z |\n\n![i](attachments/i.png)'
+  },
+  {
+    name: 'paragraph line left reading as a table row after a code span',
+    markdown: '``a|`b``\n![i](attachments/i.png) | v |',
+    canonical: '``a|`b``\n\\| v |\n\n![i](attachments/i.png)'
+  },
+  // Text that pairs with nothing keeps its bytes: intraword underscores, a lone
+  // `*` or `_`, a wiki link's target.
+  {
+    name: 'unpaired markup characters stay as written',
+    markdown: 'a_b_c and 5 * 3 and [[_draft]]'
+  },
+  { name: 'table pipe line after a hard break in a paragraph', markdown: '| a  \nb' },
   {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'

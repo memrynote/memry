@@ -65,6 +65,26 @@ describe('round-trip conformance corpus, main pipeline', () => {
   })
 })
 
+/** The document `markdown` seeds, with the block ids every seed draws afresh taken out. */
+async function seededDoc(markdown: string): Promise<string> {
+  const doc = new Y.Doc()
+  await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+  return doc
+    .getXmlFragment(CRDT_FRAGMENT_NAME)
+    .toJSON()
+    .replaceAll(/ id="[^"]*"/g, '')
+}
+
+describe('canonical form seeds the same document, main pipeline', () => {
+  // The canonical bytes are what every later seed of the note reads, so a
+  // document they seed differently changes the note under the author: a quote
+  // became a callout, a paragraph a math block, on the next open.
+  const cases = ROUNDTRIP_CASES.filter((c) => !c.pending?.main)
+  it.each(cases)('$name', async ({ markdown }) => {
+    expect(await seededDoc(await roundTrip(markdown))).toBe(await seededDoc(markdown))
+  })
+})
+
 describe('source-preserving round-trip, main pipeline (#1915)', () => {
   // The pair the app runs: an untouched document comes back as the author
   // wrote it, `canonical` or not, and a second pass changes nothing.

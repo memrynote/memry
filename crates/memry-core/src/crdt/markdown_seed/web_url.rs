@@ -109,6 +109,198 @@ pub(super) fn parse(raw: &str) -> Url {
     })
 }
 
+/// What `img.src` gives for an `<img src>` (jsdom through BlockNote's `Image`
+/// parse): the WHATWG serialization of an absolute address, and the attribute
+/// as written for one that has no scheme, which fails to resolve against
+/// `about:blank`. `None` for an absolute address this port does not
+/// serialize, which the caller keeps as literal text.
+///
+/// Reproduced: the scheme and (for `http`, `https`, `ws`, `wss`, `ftp`) the
+/// host lowercased, a default or empty port dropped, an empty path made `/`,
+/// dot segments resolved, and the characters each part's percent-encode set
+/// covers written as `%XX`. A host other than letters, digits, `.`, `-`, `_`
+/// and `~`, an IPv4-looking or punycode host, a userinfo part other than
+/// plain words, a backslash or control character, a `file` address and a
+/// special scheme without `//` are `None`.
+pub(super) fn img_src(raw: &str) -> Option<String> {
+    let Some(colon) = raw.find(':') else {
+        return Some(raw.to_owned());
+    };
+    let scheme = &raw[..colon];
+    let is_scheme = scheme.starts_with(|c: char| c.is_ascii_alphabetic())
+        && scheme
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'));
+    if !is_scheme {
+        return Some(raw.to_owned());
+    }
+    if raw.contains(|c: char| c.is_control() || c == '\\') {
+        return None;
+    }
+    let scheme = scheme.to_ascii_lowercase();
+    let rest = &raw[colon + 1..];
+    let special = matches!(scheme.as_str(), "http" | "https" | "ws" | "wss" | "ftp");
+    if scheme == "file" {
+        return None;
+    }
+    let Some(after) = rest.strip_prefix("//") else {
+        if special {
+            return None;
+        }
+        let (path, tail) = split_path(rest);
+        let tail = encode_tail(tail, false);
+        return if path.starts_with('/') {
+            let path = encode(&resolve_dots(path), path_set);
+            (!path.starts_with("//")).then(|| format!("{scheme}:{path}{tail}"))
+        } else {
+            // An opaque path: only the non-ASCII is encoded.
+            Some(format!("{scheme}:{}{tail}", encode(path, |_| false)))
+        };
+    };
+    if special && after.starts_with('/') {
+        return None;
+    }
+    let end = after.find(['/', '?', '#']).unwrap_or(after.len());
+    let (authority, remainder) = after.split_at(end);
+    let (userinfo, host_port) = match authority.rsplit_once('@') {
+        Some((userinfo, host_port)) => (Some(userinfo), host_port),
+        None => (None, authority),
+    };
+    let (host, port) = match host_port.rsplit_once(':') {
+        Some((host, port)) => (host, Some(port)),
+        None => (host_port, None),
+    };
+    let name_char = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '~');
+    if host.is_empty() || !host.chars().all(name_char) {
+        return None;
+    }
+    let port = match port {
+        None | Some("") => None,
+        Some(digits) if digits.chars().all(|c| c.is_ascii_digit()) && digits.len() <= 6 => {
+            Some(digits.parse::<u32>().ok().filter(|port| *port <= 65535)?)
+        }
+        Some(_) => return None,
+    };
+    let userinfo = match userinfo {
+        None => String::new(),
+        Some(info) => {
+            let (user, password) = info
+                .split_once(':')
+                .map_or((info, None), |(u, p)| (u, Some(p)));
+            let plain = |text: &str| !text.is_empty() && text.chars().all(name_char);
+            if !plain(user) || password.is_some_and(|password| !plain(password)) {
+                return None;
+            }
+            format!("{info}@")
+        }
+    };
+    let (host, port) = if special {
+        let last = host
+            .rsplit('.')
+            .find(|label| !label.is_empty())
+            .unwrap_or("");
+        let numeric = last.chars().all(|c| c.is_ascii_digit())
+            || last.get(..2).is_some_and(|p| p.eq_ignore_ascii_case("0x"));
+        let punycode = host.split('.').any(|label| {
+            label
+                .get(..4)
+                .is_some_and(|p| p.eq_ignore_ascii_case("xn--"))
+        });
+        if numeric || punycode {
+            return None;
+        }
+        let default = match scheme.as_str() {
+            "http" | "ws" => 80,
+            "https" | "wss" => 443,
+            _ => 21,
+        };
+        (
+            host.to_ascii_lowercase(),
+            port.filter(|port| *port != default),
+        )
+    } else {
+        (host.to_owned(), port)
+    };
+    let (path, tail) = split_path(remainder);
+    let path = if path.is_empty() {
+        if special {
+            "/".to_owned()
+        } else {
+            String::new()
+        }
+    } else {
+        encode(&resolve_dots(path), path_set)
+    };
+    let tail = encode_tail(tail, special);
+    let port = port.map(|port| format!(":{port}")).unwrap_or_default();
+    Some(format!("{scheme}://{userinfo}{host}{port}{path}{tail}"))
+}
+
+/// `^"<>` and the backtick and braces: the path percent-encode set past the
+/// query's.
+fn path_set(c: char) -> bool {
+    matches!(c, '"' | '<' | '>' | '`' | '{' | '}' | '^' | ' ')
+}
+
+/// `text` with each non-ASCII character and each one `in_set` covers written
+/// as the `%XX` of its UTF-8 bytes.
+fn encode(text: &str, in_set: impl Fn(char) -> bool) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        if c.is_ascii() && !in_set(c) {
+            out.push(c);
+            continue;
+        }
+        let mut buffer = [0; 4];
+        for byte in c.encode_utf8(&mut buffer).bytes() {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
+/// The query and the fragment, each in its own percent-encode set.
+fn encode_tail(tail: &str, special: bool) -> String {
+    let (query, fragment) = tail.split_at(tail.find('#').unwrap_or(tail.len()));
+    let query_set = |c: char| matches!(c, '"' | '<' | '>' | ' ') || (special && c == '\'');
+    let fragment_set = |c: char| matches!(c, '"' | '<' | '>' | '`' | ' ');
+    format!(
+        "{}{}",
+        encode(query, query_set),
+        encode(fragment, fragment_set)
+    )
+}
+
+/// The path of `rest` and what follows it: the query and fragment.
+fn split_path(rest: &str) -> (&str, &str) {
+    rest.split_at(rest.find(['?', '#']).unwrap_or(rest.len()))
+}
+
+/// The path with its `.` and `..` segments resolved (`%2e` spells a dot).
+fn resolve_dots(path: &str) -> String {
+    let segments: Vec<&str> = path[1..].split('/').collect();
+    let mut kept: Vec<&str> = Vec::new();
+    for (index, segment) in segments.iter().enumerate() {
+        let last = index == segments.len() - 1;
+        let lower = segment.to_ascii_lowercase();
+        match lower.as_str() {
+            ".." | ".%2e" | "%2e." | "%2e%2e" => {
+                kept.pop();
+                if last {
+                    kept.push("");
+                }
+            }
+            "." | "%2e" => {
+                if last {
+                    kept.push("");
+                }
+            }
+            _ => kept.push(segment),
+        }
+    }
+    format!("/{}", kept.join("/"))
+}
+
 /// `URLSearchParams.get(name)` on a `search` string, for the plain
 /// `name=value` pairs a YouTube address carries. `None` when the value would
 /// need decoding.
@@ -154,6 +346,46 @@ mod tests {
         assert_eq!(parse("a b.png"), Url::Invalid);
         assert_eq!(parse("https:e.com"), Url::Unknown);
         assert_eq!(parse("https://ü.com/x"), Url::Unknown);
+    }
+
+    #[test]
+    fn an_image_address_is_what_the_dom_serializes() {
+        let src = |raw: &str| img_src(raw).expect("serialized");
+        assert_eq!(src("http://e.com"), "http://e.com/");
+        assert_eq!(src("HTTP://E.com:80/x/../y?q=1#f"), "http://e.com/y?q=1#f");
+        assert_eq!(
+            src("https://u:p@E.com:8080/a/./b/"),
+            "https://u:p@e.com:8080/a/b/"
+        );
+        assert_eq!(src("ftp://e.com:21/x"), "ftp://e.com/x");
+        assert_eq!(src("https://e.com??a#b#c"), "https://e.com/??a#b#c");
+        assert_eq!(src("memry-file://Abc/v.png"), "memry-file://Abc/v.png");
+        assert_eq!(
+            src("DATA:image/png;base64,AA+/="),
+            "data:image/png;base64,AA+/="
+        );
+        assert_eq!(src("assets/x.png"), "assets/x.png");
+        assert_eq!(src("//e.com/x"), "//e.com/x");
+        assert_eq!(src("c:/a/../b.png"), "c:/b.png");
+        assert_eq!(
+            src("http://e.com/é?q=é#é"),
+            "http://e.com/%C3%A9?q=%C3%A9#%C3%A9"
+        );
+        assert_eq!(
+            src("http://e.com/{a}^b`c?x='y'"),
+            "http://e.com/%7Ba%7D%5Eb%60c?x=%27y%27"
+        );
+        for unreproduced in [
+            "http://é.com/",
+            "http://0x7f.1/",
+            "http://127.1/",
+            "http:e.com",
+            "file:///x.png",
+            "http://xn--e.com/",
+            "http://e.com/a\\b",
+        ] {
+            assert_eq!(img_src(unreproduced), None, "{unreproduced}");
+        }
     }
 
     #[test]

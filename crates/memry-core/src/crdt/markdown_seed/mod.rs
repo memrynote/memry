@@ -28,11 +28,13 @@
 //! heading, or inline in a table cell), YouTube, bookmark, whiteboard and file
 //! marker lines, callouts, `$$` math blocks, quotes with a blank `>` line
 //! between paragraphs, Memry's `<details data-memry-toggle>` toggles, and
-//! inline bold, italic, strike, code and links. Wiki links, tags and `{{…}}`
-//! tokens stay plain text, which is what desktop's converter does with them
-//! too, and so does a `<details>` block another app wrote.
+//! inline bold, italic, strike, code and links, and Obsidian `%% … %%`
+//! comments as `htmlComment` nodes ([`comments`], [`comment_nodes`]), and so
+//! is a link with no label (`[](u)`), written back as it was. Wiki links,
+//! tags and `{{…}}` tokens stay plain text, which is what desktop's converter
+//! does with them too, and so does a `<details>` block another app wrote.
 //!
-//! **Fallback**: a construct outside that set (raw HTML and HTML comments, an
+//! **Fallback**: a construct outside that set (raw HTML and `<!--` comments, an
 //! image in a list or a quote, a video beside text, an inline mention or date
 //! token, a task block or plain-checkbox marker, a quote or callout holding a
 //! list or a nested quote, a callout of a user-defined type or with a body
@@ -43,21 +45,38 @@
 //! coloured toggle) sends every line there. A fallback drops no text; the
 //! document then differs from desktop's in those blocks only.
 //!
-//! **A table drops what desktop's drops.** Each body row is cut to its header
-//! row's cell count, and a `|` inside a code span splits the cell like any
-//! other pipe, so cells past that count are lost ([`table`]'s `table_block`).
-//! Desktop builds the same table from the same row.
+//! **A table keeps every cell, as desktop's does.** A `|` inside a code span
+//! splits no cell, and a body row wider than the header row widens the table,
+//! the header and the shorter rows padded with empty cells, unless the header
+//! row is spelled like a delimiter row, which cuts the rows to its width
+//! ([`table`]'s `try_parse_table`). Desktop builds the same table from the
+//! same row.
 
+mod backtick_runs;
+mod block_starts;
 mod blocks;
 mod claims;
 mod closers;
+mod code_spans;
+mod collapse;
+mod comment_closes;
+mod comment_nodes;
+mod comments;
+mod emphasis_edges;
+mod empty_blocks;
+mod escapes;
+mod hard_breaks;
 mod inline;
+mod items;
 mod lift;
 mod links;
 mod markers;
+mod mask_word;
 mod media;
+mod nesting;
 mod prepare;
 mod roundtrip;
+mod run_writer;
 mod runs;
 mod shapes;
 mod table;
@@ -67,6 +86,8 @@ mod web_url;
 mod write;
 
 use yrs::{ReadTxn as _, XmlFragment as _};
+
+use nesting::{MAX_NESTING, TOO_DEEP};
 
 pub(crate) use links::destination as link_destination;
 
@@ -189,7 +210,17 @@ pub enum SeedInline {
         text: String,
         marks: SeedMarks,
     },
-    HardBreak,
+    /// A `\n` of a run's text, split out as the document holds it. `marks`
+    /// are those of the run it came from, which the document does not keep:
+    /// the claim proofs spell the run's text with it.
+    HardBreak {
+        marks: SeedMarks,
+    },
+    /// An `htmlComment` node: a `%% … %%` comment as written, delimiters
+    /// included (chapter 12 §12.7).
+    HtmlComment {
+        source: String,
+    },
     /// An image inside a table cell (`inlineImage`); `width` 0 is unset.
     InlineImage {
         src: String,
@@ -259,11 +290,21 @@ pub fn plan(markdown: &str) -> SeedPlan {
     let mut fallbacks = Vec::new();
     let parsed = match prepare::document_fallback(markdown) {
         Some(reason) => Err(Unsupported(reason)),
-        None => parse_masked(
-            &media::separate_block_images(markdown),
-            &mut out,
-            &mut fallbacks,
-        ),
+        None => {
+            // `markdownToBlocks`: every comment is masked before any line is
+            // split.
+            let masked = comments::mask(markdown);
+            if masked.multiline_html {
+                Err(Unsupported("HTML"))
+            } else {
+                parse_masked(
+                    &media::separate_block_images(&masked.text),
+                    &mut out,
+                    &mut fallbacks,
+                    0,
+                )
+            }
+        }
     };
     if let Err(Unsupported(reason)) = parsed {
         let lines: Vec<String> = markdown
@@ -279,7 +320,7 @@ pub fn plan(markdown: &str) -> SeedPlan {
     restore_details_markup(&mut out);
     for fallback in &mut fallbacks {
         for line in &mut fallback.lines {
-            *line = line.replace(toggles::DETAILS_LT_TOKEN, "<");
+            *line = line.replace(toggles::details_lt_token(), "<");
         }
     }
     SeedPlan {
@@ -295,6 +336,7 @@ fn parse_masked(
     markdown: &str,
     out: &mut Vec<SeedBlock>,
     fallbacks: &mut Vec<SeedFallback>,
+    depth: usize,
 ) -> Result<(), Unsupported> {
     for segment in toggles::split_by_toggles(markdown)? {
         match segment {
@@ -317,8 +359,11 @@ fn parse_masked(
                 {
                     return Err(Unsupported("table in a toggle summary"));
                 }
+                if depth >= MAX_NESTING {
+                    return Err(TOO_DEEP);
+                }
                 let mut children = Vec::new();
-                parse_masked(&body, &mut children, fallbacks)?;
+                parse_masked(&body, &mut children, fallbacks, depth + 1)?;
                 out.push(SeedBlock {
                     kind: SeedKind::Toggle { open },
                     content: first.map(|block| block.content).unwrap_or_default(),
@@ -359,9 +404,9 @@ fn restore_details_markup(blocks: &mut [SeedBlock]) {
         for content in cells.into_iter().chain([&mut block.content]) {
             for piece in content {
                 if let SeedInline::Text { text, .. } = piece
-                    && text.contains(toggles::DETAILS_LT_TOKEN)
+                    && text.contains(toggles::details_lt_token())
                 {
-                    *text = text.replace(toggles::DETAILS_LT_TOKEN, "<");
+                    *text = text.replace(toggles::details_lt_token(), "<");
                 }
             }
         }
@@ -514,5 +559,42 @@ mod tests {
             plan.blocks[1],
             SeedBlock::new(SeedKind::Paragraph, vec![text("after")])
         );
+    }
+
+    #[test]
+    fn a_comment_desktop_would_leave_its_word_in_stays_literal_and_whole() {
+        for (markdown, lines) in [
+            ("$$\nx %% y %% z\n$$", vec!["$$", "x %% y %% z", "$$"]),
+            (
+                "![a %% b %% c](https://e.com/i.png)",
+                vec!["![a %% b %% c](https://e.com/i.png)"],
+            ),
+            (
+                "[a](https://e.com/%% b %%)",
+                vec!["[a](https://e.com/%% b %%)"],
+            ),
+        ] {
+            let plan = plan(markdown);
+            assert_eq!(plan.fallbacks.len(), 1, "{markdown}");
+            assert_eq!(plan.fallbacks[0].lines, lines, "{markdown}");
+            assert!(
+                !plan.blocks.iter().any(|block| {
+                    block
+                        .content
+                        .iter()
+                        .any(|piece| matches!(piece, SeedInline::HtmlComment { .. }))
+                }),
+                "{markdown}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_html_comment_across_lines_sends_the_whole_text_to_the_fallback() {
+        let plan = plan("# a\n\n<!--\n# b\n-->\n\nc");
+        assert_eq!(plan.fallbacks[0].reason, "HTML");
+        assert_eq!(plan.blocks.len(), 5);
+        let single = super::plan("# a\n\n<!-- b -->\n\nc");
+        assert_eq!(single.blocks[0].kind, SeedKind::Heading { level: 1 });
     }
 }

@@ -43,6 +43,33 @@ fn without_block_ids(canonical: &str) -> String {
         .join("\n")
 }
 
+/// Cases desktop builds and the core keeps as literal text, because claiming
+/// them needs desktop's serialization of a block the core does not write: a
+/// table, a code block or an image under a quote, a comment node, a quoted list, the
+/// `<details>` markup a quote, a callout or a heading now keeps as text, a
+/// callout, quote or math block indented under a list item, a quote body the
+/// writer's underscore spelling stops settling (desktop reads a flat quote,
+/// which the core does not build). A
+/// fallback is lossless (every line stays text), so each must fall back, and
+/// the run it keeps literal is checked below.
+const KEPT_LITERAL: [&str; 15] = [
+    "comment: %% in a callout body and a quote",
+    "callout: a body holding a table",
+    "quote: a run opening on a table",
+    "quote: a line, a blank and a table",
+    "lazy quote line: an image on the line after a quote",
+    "quote: a quoted fence then a lazy line",
+    "details markup: a quote holding a toggle's lines",
+    "details markup: a one-paragraph quote",
+    "details markup: a callout body",
+    "details markup: a closing tag in a heading",
+    "list item child: a callout",
+    "list item child: a math block",
+    "list item child: a structured quote",
+    "list item child: a numbered item's callout",
+    "writer: a code span with an underscore before touching runs",
+];
+
 #[test]
 fn every_case_seeds_the_document_desktop_builds() {
     let file = vector_file("markdown-seed");
@@ -54,6 +81,22 @@ fn every_case_seeds_the_document_desktop_builds() {
         let document = fresh(name);
         let seeded = seed_document(&document, markdown)
             .unwrap_or_else(|error| panic!("{name}: seed: {error}"));
+        if KEPT_LITERAL.contains(&name) {
+            assert!(
+                !seeded.fallbacks.is_empty(),
+                "{name}: the core now builds it, so it is not kept literal"
+            );
+            let kept: Vec<&str> = seeded
+                .fallbacks
+                .iter()
+                .flat_map(|fallback| fallback.lines.iter().map(String::as_str))
+                .collect();
+            assert!(
+                kept.iter().all(|line| markdown.contains(line)),
+                "{name}: a fallback holds a line the source does not: {kept:?}"
+            );
+            continue;
+        }
         assert!(
             seeded.fallbacks.is_empty(),
             "{name}: a vector case fell back: {:?}",
@@ -64,6 +107,80 @@ fn every_case_seeds_the_document_desktop_builds() {
             without_block_ids(&canonical),
             str_field(case, "expectedCanonical"),
             "{name}"
+        );
+    }
+}
+
+/// Desktop keeps `<details>` markup behind quote markers or a heading's `#`s
+/// as text (`escapePrefixedDetailsMarkup`). The core builds no HTML text, so
+/// each such line keeps its source as literal text.
+#[test]
+fn details_markup_behind_quote_markers_or_hashes_stays_literal() {
+    for markdown in [
+        "> <details>",
+        ">> <details open>",
+        ">\t<summary>O</summary>",
+        "# <summary>O</summary>",
+        "### </details>",
+        "> [!tip]\n> <details>",
+    ] {
+        let planned = plan(markdown);
+        assert!(!planned.fallbacks.is_empty(), "{markdown}");
+        assert!(
+            planned
+                .blocks
+                .iter()
+                .all(|block| block.kind == memry_core::crdt::markdown_seed::SeedKind::Paragraph),
+            "{markdown}"
+        );
+    }
+}
+
+/// A block nesting marker changes the level of the text after it
+/// (`parseMarkdownWithNestingMarkers`), and desktop lifts a callout, quote or
+/// math run indented under a top-level item into the marker form
+/// (`liftItemChildRuns`). The core builds neither, so a source holding one
+/// keeps every line as literal text.
+#[test]
+fn nesting_markers_and_lifted_item_runs_keep_the_whole_source_literal() {
+    use memry_core::crdt::markdown_seed::SeedKind;
+    for markdown in [
+        "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\npara\n\n<!-- memry:block-nesting-level=0 -->",
+        "# t\n\n<!--  memry:block-nesting-level=2  -->\n\ntext",
+        "- a\n\n  > [!info]\n  > c",
+        "- a\n\n  $$\n  x\n  $$",
+        "1. a\n\n   > x\n   >\n   > y\n\nafter",
+        "-\n\n  > q",
+    ] {
+        let planned = plan(markdown);
+        assert_eq!(planned.fallbacks.len(), 1, "{markdown}");
+        assert!(
+            planned
+                .blocks
+                .iter()
+                .all(|block| block.kind == SeedKind::Paragraph),
+            "{markdown}"
+        );
+    }
+    // Not a lift: no blank line above, an item nested deeper, a fence, a quote
+    // at the left edge, indented less than the item's text.
+    for markdown in [
+        "- a\n  > x",
+        "- a\n  - b\n\n    > x",
+        "```\n- a\n\n  > x\n```",
+        "1. a\n\n> q",
+        "- a\n\n > q",
+        "text\n\n  > q",
+        "* a\n\n    more\n\n   > q",
+    ] {
+        let planned = plan(markdown);
+        assert!(
+            !planned
+                .fallbacks
+                .iter()
+                .any(|f| f.reason == "list item holding a callout, quote or math block"),
+            "{markdown}: {:?}",
+            planned.fallbacks
         );
     }
 }
