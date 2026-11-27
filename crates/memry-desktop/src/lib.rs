@@ -20,6 +20,7 @@ pub mod error;
 pub mod export;
 pub mod fold;
 pub mod folder_view;
+pub mod graph;
 pub mod home;
 pub mod http;
 pub mod i18n;

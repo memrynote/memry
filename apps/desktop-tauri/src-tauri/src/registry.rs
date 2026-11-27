@@ -9,6 +9,8 @@ use crate::{commands::calendar, startup::StartupState};
 // The bookmark and recents commands and events (`registry/bookmarks.rs`).
 #[macro_use]
 mod bookmarks;
+#[macro_use]
+mod inbox;
 // The sticky note and edge tab commands and events (`registry/stickies.rs`).
 #[macro_use]
 mod stickies;
@@ -20,8 +22,8 @@ mod projects;
 mod reminders;
 #[macro_use]
 mod tasks;
-
 mod dispatch;
+mod graph;
 mod permission;
 
 pub use dispatch::{dispatcher, invoke_handler};
@@ -506,8 +508,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::HomePageUpdatedEvent,
             // import (Readwise)
             crate::events::ImportReadwiseStatusChangedEvent,
-            // inbox
-            crate::events::InboxOpenItemEvent,
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,

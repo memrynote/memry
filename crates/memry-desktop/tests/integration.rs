@@ -247,6 +247,8 @@ mod importer_untrusted;
 mod importer_untrusted_html;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
+#[path = "inbox_review.rs"]
+mod inbox_review;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
