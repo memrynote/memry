@@ -361,10 +361,11 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const commentsMasked = htmlComments
     ? maskHtmlComments(markdown, { losslessTables: losslessBlocks })
     : markdown
-  // A link with no label has no text to hold its address, so it travels as
-  // a comment's token too.
-  const linksMasked = losslessBlocks ? maskEmptyLinks(commentsMasked) : commentsMasked
-  const fenced = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(linksMasked))
+  const wikiEscaped = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
+  // A link with no label has no text to hold its address, so it travels as a
+  // comment's token too. After the pipe escape, which still reads a `[[` that
+  // opens in front of one.
+  const fenced = losslessBlocks ? maskEmptyLinks(wikiEscaped) : wikiEscaped
   // `<details>` markup in a quote stays text, before a break masks the two
   // spaces the writer ends its line with.
   const source = losslessBlocks ? escapePrefixedDetailsMarkup(fenced) : fenced
