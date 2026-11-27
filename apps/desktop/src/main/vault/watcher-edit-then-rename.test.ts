@@ -88,9 +88,10 @@ const changeHeard = vi.hoisted(() => ({
   resolve: () => {},
   watcher: null as Chokidar.FSWatcher | null
 }))
-// A folder event macOS never delivers: chokidar's add of a path in the set
-// never reaches the app.
+// Folder events macOS never delivers: chokidar's add or change of a path in
+// the set never reaches the app.
 const lostAdds = vi.hoisted(() => new Set<string>())
+const lostChanges = vi.hoisted(() => new Set<string>())
 vi.mock('chokidar', async (importOriginal) => {
   const actual = await importOriginal<typeof Chokidar>()
   return {
@@ -99,7 +100,8 @@ vi.mock('chokidar', async (importOriginal) => {
       const watcher = actual.watch(...args)
       const emitWithAll = watcher.emitWithAll.bind(watcher)
       watcher.emitWithAll = (event, emitted) => {
-        if (event !== 'add' || !lostAdds.has(emitted[0])) emitWithAll(event, emitted)
+        const lost = { add: lostAdds, change: lostChanges }[event as string]
+        if (!lost?.has(emitted[0])) emitWithAll(event, emitted)
       }
       changeHeard.watcher = watcher.on('change', (filePath: string) => {
         if (filePath === changeHeard.path) changeHeard.resolve()
@@ -156,11 +158,18 @@ function fileSystemIgnoresCase(): boolean {
 const renameSynced = vi.fn()
 
 /**
- * How long the app's watcher may take to hear a change. macOS reports a
- * folder's changes through FSEvents, seconds late on a loaded machine. A test
- * waits on `watch` and up to two `settleOn` calls, so it is given 90 s.
+ * How long the app's watcher may take to hear a folder's change. macOS reports
+ * one through FSEvents, which fseventsd delivers up to 30 s late when other
+ * processes keep it busy; the file's own watcher reports a file's change or
+ * rename at once.
  */
-const FS_EVENTS_TIMEOUT_MS = 30_000
+const FS_EVENTS_TIMEOUT_MS = 45_000
+/**
+ * A wait for work the app starts itself, or a file's own watcher reports. A
+ * test waits on `watch` and two settles, 80 s in all; a case-only rename,
+ * which only the folder reports, waits on two folder events, 120 s in all.
+ */
+const SETTLE_TIMEOUT_MS = 10_000
 
 describe('an outside edit followed by a rename inside the change debounce', () => {
   let vault: ReturnType<typeof createTestVault>
@@ -191,6 +200,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
 
   afterEach(async () => {
     lostAdds.clear()
+    lostChanges.clear()
     unregisterRenameSyncCallback()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
@@ -236,13 +246,13 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       .all()
       .filter((row) => !row.path.startsWith('Sentinel/'))
 
-  async function settleOn(expected: () => void): Promise<void> {
+  async function settleOn(expected: () => void, timeout = SETTLE_TIMEOUT_MS): Promise<void> {
     await vi.waitFor(
       async () => {
         await flushProjectionEvents()
         expected()
       },
-      { timeout: FS_EVENTS_TIMEOUT_MS, interval: 100 }
+      { timeout, interval: 100 }
     )
     await drainIngestBackfill()
     await flushProjectionEvents()
@@ -268,7 +278,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
         fs.writeFileSync(path.join(vault.path, relativePath), `sentinel ${writtenAt}\n`)
       }
       throw new Error(`waiting for ${relativePath}`)
-    })
+    }, FS_EVENTS_TIMEOUT_MS)
   }
 
   /**
@@ -322,7 +332,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     await settleOn(() => expect(editFedTo('n1')).toBe(true))
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
     expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
-  }, 90_000)
+  }, 80_000)
 
   // macOS reports a renamed file's new name through its folder's FSEvents
   // stream, which a loaded machine delivers seconds late or not at all. The
@@ -339,7 +349,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
-    90_000
+    80_000
   )
 
   it.runIf(process.platform === 'darwin')(
@@ -358,7 +368,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       // Both adds missed the row: the one that lost the match failed on its path.
       expect(trackMainError).not.toHaveBeenCalled()
     },
-    90_000
+    80_000
   )
 
   it.runIf(fileSystemIgnoresCase())(
@@ -372,13 +382,13 @@ describe('an outside edit followed by a rename inside the change debounce', () =
           path.join(vault.path, 'Docs/Apple.md')
         )
       )
-      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'), FS_EVENTS_TIMEOUT_MS)
 
       await settleOn(() => expect(editFedTo('n1')).toBe(true))
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
-    90_000
+    120_000
   )
 
   it('raw events on one file in one event-loop turn stat it once', async () => {
@@ -394,7 +404,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     }
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(vi.mocked(statSync).mock.calls.filter(([p]) => p === absolutePath)).toHaveLength(1)
-  })
+  }, 80_000)
 
   it('a rename right after an outside edit keeps the note id', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
@@ -407,7 +417,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     await settleOn(() => expect(editFedTo('n1')).toBe(true))
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
     expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
-  }, 90_000)
+  }, 80_000)
 
   it.runIf(fileSystemIgnoresCase())(
     'a case-only rename right after an outside edit keeps the note id',
@@ -420,13 +430,13 @@ describe('an outside edit followed by a rename inside the change debounce', () =
           path.join(vault.path, 'Docs/Apple.md')
         )
       )
-      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'), FS_EVENTS_TIMEOUT_MS)
 
       await settleOn(() => expect(editFedTo('n1')).toBe(true))
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
-    90_000
+    120_000
   )
 
   /**
@@ -435,12 +445,24 @@ describe('an outside edit followed by a rename inside the change debounce', () =
    * (1-2 s mtime filesystems, `cp -p`, `rsync -t`, unzip, sync clients).
    */
   function deleteAndWriteLookalike(relativePath: string, lookalikePath: string, body: string) {
+    reportAddAtUnlink(lookalikePath)
     const absolutePath = path.join(vault.path, relativePath)
     const { atime, mtime } = fs.statSync(absolutePath)
     fs.unlinkSync(absolutePath)
     const lookalike = path.join(vault.path, lookalikePath)
     fs.writeFileSync(lookalike, body)
     fs.utimesSync(lookalike, atime, mtime)
+  }
+
+  /**
+   * The folder reports `relativePath`'s add right after the app took the next
+   * unlink, inside the rename window, as on an idle machine. A loaded one
+   * reports it seconds later or never, past the window, where no add can take
+   * the delete and nothing tells the files apart.
+   */
+  function reportAddAtUnlink(relativePath: string): void {
+    const watcher = changeHeard.watcher
+    watcher?.once('unlink', () => watcher.emit('add', path.join(vault.path, relativePath)))
   }
 
   async function expectDeleteAndCreate(): Promise<void> {
@@ -460,7 +482,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
     )
     await expectDeleteAndCreate()
-  }, 90_000)
+  }, 80_000)
 
   it('a delete inside the write-finish wait after an outside edit, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
@@ -469,7 +491,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
     )
     await expectDeleteAndCreate()
-  }, 90_000)
+  }, 80_000)
 
   it('a delete long after an outside edit settled, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
@@ -480,7 +502,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
 
     deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
     await expectDeleteAndCreate()
-  }, 90_000)
+  }, 80_000)
 
   // The index has not read the body yet, so the rename matches by size + mtime;
   // there is no earlier hash for the renamed file to differ from.
@@ -488,18 +510,16 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
     const modifiedAt = new Date('2026-01-12T00:00:00.000Z')
     fs.utimesSync(path.join(vault.path, 'Docs/apple.md'), modifiedAt, modifiedAt)
-    await watch()
-    // fsevents can replay the seed's write as a change, which reads the body
-    // and fills the hash, so the hash is taken away after that settles.
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    await flushProjectionEvents()
     index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
-    vi.mocked(feedExternalEditToCrdt).mockClear()
+    // fsevents can deliver the seed's write as a change, seconds after the
+    // watcher starts on a loaded machine, and that change reads the body.
+    lostChanges.add(path.join(vault.path, 'Docs/apple.md'))
+    await watch()
 
     fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))
     await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
 
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
     expect(feedExternalEditToCrdt).not.toHaveBeenCalled()
-  }, 90_000)
+  }, 80_000)
 })
