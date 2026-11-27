@@ -44,6 +44,7 @@ const LITERAL_BLOCKS = new Set(['codeBlock', 'diagram'])
 const LINE_BLOCKS = new Set([
   'paragraph',
   'quote',
+  'callout',
   'bulletListItem',
   'numberedListItem',
   'checkListItem',
@@ -71,6 +72,8 @@ interface Spelling {
   segments: Segment[]
   /** The offsets of the marks' delimiters, which the writer moves past an edge break. */
   delimiters: Set<number>
+  /** The closing ones, which the writer moves before a break that ends their run. */
+  closers: Set<number>
 }
 
 /** The block as the writer spells it, near enough to tell markup, and its text runs. */
@@ -78,8 +81,12 @@ function spell(items: Item[]): Spelling {
   let spelling = ''
   const segments: Segment[] = []
   const delimiters = new Set<number>()
-  const delimit = (delimiter: string): void => {
-    for (let i = 0; i < delimiter.length; i++) delimiters.add(spelling.length + i)
+  const closers = new Set<number>()
+  const delimit = (delimiter: string, closing: boolean): void => {
+    for (let i = 0; i < delimiter.length; i++) {
+      delimiters.add(spelling.length + i)
+      if (closing) closers.add(spelling.length + i)
+    }
     spelling += delimiter
   }
   const walk = (list: Item[], inLink: boolean): void => {
@@ -95,10 +102,10 @@ function spell(items: Item[]): Spelling {
         const bold = styles.bold === true ? '**' : ''
         const italic = styles.italic === true ? '*' : ''
         const strike = styles.strike === true ? '~~' : ''
-        delimit(bold + italic + strike)
+        delimit(bold + italic + strike, false)
         segments.push({ at: spelling.length, text: item.text, inLink })
         spelling += item.text
-        delimit(strike + italic + bold)
+        delimit(strike + italic + bold, true)
       } else if (isLink(item)) {
         spelling += '['
         walk(item.content, true)
@@ -109,7 +116,7 @@ function spell(items: Item[]): Spelling {
     }
   }
   walk(items, false)
-  return { spelling, segments, delimiters }
+  return { spelling, segments, delimiters, closers }
 }
 
 const isSpace = (c: string | undefined): boolean => c === undefined || c === ' ' || c === '\t'
@@ -184,14 +191,19 @@ function isMarkup(spelling: string, at: number, segment: Segment, place: Place):
   }
 }
 
-/** The offsets in `spelling` of the characters that open a block at a line start. */
-function lineOpeners(spelling: string, place: Place): Set<number> {
+/**
+ * The offsets in `spelling` of the characters that open a block at a line
+ * start, past the closers of a run that ended in the break before it.
+ */
+function lineOpeners({ spelling, closers }: Spelling, place: Place): Set<number> {
   const out = new Set<number>()
   if (!place.lineBlock) return out
   for (let start = 0; ;) {
     const end = spelling.indexOf('\n', start)
-    const opener = blockOpener(spelling.slice(start, end < 0 ? undefined : end), start > 0)
-    if (opener >= 0) out.add(start + opener)
+    let from = start
+    while (closers.has(from)) from++
+    const opener = blockOpener(spelling.slice(from, end < 0 ? undefined : end), start > 0)
+    if (opener >= 0) out.add(from + opener)
     if (end < 0) return out
     start = end + 1
   }
@@ -271,7 +283,7 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
   }
   const block = spell(items)
   const { spelling, segments } = block
-  const forced = lineOpeners(spelling, place)
+  const forced = lineOpeners(block, place)
   const firstLine = spelling.split('\n', 1)[0]
   if (spellsCalloutMarker(blockType ?? '', firstLine, firstLine === spelling)) forced.add(0)
   if (cell) for (const at of unclosedWikiOpeners(spelling)) forced.add(at)

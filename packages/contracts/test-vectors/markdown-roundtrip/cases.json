@@ -324,7 +324,7 @@
     {
       "name": "callout line spelling a table row",
       "markdown": "> [!note]\n> a\n> \\| a \\|",
-      "canonical": null,
+      "canonical": "> [!note]\n> a\n> \\| a |",
       "pending": null,
       "sha256": "e5d97123302dca500aaa7545d33adb05801e333d6e78089702afd34ea9243dfc"
     },
@@ -352,7 +352,7 @@
     {
       "name": "quote line spelling a heading after a bold run",
       "markdown": "> lead\n>\n> **b**\n> \\# x",
-      "canonical": "> lead\n> **b**\n> \\# x",
+      "canonical": null,
       "pending": null,
       "sha256": "4131e4e6e2f7f044be92704508f7c231b9b627f50fd6e61f68f6f528ae54cc0b"
     },
