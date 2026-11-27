@@ -1934,7 +1934,7 @@
     {
       "name": "html break opening a list-item link text line (BBF-106)",
       "markdown": "- [a\n<br>b](u)",
-      "canonical": "- [a\n\n<br>b](u)",
+      "canonical": "- [a\n\nb](u)",
       "pending": null,
       "sha256": "5c40cbe1fb64c844a3fdafee494ae5bdae752f7781c23d7baf84bbdb20615f80"
     },

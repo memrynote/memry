@@ -1191,7 +1191,7 @@ const htmlCommentCases: RoundtripCase[] = [
   {
     name: 'html break opening a list-item link text line (BBF-106)',
     markdown: '- [a\n<br>b](u)',
-    canonical: '- [a\n\n<br>b](u)'
+    canonical: '- [a\n\nb](u)'
   },
   {
     name: 'bold before a soft break inside list-item link text (BBF-106)',

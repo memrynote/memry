@@ -146,6 +146,7 @@ interface Place {
   /** A table cell or a heading: one line, so a break is written `<br>`. */
   oneLine: boolean
   cell: boolean
+  paragraph: boolean
 }
 
 /** Whether the character at `at` of `spelling` would be read as markup. */
@@ -203,14 +204,17 @@ function unclosedWikiOpeners(spelling: string): Set<number> {
 
 /**
  * Whether the newline at `at` sits where the writer has no spelling for it: at
- * the block's start or end, or in a run of three or more.
+ * the block's start or end, or in a run of three or more. A lone one opening a
+ * paragraph is left to the writer, which drops it: a `<br>` opening a
+ * paragraph line reads back as a hard break (`maskHardBreaks`).
  */
-function unwritableBreak(spelling: string, at: number): boolean {
+function unwritableBreak(spelling: string, at: number, paragraph: boolean): boolean {
   let start = at
   while (spelling[start - 1] === '\n') start--
   let end = at + 1
   while (spelling[end] === '\n') end++
-  return start === 0 || end === spelling.length || end - start >= 3
+  if (start === 0) return !paragraph || end - start > 1
+  return end === spelling.length || end - start >= 3
 }
 
 function escapeSegment(
@@ -229,9 +233,11 @@ function escapeSegment(
   for (let i = 0; i < segment.text.length; i++) {
     const at = segment.at + i
     const char = segment.text[i]
-    if (char === '\n' && (place.oneLine || (place.lineBlock && unwritableBreak(spelling, at)))) {
-      out += '<br>'
-    } else if (!keep.has(at) && (forced.has(at) || isMarkup(spelling, at, segment, place))) {
+    const tag =
+      char === '\n' &&
+      (place.oneLine || (place.lineBlock && unwritableBreak(spelling, at, place.paragraph)))
+    if (tag) out += '<br>'
+    else if (!keep.has(at) && (forced.has(at) || isMarkup(spelling, at, segment, place))) {
       out += `\\${char}`
     } else out += char
   }
@@ -245,7 +251,8 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
   const place: Place = {
     lineBlock: !cell && LINE_BLOCKS.has(blockType),
     oneLine: cell || blockType === 'heading',
-    cell
+    cell,
+    paragraph: blockType === 'paragraph'
   }
   const { spelling, segments } = spell(items)
   const forced = lineOpeners(spelling, place)
