@@ -18,6 +18,8 @@ use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
 mod crdt;
+#[cfg(feature = "vec")]
+mod embeddings;
 mod local;
 mod notes;
 mod outbox;
@@ -28,6 +30,8 @@ pub use crdt::{
     DocumentState, ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument,
     ImportFileHash, document_state,
 };
+#[cfg(feature = "vec")]
+pub use embeddings::{DerivedTable, ImportEmbeddedNote};
 pub use local::{ImportInboxJob, ImportInboxTag, ImportInboxUpload, ImportLocalEvent};
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
