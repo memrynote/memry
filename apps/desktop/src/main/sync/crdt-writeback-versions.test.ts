@@ -134,7 +134,7 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 import type { Block } from '@blocknote/core'
 import { blocksToYFragment, markdownToYFragment, yFragmentToBlocks } from './blocknote-converter'
-import { parseWithLegacyTables } from './blocknote-parse-breaks'
+import { parseWithLegacyBlocks } from './blocknote-parse-breaks'
 import { generateContentHash } from '../vault/frontmatter'
 
 const NOTE = 'note-1'
@@ -767,7 +767,7 @@ describe('HTML comments in a doc a build before #2741 seeded (BBF-29)', () => {
   })
 })
 
-describe('tables in a doc a build before lossless tables seeded', () => {
+describe('tables, quotes and callouts in a doc a build before lossless blocks seeded', () => {
   // A code span's pipe and a cell past the header: the older build's doc holds
   // neither, and the file has to keep both.
   const BODY = '| a | b |\n|---|---|\n| 1 | `p|q` | extra |\n\nLine to edit.\n'
@@ -775,7 +775,7 @@ describe('tables in a doc a build before lossless tables seeded', () => {
   it.each([undefined, 'Line, edited.'])('keeps the table bytes, edit: %s', async (to) => {
     const raw = `---\nid: x\n---\n${BODY}`
     writtenElsewhere(NOTE, raw)
-    const doc = await parseWithLegacyTables(() =>
+    const doc = await parseWithLegacyBlocks(() =>
       to === undefined ? docWith(BODY) : retyped(BODY, 'Line to edit.', to)
     )
     doc.getMap(MARKDOWN_SOURCE_MAP).set('record', { source: BODY, htmlComments: true })
@@ -785,12 +785,31 @@ describe('tables in a doc a build before lossless tables seeded', () => {
     expect(h.files.get(NOTE_FILE)).toBe(to === undefined ? raw : raw.replace('Line to edit.', to))
   })
 
+  // That build flattened a quote or callout holding a block a flat quote
+  // cannot hold: its doc holds the cells' text, and the file keeps the table.
+  it.each([
+    ['a quote opening on a table', '> | a | b |\n> |---|---|\n> | c | d |'],
+    ['a callout holding a table', '> [!note]\n> | a | b |\n> |---|---|\n> | c | d |'],
+    ['a quote holding a heading', '> a\n> # h'],
+    ['a callout body in another spelling', '> [!tip]\n> Use __bold__']
+  ])('keeps the bytes of %s', async (_shape, block) => {
+    const body = `${block}\n\nLine to edit.\n`
+    const raw = `---\nid: x\n---\n${body}`
+    writtenElsewhere(NOTE, raw)
+    const doc = await parseWithLegacyBlocks(() => retyped(body, 'Line to edit.', 'Line, edited.'))
+    doc.getMap(MARKDOWN_SOURCE_MAP).set('record', { source: body, htmlComments: true })
+
+    await pass(NOTE, doc, 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe(raw.replace('Line to edit.', 'Line, edited.'))
+  })
+
   it('reads a comment holding a piped code span in a cell as that build did', async () => {
     // Its row split on the span's pipe, so the comment was two cells of text.
-    const doc = await parseWithLegacyTables(() =>
+    const doc = await parseWithLegacyBlocks(() =>
       docWith('| a | b |\n|---|---|\n| <!-- `x|y` --> | 2 |\n')
     )
-    const cells = doc.getXmlFragment(CRDT_FRAGMENT_NAME).toString()
+    const cells = doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
     expect(cells).toContain('<tableparagraph><!-- `x</tableparagraph>')
     expect(cells).toContain('<tableparagraph>y` --></tableparagraph>')
     expect(cells).not.toContain('<htmlcomment')

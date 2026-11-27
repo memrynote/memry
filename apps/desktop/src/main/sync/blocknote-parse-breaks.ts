@@ -17,7 +17,7 @@ export async function parseMarkdownToBlocks(
 ): Promise<Block[]> {
   return parseMarkdownToBlocksRepaired<Block>(editor, markdown, {
     htmlComments: parsesHtmlComments(),
-    losslessTables: readsLosslessTables()
+    losslessTables: readsLosslessBlocks()
   })
 }
 
@@ -38,18 +38,19 @@ export function parsesHtmlComments(): boolean {
   return htmlCommentsDropped.getStore() !== true
 }
 
-const legacyTables = new AsyncLocalStorage<true>()
+const legacyBlocks = new AsyncLocalStorage<true>()
 
 /**
- * Runs `parse` with tables read as builds before lossless tables did: a row
- * split on a code span's pipe and cut to its header's width. A source those
- * builds recorded is read that way, so the cells their document never got do
- * not read as cells the user deleted.
+ * Runs `parse` with blocks read as builds before lossless blocks did: a table
+ * row split on a code span's pipe and cut to its header's width, and a quote
+ * or callout holding a table or a heading read as one flat quote. A source
+ * those builds recorded is read that way, so the cells and blocks their
+ * document never got do not read as ones the user deleted.
  */
-export function parseWithLegacyTables<T>(parse: () => Promise<T>): Promise<T> {
-  return legacyTables.run(true, parse)
+export function parseWithLegacyBlocks<T>(parse: () => Promise<T>): Promise<T> {
+  return legacyBlocks.run(true, parse)
 }
 
-export function readsLosslessTables(): boolean {
-  return legacyTables.getStore() !== true
+export function readsLosslessBlocks(): boolean {
+  return legacyBlocks.getStore() !== true
 }

@@ -162,15 +162,16 @@ const RECORD_KEY = 'record'
 /**
  * `htmlComments` is set when the document was read from `source` with HTML
  * comments kept as nodes (AF-015). A record without it was written by a build
- * before #2741, whose parse dropped every comment. `losslessTables` is set when
+ * before #2741, whose parse dropped every comment. `losslessBlocks` is set when
  * the document's tables kept a code span's pipes and the cells past their
- * header's width; a record without it was written by a build that dropped
- * them. Older builds read only the fields they know.
+ * header's width, and its quotes and callouts kept the tables, headings and
+ * other blocks inside them; a record without it was written by a build that
+ * dropped them. Older builds read only the fields they know.
  */
 export interface MarkdownSourceRecord {
   source: string
   htmlComments: boolean
-  losslessTables: boolean
+  losslessBlocks: boolean
 }
 
 interface YMapLike {
@@ -192,8 +193,8 @@ export function writeMarkdownSourceToYDoc(doc: YDocLike, source: string | null):
     return
   }
   const current = readRecord(map.get(RECORD_KEY))
-  if (current?.source === source && current.htmlComments && current.losslessTables) return
-  map.set(RECORD_KEY, { source, htmlComments: true, losslessTables: true })
+  if (current?.source === source && current.htmlComments && current.losslessBlocks) return
+  map.set(RECORD_KEY, { source, htmlComments: true, losslessBlocks: true })
 }
 
 export function readMarkdownSourceFromYDoc(doc: YDocLike): string | null {
@@ -206,9 +207,9 @@ export function readMarkdownSourceRecordFromYDoc(doc: YDocLike): MarkdownSourceR
 
 function readRecord(value: unknown): MarkdownSourceRecord | null {
   if (!isObject(value)) return null
-  const { source, htmlComments, losslessTables } = value
+  const { source, htmlComments, losslessBlocks } = value
   return typeof source === 'string'
-    ? { source, htmlComments: htmlComments === true, losslessTables: losslessTables === true }
+    ? { source, htmlComments: htmlComments === true, losslessBlocks: losslessBlocks === true }
     : null
 }
 

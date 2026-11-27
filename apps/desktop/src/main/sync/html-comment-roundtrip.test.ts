@@ -242,7 +242,7 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     // The token's word is drawn per process, so another device or process
     // would read one left in a prop as text, and write it to the vault.
     const doc = await seed(markdown, { keepSource: false })
-    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).toString()).not.toContain('MEMRYCMT')
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()).not.toContain('MEMRYCMT')
     expect(await yDocToMarkdown(doc)).not.toContain('MEMRYCMT')
   })
 

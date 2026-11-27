@@ -101,10 +101,11 @@ export interface CalloutRun {
   /** The damaged shape #1846 heals: marker without its `> `. */
   bare: boolean
   /**
-   * The body holds a list or a `> >` level. Declining it is not free: the quote
-   * fallback drops the list markers or the nesting, so a one-step
-   * normalization that settles is claimed instead (same rule as
-   * `resolveQuoteRun`).
+   * Declining the body is not free: the quote fallback turns `[!note]` into
+   * text and flattens every block in the body, a table into its cells' text,
+   * so a one-step normalization that settles is claimed instead (same rule as
+   * `resolveQuoteRun`). A legacy read grants it only to a body holding a list
+   * or a `> >` level.
    */
   reshapes: boolean
 }
@@ -126,7 +127,8 @@ export interface CalloutRun {
 export function readCalloutRun(
   lines: readonly string[],
   start: number,
-  atParagraphStart: boolean
+  atParagraphStart: boolean,
+  lossless = true
 ): CalloutRun | null {
   if (!atParagraphStart) return null
 
@@ -135,7 +137,7 @@ export function readCalloutRun(
     // A body with a blank `>` line, a list or a `> >` level is read the way a
     // structured quote is, lazy list continuations included (BBF-110), so it
     // can become the callout's child blocks (#3186).
-    const structured = readStructuredQuoteRun(lines, start + 1)
+    const structured = readStructuredQuoteRun(lines, start + 1, lossless)
     if (structured) {
       return {
         type: quoted[1],
@@ -144,7 +146,7 @@ export function readCalloutRun(
         raw: lines.slice(start, structured.end).join('\n'),
         end: structured.end,
         bare: false,
-        reshapes: structured.listed || structured.nested
+        reshapes: lossless || structured.listed || structured.nested
       }
     }
     const contentLines: string[] = []
@@ -211,8 +213,8 @@ export interface ResolvedCallout {
  * later block a child; a body that opens on another block (a list, a heading)
  * has an empty own line (#3186).
  *
- * A body with a list or a `> >` level may also claim when its canonical form
- * settles, because the quote fallback would drop the markers or the nesting.
+ * A body that does not reproduce may also claim when its canonical form
+ * settles, because the quote fallback would flatten it (`reshapes`).
  * A bare damaged run heals only into a single paragraph, as before. A
  * checkbox in the body stays a checkbox: the editor never promotes one inside
  * a callout or a quote to a task, so claiming writes no task id (#3192).

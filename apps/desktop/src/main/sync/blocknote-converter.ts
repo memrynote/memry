@@ -49,10 +49,10 @@ import {
 } from '@memry/shared/empty-lines'
 import {
   parseDroppingHtmlComments,
-  parseWithLegacyTables,
+  parseWithLegacyBlocks,
   parseMarkdownToBlocks,
   parsesHtmlComments,
-  readsLosslessTables
+  readsLosslessBlocks
 } from './blocknote-parse-breaks'
 import { createBlockNestingMarker } from '@memry/shared/block-nesting'
 import {
@@ -197,12 +197,13 @@ export async function yDocToMarkdown(
   // A record from before #2741 sits beside a document whose parse dropped
   // every comment, so the source is read the same way, and the merge takes
   // the comments from the source like any other unchanged region (BBF-29).
-  // A record from before lossless tables sits beside tables cut the old way:
-  // read the same way, a cut row is unchanged and keeps the file's bytes.
+  // A record from before lossless blocks sits beside tables cut and quotes
+  // flattened the old way: read the same way, a cut row or a flat quote is
+  // unchanged and keeps the file's bytes.
   const canonicalize = (markdown: string): Promise<string | null> => {
     const parse = (): Promise<string | null> => canonicalMarkdown(markdown, options.notePath)
-    const tables = record.losslessTables ? parse : () => parseWithLegacyTables(parse)
-    return record.htmlComments ? tables() : parseDroppingHtmlComments(tables)
+    const blocks = record.losslessBlocks ? parse : () => parseWithLegacyBlocks(parse)
+    return record.htmlComments ? blocks() : parseDroppingHtmlComments(blocks)
   }
   try {
     const restored = await restoreMarkdownSource(canonical, source, canonicalize)
@@ -466,7 +467,7 @@ export async function markdownToBlocks(
     // multi-line comment holding blank lines or a fence stays one comment
     // (AF-015).
     const masked = parsesHtmlComments()
-      ? maskHtmlComments(markdown, { losslessTables: readsLosslessTables() })
+      ? maskHtmlComments(markdown, { losslessTables: readsLosslessBlocks() })
       : markdown
     return await markdownToBlocksPreserving(editor, masked, notePath)
   } catch (err) {
@@ -962,7 +963,8 @@ async function markdownToBlocksPreserving(
   return parseNoteMarkdown<Block>(
     {
       parse: (md) => parseMarkdownToBlocks(editor, md),
-      serialize: (blocks) => serializeBlocks(editor, blocks)
+      serialize: (blocks) => serializeBlocks(editor, blocks),
+      legacyBlocks: !readsLosslessBlocks()
     },
     withEmbeds
   )

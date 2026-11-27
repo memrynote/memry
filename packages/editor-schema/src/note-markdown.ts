@@ -44,6 +44,11 @@ export interface NoteMarkdownHost<B> {
   /** Markdown to blocks through the host's editor, with BlockNote's repairs applied. */
   parse(markdown: string): Promise<B[]>
   serialize(blocks: B[]): Promise<string>
+  /**
+   * Read quotes and callouts as builds before lossless blocks did, for a
+   * source one of them recorded (`MarkdownSourceRecord.losslessBlocks`).
+   */
+  legacyBlocks?: boolean
 }
 
 type NoteBlock<B> = BlockWithChildren<B> & object
@@ -351,11 +356,11 @@ async function parseContentWithMarkers<B extends NoteBlock<B>>(
  * Claim a callout at `lines[i]`, or null to leave the bytes alone.
  *
  * The claim is proven, not pattern-matched: `resolveCalloutRun` re-serializes
- * the body and claims only when `serializeCalloutBlock` would write the run
- * back byte-for-byte. A type outside `CALLOUT_TYPE_VALUES`, a title after the marker, a
- * blank `>` line, a list in the body — all decline and stay quote blocks with
- * their bytes untouched, which is the Obsidian-vault guarantee the old
- * "never parse callouts" rule existed to protect (#1846). What that rule cost
+ * the body and claims when `serializeCalloutBlock` would write the run back
+ * byte-for-byte, or when its canonical form settles. A type outside
+ * `CALLOUT_TYPE_VALUES` or a title after the marker declines and stays a quote
+ * block with its bytes untouched, which is the Obsidian-vault guarantee the
+ * old "never parse callouts" rule existed to protect (#1846). What that rule cost
  * was every Memry callout on this path: seeding a doc from the vault file
  * demoted `> [!info]` to a quote block, the editor lost the callout UI, and
  * the marker eventually tore away from its body as plain text.
@@ -376,7 +381,7 @@ async function parseCalloutRunAt<B extends NoteBlock<B>>(
   children: B[]
   end: number
 } | null> {
-  const run = readCalloutRun(lines, i, atParagraphStart)
+  const run = readCalloutRun(lines, i, atParagraphStart, !host.legacyBlocks)
   if (!run) return null
 
   const claimed = await resolveCalloutRun(
@@ -399,11 +404,11 @@ async function parseCalloutRunAt<B extends NoteBlock<B>>(
  * Claim a structured blockquote at `lines[i]`, or null to leave the bytes on
  * BlockNote's own quote path.
  *
- * Only the two shapes BlockNote's flat quote block loses are read (a blank `>`
- * separator, a `> >` nesting level), and even those only when re-serializing
- * the parse reproduces the run byte-for-byte — see `resolveQuoteRun`. The
- * claimed run becomes a quote block that owns its later blocks as children,
- * which `serializeQuote` writes back inside the blockquote.
+ * A run that parses to more than one paragraph's worth of blocks is claimed
+ * when re-serializing the parse reproduces the run or settles on a canonical
+ * form, see `resolveQuoteRun`. The claimed run becomes a quote block that owns
+ * its later blocks as children, which `serializeQuote` writes back inside the
+ * blockquote.
  *
  * Inner blocks are parsed flat, so a quote nested two levels deep declines and
  * keeps today's behavior rather than round-tripping through a half-applied
@@ -414,7 +419,7 @@ async function parseQuoteRunAt<B extends NoteBlock<B>>(
   lines: readonly string[],
   i: number
 ): Promise<{ content: unknown; children: B[]; end: number } | null> {
-  const run = readStructuredQuoteRun(lines, i)
+  const run = readStructuredQuoteRun(lines, i, !host.legacyBlocks)
   if (!run) return null
 
   const claimed = await resolveQuoteRun(
