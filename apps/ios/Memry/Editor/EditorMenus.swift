@@ -17,24 +17,28 @@ import SwiftUI
 /// **Not the insert list.** Desktop keeps turn-into apart from the slash
 /// menu, with its own names; the insert surfaces read `BlockCatalog`.
 struct InsertableBlock: Identifiable, Sendable {
-    let id: String
+    let kind: String
     let name: String
     let symbol: String
     /// A heading is one type and three menu entries.
     var level: Int?
 
+    /// Unique per menu entry, so a `ForEach` draws each heading level's own
+    /// row (#5901).
+    var id: String { level.map { "\(kind)-\($0)" } ?? kind }
+
     static let all: [InsertableBlock] = [
-        .init(id: "paragraph", name: "Text", symbol: "text.alignleft"),
-        .init(id: "heading", name: "Heading 1", symbol: "textformat.size.larger", level: 1),
-        .init(id: "heading", name: "Heading 2", symbol: "textformat.size", level: 2),
-        .init(id: "heading", name: "Heading 3", symbol: "textformat.size.smaller", level: 3),
-        .init(id: "bulletListItem", name: "Bulleted list", symbol: "list.bullet"),
-        .init(id: "numberedListItem", name: "Numbered list", symbol: "list.number"),
-        .init(id: "checkListItem", name: "Check list", symbol: "checklist"),
-        .init(id: "toggleListItem", name: "Toggle list", symbol: "chevron.right.circle"),
-        .init(id: "quote", name: "Quote", symbol: "quote.opening"),
-        .init(id: "codeBlock", name: "Code", symbol: "curlybraces"),
-        .init(id: "callout", name: "Callout", symbol: "exclamationmark.bubble"),
+        .init(kind: "paragraph", name: "Text", symbol: "text.alignleft"),
+        .init(kind: "heading", name: "Heading 1", symbol: "textformat.size.larger", level: 1),
+        .init(kind: "heading", name: "Heading 2", symbol: "textformat.size", level: 2),
+        .init(kind: "heading", name: "Heading 3", symbol: "textformat.size.smaller", level: 3),
+        .init(kind: "bulletListItem", name: "Bulleted list", symbol: "list.bullet"),
+        .init(kind: "numberedListItem", name: "Numbered list", symbol: "list.number"),
+        .init(kind: "checkListItem", name: "Check list", symbol: "checklist"),
+        .init(kind: "toggleListItem", name: "Toggle list", symbol: "chevron.right.circle"),
+        .init(kind: "quote", name: "Quote", symbol: "quote.opening"),
+        .init(kind: "codeBlock", name: "Code", symbol: "curlybraces"),
+        .init(kind: "callout", name: "Callout", symbol: "exclamationmark.bubble"),
     ]
 
     /// The keyboard toolbar's short name for the caret's block: `H1`, `Text`.

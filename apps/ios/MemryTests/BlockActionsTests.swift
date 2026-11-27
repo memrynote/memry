@@ -142,10 +142,17 @@ struct BlockActionStepTests {
         let target = BlockActionTarget(
             block: block("h", kind: "heading", props: ["level": "2"]), siblings: BlockSiblings()
         )
-        let h2 = try #require(InsertableBlock.all.first { $0.id == "heading" && $0.level == 2 })
-        let h1 = try #require(InsertableBlock.all.first { $0.id == "heading" && $0.level == 1 })
+        let h2 = try #require(InsertableBlock.all.first { $0.kind == "heading" && $0.level == 2 })
+        let h1 = try #require(InsertableBlock.all.first { $0.kind == "heading" && $0.level == 1 })
         #expect(target.isCurrent(h2))
         #expect(!target.isCurrent(h1))
+    }
+
+    /// #5901: the menu's `ForEach` keys rows by `id`, and the three heading
+    /// levels sharing one drew "Heading 1" three times.
+    @Test func every_turn_into_choice_has_its_own_id() {
+        let ids = InsertableBlock.all.map(\.id)
+        #expect(Set(ids).count == ids.count, "\(ids)")
     }
 }
 
@@ -267,7 +274,7 @@ struct BlockActionRunnerTests {
     }
 
     @Test func turning_into_a_heading_writes_its_level() async throws {
-        let h3 = try #require(InsertableBlock.all.first { $0.id == "heading" && $0.level == 3 })
+        let h3 = try #require(InsertableBlock.all.first { $0.kind == "heading" && $0.level == 3 })
         let target = BlockActionTarget(block: block("b", kind: "callout"), siblings: BlockSiblings())
         let (editor, _) = await run(target) { $0.turnInto(h3) }
         #expect(editor.all == [
@@ -294,7 +301,7 @@ struct BlockActionRunnerTests {
     }
 
     @Test func turn_into_is_undone_from_the_block_as_it_was_and_redone_as_it_became() async throws {
-        let h2 = try #require(InsertableBlock.all.first { $0.id == "heading" && $0.level == 2 })
+        let h2 = try #require(InsertableBlock.all.first { $0.kind == "heading" && $0.level == 2 })
         let target = BlockActionTarget(block: block("b"), siblings: BlockSiblings())
         let (editor, session) = await run(target, snapshots: true) { $0.turnInto(h2) }
         #expect(editor.all == [
@@ -308,7 +315,7 @@ struct BlockActionRunnerTests {
 
     @Test func turn_into_without_a_snapshot_read_falls_back_to_the_type_change() async throws {
         let target = BlockActionTarget(block: block("b", kind: "quote"), siblings: BlockSiblings())
-        let paragraph = try #require(InsertableBlock.all.first { $0.id == "paragraph" })
+        let paragraph = try #require(InsertableBlock.all.first { $0.kind == "paragraph" })
         let (_, session) = await run(target) { $0.turnInto(paragraph) }
         #expect(session.history.popUndo()?.backward == .turnInto(blockId: "b", kind: "quote"))
     }
