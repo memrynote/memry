@@ -673,6 +673,15 @@ const nestedUnderListCases: RoundtripCase[] = [
   {
     name: 'bookmark marker nested under a list item',
     markdown: nestedUnderBullet('![bookmark](https://example.com/a)')
+  },
+  // The blocks after a claimed one went to the top level.
+  {
+    name: 'math then a paragraph nested under a list item',
+    markdown: nestedUnderBullet('$$\nx\n$$\n\npara')
+  },
+  {
+    name: 'callout then an item nested under a list item',
+    markdown: nestedUnderBullet('> [!info]\n> c\n\n- sub')
   }
 ]
 

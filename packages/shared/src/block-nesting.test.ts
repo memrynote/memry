@@ -73,4 +73,29 @@ describe('block nesting helpers', () => {
       { id: 'sibling', children: [] }
     ])
   })
+
+  it('keeps the level for the text after a block claimed elsewhere (#2365)', async () => {
+    type B = { id: string; children?: B[] }
+    const parse = async (md: string): Promise<B[]> => [{ id: md, children: [] }]
+    const before = await parseMarkdownWithNestingMarkers(
+      ['- parent', '', createBlockNestingMarker(1)].join('\n'),
+      parse
+    )
+    const claimedElsewhere: B = { id: 'math', children: [] }
+    const after = await parseMarkdownWithNestingMarkers(
+      ['para', '', createBlockNestingMarker(0), '', 'sibling'].join('\n'),
+      parse
+    )
+
+    expect(foldBlockNestingMarkers([...before, claimedElsewhere, ...after])).toEqual([
+      {
+        id: '- parent',
+        children: [
+          { id: 'math', children: [] },
+          { id: 'para', children: [] }
+        ]
+      },
+      { id: 'sibling', children: [] }
+    ])
+  })
 })

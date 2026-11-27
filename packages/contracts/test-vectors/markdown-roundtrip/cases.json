@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 374,
+    "exportedCaseCount": 376,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 384,
+    "caseCount": 386,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1181,6 +1181,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "57cc158d8adac3e7bb8f67fc85f2ec3d48901bb6c3fcccb3502cd974082d4300"
+    },
+    {
+      "name": "math then a paragraph nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\npara\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "974a0cb4c33024f0788f2a331a2f1298e4bd7ff4ed31a7735b3ac9a5fe725d70"
+    },
+    {
+      "name": "callout then an item nested under a list item",
+      "markdown": "- parent\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n- sub\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4b059df56aadaed3e4755d1ea3c1245b86b6732ec0fdeefdce784907b4a12b1e"
     },
     {
       "name": "mermaid fence",
