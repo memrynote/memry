@@ -213,6 +213,31 @@ final class EditorKeyboardUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// In portrait the keyboard, or a panel that replaces it, leaves the
+    /// window less height than width. The first Turn into of a launch opened
+    /// the shell's sidebar over the note and the panel closed.
+    func testTurnIntoInPortraitOpensItsPanelWithTheSidebarClosed() throws {
+        try openNotes()
+        XCUIDevice.shared.orientation = .portrait
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 30), "Notes did not come back on launch")
+        let title = "[agent] \(run) turn into"
+        makeNote(title)
+        app.typeText("Words")
+
+        app.buttons["Turn into"].tap()
+        XCTAssertTrue(app.buttons["Bulleted list"].waitForExistence(timeout: 5), "Turn into did not open its panel")
+        Thread.sleep(forTimeInterval: 1)
+        attach("turn-into-portrait")
+        XCTAssertFalse(sidebarRow("Settings").exists, "the sidebar opened over the note")
+        XCTAssertTrue(app.buttons["Bulleted list"].exists, "the panel closed")
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), block(0)), "the block lost the caret")
+
+        app.buttons["Turn into"].tap()
+        deleteNotes([title])
+    }
+
     // MARK: Helpers
 
     private func block(_ index: Int) -> XCUIElement {
