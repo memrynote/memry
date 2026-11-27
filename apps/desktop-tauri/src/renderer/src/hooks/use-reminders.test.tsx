@@ -47,7 +47,8 @@ const events = vi.hoisted(() => {
     reminderUpdatedEvent: event('updated'),
     reminderDeletedEvent: event('deleted'),
     reminderDismissedEvent: event('dismissed'),
-    reminderSnoozedEvent: event('snoozed')
+    reminderSnoozedEvent: event('snoozed'),
+    syncItemSyncedEvent: event('synced')
   }
 })
 vi.mock('../../../generated/bindings', () => ({ commands, events }))
@@ -230,6 +231,54 @@ describe('useReminders', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50))
       expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(1)
+    })
+
+    // Another device's change reaches this one as a pulled item that names only the id
+    // (Electron's sync handler sends `{ id }`), so every reminder view refetches.
+    it('refetches on a pulled reminder change (another device dismissed it)', async () => {
+      await mountForTarget()
+
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'rem-remote', type: 'reminder', itemOperation: 'update' }]
+      })
+
+      await waitFor(() => {
+        expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('ignores a pushed reminder and a pulled item of another type', async () => {
+      await mountForTarget()
+
+      emit('synced', {
+        operation: 'push',
+        items: [{ itemId: 'rem-1', type: 'reminder', itemOperation: 'update' }]
+      })
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'task-1', type: 'task', itemOperation: 'update' }]
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(1)
+    })
+
+    it('refetches a reminder list on a pulled reminder change', async () => {
+      commands.reminderList.mockResolvedValue({ reminders: [], total: 0, hasMore: false })
+      const { result } = renderHook(() => useReminders(), { wrapper })
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'rem-remote', type: 'reminder', itemOperation: 'update' }]
+      })
+
+      await waitFor(() => {
+        expect(commands.reminderList).toHaveBeenCalledTimes(2)
+      })
     })
 
     it('refetches on a dismissed event for this target', async () => {

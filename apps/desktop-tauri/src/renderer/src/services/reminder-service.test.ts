@@ -4,7 +4,9 @@ import {
   createJournalReminder,
   onReminderClicked,
   onReminderDeleted,
-  onReminderDue
+  onReminderDue,
+  onReminderSynced,
+  onRemindersFired
 } from './reminder-service'
 
 const commands = vi.hoisted(() => ({
@@ -37,7 +39,8 @@ const events = vi.hoisted(() => {
     reminderDismissedEvent: event('dismissed'),
     reminderSnoozedEvent: event('snoozed'),
     reminderDueEvent: event('due'),
-    reminderClickedEvent: event('clicked')
+    reminderClickedEvent: event('clicked'),
+    syncItemSyncedEvent: event('synced')
   }
 })
 
@@ -141,20 +144,48 @@ describe('reminder-service', () => {
     })
   })
 
-  it('answers a due event with the fired reminders read back, and their count', async () => {
+  it('answers a due event with the fired reminders read back, and the count it fired', async () => {
     commands.reminderGet.mockImplementation((id: string) =>
       Promise.resolve(id === 'rem_1' ? withTarget : null)
     )
     const callback = vi.fn()
     onReminderDue(callback)
 
-    handlers.get('due')?.({ payload: { reminders: [hint, { ...hint, id: 'rem_gone' }] } })
+    handlers.get('due')?.({ payload: { reminders: [hint, { ...hint, id: 'rem_gone' }], count: 2 } })
     await settle()
 
     expect(callback).toHaveBeenCalledWith({
       reminders: [{ ...withTarget, highlightExists: undefined }],
-      count: 1
+      count: 2
     })
+  })
+
+  it('passes fired reminders as the due event names them, with no read-back', () => {
+    const callback = vi.fn()
+    onRemindersFired(callback)
+
+    handlers.get('due')?.({ payload: { reminders: [hint], count: 1 } })
+
+    expect(callback).toHaveBeenCalledWith([hint])
+    expect(commands.reminderGet).not.toHaveBeenCalled()
+  })
+
+  it('names a reminder a pull applied, and ignores pushes and other types', () => {
+    const callback = vi.fn()
+    onReminderSynced(callback)
+    const synced = (
+      operation: string,
+      items: { itemId: string; type: string; itemOperation: string }[]
+    ): void => handlers.get('synced')?.({ payload: { operation, items } })
+
+    synced('push', [{ itemId: 'rem_1', type: 'reminder', itemOperation: 'update' }])
+    synced('pull', [
+      { itemId: 'task_1', type: 'task', itemOperation: 'update' },
+      { itemId: 'rem_1', type: 'reminder', itemOperation: 'update' }
+    ])
+
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback).toHaveBeenCalledWith({ id: 'rem_1' })
   })
 
   it('answers a notification click with the reminder, and nothing once unsubscribed', async () => {

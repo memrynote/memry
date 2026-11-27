@@ -57,7 +57,7 @@ pub fn tag_definitions(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError
             payload.insert("color".into(), column(row, "color", TABLE, rowid)?);
             payload.insert(
                 "colorAuthored".into(),
-                color_authored(column(row, "color_authored", TABLE, rowid)?),
+                drizzle_bool(column(row, "color_authored", TABLE, rowid)?),
             );
             payload.insert("icon".into(), column(row, "icon", TABLE, rowid)?);
             payload.insert(
@@ -101,7 +101,7 @@ fn insert_clock(payload: &mut Map<String, Value>, clock: Value) {
 }
 
 /// drizzle's boolean integer: `Number(value) === 1`; SQL `NULL` stays `null`.
-fn color_authored(value: Value) -> Value {
+pub(super) fn drizzle_bool(value: Value) -> Value {
     Value::Bool(match value {
         Value::Null => return Value::Null,
         Value::Number(n) => n.as_f64() == Some(1.0),

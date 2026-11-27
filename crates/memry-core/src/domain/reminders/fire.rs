@@ -35,7 +35,7 @@ use crate::domain::inbox;
 use crate::domain::notes::{insert_local, iso, object};
 use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
-use crate::sync::outbox;
+use crate::sync::{calendar_push, outbox};
 
 use super::queries::{due_unless, failed, fire_instant};
 use super::{DueReminder, STATUS_PENDING, STATUS_SNOOZED};
@@ -80,6 +80,10 @@ pub fn inbox_id(reminder_id: &str, fired_for_ms: i64) -> String {
 /// An item that already exists, live or deleted (a peer's create arrived first,
 /// or this device filed it before), is left alone: a firing never overwrites an
 /// edit or brings back a delete.
+///
+/// The fire also queues the reminder's calendar push (desktop
+/// `syncReminderCalendarState`): a fired reminder is off the calendar, so a
+/// provider event written for it is taken down.
 pub fn fire(
     conn: &Connection,
     due: &DueReminder,
@@ -107,6 +111,7 @@ pub fn fire(
             now_ms,
         )?;
     }
+    calendar_push::queue_source(&tx, "reminder", &due.reminder.id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(Some(Fired {
         reminder_id: due.reminder.id.clone(),

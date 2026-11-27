@@ -2,6 +2,7 @@
 //! clock. Electron is the reference: `ipc/reminder-handlers.ts` over `lib/reminders.ts`. The
 //! inputs are built from JSON, as the renderer sends them.
 
+use memry_core::api::errors::{AuthError, SecureStoreError};
 use memry_core::storage::repositories::instants;
 use memry_core::storage::{Db, open_data};
 use memry_desktop::tasks::reminder_contract::{
@@ -27,7 +28,7 @@ fn open(label: &str) -> (Db, ReminderService) {
         .expect("the scratch directory")
         .keep();
     let db = open_data(&dir.join("data.db")).expect("open data.db");
-    let service = ReminderService::new(db.clone(), DEVICE.to_owned());
+    let service = ReminderService::new(db.clone(), || Ok(DEVICE.to_owned()));
     (db, service)
 }
 
@@ -353,4 +354,26 @@ fn a_dismiss_racing_a_tick_fires_at_most_once_and_stays_dismissed() {
             "round {round}"
         );
     }
+}
+
+#[test]
+fn reads_answer_while_the_device_identity_is_locked_and_writes_say_why_they_cannot() {
+    let (db, service) = open("identity-locked");
+    let created = journal_at(&service, "2026-03-20T09:00:00.000Z");
+    let locked = ReminderService::new(db, || Err(AuthError::from(SecureStoreError::Locked)));
+
+    let got = locked.get(&created.id).expect("get").expect("the reminder");
+    assert_eq!(got.reminder.id, created.id);
+    assert_eq!(locked.count_pending().expect("count"), 1);
+    let listed = locked
+        .list(&input::<ReminderListInput>(json!({})))
+        .expect("list");
+    assert_eq!(listed.total, 1);
+
+    let dismissed = locked.dismiss(&created.id, ms(NOW));
+    assert!(
+        matches!(dismissed, Err(ReminderError::Identity(_))),
+        "{dismissed:?}"
+    );
+    assert_eq!(locked.count_pending().expect("count"), 1, "nothing written");
 }

@@ -1,5 +1,5 @@
 //! The graph commands (`graph_get_graph_data` and `graph_get_local_graph` are binary commands,
-//! in `binary.rs`), appended to the task domain's lists by `registry/reminders.rs`:
+//! in `binary.rs`), appended to the task domain's lists by `registry/stickies.rs`:
 //! `with_graph_commands!(collect_commands![...])` hands `collect_commands!` the list with these
 //! appended. Kept out of `registry.rs` for its line ceiling.
 
