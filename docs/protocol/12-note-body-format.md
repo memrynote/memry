@@ -154,6 +154,21 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   `packages/editor-schema/src/parse-markdown.ts:301`, `:400`;
   `crates/memry-core/src/crdt/markdown_seed/emphasis_edges.rs:51`, `:82`, `:142`, called from
   `crates/memry-core/src/crdt/markdown_seed/blocks.rs:86`).
+- **A quoted callout, a quote and a `$$` math block are claimed where the parser opens a
+  block, not only after a blank line.** A `>` line opens one unless the line above is a `>`
+  line; any other line opens one after a blank line, a heading, a fence, a thematic break, a
+  list item (and its indented lines) or a table, counted from the first line the same parse
+  reads, which is every line after a claimed block. So `# H\n> [!tip]\n> d` is a heading and a
+  callout, and `one\n> [!tip]\n> d\ntwo` a paragraph, a callout and a paragraph. A bare
+  `[!info]` still wants a blank line above. A `$$` block also ends at a line where a paragraph
+  ends (a heading, fence, quote, rule other than dashes, list item, table row or `<!--`), not
+  only at a blank line, and the space after a `>` is optional: `>more` is a quote line
+  (`packages/editor-schema/src/blocks/block-starts.ts:29`, `:53`,
+  `packages/editor-schema/src/note-markdown.ts:291`, `packages/editor-schema/src/blocks/markdown.ts:557`,
+  `packages/editor-schema/src/blocks/quote.ts:98`;
+  `crates/memry-core/src/crdt/markdown_seed/block_starts.rs:36`, `:69`,
+  `crates/memry-core/src/crdt/markdown_seed/markers.rs:41`,
+  `crates/memry-core/src/crdt/markdown_seed/claims.rs:271`, `:379`).
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`

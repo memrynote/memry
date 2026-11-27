@@ -52,6 +52,7 @@
 //! ([`table`]'s `try_parse_table`). Desktop builds the same table from the
 //! same row.
 
+mod block_starts;
 mod blocks;
 mod claims;
 mod closers;

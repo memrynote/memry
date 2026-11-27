@@ -5,6 +5,7 @@
 
 use crate::domain::journal_rules::js_trim;
 
+use super::block_starts::opens_block;
 use super::blocks::parse_chunk;
 use super::claims::{Claim, callout_at, math_at, quote_at};
 use super::comment_nodes::{has_token, source_lines};
@@ -33,7 +34,13 @@ pub(super) fn parse_content(
         let inside_fence = fence.consume(line);
         if !inside_fence {
             let at_paragraph_start = index == 0 || js_trim(lines[index - 1]).is_empty();
-            let claimed = claim_at(&lines, index, at_paragraph_start);
+            // A claim also stands where BlockNote opens a block of its own
+            // (`block_starts`): the canonical form's blank line makes a
+            // paragraph start of it on the next seed. A bare `[!info]` still
+            // wants one: under text it is that text.
+            let at_block_start =
+                at_paragraph_start || opens_block(&lines, index, index - buffer.len());
+            let claimed = claim_at(&lines, index, at_paragraph_start, at_block_start);
             if !matches!(claimed, Ok(None)) {
                 flush(&mut buffer, out, fallbacks);
             }
@@ -73,11 +80,13 @@ pub(super) fn parse_content(
 
 /// What desktop claims at `lines[index]`, in its order: a callout, a math
 /// block, a structured quote, then a one-line marker. An unsupported claim
-/// carries the index its run ends at; its lines stay literal.
+/// carries the index its run ends at; its lines stay literal. A quoted callout,
+/// a quote and a math block want a block start; a bare callout a paragraph's.
 fn claim_at(
     lines: &[&str],
     index: usize,
     at_paragraph_start: bool,
+    at_block_start: bool,
 ) -> Result<Option<Claim>, (Unsupported, usize)> {
     let run_end = || {
         let mut end = index + 1;
@@ -86,17 +95,27 @@ fn claim_at(
         }
         end
     };
-    if let Some(claim) = callout_at(lines, index, at_paragraph_start).map_err(|e| (e, run_end()))? {
+    if let Some(claim) = callout_at(
+        lines,
+        index,
+        if lines[index].starts_with('>') {
+            at_block_start
+        } else {
+            at_paragraph_start
+        },
+    )
+    .map_err(|e| (e, run_end()))?
+    {
         return Ok(Some(claim));
     }
-    if let Some(claim) = math_at(lines, index, at_paragraph_start) {
+    if let Some(claim) = math_at(lines, index, at_block_start) {
         // Desktop keeps the masked word in the formula, a random one.
         if matches!(&claim.0.kind, SeedKind::Math { latex } if has_token(latex)) {
             return Err((Unsupported("comment in a math block"), claim.1));
         }
         return Ok(Some(claim));
     }
-    if at_paragraph_start && let Some(claim) = quote_at(lines, index).map_err(|e| (e, run_end()))? {
+    if at_block_start && let Some(claim) = quote_at(lines, index).map_err(|e| (e, run_end()))? {
         return Ok(Some(claim));
     }
     match marker_line(lines[index]) {

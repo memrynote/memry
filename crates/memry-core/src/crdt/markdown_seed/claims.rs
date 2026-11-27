@@ -14,6 +14,7 @@
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::block_starts::ends_paragraph_before;
 use super::blocks::parse_chunk;
 use super::comment_nodes::has_token;
 use super::roundtrip::serialize;
@@ -112,14 +113,7 @@ fn read_callout<'a>(
                 reshapes: true,
             }));
         }
-        // No `>` line follows: a marker alone, or one before a `>text` line,
-        // which refuses the run.
-        if lines
-            .get(start + 1)
-            .is_some_and(|line| line.starts_with('>'))
-        {
-            return Ok(None);
-        }
+        // No `>` line follows: a marker alone.
         return Ok(Some(CalloutRun {
             name,
             fold,
@@ -265,17 +259,16 @@ fn callout_settles(canonical: &str) -> Result<bool, Unsupported> {
     Ok(serialized_body(&parsed, &run.content)? == run.content)
 }
 
-/// `readMathRun`: `$$`, the formula, `$$`, owning its whole paragraph and in
-/// the exact bytes `serializeMathBlock` writes.
+/// `readMathRun`: `$$`, the formula, `$$`, owning its whole paragraph (the
+/// line after it ends a paragraph: blank, a heading, a fence, a quote, a rule,
+/// a list item, a table row or a comment) and in the exact bytes
+/// `serializeMathBlock` writes.
 pub(super) fn math_at(lines: &[&str], start: usize, at_paragraph_start: bool) -> Option<Claim> {
     if !at_paragraph_start || lines[start] != "$$" {
         return None;
     }
     let close = start + 1 + lines[start + 1..].iter().position(|line| *line == "$$")?;
-    if lines
-        .get(close + 1)
-        .is_some_and(|line| !js_trim(line).is_empty())
-    {
+    if !ends_paragraph_before(lines.get(close + 1).copied()) {
         return None;
     }
     let body = &lines[start + 1..close];
@@ -382,7 +375,8 @@ fn structured_quote_run(lines: &[&str], start: usize) -> Option<QuoteRun> {
         if *line == ">" {
             inner.push(String::new());
         } else {
-            let stripped = line.strip_prefix("> ")?;
+            // The marker's space is optional: `>b` is a quote line too.
+            let stripped = line.strip_prefix("> ").unwrap_or(&line[1..]);
             inner.push(stripped.to_owned());
             reshapes |= stripped.starts_with('>') || looks_like_list_item(stripped);
         }
