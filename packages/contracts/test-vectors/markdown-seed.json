@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 85
+    "caseCount": 87
   },
   "cases": [
     {
@@ -521,6 +521,18 @@
       "pins": "the second row's cell keeps its trailing backslash",
       "markdown": "| a |\n|---|\n| b \\\n| c |",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b \\\\\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c\""
+    },
+    {
+      "name": "empty heading: only a flush-left hash is empty",
+      "pins": "an empty heading is flush left; an indented hash is the text of a paragraph",
+      "markdown": " #\n\n  ##\n\n#\n\n##\t",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"##\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "empty heading: a hash inside a paragraph",
+      "pins": "a hash line under paragraph text stays that text, with no placeholder in it",
+      "markdown": "a  \n #\n\nb\\\n#",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"#\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\""
     }
   ]
 }

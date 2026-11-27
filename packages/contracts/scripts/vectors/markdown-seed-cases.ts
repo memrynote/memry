@@ -452,5 +452,15 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'table: a body row ending in a backslash',
       markdown: '| a |\n|---|\n| b \\\n| c |',
       pins: "the second row's cell keeps its trailing backslash"
+    },
+    {
+      name: 'empty heading: only a flush-left hash is empty',
+      markdown: ' #\n\n  ##\n\n#\n\n##\t',
+      pins: 'an empty heading is flush left; an indented hash is the text of a paragraph'
+    },
+    {
+      name: 'empty heading: a hash inside a paragraph',
+      markdown: 'a  \n #\n\nb\\\n#',
+      pins: 'a hash line under paragraph text stays that text, with no placeholder in it'
     }
   ]
