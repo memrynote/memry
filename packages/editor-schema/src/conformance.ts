@@ -1130,6 +1130,13 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: 'a  \nb  \nc'
   },
   { name: 'html break inside bold (BBF-85)', markdown: '**a<br>b**', canonical: '**a  \nb**' },
+  // A break closing a run at a paragraph's end was written inside the run's
+  // delimiters, which the writer trims, or after them, as a blank line.
+  { name: 'bold run then a break ending a paragraph', markdown: '**a**<br>' },
+  { name: 'bold run then a break between paragraphs', markdown: 'x\n\n**a**<br>\n\ny' },
+  { name: 'bold run ending in two breaks', markdown: '**a<br>**', canonical: '**a**<br><br>' },
+  { name: 'italic run ending in a soft break', markdown: '*a\n*', canonical: '*a*<br>' },
+  { name: 'strike run ending in a soft break', markdown: '~~a\n~~', canonical: '~~a~~<br>' },
   {
     // In a quote the tag keeps the soft break it always parsed to.
     name: 'html break inside a quote stays soft (BBF-85)',

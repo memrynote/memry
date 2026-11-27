@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 369,
+    "exportedCaseCount": 374,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 379,
+    "caseCount": 384,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1769,6 +1769,41 @@
       "canonical": "**a  \nb**",
       "pending": null,
       "sha256": "4e8fea3619e676c88a01ca6d5227c772ac6f02807400bab330c243fa894c387c"
+    },
+    {
+      "name": "bold run then a break ending a paragraph",
+      "markdown": "**a**<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9277c32b2c26c502340a13ac765d7b798c9687508d4ed683d0b7cf61c8796b40"
+    },
+    {
+      "name": "bold run then a break between paragraphs",
+      "markdown": "x\n\n**a**<br>\n\ny",
+      "canonical": null,
+      "pending": null,
+      "sha256": "57ac508b292c61b61405d8d9ac1314929b1cf28057a2452940cac83024135c44"
+    },
+    {
+      "name": "bold run ending in two breaks",
+      "markdown": "**a<br>**",
+      "canonical": "**a**<br><br>",
+      "pending": null,
+      "sha256": "c6a4e7f4bee12361c47aa4be63404b78e6cecc6eb3e887f7c203b3e861a98687"
+    },
+    {
+      "name": "italic run ending in a soft break",
+      "markdown": "*a\n*",
+      "canonical": "*a*<br>",
+      "pending": null,
+      "sha256": "556ae53c7e0c4dcf6cfd4df1d7c9e7ebc27190e472161be9bbb489df34484a6f"
+    },
+    {
+      "name": "strike run ending in a soft break",
+      "markdown": "~~a\n~~",
+      "canonical": "~~a~~<br>",
+      "pending": null,
+      "sha256": "1c633a0b69abcfbb4d27ba52586219474893f31b4e7e4b14ea59e1073fb97bce"
     },
     {
       "name": "html break inside a quote stays soft (BBF-85)",
