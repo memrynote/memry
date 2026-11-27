@@ -51,6 +51,7 @@ mod file_text;
 mod fold;
 #[cfg(feature = "markdown")]
 mod folder_view;
+mod graph;
 #[cfg(feature = "vec")]
 mod grouped;
 #[cfg(feature = "vec")]

@@ -87,6 +87,25 @@ pub fn for_entity(
     )
 }
 
+/// Edges on a live canvas with a note, task or project card at either end whose id is in
+/// `ids`, a JSON array (`getCanvasEdgesTouching` with the graph's card types). The type is
+/// part of the filter so both lookups use the `(type, id)` indexes.
+pub fn touching(
+    data: &Connection,
+    index: &Connection,
+    ids: &str,
+) -> Result<Vec<CanvasEdge>, StorageError> {
+    edges_where(
+        data,
+        index,
+        "WHERE (source_type IN ('note', 'task', 'project') \
+           AND source_id IN (SELECT value FROM json_each(?1))) \
+         OR (target_type IN ('note', 'task', 'project') \
+           AND target_id IN (SELECT value FROM json_each(?1)))",
+        params![ids],
+    )
+}
+
 /// How many entities each canvas holds, from the refs rather than the scenes
 /// (`listCanvasesWithCounts`). A canvas with none is absent.
 pub fn item_counts(index: &Connection) -> Result<HashMap<String, usize>, StorageError> {

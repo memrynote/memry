@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 
 #[path = "electron_vault_import/calendar_push.rs"]
 mod calendar_push;
+#[path = "electron_vault_import/derived.rs"]
+mod derived;
 #[path = "electron_vault_import/desktop_records.rs"]
 mod desktop_records;
 #[path = "device_key/mod.rs"]

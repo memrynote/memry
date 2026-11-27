@@ -18,6 +18,8 @@ use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
 mod crdt;
+#[cfg(feature = "vec")]
+mod embeddings;
 mod local;
 // Desktop's read-only locks (`domain::vault_locks`) build with `markdown` only.
 #[cfg(feature = "markdown")]
@@ -31,6 +33,8 @@ pub use crdt::{
     DocumentState, ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument,
     ImportFileHash, document_state,
 };
+#[cfg(feature = "vec")]
+pub use embeddings::{DerivedTable, ImportEmbeddedNote};
 pub use local::{
     ImportInboxJob, ImportInboxTag, ImportInboxUpload, ImportLocalEvent, ImportLocalSetting,
 };

@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GraphLayout } from '@memry/contracts/graph-api'
 import { graphLayoutKey, useGraphLayout, useGraphLayoutActions } from './use-graph-layout'
 
-const api = {
+const api = vi.hoisted(() => ({
   getLayout: vi.fn(),
   saveLayout: vi.fn(),
   clearLayout: vi.fn()
-}
+}))
+
+vi.mock('@/services/graph-service', () => ({ graphService: api }))
 
 const saved: GraphLayout = { version: 1, nodes: { a: { x: 1, y: 2, pinned: true } } }
 
@@ -23,7 +25,6 @@ function setup(): { client: QueryClient; wrapper: (props: { children: ReactNode 
 
 beforeEach(() => {
   vi.clearAllMocks()
-  window.api = { graph: api } as unknown as typeof window.api
 })
 
 describe('useGraphLayout', () => {
