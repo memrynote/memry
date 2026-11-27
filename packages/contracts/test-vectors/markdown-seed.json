@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 87
+    "caseCount": 89
   },
   "cases": [
     {
@@ -533,6 +533,18 @@
       "pins": "a hash line under paragraph text stays that text, with no placeholder in it",
       "markdown": "a  \n #\n\nb\\\n#",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"#\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\""
+    },
+    {
+      "name": "emphasis: a code span and edge spaces",
+      "pins": "the spaces beside the code spans leave the bold: code a, a space, bold x, a space, code c",
+      "markdown": "**`a` x `c`**",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" code={}\n3 text \" \"\n3 text \"x\" bold={}\n3 text \" \"\n3 text \"c\" code={}"
+    },
+    {
+      "name": "emphasis: edge space beside a lifted image",
+      "pins": "the bold ends at its last word; the space it held is plain text before the image",
+      "markdown": "**see ![x](u)** now",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see\" bold={}\n3 text \"  now\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"x\" showPreview=true textAlignment=\"left\" url=\"u\""
     }
   ]
 }

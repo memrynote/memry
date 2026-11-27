@@ -462,5 +462,15 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'empty heading: a hash inside a paragraph',
       markdown: 'a  \n #\n\nb\\\n#',
       pins: 'a hash line under paragraph text stays that text, with no placeholder in it'
+    },
+    {
+      name: 'emphasis: a code span and edge spaces',
+      markdown: '**`a` x `c`**',
+      pins: 'the spaces beside the code spans leave the bold: code a, a space, bold x, a space, code c'
+    },
+    {
+      name: 'emphasis: edge space beside a lifted image',
+      markdown: '**see ![x](u)** now',
+      pins: 'the bold ends at its last word; the space it held is plain text before the image'
     }
   ]
