@@ -338,7 +338,7 @@ pub(super) fn import_documents(
             versions.extend(version);
         }
     }
-    docs.extend(super::sync_state::fallback_documents(
+    docs.extend(super::journal_day_merges::fallback_documents(
         source,
         &input.docs,
         input.electron_device_id.as_deref(),

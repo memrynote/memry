@@ -17,15 +17,18 @@ use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use memry_core::storage::import::{DATA_FILE, document_state};
+use memry_core::sync::apply::apply_pulled_delete;
 use memry_core::sync::body_debt;
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
-use memry_core::sync::journal_day_merge::{self, OwedMerge};
+use memry_core::sync::clock::VectorClock;
+use memry_core::sync::delete_keep::VaultFiles;
+use memry_core::sync::journal_day_merge::{self, DrainReport, OwedMerge};
 use rusqlite::Connection;
 use rusqlite::types::Value;
 use serde_json::json;
 
 use super::queue::text;
-use super::{Vault, electron_db, import};
+use super::{NOW_MS, Vault, electron_db, import};
 
 fn seed_key(vault: &Vault, key: &str, value: &str, updated_at_s: i64) {
     electron_db::seed(
@@ -278,6 +281,103 @@ fn the_first_drain_folds_this_devices_text_of_a_deleted_foreign_day() {
         )
         .unwrap();
     assert_eq!(days, 1);
+}
+
+/// A peer's tombstone of `foreign` under `clock`, applied as a pulled page applies it, then
+/// one drain with no server reachable.
+fn tombstone_then_drain(vault: &Vault, foreign: &str, clock: VectorClock) -> DrainReport {
+    let db = memry_core::storage::open_data(&vault.core().join(DATA_FILE)).unwrap();
+    let files = VaultFiles {
+        root: vault.root.clone(),
+        own_writes: None,
+    };
+    let id = foreign.to_owned();
+    db.call_blocking(move |conn| {
+        apply_pulled_delete(conn, "journal", &id, NOW_MS, &clock, NOW_MS, "dev-B", files)
+    })
+    .unwrap();
+    let http = HttpClient::new(
+        Arc::new(Offline) as Arc<dyn Transport>,
+        "https://sync.example",
+        ClientIdentity::new("desktop", "1.0.0").unwrap(),
+    );
+    let bodies = BodyPull::new(
+        Arc::new(http),
+        db.clone(),
+        Declaration::desktop(),
+        Arc::new(NoBodies),
+    );
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(journal_day_merge::drain(&db, &bodies, "device-tauri"))
+        .unwrap()
+}
+
+fn live_days(vault: &Vault, date: &str) -> i64 {
+    core_conn(vault)
+        .query_row(
+            "SELECT count(*) FROM journal_entries WHERE date = ?1 AND deleted_at IS NULL",
+            [date],
+            |row| row.get(0),
+        )
+        .unwrap()
+}
+
+/// VERIFY-5166B 1: the displaced holder's text lives only in its local doc. A peer that merged
+/// it tombstones it before this device drains; Electron still folds its kept text into the day
+/// (`journal-day-merge.ts:170-188`), so the tombstone holds the doc for the drain.
+#[test]
+fn a_tombstone_before_the_drain_keeps_this_devices_day_text() {
+    let vault = Vault::new();
+    let (key, value) = owed_day(
+        "f-live",
+        json!({"foreignId": "f-live", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "fallbackMarkdown": "My unpushed day"}),
+    );
+    seed_key(&vault, &key, &value, DEBT_AT_S);
+    import(&vault);
+    let clock = BTreeMap::from([("dev-A".to_owned(), 2), ("dev-B".to_owned(), 1)]);
+    let report = tombstone_then_drain(&vault, "f-live", clock);
+    assert_eq!(report.settled, ["f-live"]);
+    let day = document_state(&vault.core().join(DATA_FILE), "j2026-02-01")
+        .unwrap()
+        .expect("this device's day text was lost");
+    assert_eq!(
+        day.text.matches("My unpushed day").count(),
+        1,
+        "{}",
+        day.text
+    );
+    assert_eq!(live_days(&vault, "2026-02-01"), 1);
+}
+
+/// VERIFY-5166B 2: a tombstone whose clock covers the holder's (`holderClock`) saw its tags, so
+/// a tag removed elsewhere since stays removed and no day is built from tags alone (Electron
+/// `unpushedHolderTags`, `journal-day-merge.ts:213-240`).
+#[test]
+fn a_covering_tombstone_does_not_resurrect_holder_tags() {
+    let vault = Vault::new();
+    let (key, value) = owed_day(
+        "f-tagged",
+        json!({"foreignId": "f-tagged", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "tags": ["removed-elsewhere"], "holderClock": {"dev-A": 2}}),
+    );
+    seed_key(&vault, &key, &value, DEBT_AT_S);
+    import(&vault);
+    let clock = BTreeMap::from([("dev-A".to_owned(), 2), ("dev-B".to_owned(), 1)]);
+    let report = tombstone_then_drain(&vault, "f-tagged", clock);
+    assert_eq!(report.settled, ["f-tagged"]);
+    let tags: i64 = core_conn(&vault)
+        .query_row(
+            "SELECT count(*) FROM note_tags WHERE tag = 'removed-elsewhere'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(tags, 0, "resurrected a tag removed elsewhere");
+    assert_eq!(live_days(&vault, "2026-02-01"), 0);
 }
 
 /// `noteCoverForPush`: a note whose cover this device held and whose file has none pushes

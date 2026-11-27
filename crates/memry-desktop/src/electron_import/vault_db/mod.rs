@@ -17,6 +17,7 @@ pub mod checks;
 pub mod crash;
 mod docs;
 mod install;
+mod journal_day_merges;
 mod preflight;
 mod source;
 pub mod sync_state;
@@ -296,6 +297,11 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         sources.conn(tables::SourceDb::Data),
         sources.conn(tables::SourceDb::Index),
         &mut writer,
+    )?;
+    journal_day_merges::put_holders(
+        sources.conn(tables::SourceDb::Data),
+        &mut writer,
+        input.now_ms,
     )?;
     checks::run(
         &mut report,

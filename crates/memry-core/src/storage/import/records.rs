@@ -10,6 +10,7 @@ use crate::api::errors::StorageError;
 use crate::storage::nested_tx;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, ItemContext};
+use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::storage::vault_identity;
 
@@ -36,6 +37,22 @@ impl ImportWriter {
         let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for record in records {
             put(&tx, record, now_ms)?;
+        }
+        tx.commit().map_err(failed)
+    }
+
+    /// Stores each record's `sync_items` row without a projection: a journal day a foreign
+    /// holder gave up to `j<D>` on Electron, kept as the core keeps a displaced holder
+    /// (`journal_day_merge::plan_inbound` removes only the projection), so a later tombstone
+    /// holds its body for the owed merge.
+    pub fn put_held_records(
+        &mut self,
+        records: &[ImportRecord],
+        now_ms: i64,
+    ) -> Result<(), StorageError> {
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
+        for record in records {
+            store(&tx, record, now_ms)?;
         }
         tx.commit().map_err(failed)
     }
@@ -89,6 +106,21 @@ impl ImportWriter {
 }
 
 fn put(tx: &Connection, record: &ImportRecord, now_ms: i64) -> Result<(), StorageError> {
+    let view = store(tx, record, now_ms)?;
+    projectors::project(
+        tx,
+        record.item_type,
+        ItemContext {
+            item_id: &record.item_id,
+            synced_at: record.synced_at.unwrap_or(now_ms),
+            deleted_at: None,
+        },
+        &view,
+    )
+}
+
+/// The record's `sync_items` row, read by its type's reader; returns the view it projects.
+fn store(tx: &Connection, record: &ImportRecord, now_ms: i64) -> Result<Object, StorageError> {
     let refused = |error: crate::storage::repositories::ProjectionError| StorageError::Failed {
         what: format!(
             "import record {}/{} is unreadable: {error}",
@@ -112,14 +144,5 @@ fn put(tx: &Connection, record: &ImportRecord, now_ms: i64) -> Result<(), Storag
         ],
     )
     .map_err(failed)?;
-    projectors::project(
-        tx,
-        record.item_type,
-        ItemContext {
-            item_id: &record.item_id,
-            synced_at: record.synced_at.unwrap_or(now_ms),
-            deleted_at: None,
-        },
-        &view,
-    )
+    Ok(view)
 }
