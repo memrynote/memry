@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 115
+    "caseCount": 117
   },
   "cases": [
     {
@@ -701,6 +701,18 @@
       "pins": "a structured quote: the writer spells the run __a\\*__, which settles",
       "markdown": "> **a\\***\n>\n> z",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a*\" bold={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "blank paragraph: a whitespace-only code span between paragraphs",
+      "pins": "the paragraph of only a code span of spaces is no block: the paragraph rule declines it and its whitespace has no place",
+      "markdown": "x\n\n`  `\n\ny",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"y\""
+    },
+    {
+      "name": "blank paragraph: a whitespace-only code span after a paragraph",
+      "pins": "no block follows x",
+      "markdown": "x\n\n` `",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\""
     }
   ]
 }

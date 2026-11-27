@@ -602,5 +602,15 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'writer: a bold run ending in a star',
       markdown: '> **a\\***\n>\n> z',
       pins: 'a structured quote: the writer spells the run __a\\*__, which settles'
+    },
+    {
+      name: 'blank paragraph: a whitespace-only code span between paragraphs',
+      markdown: 'x\n\n`  `\n\ny',
+      pins: 'the paragraph of only a code span of spaces is no block: the paragraph rule declines it and its whitespace has no place'
+    },
+    {
+      name: 'blank paragraph: a whitespace-only code span after a paragraph',
+      markdown: 'x\n\n` `',
+      pins: 'no block follows x'
     }
   ]
