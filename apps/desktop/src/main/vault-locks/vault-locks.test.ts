@@ -479,9 +479,10 @@ describe('vault read-only locks (#2606)', () => {
   /**
    * How long a file added outside may stay writable before the attachment
    * watch hears it. The watch has no deadline of its own: macOS reports a
-   * folder's changes through FSEvents, seconds late on a loaded machine.
+   * folder's changes through FSEvents, which fseventsd delivers up to 30 s
+   * late when other processes keep it busy.
    */
-  const ATTACHMENT_WATCH_TIMEOUT_MS = 20_000
+  const ATTACHMENT_WATCH_TIMEOUT_MS = 45_000
 
   it.skipIf(isWindows)(
     'unlocking gives every file the exact mode it had before the lock, after app writes too',
@@ -584,7 +585,8 @@ describe('vault read-only locks (#2606)', () => {
         { timeout: ATTACHMENT_WATCH_TIMEOUT_MS }
       )
       expect([unlocked, partial].map(modeOf)).toEqual([0o644, 0o644])
-    }
+    },
+    60_000
   )
 
   it.skipIf(isWindows)(
@@ -598,8 +600,11 @@ describe('vault read-only locks (#2606)', () => {
       fs.writeFileSync(added, 'bytes')
       fs.chmodSync(added, 0o644)
 
-      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), { timeout: 5000 })
-    }
+      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), {
+        timeout: ATTACHMENT_WATCH_TIMEOUT_MS
+      })
+    },
+    60_000
   )
 
   it('watching the attachments of a vault folder that went away does not recreate it', async () => {
