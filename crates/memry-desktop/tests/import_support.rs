@@ -11,7 +11,8 @@ use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
 use memry_desktop::attachments::{self, SavedAttachment};
 use memry_desktop::import::{
     ImportProgress, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote,
-    ImportedProjectTask, ImportedTask, JournalEntry, SinkError,
+    ImportedProjectTask, ImportedRepeat, ImportedStatus, ImportedTask, ImportedTickTickTask,
+    JournalEntry, MonthlyRepeat, ProjectStatus, RepeatEnd, SinkError, StatusKind,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -37,8 +38,30 @@ pub struct RecordingSink {
     pub fail_project: Option<String>,
     /// `createTask` (Todoist's) returns no task for this title.
     pub fail_project_task: Option<String>,
+    /// TickTick's `createTask`, `completeTask` and `createReminder` throw for this title or task id.
+    pub fail_ticktick_task: Option<String>,
+    pub fail_complete: bool,
+    pub fail_reminder: bool,
+    /// The statuses `getStatusesByProject` returns: the Inbox's, then each created project's.
+    statuses: Mutex<HashMap<String, Vec<ProjectStatus>>>,
     /// Record `created` as written instead of only its presence (the case's `exactCreated`).
     pub exact_created: bool,
+}
+
+/// The TickTick tests' `INBOX_STATUSES`.
+fn inbox_statuses() -> Vec<ProjectStatus> {
+    [
+        ("inbox-todo", true, false),
+        ("inbox-ip", false, false),
+        ("inbox-done", false, true),
+    ]
+    .into_iter()
+    .map(|(id, is_default, is_done)| ProjectStatus {
+        id: id.to_owned(),
+        is_default,
+        is_done,
+    })
+    .collect()
 }
 
 impl RecordingSink {
@@ -55,6 +78,10 @@ impl RecordingSink {
             fail_bookmark_url: None,
             fail_project: None,
             fail_project_task: None,
+            fail_ticktick_task: None,
+            fail_complete: false,
+            fail_reminder: false,
+            statuses: Mutex::new(HashMap::from([("inbox".to_owned(), inbox_statuses())])),
             exact_created: false,
         }
     }
@@ -164,6 +191,84 @@ impl ImportSink for RecordingSink {
         ))
     }
 
+    /// The TickTick tests' `createProject`, which gives each status the id `<project>-st-<i>`.
+    fn create_status_project(
+        &self,
+        name: &str,
+        statuses: &[ImportedStatus],
+    ) -> Result<String, SinkError> {
+        if self.fail_project.as_deref() == Some(name) {
+            return Err(SinkError("project boom".to_owned()));
+        }
+        let id = format!(
+            "project-{}",
+            self.projects.fetch_add(1, Ordering::SeqCst) + 1
+        );
+        self.push(json!({
+            "op": "createProject",
+            "name": name,
+            "statuses": statuses.iter().map(|s| json!({
+                "name": s.name,
+                "color": s.color,
+                "type": kind(s.kind),
+                "order": s.order,
+            })).collect::<Vec<_>>(),
+        }));
+        let stored = statuses
+            .iter()
+            .enumerate()
+            .map(|(i, s)| ProjectStatus {
+                id: format!("{id}-st-{i}"),
+                is_default: i == 0,
+                is_done: s.kind == StatusKind::Done,
+            })
+            .collect();
+        self.statuses.lock().unwrap().insert(id.clone(), stored);
+        Ok(id)
+    }
+
+    fn project_statuses(&self, project_id: &str) -> Vec<ProjectStatus> {
+        self.statuses
+            .lock()
+            .unwrap()
+            .get(project_id)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    fn create_ticktick_task(&self, task: ImportedTickTickTask) -> Result<String, SinkError> {
+        if self.fail_ticktick_task.as_deref() == Some(task.title.as_str()) {
+            return Err(SinkError("task boom".to_owned()));
+        }
+        self.push(json!({
+            "op": "createTask",
+            "projectId": task.project_id,
+            "title": task.title,
+            "description": task.description,
+            "priority": task.priority,
+            "statusId": task.status_id,
+            "parentId": task.parent_id,
+            "position": task.position,
+            "startDate": task.start_date,
+            "dueDate": task.due_date,
+            "dueTime": task.due_time,
+            "repeatConfig": task.repeat.map(repeat_record),
+            "tags": task.tags,
+        }));
+        Ok(format!(
+            "task-{}",
+            self.tasks.fetch_add(1, Ordering::SeqCst) + 1
+        ))
+    }
+
+    fn create_reminder(&self, task_id: &str, remind_at: &str) -> Result<(), SinkError> {
+        if self.fail_reminder {
+            return Err(SinkError("reminder boom".to_owned()));
+        }
+        self.push(json!({ "op": "createReminder", "targetId": task_id, "remindAt": remind_at }));
+        Ok(())
+    }
+
     fn create_task(&self, task: ImportedTask) -> Result<String, SinkError> {
         self.push(json!({
             "op": "createTask",
@@ -180,6 +285,9 @@ impl ImportSink for RecordingSink {
     }
 
     fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError> {
+        if self.fail_complete {
+            return Err(SinkError("complete boom".to_owned()));
+        }
         self.push(json!({
             "op": "completeTask",
             "id": id,
@@ -245,6 +353,69 @@ impl ImportSink for RecordingSink {
         }));
         Ok(())
     }
+}
+
+fn kind(kind: StatusKind) -> &'static str {
+    match kind {
+        StatusKind::Todo => "todo",
+        StatusKind::InProgress => "in_progress",
+        StatusKind::Done => "done",
+    }
+}
+
+/// A JS number as `JSON.stringify` writes it: `null` for `NaN` and the infinities.
+fn js_number(n: f64) -> Value {
+    if !n.is_finite() {
+        Value::Null
+    } else if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
+        json!(n as i64)
+    } else {
+        json!(n)
+    }
+}
+
+/// `RepeatConfig` as `JSON.stringify` writes it.
+fn repeat_record(repeat: ImportedRepeat) -> Value {
+    let mut record = json!({
+        "frequency": format!("{:?}", repeat.frequency).to_lowercase(),
+        "interval": js_number(repeat.interval),
+        "endType": "never",
+        "completedCount": 0,
+        "createdAt": repeat.created_at,
+    });
+    let fields = record.as_object_mut().unwrap();
+    if let Some(days) = repeat.days_of_week {
+        fields.insert("daysOfWeek".to_owned(), json!(days));
+    }
+    match repeat.monthly {
+        Some(MonthlyRepeat::DayOfMonth(day)) => {
+            fields.insert("monthlyType".to_owned(), json!("dayOfMonth"));
+            fields.insert("dayOfMonth".to_owned(), js_number(day));
+        }
+        Some(MonthlyRepeat::WeekPattern {
+            week_of_month,
+            day_of_week,
+        }) => {
+            fields.insert("monthlyType".to_owned(), json!("weekPattern"));
+            fields.insert("weekOfMonth".to_owned(), js_number(week_of_month));
+            if let Some(day) = day_of_week {
+                fields.insert("dayOfWeekForMonth".to_owned(), json!(day));
+            }
+        }
+        None => {}
+    }
+    match repeat.end {
+        RepeatEnd::Never => {}
+        RepeatEnd::Date(date) => {
+            fields.insert("endType".to_owned(), json!("date"));
+            fields.insert("endDate".to_owned(), json!(date));
+        }
+        RepeatEnd::Count(count) => {
+            fields.insert("endType".to_owned(), json!("count"));
+            fields.insert("endCount".to_owned(), js_number(count));
+        }
+    }
+    record
 }
 
 /// The generator's `noteRecord`; `exact_created` records `created` as written.

@@ -36,6 +36,8 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_gate_wiring.rs"]
+mod agent_gate_wiring;
 #[path = "agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent_mcp_http.rs"]
@@ -231,6 +233,10 @@ mod importer_noteplan;
 mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
+#[path = "importer_ticktick.rs"]
+mod importer_ticktick;
+#[path = "importer_ticktick_dates.rs"]
+mod importer_ticktick_dates;
 #[path = "importer_todoist.rs"]
 mod importer_todoist;
 #[path = "importer_untrusted.rs"]
@@ -299,6 +305,10 @@ mod lock_service;
 mod lock_set;
 #[path = "logship.rs"]
 mod logship;
+#[path = "metadata_guards.rs"]
+mod metadata_guards;
+#[path = "metadata_vectors.rs"]
+mod metadata_vectors;
 #[path = "move_dir.rs"]
 mod move_dir;
 #[path = "move_journal.rs"]

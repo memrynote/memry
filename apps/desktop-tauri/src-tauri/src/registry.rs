@@ -45,7 +45,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::account::sync_setup_first_device,
             crate::commands::account::sync_setup_new_account,
             // agent
+            crate::commands::agent::agent_edit_vault_trust_list::<Wry>,
             crate::commands::agent::agent_get_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_get_tool_call::<Wry>,
+            crate::commands::agent::agent_get_tool_grants::<Wry>,
             crate::commands::agent::agent_list_local_models::<Wry>,
             crate::commands::agent::agent_probe_local_provider::<Wry>,
             crate::commands::agent::agent_set_local_provider_settings::<Wry>,
@@ -281,6 +284,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ocr_languages::ocr_languages_get_state,
             crate::commands::ocr_languages::ocr_languages_retry,
             crate::commands::ocr_languages::ocr_languages_set,
+            // onboarding
+            crate::commands::onboarding::onboarding_detect_sources,
+            crate::commands::onboarding::onboarding_is_memry_vault,
             // portals
             crate::commands::portals::portals_get_usage::<Wry>,
             crate::commands::portals::portals_search::<Wry>,
@@ -468,6 +474,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AuthOtpDetectedEvent,
             crate::events::AuthSessionExpiredEvent,
             crate::events::AuthSessionRefreshedEvent,
+            // agent
+            crate::events::AgentEventEmittedEvent,
             // ai
             crate::events::AiEmbeddingProgressEvent,
             crate::events::AiInlineSettingsChangedEvent,

@@ -40,8 +40,21 @@ export const commands = {
 	syncSetupFirstDevice: (provider: string, oauthToken: string, state: string) => __TAURI_INVOKE<AuthFirstDevice>("sync_setup_first_device", { provider, oauthToken, state }),
 	/**  `sync:setup-new-account`. The phrase waits for `sync_get_recovery_phrase`. */
 	syncSetupNewAccount: () => __TAURI_INVOKE<AccountDevice>("sync_setup_new_account"),
+	/**
+	 *  `agent:editTrustList` with `scope: 'vault'`, which Settings uses to revoke a standing
+	 *  approval. The gate reads the list at every write call, so the revoke holds from the next one.
+	 */
+	agentEditVaultTrustList: (edit: AgentVaultTrustEdit) => __TAURI_INVOKE<AgentToolGrants>("agent_edit_vault_trust_list", { edit }),
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
 	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**
+	 *  `agent_get_tool_call`: the name and arguments of a card on screen, which the all-window
+	 *  `tool_call_pending_approval` event leaves out. A card that settled or belongs to another
+	 *  conversation is `not_found`.
+	 */
+	agentGetToolCall: (conversationId: string, toolCallId: string) => __TAURI_INVOKE<ToolCall>("agent_get_tool_call", { conversationId, toolCallId }),
+	/**  `agent:getToolGrants`. No open vault has no grants, as Electron's unavailable handler answers. */
+	agentGetToolGrants: () => __TAURI_INVOKE<AgentToolGrants>("agent_get_tool_grants"),
 	/**
 	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
 	 *  list, as in Electron.
@@ -629,6 +642,10 @@ export const commands = {
 	ocrLanguagesRetry: () => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_retry"),
 	/**  Stores the chosen languages (English is always added) and starts converging on them. */
 	ocrLanguagesSet: (languages: OcrLanguage[]) => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_set", { languages }),
+	/**  `onboarding:detect-sources`: note apps installed on this computer, and Obsidian's vaults. */
+	onboardingDetectSources: () => __TAURI_INVOKE<OnboardingSources>("onboarding_detect_sources"),
+	/**  `onboarding:is-memry-vault`: whether a folder the user picked already has `.memry`. */
+	onboardingIsMemryVault: (path: string) => __TAURI_INVOKE<boolean>("onboarding_is_memry_vault", { path }),
 	/**
 	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
 	 *  that link to it.
@@ -1081,6 +1098,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	agentEventEmittedEvent: makeEvent<AgentEventEmittedEvent, AgentEventEmittedEvent>("agent-event-emitted-event"),
 	aiEmbeddingProgressEvent: makeEvent<AiEmbeddingProgressEvent, AiEmbeddingProgressEvent>("ai-embedding-progress-event"),
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
@@ -1227,6 +1245,20 @@ export type AddReasonInput = {
 	searchQuery: string,
 };
 
+/**
+ *  The approval-card events, which reach every window. They carry ids and small hints only,
+ *  never the tool arguments: a card fetches those through `agent_get_tool_call`, served from
+ *  `AgentWriteGate::pending_approval`.
+ */
+export type AgentEvent = { kind: "tool_call_pending_approval"; conversationId: string; toolCallId: string; name: string; requiresDiff: boolean; previewKind: PreviewKind; reviewTarget: ReviewTarget | null } | { kind: "tool_call_failed"; conversationId: string; toolCallId: string; error: AgentEventError };
+
+export type AgentEventEmittedEvent = AgentEvent;
+
+export type AgentEventError = {
+	code: string,
+	message: string,
+};
+
 /**  `AgentLocalModelList`. */
 export type AgentLocalModelList = {
 	models: string[],
@@ -1276,6 +1308,17 @@ export type AgentLocalProviderSettingsUpdate = {
 
 /**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
 export type AgentLocalThinking = "default" | "off";
+
+/**  The open vault's standing tool approvals (`AgentToolGrantsSchema`), for the Settings list. */
+export type AgentToolGrants = {
+	tools: string[],
+};
+
+/**  The vault branch of `EditTrustListRequestSchema`: grants `add`, then revokes `remove`. */
+export type AgentVaultTrustEdit = {
+	add?: string[],
+	remove?: string[],
+};
 
 /**  `EmbeddingProgressEvent.phase`: the model's download and load, then a note embedding pass. */
 export type AiEmbeddingPhase = "downloading" | "loading" | "ready" | "error" | "embedding" | "complete";
@@ -3512,6 +3555,18 @@ export type OcrLanguagesState = {
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
 };
 
+/**  `OnboardingObsidianVault` (`packages/contracts/src/onboarding-api.ts`). */
+export type OnboardingObsidianVault = {
+	name: string,
+	path: string,
+};
+
+/**  `OnboardingSources`: Obsidian's vaults and the importer ids whose app is installed. */
+export type OnboardingSources = {
+	obsidianVaults: OnboardingObsidianVault[],
+	installedApps: string[],
+};
+
 export type OpenSettingsResult = {
 	success: boolean,
 };
@@ -3651,6 +3706,9 @@ export type PresetOfferView = {
 
 /**  `PresetOffer.state`. */
 export type PresetState = "add" | "add-fields" | "added";
+
+/**  `ChangePreviewKindSchema` (`ipc-agent.ts:618`): the picture the approval card draws. */
+export type PreviewKind = "none" | "fields" | "body" | "loss";
 
 /**  A tag on the card, with its colour (`stone` when the tag has no definition). */
 export type PreviewTagView = {
@@ -4203,6 +4261,9 @@ export type ResumeSyncResult = {
 	success: boolean,
 	pendingCount: number,
 };
+
+/**  `AgentReviewTargetSchema` (`ipc-agent.ts:694`): the page that reviews a body edit in place. */
+export type ReviewTarget = { kind: "note"; id: string } | { kind: "journal"; date: string };
 
 /**  `NoteWithProperties.kind`. */
 export type RowKindView = "note" | "task" | "inbox";
@@ -5269,6 +5330,15 @@ export type TestConnectionResult = {
 export type TitleMatchView = {
 	id: string,
 	path: string,
+};
+
+/**
+ *  What `agent_get_tool_call` serves for a card on screen: the arguments the all-window event
+ *  leaves out.
+ */
+export type ToolCall = {
+	name: string,
+	args: Value,
 };
 
 /**  `TranscriptionResult`. */

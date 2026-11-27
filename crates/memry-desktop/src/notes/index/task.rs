@@ -305,7 +305,9 @@ impl Indexer {
                 && commands.is_empty()
             {
                 // A reindex reports through its askers' callbacks, which refresh the list. The
-                // open's build ends after it, once the rows hold every note.
+                // open's build ends after it, once the rows hold every note, and before the
+                // askers hear: an asker that failed reads `NoteIndex::indexing` for the status
+                // carrying its error, which then says the indexing ended.
                 let carried = std::mem::take(&mut owed.report);
                 let mut progress = |step| {
                     if shared.offer(step, Instant::now()) {
@@ -316,6 +318,11 @@ impl Indexer {
                 };
                 let outcome =
                     self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined);
+                if carried {
+                    report(OpenBuild::Ended {
+                        walked: owed.indexed,
+                    });
+                }
                 // `None`: a first sync that started meanwhile held its search reindex, and every
                 // asker waits for it to end, as one asked during it does.
                 if let Some(done) = outcome {
@@ -324,11 +331,8 @@ impl Indexer {
                         // The asker may have gone; the work is done either way.
                         let _ = answer.send(done.clone());
                     }
-                }
-                if carried {
-                    report(OpenBuild::Ended {
-                        walked: owed.indexed,
-                    });
+                    #[cfg(feature = "test-hooks")]
+                    super::after_reindex_answer(&self.root);
                 }
             }
             let next = owed.next(self.first_sync.is_running());
