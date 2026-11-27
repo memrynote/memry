@@ -20,6 +20,7 @@ macro_rules! with_inbox_events {
             crate::events::InboxProcessingErrorEvent,
             crate::events::InboxReviewDueEvent,
             crate::events::InboxReviewOpenEvent,
+            crate::events::InboxSnoozeDueEvent,
             crate::events::InboxUpdatedEvent,
         ])
     };

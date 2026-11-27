@@ -579,7 +579,10 @@
       "journalOff": "Il diario è disattivato nelle Impostazioni.",
       "sendFailed": "Impossibile inviare lo sticky.",
       "undoExpired": "È troppo tardi per annullare.",
-      "undoFailed": "Impossibile annullare l’invio."
+      "undoFailed": "Impossibile annullare l’invio.",
+      "journalBusy": "La voce di oggi del diario è ancora in fase di salvataggio. Riprova tra un momento.",
+      "folderExcluded": "La cartella Sticky è esclusa. Rimuovila dalle cartelle escluse nelle Impostazioni per inviare note.",
+      "projectMissing": "Il progetto di questa attività non esiste. Scegli un progetto predefinito nelle Impostazioni o inviala come nota."
     },
     "inputLabel": "Testo dello sticky",
     "dismissError": "Chiudi"
