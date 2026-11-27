@@ -310,5 +310,73 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'line endings: CRLF and CR',
       markdown: '# Title\r\n\r\n| a |\r\n|---|\r\n| 1 |\r\nlast\rline',
       pins: 'CRLF and a lone CR read as LF'
+    },
+    {
+      name: 'comment: %% inside a paragraph',
+      markdown: 'Tail %% [[Topic]] secret %% end.\n\n%% a %% and %% b %%\n\nx%%y%%z',
+      pins: 'an Obsidian comment is an htmlComment node whose source keeps its %% delimiters, however it is surrounded; two in a row are two nodes'
+    },
+    {
+      name: 'comment: a stray %% stays text',
+      markdown: 'Save 50%% today\n\n`x %%`\n\n```\n%%\n```',
+      pins: 'a %% with no partner outside code is text; a %% in a code span or a fence is not a partner'
+    },
+    {
+      name: 'comment: %% inside emphasis',
+      markdown: '*a %% b %% c*\n\n**x %% y %% z**\n\n~~s %% t %% u~~',
+      pins: 'the node sits between runs that keep the surrounding marks'
+    },
+    {
+      name: 'comment: %% block on its own lines',
+      markdown: '%%\nblock [[Other]] secret\n%%\n\nText',
+      pins: 'a multi-line comment is one node in a paragraph of its own, and the text after it a second paragraph'
+    },
+    {
+      name: 'comment: %% glued to the line above and below',
+      markdown:
+        'one\n%% hidden %%\ntwo\n\n# H\n%% c %%\n\n%% d %%\n- item\n\n%% e %%\n> quote\n\n%% f %%\n---',
+      pins: 'a comment on the line before or after a block kind joins that line into the paragraph it touches, as desktop masks it before any line is split'
+    },
+    {
+      name: 'comment: %% in code stays code',
+      markdown: '`a %% b %% c`\n\n```\n%% x %%\n```\n\n    %% y %%\n\n~~~\n%%\n~~~',
+      pins: 'a code span, a fence and an indented code block keep their %% as text'
+    },
+    {
+      name: 'comment: %% holding a blank line and a fence',
+      markdown: '%%\nline\n\n```\ncode\n```\n%%\nend',
+      pins: 'a comment is masked before any line is split, so a blank line or a fence inside it stays inside the one node'
+    },
+    {
+      name: 'comment: %% in list items, a heading and a link label',
+      markdown:
+        '- item %% c %% tail\n- [ ] todo %% d %%\n\n## Title %% e %%\n\n[a %% b %% c](https://e.com) and `x`',
+      pins: 'a comment is a node in a list item and a heading, and the plain text of a link label'
+    },
+    {
+      name: 'comment: %% in a table cell',
+      markdown: '| a | b %% c %% |\n|---|---|\n| 1 | 2 %% open |',
+      pins: 'a comment that closes inside its cell is a node, one that crosses the cell end is text'
+    },
+    {
+      name: 'comment: %% in a callout body and a quote',
+      markdown: '> [!note]\n> body %% c %%\n> more\n\n> quoted %% d %%',
+      pins: 'a callout or quote body holding a comment is not claimed: desktop serializes the comment back as its source, which is not the masked run, so the proof fails and the quote stays flat'
+    },
+    {
+      name: 'parity: image address through the DOM',
+      markdown:
+        '![a](http://e.com)\n\n![b](HTTP://E.com:80/x/../y?q=1#f)\n\n![c](assets/x.png)\n\n![d](https://e.com/a%20b.png)\n\n![e](memry-file://Abc/v.png)',
+      pins: "an absolute address is the WHATWG serialization jsdom's img.src gives (lowercase scheme and host, no default port, resolved dot segments, a root path); a relative one stays as written"
+    },
+    {
+      name: 'parity: code span with a leading space on a pipe line',
+      markdown: '` |`é\n\n` a|`b\n\n- ` |`c\n\n` a`d',
+      pins: 'a line with a pipe hides its code spans whitespace from the repair, so the leading space stays; a line without one strips it as the parser does'
+    },
+    {
+      name: 'parity: paragraph of whitespace-only code spans and breaks',
+      markdown: '`\n`\n`\n`\n\n`\n`\n`\n`\n`\n`\n\n`\n`\nx\n`\n`\n\n` `\\\n` `',
+      pins: 'a paragraph with no visible text is parsed with collapsed whitespace: leading, repeated and trailing blanks go, a blank right after a break goes, a blank between breaks stays'
     }
   ]

@@ -6,10 +6,10 @@
     "class": "markdown-seed",
     "canonical": "packages/contracts/scripts/fragment-canonical.ts",
     "fragmentName": "prosemirror",
-    "authoredBy": "desktop's markdownToYFragment path: LF line endings, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
+    "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 58
+    "caseCount": 71
   },
   "cases": [
     {
@@ -359,6 +359,84 @@
       "pins": "CRLF and a lone CR read as LF",
       "markdown": "# Title\r\n\r\n| a |\r\n|---|\r\n| 1 |\r\nlast\rline",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"Title\"\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"last\"\n3 element hardBreak\n3 text \"line\""
+    },
+    {
+      "name": "comment: %% inside a paragraph",
+      "pins": "an Obsidian comment is an htmlComment node whose source keeps its %% delimiters, however it is surrounded; two in a row are two nodes",
+      "markdown": "Tail %% [[Topic]] secret %% end.\n\n%% a %% and %% b %%\n\nx%%y%%z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Tail \"\n3 element htmlComment source=\"%% [[Topic]] secret %%\"\n3 text \" end.\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% a %%\"\n3 text \" and \"\n3 element htmlComment source=\"%% b %%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n3 element htmlComment source=\"%%y%%\"\n3 text \"z\""
+    },
+    {
+      "name": "comment: a stray %% stays text",
+      "pins": "a %% with no partner outside code is text; a %% in a code span or a fence is not a partner",
+      "markdown": "Save 50%% today\n\n`x %%`\n\n```\n%%\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Save 50%% today\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x %%\" code={}\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%%\""
+    },
+    {
+      "name": "comment: %% inside emphasis",
+      "pins": "the node sits between runs that keep the surrounding marks",
+      "markdown": "*a %% b %% c*\n\n**x %% y %% z**\n\n~~s %% t %% u~~",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a \" italic={}\n3 element htmlComment source=\"%% b %%\"\n3 text \" c\" italic={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x \" bold={}\n3 element htmlComment source=\"%% y %%\"\n3 text \" z\" bold={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"s \" strike={}\n3 element htmlComment source=\"%% t %%\"\n3 text \" u\" strike={}"
+    },
+    {
+      "name": "comment: %% block on its own lines",
+      "pins": "a multi-line comment is one node in a paragraph of its own, and the text after it a second paragraph",
+      "markdown": "%%\nblock [[Other]] secret\n%%\n\nText",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%%\\nblock [[Other]] secret\\n%%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Text\""
+    },
+    {
+      "name": "comment: %% glued to the line above and below",
+      "pins": "a comment on the line before or after a block kind joins that line into the paragraph it touches, as desktop masks it before any line is split",
+      "markdown": "one\n%% hidden %%\ntwo\n\n# H\n%% c %%\n\n%% d %%\n- item\n\n%% e %%\n> quote\n\n%% f %%\n---",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"one\"\n3 element hardBreak\n3 element htmlComment source=\"%% hidden %%\"\n3 element hardBreak\n3 text \"two\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% c %%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% d %%\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"item\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% e %%\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"quote\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%% f %%\""
+    },
+    {
+      "name": "comment: %% in code stays code",
+      "pins": "a code span, a fence and an indented code block keep their %% as text",
+      "markdown": "`a %% b %% c`\n\n```\n%% x %%\n```\n\n    %% y %%\n\n~~~\n%%\n~~~",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a %% b %% c\" code={}\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%% x %%\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%% y %%\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"%%\""
+    },
+    {
+      "name": "comment: %% holding a blank line and a fence",
+      "pins": "a comment is masked before any line is split, so a blank line or a fence inside it stays inside the one node",
+      "markdown": "%%\nline\n\n```\ncode\n```\n%%\nend",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"%%\\nline\\n\\n```\\ncode\\n```\\n%%\"\n3 element hardBreak\n3 text \"end\""
+    },
+    {
+      "name": "comment: %% in list items, a heading and a link label",
+      "pins": "a comment is a node in a list item and a heading, and the plain text of a link label",
+      "markdown": "- item %% c %% tail\n- [ ] todo %% d %%\n\n## Title %% e %%\n\n[a %% b %% c](https://e.com) and `x`",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"item \"\n3 element htmlComment source=\"%% c %%\"\n3 text \" tail\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"todo \"\n3 element htmlComment source=\"%% d %%\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Title \"\n3 element htmlComment source=\"%% e %%\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a %% b %% c\" link={\"href\":\"https://e.com\"}\n3 text \" and \"\n3 text \"x\" code={}"
+    },
+    {
+      "name": "comment: %% in a table cell",
+      "pins": "a comment that closes inside its cell is a node, one that crosses the cell end is text",
+      "markdown": "| a | b %% c %% |\n|---|---|\n| 1 | 2 %% open |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b \"\n6 element htmlComment source=\"%% c %%\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"2 %% open\""
+    },
+    {
+      "name": "comment: %% in a callout body and a quote",
+      "pins": "a callout or quote body holding a comment is not claimed: desktop serializes the comment back as its source, which is not the masked run, so the proof fails and the quote stays flat",
+      "markdown": "> [!note]\n> body %% c %%\n> more\n\n> quoted %% d %%",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!note]\"\n3 element hardBreak\n3 text \"body \"\n3 element htmlComment source=\"%% c %%\"\n3 element hardBreak\n3 text \"more\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"quoted \"\n3 element htmlComment source=\"%% d %%\""
+    },
+    {
+      "name": "parity: image address through the DOM",
+      "pins": "an absolute address is the WHATWG serialization jsdom's img.src gives (lowercase scheme and host, no default port, resolved dot segments, a root path); a relative one stays as written",
+      "markdown": "![a](http://e.com)\n\n![b](HTTP://E.com:80/x/../y?q=1#f)\n\n![c](assets/x.png)\n\n![d](https://e.com/a%20b.png)\n\n![e](memry-file://Abc/v.png)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"a\" showPreview=true textAlignment=\"left\" url=\"http://e.com/\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"b\" showPreview=true textAlignment=\"left\" url=\"http://e.com/y?q=1#f\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"c\" showPreview=true textAlignment=\"left\" url=\"assets/x.png\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"d\" showPreview=true textAlignment=\"left\" url=\"https://e.com/a%20b.png\"\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"e\" showPreview=true textAlignment=\"left\" url=\"memry-file://Abc/v.png\""
+    },
+    {
+      "name": "parity: code span with a leading space on a pipe line",
+      "pins": "a line with a pipe hides its code spans whitespace from the repair, so the leading space stays; a line without one strips it as the parser does",
+      "markdown": "` |`é\n\n` a|`b\n\n- ` |`c\n\n` a`d",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" |\" code={}\n3 text \"é\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" a|\" code={}\n3 text \"b\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \" |\" code={}\n3 text \"c\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" code={}\n3 text \"d\""
+    },
+    {
+      "name": "parity: paragraph of whitespace-only code spans and breaks",
+      "pins": "a paragraph with no visible text is parsed with collapsed whitespace: leading, repeated and trailing blanks go, a blank right after a break goes, a blank between breaks stays",
+      "markdown": "`\n`\n`\n`\n\n`\n`\n`\n`\n`\n`\n\n`\n`\nx\n`\n`\n\n` `\\\n` `",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n3 text \" \" code={}\n3 element hardBreak\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n3 text \"x\"\n3 element hardBreak\n3 text \" \" code={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n3 element hardBreak\n3 text \" \" code={}"
     }
   ]
 }

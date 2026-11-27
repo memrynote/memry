@@ -20,10 +20,11 @@
  * one-line file, YouTube, bookmark and whiteboard markers, claimed by the
  * editor-schema readers and resolvers), `parseMarkdownToBlocksRepaired`
  * through a `ServerBlockNoteEditor` on desktop's schema (code block options
- * included), and `blocksToYXmlFragment`. The layers it does not reproduce
- * (CriticMarkup, link references, wiki embeds, colour spans, column regions,
- * HTML comments and sidecar markers, inline tokens, task blocks,
- * plain-checkbox markers) are refused by {@link refuseUnreproduced} rather
+ * included), and `blocksToYXmlFragment`, after `maskHtmlComments` has made
+ * every comment one token. The layers it does not reproduce (CriticMarkup,
+ * link references, wiki embeds, colour spans, column regions, `<!--` comments
+ * and sidecar markers, inline tokens, task blocks, plain-checkbox markers) are
+ * refused by {@link refuseUnreproduced} rather
  * than skipped. The proof that the result is desktop's is
  * `apps/desktop/src/main/sync/markdown-seed-vectors.test.ts`, which runs the
  * real `markdownToYFragment` over every case here.
@@ -68,6 +69,7 @@ import {
   extractInlineColorRuns,
   restoreInlineColorTokens
 } from '../../../shared/src/inline-colors.ts'
+import { maskHtmlComments } from '../../../shared/src/html-comments.ts'
 import { createFenceTracker } from '../../../shared/src/markdown-fences.ts'
 import { withPlainCheckboxMarkers } from '../../../shared/src/plain-checkbox.ts'
 
@@ -274,9 +276,15 @@ async function parseMasked(markdown: string): Promise<SeedBlock[]> {
   return blocks
 }
 
-/** `prepareFragmentSeed` → `markdownToBlocksPreserving` for the reproduced layers. */
+/**
+ * `prepareFragmentSeed` → `markdownToBlocks` → `markdownToBlocksPreserving` for
+ * the reproduced layers. `markdownToBlocks` masks every comment before any line
+ * is split, so a comment holding blank lines or a fence stays one token word
+ * (`@memry/shared/html-comments`); `parseMarkdownToBlocksRepaired` turns each
+ * token into an `htmlComment` node once the blocks exist.
+ */
 function markdownToBlocks(markdown: string): Promise<SeedBlock[]> {
-  return parseMasked(separateBlockImages(markdown.replace(/\r\n?/g, '\n')))
+  return parseMasked(separateBlockImages(maskHtmlComments(markdown.replace(/\r\n?/g, '\n'))))
 }
 
 /** Fixed ids in place of `ensureBlockIds`' random ones; stripped below anyway. */
@@ -319,7 +327,7 @@ export async function buildMarkdownSeed(): Promise<Record<string, unknown>> {
       canonical: 'packages/contracts/scripts/fragment-canonical.ts',
       fragmentName: 'prosemirror',
       authoredBy:
-        "desktop's markdownToYFragment path: LF line endings, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
+        "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
       provenAgainst: 'apps/desktop/src/main/sync/markdown-seed-vectors.test.ts',
       blockIds: 'removed from every blockContainer line: BlockNote mints them at random',
       caseCount: cases.length
