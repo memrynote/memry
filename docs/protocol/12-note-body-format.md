@@ -143,6 +143,17 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   (`crates/memry-core/src/crdt/markdown_seed/empty_blocks.rs:20`, `:46`,
   `crates/memry-core/src/crdt/markdown_seed/blocks.rs:46`, `:73`). A placeholder the parser
   does leave in text keeps its chunk literal (`empty_blocks.rs:61`).
+- **Whitespace at a mark's edge is outside the mark.** After a block is parsed, each maximal
+  run of items holding bold, italic or strike (a link counts when all its text does) loses its
+  first item's leading and last item's trailing spaces to plain text beside it, tried for bold
+  then italic then strike, and equal neighbours are joined: ``**`a` x `c`**`` is code `a`, a
+  space, bold `x`, a space, code `c`, and `**see ![x](u)** now` is bold `see`, then `  now`. A
+  code span and a link are not trimmed, a space beside a comment stays, and a code block's
+  text is left alone
+  (`packages/editor-schema/src/inline/emphasis-runs.ts:268`,
+  `packages/editor-schema/src/parse-markdown.ts:301`, `:400`;
+  `crates/memry-core/src/crdt/markdown_seed/emphasis_edges.rs:51`, `:82`, `:142`, called from
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:86`).
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`

@@ -59,6 +59,7 @@ mod code_spans;
 mod collapse;
 mod comment_nodes;
 mod comments;
+mod emphasis_edges;
 mod empty_blocks;
 mod escapes;
 mod hard_breaks;

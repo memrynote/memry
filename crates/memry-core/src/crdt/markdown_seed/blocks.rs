@@ -8,6 +8,7 @@ use crate::domain::journal_rules::is_js_whitespace;
 use super::code_spans::keep_code_whitespace;
 use super::comment_nodes::{into_nodes, source_lines};
 use super::comments;
+use super::emphasis_edges::trim_blocks;
 use super::empty_blocks::{
     drop_empty_block_placeholders, leaks_placeholder, mask_empty_block_lines,
 };
@@ -82,6 +83,7 @@ pub(super) fn parse_chunk(
         });
     }
     into_nodes(&mut out[first_block..]);
+    trim_blocks(&mut out[first_block..]);
 }
 
 /// The source lines of masked `lines`, hard-break spelling restored: a

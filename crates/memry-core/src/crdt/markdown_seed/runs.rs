@@ -14,7 +14,7 @@ use super::{SeedInline, SeedMarks};
 /// One stage-3 run: styled text, a link holding styled text, or an inline
 /// node.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Run {
+pub(super) enum Run {
     Text(String, SeedMarks),
     Link(String, Vec<(String, SeedMarks)>),
     Node(SeedInline),
@@ -350,7 +350,7 @@ fn repair_text(text: &mut String, opens_line: bool, breaks: &[String]) -> bool {
 
 /// `inlineContentToNodes`: text split on `\n` into hard breaks, empty pieces
 /// dropped, a link's mark added to its text.
-fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
+pub(super) fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
     let mut out = Vec::new();
     let split = |out: &mut Vec<SeedInline>, text: &str, marks: &SeedMarks| {
         for (index, piece) in text.split('\n').enumerate() {
