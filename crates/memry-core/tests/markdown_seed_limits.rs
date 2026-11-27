@@ -142,3 +142,27 @@ fn a_list_item_whose_link_text_spans_many_lines_plans_in_linear_time() {
     let text = format!("- [a\n{}c](u)", "b\n".repeat(2000));
     within("link text over many lines", text, BOUND);
 }
+
+/// A recursive pass over nested input must stop at a depth the stack holds.
+/// `planned` runs on 2 MB, and a stack overflow aborts the whole process.
+#[test]
+fn deeply_nested_links_plan_without_overflowing_the_stack() {
+    let text = format!("{}{}", "[a".repeat(3500), "](u)".repeat(3500));
+    let plan = within("nested links", text, Duration::from_secs(5));
+    assert_eq!(plan.blocks.len(), 1);
+}
+
+#[test]
+fn deeply_nested_toggles_plan_without_overflowing_the_stack() {
+    let open = "<details data-memry-toggle>\n<summary>s</summary>\n".repeat(3000);
+    let text = format!("{open}x\n{}", "</details>\n".repeat(3000));
+    within("nested toggles", text, Duration::from_secs(5));
+}
+
+#[test]
+fn deeply_nested_lists_plan_without_overflowing_the_stack() {
+    let text: String = (0..600)
+        .map(|i| format!("{}- a\n", "  ".repeat(i)))
+        .collect();
+    within("nested lists", text, Duration::from_secs(30));
+}
