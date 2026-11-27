@@ -3,8 +3,11 @@
 // size), top-level path and sha512 of the primary file, releaseDate. No blockMapSize key and no
 // blockmap assets: electron-updater logs the missing blockmap and downloads the full file.
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+
+import { isMain } from './is-main.mjs'
+import { assetNames } from './vpk-args.mjs'
 
 // Darwin 22 is macOS 13. electron-updater 6.6.2+ skips a release whose key is greater than
 // os.release(), so macOS 12 (Darwin 21) installs stay on Electron.
@@ -136,4 +139,37 @@ export function buildBridgeFeeds({
 
 export function setupExeName(version) {
   return `MemryNote-${version}-setup.exe`
+}
+
+/**
+ * Writes the bridge feeds of `version` into `dir` from the files there, hashing the exact bytes
+ * that get uploaded: the mac zips and dmgs, the versioned AppImage and the deb, and the
+ * `MemryNote-V-setup.exe` copy when it exists (the CI asset set has no Windows). Returns the names.
+ */
+export function writeBridgeFeeds(dir, { version, releaseDate = new Date().toISOString() }) {
+  const entry = (name) => describeFile(path.join(dir, name))
+  const mac = {}
+  for (const arch of ['arm64', 'x64']) {
+    mac[`${arch}Zip`] = entry(assetNames(`osx-${arch}`, version).squirrelZip)
+    mac[`${arch}Dmg`] = entry(`MemryNote-${version}-${arch}.dmg`)
+  }
+  const linux = {
+    appImage: entry(assetNames('linux-x64', version).appImage),
+    deb: entry(`MemryNote-${version}-amd64.deb`)
+  }
+  const setup = existsSync(path.join(dir, setupExeName(version)))
+    ? entry(setupExeName(version))
+    : undefined
+  const feeds = buildBridgeFeeds({ version, releaseDate, mac, linux, setup })
+  for (const [name, text] of Object.entries(feeds)) writeFileSync(path.join(dir, name), text)
+  return Object.keys(feeds)
+}
+
+if (isMain(import.meta)) {
+  const [dir, flag, version] = process.argv.slice(2)
+  if (!dir || flag !== '--version' || !version) {
+    console.error('usage: bridge-feeds.mjs <asset-dir> --version V')
+    process.exit(2)
+  }
+  console.log(writeBridgeFeeds(dir, { version }).join('\n'))
 }
