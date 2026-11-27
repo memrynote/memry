@@ -1191,7 +1191,7 @@ const htmlCommentCases: RoundtripCase[] = [
   {
     name: 'html break opening a list-item link text line (BBF-106)',
     markdown: '- [a\n<br>b](u)',
-    canonical: '- [a\n\nb](u)'
+    canonical: '- [a\n\n<br>b](u)'
   },
   {
     name: 'bold before a soft break inside list-item link text (BBF-106)',
@@ -1273,6 +1273,31 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   { name: 'escaped block opener after a hard break', markdown: 'a  \n\\# b' },
   { name: 'escaped list marker in a quote', markdown: '> \\- x' },
+  // The writer read a backslash ending the block as a break and dropped it.
+  { name: 'backslash ending a paragraph', markdown: 'a \\' },
+  { name: 'backslash alone in a list item', markdown: '- \\' },
+  // The writer trimmed a break at a block's edge.
+  { name: 'html break ending a paragraph', markdown: 'a<br>' },
+  { name: 'html break opening a quote', markdown: '> <br>a' },
+  // Three breaks or more in a row had no spelling but blank lines, which
+  // split the paragraph.
+  {
+    name: 'two hard breaks in a row',
+    markdown: 'a\\\n\\\nb',
+    canonical: 'a<br><br><br><br>b'
+  },
+  // A line that starts and ends with a pipe ends a paragraph, so once a lifted
+  // image leaves one behind, its pipe is escaped.
+  {
+    name: 'paragraph line left reading as a table row',
+    markdown: 'x | y\n![i](attachments/i.png) | z |',
+    canonical: 'x | y\n\\| z |\n\n![i](attachments/i.png)'
+  },
+  {
+    name: 'paragraph line left reading as a table row after a code span',
+    markdown: '``a|`b``\n![i](attachments/i.png) | v |',
+    canonical: '``a|`b``\n\\| v |\n\n![i](attachments/i.png)'
+  },
   // Text that pairs with nothing keeps its bytes: intraword underscores, a lone
   // `*` or `_`, a wiki link's target.
   {

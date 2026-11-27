@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 306,
+    "exportedCaseCount": 313,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 316,
+    "caseCount": 323,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1934,7 +1934,7 @@
     {
       "name": "html break opening a list-item link text line (BBF-106)",
       "markdown": "- [a\n<br>b](u)",
-      "canonical": "- [a\n\nb](u)",
+      "canonical": "- [a\n\n<br>b](u)",
       "pending": null,
       "sha256": "5c40cbe1fb64c844a3fdafee494ae5bdae752f7781c23d7baf84bbdb20615f80"
     },
@@ -2105,6 +2105,55 @@
       "canonical": null,
       "pending": null,
       "sha256": "f00dffe2bab3226497191728481d5eac5dd548dba7510b7c4962771ab896a8c5"
+    },
+    {
+      "name": "backslash ending a paragraph",
+      "markdown": "a \\",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7e6651914bd8880dd6f57976d456fc4bca07802dec3a940043f2b7a74edc7775"
+    },
+    {
+      "name": "backslash alone in a list item",
+      "markdown": "- \\",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8d2c978245f023cbd15402488cef93a5ff613eee7ddad7658a2da2565cb011ba"
+    },
+    {
+      "name": "html break ending a paragraph",
+      "markdown": "a<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "df25bec7504ca5cc76e63be0c0651d22b82c7f70ca2079eecc25683a3d9ff1d1"
+    },
+    {
+      "name": "html break opening a quote",
+      "markdown": "> <br>a",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5ea770656412cc7f3839f149a8689e79315f73598c0fb8a410a48edb55e51859"
+    },
+    {
+      "name": "two hard breaks in a row",
+      "markdown": "a\\\n\\\nb",
+      "canonical": "a<br><br><br><br>b",
+      "pending": null,
+      "sha256": "8a2dc7d192f62956d95a422752f5c07b9ee95f829d8f48246ae0cc062a469cf8"
+    },
+    {
+      "name": "paragraph line left reading as a table row",
+      "markdown": "x | y\n![i](attachments/i.png) | z |",
+      "canonical": "x | y\n\\| z |\n\n![i](attachments/i.png)",
+      "pending": null,
+      "sha256": "e06e28f2b8e081dd71ea9e83b4d4a5d5c1928c2aca970d696a1b3ac1d6b71e8b"
+    },
+    {
+      "name": "paragraph line left reading as a table row after a code span",
+      "markdown": "``a|`b``\n![i](attachments/i.png) | v |",
+      "canonical": "``a|`b``\n\\| v |\n\n![i](attachments/i.png)",
+      "pending": null,
+      "sha256": "ad42eb7498cdfa36f7357c2bca9f976f6ee2a30a932991404243b1978927b0f6"
     },
     {
       "name": "unpaired markup characters stay as written",
