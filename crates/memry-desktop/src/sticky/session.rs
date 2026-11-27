@@ -84,6 +84,11 @@ impl StickySession {
         self.draft_id.clone()
     }
 
+    /// A sticky is on screen or about to be: the edge tab stays away (`isStickyWindowOpen`).
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
     /// `latest` is the most recently edited draft; `window_exists` says the sticky's window was
     /// built (shown or tucked away).
     pub fn request(

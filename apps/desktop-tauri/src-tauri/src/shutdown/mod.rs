@@ -217,6 +217,7 @@ pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
         }
     }
     crate::windows::sticky::on_window_destroyed(app, label);
+    crate::windows::edge_tab::on_window_destroyed(app, label);
 }
 
 /// The `run` callback of the app.

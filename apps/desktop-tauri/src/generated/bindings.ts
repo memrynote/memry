@@ -696,15 +696,6 @@ export const commands = {
 	spellAddWord: (word: string) => __TAURI_INVOKE<boolean>("spell_add_word", { word }),
 	/**  Adds each valid word and returns how many were taken (the Electron dictionary import). */
 	spellAddWords: (words: string[]) => __TAURI_INVOKE<number>("spell_add_words", { words }),
-	/**  Whether there was a draft to delete. */
-	stickyDeleteDraft: (id: string) => __TAURI_INVOKE<boolean>("sticky_delete_draft", { id }),
-	stickyGetSession: () => __TAURI_INVOKE<StickyWindowSession>("sticky_get_session"),
-	stickyListDrafts: () => __TAURI_INVOKE<StickyDraftView[]>("sticky_list_drafts"),
-	/**  The card's measured height in logical pixels; the shell clamps it to 140 to 560. */
-	stickyResize: (height: number | null) => __TAURI_INVOKE<null>("sticky_resize", { height }),
-	stickySaveDraft: (input: StickySaveDraftInput) => __TAURI_INVOKE<StickyDraftView>("sticky_save_draft", { input }),
-	/**  Closes the sticky; its renderer saved the draft before asking. */
-	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**
 	 *  Every installed font family. Enumeration touches every font file, so it runs off the async
 	 *  runtime.
@@ -1141,6 +1132,19 @@ export const commands = {
 	reminderList: (input: ReminderListInput | null) => __TAURI_INVOKE<ReminderListView>("reminder_list", { input }),
 	reminderSnooze: (input: ReminderSnoozeInput) => __TAURI_INVOKE<ReminderView>("reminder_snooze", { input }),
 	reminderUpdate: (input: ReminderUpdateInput) => __TAURI_INVOKE<ReminderView>("reminder_update", { input }),
+	/**  Whether there was a draft to delete. */
+	stickyDeleteDraft: (id: string) => __TAURI_INVOKE<boolean>("sticky_delete_draft", { id }),
+	stickyGetSession: () => __TAURI_INVOKE<StickyWindowSession>("sticky_get_session"),
+	stickyListDrafts: () => __TAURI_INVOKE<StickyDraftView[]>("sticky_list_drafts"),
+	/**  The pointer entered (`true`) or left the edge tab: it fans the draft list out or folds it. */
+	stickyPeek: (open: boolean) => __TAURI_INVOKE<null>("sticky_peek", { open }),
+	/**  The card's measured height in logical pixels; the shell clamps it to 140 to 560. */
+	stickyResize: (height: number | null) => __TAURI_INVOKE<null>("sticky_resize", { height }),
+	stickySaveDraft: (input: StickySaveDraftInput) => __TAURI_INVOKE<StickyDraftView>("sticky_save_draft", { input }),
+	/**  Closes the sticky; its renderer saved the draft before asking. */
+	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
+	/**  The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`). */
+	stickyUnfold: (draftId: string | null) => __TAURI_INVOKE<null>("sticky_unfold", { draftId }),
 };
 
 /** Events */

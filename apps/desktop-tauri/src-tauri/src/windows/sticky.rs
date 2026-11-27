@@ -16,6 +16,7 @@ use tauri::{
     WebviewWindowBuilder, WindowEvent, Wry,
 };
 
+use super::edge_tab;
 use super::main_window::webview_profile;
 use super::registry::is_app_label;
 use super::scripts::{self, ShellGlobals};
@@ -28,7 +29,7 @@ pub const LABEL: &str = "sticky";
 
 /// The app stays alive with no window and the Dock reopens it, so a hidden sticky keeps nothing
 /// running that the user cannot reach.
-const APP_OUTLIVES_WINDOWS: bool = cfg!(target_os = "macos");
+pub(super) const APP_OUTLIVES_WINDOWS: bool = cfg!(target_os = "macos");
 
 #[derive(Default)]
 pub struct StickyWindow {
@@ -41,6 +42,7 @@ pub fn register_stages() {
 
 fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(StickyWindow::default());
+    app.manage(edge_tab::EdgeTab::default());
     Ok(())
 }
 
@@ -52,6 +54,11 @@ impl StickyWindow {
     /// The draft the open sticky shows (`sticky:get-session`).
     pub fn draft_id(&self) -> Option<String> {
         self.lock().draft_id()
+    }
+
+    /// A sticky is on screen or about to be (`isStickyWindowOpen`).
+    pub fn is_open(&self) -> bool {
+        self.lock().is_open()
     }
 }
 
@@ -119,6 +126,8 @@ fn open_on_main(app: &AppHandle<Wry>, request: OpenRequest, latest: Option<Strin
             app.state::<StickyWindow>().lock().closed();
         }
     }
+    // The edge tab stands for the drafts only while the sticky is away.
+    edge_tab::refresh(app);
 }
 
 /// The sticky on screen gives way to another draft: its page writes its pending text (the 400 ms
@@ -152,7 +161,13 @@ fn reload(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) -> tauri::Result<()
     window.reload()
 }
 
-fn build(app: &AppHandle<Wry>) -> tauri::Result<WebviewWindow<Wry>> {
+/// What the sticky and the edge tab share: a hidden, frameless, always-on-top page of the app on
+/// `route`, with no taskbar entry, painted only where its card is.
+pub(super) fn floating_page<'a>(
+    app: &'a AppHandle<Wry>,
+    label: &str,
+    route: &str,
+) -> WebviewWindowBuilder<'a, Wry, AppHandle<Wry>> {
     let origins = navigation_guard::app_origins(app);
     let off_app = navigation_guard::OffApp::default();
     let (loopback_origin, loopback_token) =
@@ -163,41 +178,70 @@ fn build(app: &AppHandle<Wry>) -> tauri::Result<WebviewWindow<Wry>> {
         loopback_token,
     };
     let state = crate::shell::services::startup_state(app);
-    let builder =
-        WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html#/sticky".into()))
-            .title("Sticky")
-            .inner_size(WIDTH, INITIAL_HEIGHT)
-            .always_on_top(true)
-            .decorations(false)
-            .resizable(false)
-            .skip_taskbar(true)
-            .visible(false)
-            .transparent(true)
-            .shadow(false)
-            .background_color(Color(0, 0, 0, 0))
-            .use_https_scheme(true)
-            .disable_drag_drop_handler()
-            // Not at first paint: on Windows a hidden transparent window never paints, so the
-            // shortcut would seem to do nothing (`af1c3517f2`).
-            .on_page_load(|window, payload| {
-                if matches!(payload.event(), PageLoadEvent::Finished)
-                    && window.state::<StickyWindow>().lock().shows_on_load()
-                    && let Err(error) = window.show().and_then(|()| window.set_focus())
-                {
-                    tracing::warn!(scope = "StickyWindow", "could not show the sticky: {error}");
-                }
-            })
-            .on_navigation(navigation_guard::on_navigation(
-                app.clone(),
-                off_app.clone(),
-            ))
-            .on_new_window(navigation_guard::on_new_window(app.clone(), off_app))
-            .initialization_script(scripts::app_page_only(&origins, &startup::script(&state)))
-            .initialization_script(scripts::app_page_only(
-                &origins,
-                &scripts::init_script(globals),
-            ));
-    let window = webview_profile(builder, app).build()?;
+    let builder = WebviewWindowBuilder::new(
+        app,
+        label,
+        WebviewUrl::App(format!("index.html#/{route}").into()),
+    )
+    .always_on_top(true)
+    .decorations(false)
+    .resizable(false)
+    .skip_taskbar(true)
+    .visible(false)
+    .shadow(false)
+    .use_https_scheme(true)
+    .disable_drag_drop_handler()
+    .on_navigation(navigation_guard::on_navigation(
+        app.clone(),
+        off_app.clone(),
+    ))
+    .on_new_window(navigation_guard::on_new_window(app.clone(), off_app))
+    .initialization_script(scripts::app_page_only(&origins, &startup::script(&state)))
+    .initialization_script(scripts::app_page_only(
+        &origins,
+        &scripts::init_script(globals),
+    ));
+    webview_profile(surface(builder), app)
+}
+
+/// Transparent, so only the card paints. A Linux display without a compositor cannot blend a
+/// transparent window and would show black: there the window paints the card's paper colour.
+fn surface(
+    builder: WebviewWindowBuilder<'_, Wry, AppHandle<Wry>>,
+) -> WebviewWindowBuilder<'_, Wry, AppHandle<Wry>> {
+    #[cfg(target_os = "linux")]
+    {
+        let composited = gtk::gdk::Screen::default().is_some_and(|screen| screen.is_composited());
+        if !composited {
+            tracing::info!(
+                scope = "StickyWindow",
+                "the display is not composited: sticky windows paint a solid background"
+            );
+            return builder
+                .transparent(false)
+                .background_color(Color(0xfa, 0xf9, 0xf7, 0xff));
+        }
+    }
+    builder
+        .transparent(true)
+        .background_color(Color(0, 0, 0, 0))
+}
+
+fn build(app: &AppHandle<Wry>) -> tauri::Result<WebviewWindow<Wry>> {
+    let window = floating_page(app, LABEL, "sticky")
+        .title("Sticky")
+        .inner_size(WIDTH, INITIAL_HEIGHT)
+        // Not at first paint: on Windows a hidden transparent window never paints, so the
+        // shortcut would seem to do nothing (`af1c3517f2`).
+        .on_page_load(|window, payload| {
+            if matches!(payload.event(), PageLoadEvent::Finished)
+                && window.state::<StickyWindow>().lock().shows_on_load()
+                && let Err(error) = window.show().and_then(|()| window.set_focus())
+            {
+                tracing::warn!(scope = "StickyWindow", "could not show the sticky: {error}");
+            }
+        })
+        .build()?;
     if let Some(position) = near_cursor(app)
         && let Err(error) = window.set_position(position)
     {
@@ -209,10 +253,13 @@ fn build(app: &AppHandle<Wry>) -> tauri::Result<WebviewWindow<Wry>> {
     navigation_guard::install(app, &window);
     let handle = app.clone();
     window.on_window_event(move |event| {
-        if matches!(event, WindowEvent::Destroyed)
-            && let Some((request, latest)) = handle.state::<StickyWindow>().lock().destroyed()
-        {
-            open_after_removal(&handle, request, latest);
+        if !matches!(event, WindowEvent::Destroyed) {
+            return;
+        }
+        let deferred = handle.state::<StickyWindow>().lock().destroyed();
+        match deferred {
+            Some((request, latest)) => open_after_removal(&handle, request, latest),
+            None => edge_tab::refresh(&handle),
         }
     });
     Ok(window)
@@ -280,8 +327,13 @@ pub fn tuck(app: &AppHandle<Wry>) {
         .tuck(others, APP_OUTLIVES_WINDOWS);
     let Some(window) = app.get_webview_window(LABEL) else {
         app.state::<StickyWindow>().lock().closed();
+        edge_tab::refresh(app);
         return;
     };
+    // A destroyed sticky refreshes the tab from its `Destroyed`.
+    if tuck == Tuck::Hide {
+        edge_tab::refresh(app);
+    }
     match tuck {
         Tuck::Destroy => destroy(app, &window),
         Tuck::Hide => {
@@ -296,7 +348,7 @@ pub fn tuck(app: &AppHandle<Wry>) {
 /// window, a hidden sticky goes too off macOS: left alone it would keep the app running with no
 /// way back to it.
 pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
-    if label == LABEL || other_app_window(app, label) {
+    if label == LABEL || !is_app_label(label) || other_app_window(app, label) {
         return;
     }
     let Some(window) = app.get_webview_window(LABEL) else {
