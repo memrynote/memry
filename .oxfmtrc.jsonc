@@ -79,6 +79,8 @@
 
     // Saved pages of the article-extraction corpus, parsed byte for byte by the Rust tests.
     "crates/memry-desktop/tests/fixtures/article-extract/",
+    // Inbox metadata corpus: the page bytes (some not UTF-8) are the test input of `metadata_vectors`.
+    "crates/memry-desktop/tests/fixtures/metadata/",
     // Byte-exact vault fixtures: copies of the Electron golden files and vectors its code produced.
     "crates/memry-desktop/tests/fixtures/golden-vault/",
     // A vault Electron wrote (scripts/electron-fixtures/capture-vault.mjs), kept as it wrote it.

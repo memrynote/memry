@@ -642,6 +642,10 @@ export const commands = {
 	ocrLanguagesRetry: () => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_retry"),
 	/**  Stores the chosen languages (English is always added) and starts converging on them. */
 	ocrLanguagesSet: (languages: OcrLanguage[]) => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_set", { languages }),
+	/**  `onboarding:detect-sources`: note apps installed on this computer, and Obsidian's vaults. */
+	onboardingDetectSources: () => __TAURI_INVOKE<OnboardingSources>("onboarding_detect_sources"),
+	/**  `onboarding:is-memry-vault`: whether a folder the user picked already has `.memry`. */
+	onboardingIsMemryVault: (path: string) => __TAURI_INVOKE<boolean>("onboarding_is_memry_vault", { path }),
 	/**
 	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
 	 *  that link to it.
@@ -1090,6 +1094,32 @@ export const commands = {
 	tasksProjectSetLinkPinned: (input: ProjectSetLinkPinnedInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_set_link_pinned", { input }),
 	tasksProjectUnlinkItem: (input: ProjectLinkItemInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_unlink_item", { input }),
 	tasksProjectUpdate: (input: ProjectUpdateInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_update", { input }),
+	/**  Bookmarks each item not bookmarked yet and answers how many it made. */
+	bookmarksBulkCreate: (items: BookmarkItemInput[]) => __TAURI_INVOKE<number>("bookmarks_bulk_create", { items }),
+	/**  Removes each bookmark of `bookmark_ids` and answers how many it removed. */
+	bookmarksBulkDelete: (bookmarkIds: string[]) => __TAURI_INVOKE<number>("bookmarks_bulk_delete", { bookmarkIds }),
+	/**
+	 *  Bookmarks the item at the end of the list; an item bookmarked already is refused with
+	 *  Electron's "already bookmarked".
+	 */
+	bookmarksCreate: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView>("bookmarks_create", { input }),
+	/**  Removes the bookmark `id`; an id with no live bookmark is refused with Electron's "not found". */
+	bookmarksDelete: (id: string) => __TAURI_INVOKE<null>("bookmarks_delete", { id }),
+	bookmarksGet: (id: string) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get", { id }),
+	bookmarksGetByItem: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get_by_item", { input }),
+	bookmarksIsBookmarked: (input: BookmarkItemInput) => __TAURI_INVOKE<boolean>("bookmarks_is_bookmarked", { input }),
+	/**  One page of bookmarks, each with what it points at. */
+	bookmarksList: (input: BookmarkListInput) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list", { input }),
+	/**  Every bookmark of `item_type`, by position. */
+	bookmarksListByType: (itemType: string) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list_by_type", { itemType }),
+	/**  Puts `bookmark_ids` in this order. */
+	bookmarksReorder: (bookmarkIds: string[]) => __TAURI_INVOKE<null>("bookmarks_reorder", { bookmarkIds }),
+	/**  Bookmarks an unbookmarked item, or removes every bookmark of a bookmarked one. */
+	bookmarksToggle: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkToggleView>("bookmarks_toggle", { input }),
+	/**  The newest opened items that still exist, at most `limit` (50 when absent). */
+	recentsList: (limit: number | null) => __TAURI_INVOKE<RecentlyOpenedView[]>("recents_list", { limit }),
+	/**  Records that the note or canvas was opened now: whether it was written. */
+	recentsRecord: (input: RecordRecentInput) => __TAURI_INVOKE<boolean>("recents_record", { input }),
 };
 
 /** Events */
@@ -1103,6 +1133,9 @@ export const events = {
 	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
 	authSessionExpiredEvent: makeEvent<AuthSessionExpiredEvent, AuthSessionExpiredEvent>("auth-session-expired-event"),
 	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
+	bookmarkCreatedEvent: makeEvent<BookmarkCreatedEvent, BookmarkCreatedEvent>("bookmark-created-event"),
+	bookmarkDeletedEvent: makeEvent<BookmarkDeletedEvent, BookmarkDeletedEvent>("bookmark-deleted-event"),
+	bookmarksReorderedEvent: makeEvent<BookmarksReorderedEvent, BookmarksReorderedEvent>("bookmarks-reordered-event"),
 	canvasCreatedEvent: makeEvent<CanvasCreatedEvent, CanvasCreatedEvent>("canvas-created-event"),
 	canvasDeletedEvent: makeEvent<CanvasDeletedEvent, CanvasDeletedEvent>("canvas-deleted-event"),
 	canvasFolderCreatedEvent: makeEvent<CanvasFolderCreatedEvent, CanvasFolderCreatedEvent>("canvas-folder-created-event"),
@@ -1637,6 +1670,93 @@ export type BillingStatusResult = BillingStatusDto | BillingActionResult;
 
 export type BillingUsage = {
 	storageUsed: number,
+};
+
+/**  A bookmark was made, by a create, a toggle or a bulk create (`bookmarks:created`). */
+export type BookmarkCreatedEvent = {
+	bookmark: BookmarkView,
+};
+
+/**
+ *  A bookmark was removed (`bookmarks:deleted`). It names the item, so a star knows whether it
+ *  is its own.
+ */
+export type BookmarkDeletedEvent = {
+	id: string,
+	itemType: string,
+	itemId: string,
+};
+
+/**
+ *  `BookmarkCheckSchema`, `BookmarkCreateSchema`, `BookmarkToggleSchema` and one item of
+ *  `BookmarkBulkCreateSchema`.
+ */
+export type BookmarkItemInput = {
+	itemType: string,
+	itemId: string,
+};
+
+/**  `BookmarkItemMeta`: only what the item has. */
+export type BookmarkItemMetaView = {
+	path?: string | null,
+	emoji?: string | null,
+	tags?: string[] | null,
+};
+
+/**  `BookmarkListSchema`: by position, ascending, 100 from the first when a field is absent. */
+export type BookmarkListInput = {
+	itemType?: string | null,
+	sortBy?: BookmarkSortBy | null,
+	sortOrder?: SortOrder | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+/**  `BookmarkListResponse`. */
+export type BookmarkListView = {
+	bookmarks: BookmarkWithItemView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `BookmarkListSchema.sortBy`. */
+export type BookmarkSortBy = "position" | "createdAt";
+
+/**  `bookmarks:toggle`'s answer. */
+export type BookmarkToggleView = {
+	isBookmarked: boolean,
+	/**  The row made; `null` when the toggle removed the bookmark. */
+	bookmark: BookmarkView | null,
+};
+
+/**  `Bookmark`. */
+export type BookmarkView = {
+	id: string,
+	itemType: string,
+	itemId: string,
+	position: number,
+	/**  Empty for a row a peer wrote without one. */
+	createdAt: string,
+};
+
+/**
+ *  `BookmarkWithItem`: a row and what it points at. An item that is gone, or of a type nothing
+ *  resolves, has no title and `itemExists: false`, and the list shows it as an orphan.
+ */
+export type BookmarkWithItemView = {
+	id: string,
+	itemType: string,
+	itemId: string,
+	position: number,
+	createdAt: string,
+	itemTitle: string | null,
+	itemExists: boolean,
+	itemMeta?: BookmarkItemMetaView | null,
+};
+
+/**  The bookmarks were put in a new order (`bookmarks:reordered`). */
+export type BookmarksReorderedEvent = {
+	bookmarkIds: string[],
 };
 
 export type BuildKind = "dev" | "packaged";
@@ -3551,6 +3671,18 @@ export type OcrLanguagesState = {
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
 };
 
+/**  `OnboardingObsidianVault` (`packages/contracts/src/onboarding-api.ts`). */
+export type OnboardingObsidianVault = {
+	name: string,
+	path: string,
+};
+
+/**  `OnboardingSources`: Obsidian's vaults and the importer ids whose app is installed. */
+export type OnboardingSources = {
+	obsidianVaults: OnboardingObsidianVault[],
+	installedApps: string[],
+};
+
 export type OpenSettingsResult = {
 	success: boolean,
 };
@@ -4081,11 +4213,33 @@ export type ReadwiseStatus = {
 	nextRunAt: string | null,
 };
 
+/**  `RecentlyOpenedItemType`. */
+export type RecentItemType = "note" | "canvas";
+
+/**  `RecentlyOpenedItem`. */
+export type RecentlyOpenedView = {
+	itemId: string,
+	itemType: RecentItemType,
+	openedAt: string,
+	title: string,
+	path: string,
+	/**  A bare emoji, or an `icon:` or `custom:` reference. */
+	emoji: string | null,
+	/**  The note's file type (`markdown`, `pdf`, ...), or `canvas`. */
+	fileType: string,
+};
+
 /**
  *  Why a `reconnect_required` account needs attention on this device. `rejected` comes with the
  *  sync pass's auth-failure marker (29e2).
  */
 export type ReconnectReason = "missing";
+
+/**  `RecordRecentlyOpenedSchema`. */
+export type RecordRecentInput = {
+	itemId: string,
+	itemType: RecentItemType,
+};
 
 /**  `refreshBillingStatus(input?)`: the web checkout's transaction, when known. */
 export type RefreshBillingInput = {

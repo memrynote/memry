@@ -37,7 +37,7 @@ use crate::vault::note_file::{NoteFileError, large_by_size, large_file_class, re
 /// An unreadable or changed vault config changes no stored day, and a day owed a move of its
 /// file has none.
 pub struct Indexer {
-    root: PathBuf,
+    pub(super) root: PathBuf,
     pub(super) vault: Arc<Vault>,
     pub(super) search: Arc<Search>,
     /// Holds the device key the definitions' records are read under.
