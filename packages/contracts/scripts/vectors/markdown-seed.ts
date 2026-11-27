@@ -101,7 +101,6 @@ function refuseUnreproduced(name: string, markdown: string): void {
     ['inline token', /\(\((mention|date):/],
     ['task block', /\{task:/],
     ['plain checkbox', /\{check\}/],
-    ['masking token', /MEMRY/],
     ['line terminator', /[\u2028\u2029]/]
   ]
   for (const [layer, pattern] of layers) {

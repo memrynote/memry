@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 156
+    "caseCount": 162
   },
   "cases": [
     {
@@ -947,6 +947,42 @@
       "pins": "a math block y and a level 1 heading H",
       "markdown": "$$\ny\n$$\nH\n===",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"y\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\""
+    },
+    {
+      "name": "placeholder text: table cell code spans",
+      "pins": "a code span holding text that spells a cell code span placeholder keeps it, and the spans beside it keep their spaces and pipes",
+      "markdown": "| `x|MEMRYCSP0X` | `MEMRYCSPSX MEMRYCSPTX` |\n| --- | --- |\n| `a b` | c |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x|MEMRYCSP0X\" code={}\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"MEMRYCSPSX MEMRYCSPTX\" code={}\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a b\" code={}\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c\""
+    },
+    {
+      "name": "placeholder text: a hard break token on its own line",
+      "pins": "the line spelling a hard break token is text after the hard break before it",
+      "markdown": "a  \nMEMRYHBK0;\nb",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"MEMRYHBK0;\"\n3 element hardBreak\n3 text \"b\""
+    },
+    {
+      "name": "placeholder text: a hard break token opening a line",
+      "pins": "the token spelling opens a line of text after a hard break, and a soft break follows it",
+      "markdown": "a  \nMEMRYHBK0;b\nc",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 element hardBreak\n3 text \"MEMRYHBK0;b\"\n3 element hardBreak\n3 text \"c\""
+    },
+    {
+      "name": "placeholder text: table probe words before a widened table",
+      "pins": "a body row wider than the header widens the table whatever text spells the width probe",
+      "markdown": "MEMRYTBL0X\n\n| a |\n| --- |\n| b | MEMRYTBL1X | c |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"MEMRYTBL0X\"\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"MEMRYTBL1X\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c\""
+    },
+    {
+      "name": "placeholder text: every other placeholder shape",
+      "pins": "the shapes of the emphasis, link, comment, empty-block, token, colour, link card and details placeholders are text",
+      "markdown": "MEMRYEMO0; MEMRYEMC0; MEMRYEMK0; MEMRYEMU0; MEMRYLNK0X MEMRYCMT0aX MEMRYEMB MEMRYEMBCORE MEMRYTKN0X MEMRYICO0:y:MEMRYICC; MEMRYLINKCARD MEMRYDLT;",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"MEMRYEMO0; MEMRYEMC0; MEMRYEMK0; MEMRYEMU0; MEMRYLNK0X MEMRYCMT0aX MEMRYEMB MEMRYEMBCORE MEMRYTKN0X MEMRYICO0:y:MEMRYICC; MEMRYLINKCARD MEMRYDLT;\""
+    },
+    {
+      "name": "placeholder text: an empty item line beside the empty block placeholder",
+      "pins": "an item that spells the empty-block placeholder keeps it and the empty item beside it stays empty",
+      "markdown": "- MEMRYEMBCORE\n-\n- a",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"MEMRYEMBCORE\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\""
     }
   ]
 }
