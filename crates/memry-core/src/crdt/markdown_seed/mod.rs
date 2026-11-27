@@ -30,10 +30,9 @@
 //! between paragraphs, Memry's `<details data-memry-toggle>` toggles, and
 //! inline bold, italic, strike, code and links, and Obsidian `%% … %%`
 //! comments as `htmlComment` nodes ([`comments`], [`comment_nodes`]), and so
-//! is a link with no label (`[](u)`), written back as it was. Wiki
-//! links, tags and `{{…}}`
-//! tokens stay plain text, which is what desktop's converter does with them
-//! too, and so does a `<details>` block another app wrote.
+//! is a link with no label (`[](u)`), written back as it was. Wiki links,
+//! tags and `{{…}}` tokens stay plain text, which is what desktop's converter
+//! does with them too, and so does a `<details>` block another app wrote.
 //!
 //! **Fallback**: a construct outside that set (raw HTML and `<!--` comments, an
 //! image in a list or a quote, a video beside text, an inline mention or date
