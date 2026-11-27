@@ -233,6 +233,19 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     }
   })
 
+  it.each([
+    ['an image alt', '![a <!-- c --> b](https://e.com/i.png)'],
+    ['a link address', '[l](https://e.com/a<!--x-->b)'],
+    ['a math block', '$$\nx <!-- c --> y\n$$'],
+    ['an image beside text', 'a ![a %% c %% b](https://e.com/i.png) z']
+  ])('writes no comment token into the doc from %s', async (_where, markdown) => {
+    // The token's word is drawn per process, so another device or process
+    // would read one left in a prop as text, and write it to the vault.
+    const doc = await seed(markdown, { keepSource: false })
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).toString()).not.toContain('MEMRYCMT')
+    expect(await yDocToMarkdown(doc)).not.toContain('MEMRYCMT')
+  })
+
   it('keeps a comment inside a list item and a table cell', async () => {
     const markdown = '- item <!-- li -->\n- two\n\n| a | b |\n| --- | --- |\n| 1 <!-- td --> | 2 |'
     const doc = await seed(markdown, { keepSource: false })
