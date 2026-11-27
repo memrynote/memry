@@ -26,7 +26,12 @@ import {
   splitMarkdownByToggles,
   type ToggleBlockSegment
 } from './blocks/markdown'
-import { buildColumnListBlock, splitMarkdownByColumnRegions } from './blocks/columns'
+import {
+  buildColumnListBlock,
+  columnSettingsFor,
+  columnWidthsFromSettings,
+  splitMarkdownByColumnRegions
+} from './blocks/columns'
 import { readStructuredQuoteRun, resolveQuoteRun } from './blocks/quote'
 
 /**
@@ -137,9 +142,16 @@ async function parseMaskedMarkdown<B extends NoteBlock<B>>(
   const blocks: B[] = []
   for (const segment of splitMarkdownByColumnRegions(markdown)) {
     if (segment.kind === 'columns') {
+      // The settings the writer writes for the region: a region read without
+      // a settings fence, or with one that miscounts its columns, held other
+      // settings than the next seed of its own write.
+      const widths = columnWidthsFromSettings(segment.settings, segment.columns.length)
+      const settings = host.legacyBlocks
+        ? segment.settings
+        : columnSettingsFor(segment.settings, widths)
       blocks.push(
         await buildColumnListBlock<B>(
-          segment,
+          { ...segment, settings },
           (body) => parseMaskedMarkdown(host, body, true),
           createEmptyParagraph<B>,
           () => crypto.randomUUID()
