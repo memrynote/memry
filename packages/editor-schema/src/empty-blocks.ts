@@ -21,9 +21,10 @@ const PROCESS_WORD = String.fromCharCode(
 )
 const PLACEHOLDER = `MEMRYEMB${PROCESS_WORD}`
 
-const EMPTY_HEADING = /^ {0,3}#{1,6}[ \t]*$/
+// Flush left: BlockNote reads an indented `#` as paragraph text.
+const EMPTY_HEADING = /^#{1,6}[ \t]*$/
 const EMPTY_ITEM = /^[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)])[ \t]*$/
-const ANY_EMPTY = /^(?: {0,3}#{1,6}|[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)]))[ \t]*$/m
+const ANY_EMPTY = /^(?:#{1,6}|[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)]))[ \t]*$/m
 const LIST_ITEM = /^[ \t]*(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/
 
 /**
@@ -52,13 +53,21 @@ interface Block {
   children?: unknown
 }
 
-/** `blocks` with every placeholder `maskEmptyBlockLines` added taken back out. */
+/**
+ * `blocks` with every placeholder `maskEmptyBlockLines` added taken back out.
+ * One the parser left inside text goes too, as `unmaskHardBreaks` drops a
+ * stray token: a placeholder must never reach the vault file.
+ */
 export function dropEmptyBlockPlaceholders(blocks: Block[]): void {
   for (const block of blocks) {
     if (Array.isArray(block.content)) {
       const runs: Array<{ type?: string; text?: string }> = block.content
       if (runs.length === 1 && runs[0].type === 'text' && runs[0].text?.trim() === PLACEHOLDER) {
         block.content = []
+      } else {
+        for (const run of runs) {
+          if (run.text?.includes(PLACEHOLDER)) run.text = run.text.replaceAll(` ${PLACEHOLDER}`, '')
+        }
       }
     }
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- children is `unknown`; a block's children are blocks
