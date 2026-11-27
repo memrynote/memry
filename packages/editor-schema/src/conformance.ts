@@ -1154,6 +1154,16 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   { name: 'italic ending in bold before a word', markdown: 'a _b **c**_d' },
   { name: 'bold opening with italic', markdown: '**_x_ y**', canonical: '***x* y**' },
+  // An escaped star at a run's edge meets no delimiter, and an underscore in
+  // the block would pair with underscore delimiters unless it is escaped.
+  { name: 'italic run ending in an escaped star', markdown: '*a\\**' },
+  { name: 'bold run ending in an escaped star', markdown: '**a\\***' },
+  { name: 'underscore line above an italic run opening with bold', markdown: '\\_\n_**a** b_' },
+  {
+    name: 'underscore inside an italic run opening with bold',
+    markdown: '_**Note:** use snake\\_case_'
+  },
+  { name: 'underscore line in a quote above an italic run', markdown: '> \\_\n> *a\\**\n>\n> z' },
   {
     name: 'bold stops at a code span (BBF-62)',
     markdown: '**`a` x `c`**',

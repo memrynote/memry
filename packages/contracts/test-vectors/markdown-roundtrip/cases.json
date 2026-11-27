@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 393,
+    "exportedCaseCount": 398,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 403,
+    "caseCount": 408,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1762,6 +1762,41 @@
       "canonical": "***x* y**",
       "pending": null,
       "sha256": "6d50138f39f9f2f303397477c28145071a38ead4a2a2ad817fd59da74142c140"
+    },
+    {
+      "name": "italic run ending in an escaped star",
+      "markdown": "*a\\**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dccf53a7f923f5dd916746df2e905cfca921cc3385c21494cf31633432f51eb4"
+    },
+    {
+      "name": "bold run ending in an escaped star",
+      "markdown": "**a\\***",
+      "canonical": null,
+      "pending": null,
+      "sha256": "30e95dd9d458ace04524233c8e6de3ecb15b432c5ea3c1c11a6221bf72728303"
+    },
+    {
+      "name": "underscore line above an italic run opening with bold",
+      "markdown": "\\_\n_**a** b_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5928dffff79d6140d8002dacc6adde828b865abf34ebc4951020bc0e0490dac3"
+    },
+    {
+      "name": "underscore inside an italic run opening with bold",
+      "markdown": "_**Note:** use snake\\_case_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "721ba0c7c584cc7551fba75035838860185921098bf3197ea081a3aaf7cec4ad"
+    },
+    {
+      "name": "underscore line in a quote above an italic run",
+      "markdown": "> \\_\n> *a\\**\n>\n> z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0cd818909aa0050f61996a60bbb3628c901b8ee8c15e7b526c4ce7d5f7affd4f"
     },
     {
       "name": "bold stops at a code span (BBF-62)",
