@@ -17,7 +17,7 @@ pub enum ToolApprovalMode {
 }
 
 /// `ChangePreviewKindSchema` (`ipc-agent.ts:618`): the picture the approval card draws.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum PreviewKind {
     None,
@@ -27,7 +27,7 @@ pub enum PreviewKind {
 }
 
 /// `AgentReviewTargetSchema` (`ipc-agent.ts:694`): the page that reviews a body edit in place.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ReviewTarget {
     Note { id: String },
