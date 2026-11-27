@@ -139,6 +139,18 @@ fn is_inline_space(c: char) -> bool {
     c != '\n' && is_js_whitespace(c)
 }
 
+/// `/[^\S\n]+\n*$/`: the length of the whitespace ending `text` and the breaks
+/// after it, which the writer moves past the mark together.
+fn tail_len(text: &str) -> usize {
+    let body = text.trim_end_matches('\n');
+    let spaces = body.len() - body.trim_end_matches(is_inline_space).len();
+    if spaces == 0 {
+        0
+    } else {
+        text.len() - (body.len() - spaces)
+    }
+}
+
 fn trim_mark(runs: Vec<Run>, mark: Mark) -> Vec<Run> {
     let mut trimmed: Vec<Run> = Vec::with_capacity(runs.len());
     let mut at = 0;
@@ -165,9 +177,7 @@ fn trim_mark(runs: Vec<Run>, mark: Mark) -> Vec<Run> {
         let tail = run
             .last()
             .and_then(|last| plain_text(last, after))
-            .map_or(0, |(text, _)| {
-                text.len() - text.trim_end_matches(is_inline_space).len()
-            });
+            .map_or(0, |(text, _)| tail_len(text));
         let mut tail_run = None;
         if tail > 0
             && let Some(Run::Text(text, marks)) = run.last_mut()
@@ -240,6 +250,35 @@ mod tests {
         assert_eq!(
             trimmed(vec![text("see ", true, false), text(" now", false, false)]),
             vec![text("see", true, false), text("  now", false, false)]
+        );
+    }
+
+    #[test]
+    fn the_breaks_after_a_trailing_space_leave_the_mark_with_it() {
+        assert_eq!(tail_len("a \n\n"), 3);
+        assert_eq!(tail_len("a\n"), 0);
+        assert_eq!(tail_len("a \nb"), 0);
+        assert_eq!(tail_len("a \n \n"), 2);
+        let italic = SeedMarks {
+            italic: true,
+            ..SeedMarks::default()
+        };
+        let plain = SeedMarks::default();
+        let broken = |marks: &SeedMarks| SeedInline::HardBreak {
+            marks: marks.clone(),
+        };
+        let run = |text: &str, marks: &SeedMarks| SeedInline::Text {
+            text: text.to_owned(),
+            marks: marks.clone(),
+        };
+        assert_eq!(
+            trimmed(vec![run("a ", &italic), broken(&italic), run("b", &plain)]),
+            vec![
+                run("a", &italic),
+                run(" ", &plain),
+                broken(&plain),
+                run("b", &plain)
+            ]
         );
     }
 

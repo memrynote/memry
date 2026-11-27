@@ -148,14 +148,15 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   does leave in text keeps its chunk literal (`empty_blocks.rs:61`).
 - **Whitespace at a mark's edge is outside the mark.** After a block is parsed, each maximal
   run of items holding bold, italic or strike (a link counts when all its text does) loses its
-  first item's leading and last item's trailing spaces to plain text beside it, tried for bold
+  first item's leading and last item's trailing spaces, and the line breaks after those, to plain
+  text beside it, tried for bold
   then italic then strike, and equal neighbours are joined: ``**`a` x `c`**`` is code `a`, a
   space, bold `x`, a space, code `c`, and `**see ![x](u)** now` is bold `see`, then `  now`. A
   code span and a link are not trimmed, a space beside a comment stays, and a code block's
   text is left alone
-  (`packages/editor-schema/src/inline/emphasis-runs.ts:268`,
+  (`packages/editor-schema/src/inline/emphasis-runs.ts:336`,
   `packages/editor-schema/src/parse-markdown.ts:301`, `:400`;
-  `crates/memry-core/src/crdt/markdown_seed/emphasis_edges.rs:51`, `:82`, `:142`, called from
+  `crates/memry-core/src/crdt/markdown_seed/emphasis_edges.rs:51`, `:82`, `:144`, `:154`, called from
   `crates/memry-core/src/crdt/markdown_seed/blocks.rs:86`).
 - **A quoted callout, a quote and a `$$` math block are claimed where the parser opens a
   block, not only after a blank line.** A `>` line opens one unless the line above is a `>`
