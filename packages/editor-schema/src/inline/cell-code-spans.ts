@@ -1,4 +1,5 @@
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { MASK_WORD } from '@memry/shared/mask-word'
 
 /**
  * The inside of a code span in a table row, hidden from the parser.
@@ -31,9 +32,9 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
  */
 
 const UNSAFE_LINE = /[[\]]|<(?!br\s*\/?>)/i
-const CODE_TOKEN = /MEMRYCSP(\d+)X/g
+const CODE_TOKEN = new RegExp(`MEMRYCSP${MASK_WORD}(\\d+)X`, 'g')
 
-const placeholder = (index: number): string => `MEMRYCSP${index}X`
+const placeholder = (index: number): string => `MEMRYCSP${MASK_WORD}${index}X`
 
 export interface MaskedCellCodeSpans {
   markdown: string

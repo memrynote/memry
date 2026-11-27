@@ -26,6 +26,7 @@
     "./markdown-class": "./src/markdown-class.ts",
     "./link-references": "./src/link-references.ts",
     "./markdown-fences": "./src/markdown-fences.ts",
+    "./mask-word": "./src/mask-word.ts",
     "./markdown-code": "./src/markdown-code.ts",
     "./inline-tags": "./src/inline-tags.ts",
     "./note-names": "./src/note-names.ts",

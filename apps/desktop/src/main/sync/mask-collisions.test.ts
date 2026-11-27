@@ -16,13 +16,24 @@ import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { canonicalFragment } from '../../../../../packages/contracts/scripts/fragment-canonical'
-import { markdownToYFragment } from './blocknote-converter'
+import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
+import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 
 async function seeded(markdown: string): Promise<string> {
   const doc = new Y.Doc()
   const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
   expect(ok, 'markdown reached the shared doc').toBe(true)
   return canonicalFragment(doc).replace(/^(\d+ element blockContainer) id="[^"]*"/gm, '$1')
+}
+
+/** What the document alone writes: the record of the author's own bytes is cleared. */
+async function written(markdown: string): Promise<string> {
+  const doc = new Y.Doc()
+  await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+  writeMarkdownSourceToYDoc(doc, null)
+  const out = await yDocToMarkdown(doc)
+  expect(out, 'the doc serialized back at all').not.toBeNull()
+  return out as string
 }
 
 const CASES: Array<[string, string]> = [
@@ -53,5 +64,10 @@ describe('markdown placeholders typed as text', () => {
   it.each(CASES)('%s', async (_name, markdown) => {
     const reference = await seeded(markdown.replaceAll('MEMRY', 'MEMRX'))
     expect(await seeded(markdown)).toBe(reference.replaceAll('MEMRX', 'MEMRY'))
+  })
+
+  it.each(CASES)('%s, written back', async (_name, markdown) => {
+    const reference = await written(markdown.replaceAll('MEMRY', 'MEMRX'))
+    expect(await written(markdown)).toBe(reference.replaceAll('MEMRX', 'MEMRY'))
   })
 })

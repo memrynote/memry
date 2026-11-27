@@ -29,6 +29,7 @@
  */
 
 import { isObject } from './is-record.ts'
+import { MASK_WORD } from './mask-word.ts'
 
 export interface InlineColorStyles {
   textColor?: string
@@ -74,9 +75,9 @@ function isTableContent(content: unknown): content is TableContent {
   return isObject(content) && content.type === 'tableContent'
 }
 
-const openToken = (index: number): string => `MEMRYICO${index}:`
-const CLOSE_TOKEN = ':MEMRYICC;'
-const TOKEN_REGEX = /MEMRYICO(\d+):|:MEMRYICC;/g
+const openToken = (index: number): string => `MEMRYICO${MASK_WORD}${index}:`
+const CLOSE_TOKEN = `:MEMRYICC${MASK_WORD};`
+const TOKEN_REGEX = new RegExp(`MEMRYICO${MASK_WORD}(\\d+):|:MEMRYICC${MASK_WORD};`, 'g')
 
 function pickColorStyles(styles: Record<string, unknown>): InlineColorStyles | null {
   const colors: InlineColorStyles = {}

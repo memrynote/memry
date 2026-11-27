@@ -6,6 +6,7 @@ import {
 } from './block-markers.ts'
 import { parseLinkCardMarker } from './link-card-marker.ts'
 import { replaceMarkdownComments } from './markdown-code.ts'
+import { MASK_WORD } from './mask-word.ts'
 
 /**
  * HTML comments, carried through the editor as an inline `htmlComment` node
@@ -121,7 +122,7 @@ function isMemryMarker(comment: string, wholeLine: boolean): boolean {
  */
 const LINK_CARD_CANDIDATE =
   /^(<!-- link-card:\{.*\} -->)(?=\n(?:<!-- [^\n]* -->\n)*(?:\*\*|~~|\*|_)*\[\[[^\]|\n]+(?:\|[^\]\n]+)?\]\](?:\*\*|~~|\*|_)*(?:\n|$))/gm
-const LINK_CARD_KEEP = 'MEMRYLINKCARD'
+const LINK_CARD_KEEP = `MEMRYLINKCARD${MASK_WORD}`
 
 export function maskHtmlComments(
   markdown: string,

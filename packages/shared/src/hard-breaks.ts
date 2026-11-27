@@ -1,4 +1,5 @@
 import { splitByCodeFences } from './empty-lines.ts'
+import { MASK_WORD } from './mask-word.ts'
 
 /**
  * The token a hard break wears across BlockNote's markdown parser.
@@ -17,7 +18,8 @@ import { splitByCodeFences } from './empty-lines.ts'
  * masking in `inline-colors.ts`: swap the construct for a token before the
  * parse, put it back after.
  *
- * The token is ASCII, so it cannot be mistaken for content the parser will
+ * The token carries `MASK_WORD`, so no text an author wrote spells one. It is
+ * ASCII, so it cannot be mistaken for content the parser will
  * transform, and no restore leaves one behind: `unmaskHardBreaks` deletes any
  * occurrence it cannot pair with a newline. That fallback is the safety
  * property: the worst case is a hard break that stays soft — what happens
@@ -32,16 +34,19 @@ import { splitByCodeFences } from './empty-lines.ts'
  * difference between a `cmd \` line continuation surviving a `<pre>` block and
  * being silently replaced by two spaces.
  */
-const HARD_BREAK_TOKEN_PREFIX = 'MEMRYHBK'
+const HARD_BREAK_TOKEN_PREFIX = `MEMRYHBK${MASK_WORD}`
 
-/** `MEMRYHBK<index>;`, as written by `maskHardBreaks`. */
-const HARD_BREAK_TOKEN = /MEMRYHBK(\d+);/g
+/** `MEMRYHBK<word><index>;`, as written by `maskHardBreaks`. */
+const HARD_BREAK_TOKEN = new RegExp(`${HARD_BREAK_TOKEN_PREFIX}(\\d+);`, 'g')
 
 /**
  * The same token, with the spaces before it and the newline it marks when it
  * still has one. Spaces before a break are part of its spelling, never text.
  */
-const HARD_BREAK_TOKEN_WITH_NEWLINE = /([^\S\n]*)MEMRYHBK\d+;(\n?)/g
+const HARD_BREAK_TOKEN_WITH_NEWLINE = new RegExp(
+  `([^\\S\\n]*)${HARD_BREAK_TOKEN_PREFIX}\\d+;(\\n?)`,
+  'g'
+)
 
 // A hard break is a line ending in two or more spaces, or in a single
 // backslash. Both only count when a non-blank line follows: otherwise the line
@@ -66,7 +71,7 @@ const LINK_SYNTAX = /[[\]]|<a\b/i
 const INLINE_SPAN_SYNTAX = /[`[\]<]/
 
 /** A break an earlier join wrote: a token, then the `<br>` it marks. */
-const JOINED_BREAK = /MEMRYHBK\d+;<br>/g
+const JOINED_BREAK = new RegExp(`${HARD_BREAK_TOKEN_PREFIX}\\d+;<br>`, 'g')
 
 /** A task item's `[ ]` / `[x]`, which is not link syntax. */
 const TASK_ITEM_BOX = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+)\[[ xX]\]/

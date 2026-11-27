@@ -18,6 +18,7 @@
 
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { MASK_WORD } from '@memry/shared/mask-word'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { DETAILS_LINE_TAIL, DETAILS_MARKUP, endsParagraphBefore } from './block-starts.ts'
 import { isCalloutTypeName } from './callout-types.ts'
@@ -722,7 +723,7 @@ const PREFIXED_DETAILS_LINE_REGEX = new RegExp(
  * exist. Nothing needs escaping on the way out — a text node holding
  * `<details>` serializes to `<details>` bare.
  */
-const DETAILS_LT_TOKEN = 'MEMRYDLT;'
+const DETAILS_LT_TOKEN = `MEMRYDLT${MASK_WORD};`
 
 /**
  * Hide the `<` of a `<details>` markup line that no toggle claimed, so the

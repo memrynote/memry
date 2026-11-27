@@ -1,4 +1,5 @@
 import { markdownToHTML } from '@blocknote/core'
+import { MASK_WORD } from '@memry/shared/mask-word'
 import { TABLE_DELIMITER } from './blocks/block-starts'
 
 /**
@@ -29,7 +30,7 @@ import { TABLE_DELIMITER } from './blocks/block-starts'
 // tokenized again.
 const QUOTE_PREFIX = /^\s{0,3}>\s?/
 
-const marker = (index: number): string => `MEMRYTBL${index}X`
+const marker = (index: number): string => `MEMRYTBL${MASK_WORD}${index}X`
 
 /** `parsePipeCells`' cell count. */
 function cellCount(line: string): number {

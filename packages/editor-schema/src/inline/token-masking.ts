@@ -1,4 +1,5 @@
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { MASK_WORD } from '@memry/shared/mask-word'
 
 /**
  * Memry's `((…))` inline tokens, hidden from the markdown parser.
@@ -31,7 +32,9 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
 // unterminated `((mention:` from swallowing the next real token.
 const INLINE_TOKEN_REGEX = /\(\((?:mention|date):[^()\n\r]*\)\)/g
 
-const placeholder = (index: number): string => `MEMRYTKN${index}X`
+const PLACEHOLDER_PREFIX = `MEMRYTKN${MASK_WORD}`
+const PLACEHOLDER = new RegExp(`${PLACEHOLDER_PREFIX}(\\d+)X`, 'g')
+const placeholder = (index: number): string => `${PLACEHOLDER_PREFIX}${index}X`
 
 /**
  * A backslash escape the markdown parser would have consumed.
@@ -85,6 +88,6 @@ export function maskInlineTokens(markdown: string): MaskedInlineTokens {
  * in which case it is the author's own bytes.
  */
 export function restoreInlineTokens(text: string, tokens: string[]): string {
-  if (tokens.length === 0 || !text.includes('MEMRYTKN')) return text
-  return text.replace(/MEMRYTKN(\d+)X/g, (whole, index: string) => tokens[Number(index)] ?? whole)
+  if (tokens.length === 0 || !text.includes(PLACEHOLDER_PREFIX)) return text
+  return text.replace(PLACEHOLDER, (whole, index: string) => tokens[Number(index)] ?? whole)
 }
