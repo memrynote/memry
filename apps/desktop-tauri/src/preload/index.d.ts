@@ -985,165 +985,6 @@ export interface SettingsChangedEvent {
   value: unknown
 }
 
-// Reminder types
-export type ReminderTargetType = 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
-export type ReminderStatus = 'pending' | 'triggered' | 'dismissed' | 'snoozed'
-
-export interface Reminder {
-  id: string
-  targetType: ReminderTargetType
-  targetId: string
-  remindAt: string
-  anchorId: string | null
-  highlightText: string | null
-  highlightStart: number | null
-  highlightEnd: number | null
-  title: string | null
-  note: string | null
-  status: ReminderStatus
-  triggeredAt: string | null
-  dismissedAt: string | null
-  snoozedUntil: string | null
-  createdAt: string
-  modifiedAt: string
-}
-
-export interface ReminderWithTarget extends Reminder {
-  targetTitle: string | null
-  targetExists: boolean
-  highlightExists?: boolean
-  projectId?: string | null
-}
-
-export interface CreateReminderInput {
-  targetType: ReminderTargetType
-  targetId: string
-  remindAt: string
-  title?: string
-  note?: string
-  highlightText?: string
-  highlightStart?: number
-  highlightEnd?: number
-}
-
-export interface UpdateReminderInput {
-  id: string
-  remindAt?: string
-  title?: string | null
-  note?: string | null
-}
-
-export interface SnoozeReminderInput {
-  id: string
-  snoozeUntil: string
-}
-
-export interface ListRemindersInput {
-  targetType?: ReminderTargetType
-  targetId?: string
-  status?: ReminderStatus | ReminderStatus[]
-  fromDate?: string
-  toDate?: string
-  limit?: number
-  offset?: number
-}
-
-export interface ReminderListResponse {
-  reminders: ReminderWithTarget[]
-  total: number
-  hasMore: boolean
-}
-
-export interface ReminderCreateResponse {
-  success: boolean
-  reminder: Reminder | null
-  error?: string
-}
-
-export interface ReminderUpdateResponse {
-  success: boolean
-  reminder: Reminder | null
-  error?: string
-}
-
-export interface ReminderDeleteResponse {
-  success: boolean
-  error?: string
-}
-
-export interface ReminderDismissResponse {
-  success: boolean
-  reminder: Reminder | null
-  error?: string
-}
-
-export interface ReminderSnoozeResponse {
-  success: boolean
-  reminder: Reminder | null
-  error?: string
-}
-
-export interface BulkDismissResponse {
-  success: boolean
-  dismissedCount: number
-  error?: string
-}
-
-// Reminder event types
-//
-// Two producers, two payload shapes: the local IPC path (main/lib/reminders.ts)
-// sends the resolved row, while the sync handler
-// (main/sync/item-handlers/reminder-handler.ts) has no resolved row for an
-// inbound change and sends only `{ id }`. Consumers must tolerate both.
-export interface ReminderCreatedEvent {
-  reminder?: Reminder
-  id?: string
-}
-
-export interface ReminderUpdatedEvent {
-  reminder?: Reminder
-  id?: string
-}
-
-export interface ReminderDeletedEvent {
-  id: string
-  targetType?: string
-  targetId?: string
-}
-
-export interface ReminderDueEvent {
-  reminders: ReminderWithTarget[]
-  count: number
-}
-
-export interface ReminderDismissedEvent {
-  reminder: Reminder
-}
-
-export interface ReminderSnoozedEvent {
-  reminder: Reminder
-}
-
-export interface ReminderClickedEvent {
-  reminder: ReminderWithTarget
-}
-
-// Reminders client API interface
-export interface RemindersClientAPI {
-  create(input: CreateReminderInput): Promise<ReminderCreateResponse>
-  update(input: UpdateReminderInput): Promise<ReminderUpdateResponse>
-  delete(id: string): Promise<ReminderDeleteResponse>
-  get(id: string): Promise<ReminderWithTarget | null>
-  list(options?: ListRemindersInput): Promise<ReminderListResponse>
-  getUpcoming(days?: number): Promise<ReminderListResponse>
-  getDue(): Promise<ReminderWithTarget[]>
-  getForTarget(input: { targetType: ReminderTargetType; targetId: string }): Promise<Reminder[]>
-  countPending(): Promise<number>
-  dismiss(id: string): Promise<ReminderDismissResponse>
-  snooze(input: SnoozeReminderInput): Promise<ReminderSnoozeResponse>
-  bulkDismiss(input: { reminderIds: string[] }): Promise<BulkDismissResponse>
-}
-
 // Folder View client API interface — re-exported from
 // @memry/contracts/folder-view-api so this declaration cannot drift from the
 // real contract. `folderExists` is a preload-only existence check (T115) not
@@ -1634,7 +1475,6 @@ interface API
   tags: Omit<TagsClientAPI, PortedTagMethod> & {
     readonly [K in PortedTagMethod]: CallTagsServiceInstead
   }
-  reminders: RemindersClientAPI
   recents: RecentsClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
@@ -1706,14 +1546,6 @@ interface API
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
   onTagsProgress: (callback: (event: TagsProgressEvent) => void) => () => void
-  // Reminder event subscriptions
-  onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
-  onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void
-  onReminderDeleted: (callback: (event: ReminderDeletedEvent) => void) => () => void
-  onReminderDue: (callback: (event: ReminderDueEvent) => void) => () => void
-  onReminderDismissed: (callback: (event: ReminderDismissedEvent) => void) => () => void
-  onReminderSnoozed: (callback: (event: ReminderSnoozedEvent) => void) => () => void
-  onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
   // Search event subscriptions
