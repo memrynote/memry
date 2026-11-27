@@ -9,6 +9,9 @@ use crate::startup::StartupState;
 // The bookmark and recents commands and events (`registry/bookmarks.rs`).
 #[macro_use]
 mod bookmarks;
+// The sticky note and edge tab commands and events (`registry/stickies.rs`).
+#[macro_use]
+mod stickies;
 // The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
 #[macro_use]
 mod projects;
@@ -309,15 +312,6 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::spell::spell_check_word,
             crate::commands::spell::spell_add_word,
             crate::commands::spell::spell_add_words,
-            // stickies
-            crate::commands::stickies::sticky_delete_draft,
-            crate::commands::stickies::sticky_get_session,
-            crate::commands::stickies::sticky_list_drafts,
-            crate::commands::stickies::sticky_resize,
-            crate::commands::stickies::sticky_save_draft,
-            crate::commands::stickies::sticky_tuck,
-            crate::commands::stickies::sticky_unfold,
-            crate::commands::stickies::sticky_peek,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -532,8 +526,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
-            // stickies
-            crate::events::StickyDraftsChangedEvent,
             // sync
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,

@@ -1,11 +1,12 @@
 //! The bookmark and recents commands and events, appended to the task domain's lists by
 //! `registry/projects.rs`: `with_bookmark_commands!(collect_commands![...])` hands
 //! `collect_commands!` the list with these appended, and `with_bookmark_events!` does the same
-//! for `collect_events!`.
+//! for `collect_events!`. Each hands its list on to `registry/stickies.rs`, which appends the
+//! sticky ones.
 
 macro_rules! with_bookmark_commands {
     ($collect:ident![$($commands:tt)*]) => {
-        $collect![
+        with_sticky_commands!($collect![
             $($commands)*
             crate::commands::bookmarks::bookmarks_bulk_create::<Wry>,
             crate::commands::bookmarks::bookmarks_bulk_delete::<Wry>,
@@ -20,17 +21,17 @@ macro_rules! with_bookmark_commands {
             crate::commands::bookmarks::bookmarks_toggle::<Wry>,
             crate::commands::recents::recents_list::<Wry>,
             crate::commands::recents::recents_record::<Wry>,
-        ]
+        ])
     };
 }
 
 macro_rules! with_bookmark_events {
     ($collect:ident![$($events:tt)*]) => {
-        $collect![
+        with_sticky_events!($collect![
             $($events)*
             crate::events::BookmarkCreatedEvent,
             crate::events::BookmarkDeletedEvent,
             crate::events::BookmarksReorderedEvent,
-        ]
+        ])
     };
 }
