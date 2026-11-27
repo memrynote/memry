@@ -107,55 +107,111 @@ struct SlashMenuConvertTests {
         #expect(inserted(chosen.edits) == ["table"])
     }
 
-    /// On the real core: undo puts the line back as it was before the `/`,
-    /// in one step, and redo turns it again (desktop's
-    /// `slash-menu-convert.integration.test.ts` holds desktop to the same).
-    @Test(.timeLimit(.minutes(1))) func undoPutsTheLineBackAsItWasBeforeTheSlashAndRedoTurnsItAgain() async throws {
-        let vault = try TasksTestVault()
-        let writer = try vault.vault.notesWriter(store: TaskTestKeychain())
-        let noteId = try writer.create(title: "Agent Slash", folderPath: nil)
-        let blockId = UUID().uuidString.lowercased()
-        let typed = "Milk /numbered"
-        _ = try writer.editBlock(
-            noteId: noteId, edit: .insertBlock(kind: "bulletListItem", afterBlockId: nil, text: typed, newBlockId: blockId)
-        )
-        let editor = CoreBlockEditor(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
-        let model = NoteEditorViewModel(noteId: noteId, editor: editor)
-        let session = model.session
-        session.model = model
-        let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
+    /// One line on the real core, in a focused row that re-reads its block
+    /// after every write, as the page does (`updateUIView`).
+    @MainActor private struct OnCore {
+        let vault: TasksTestVault
+        let model: NoteEditorViewModel
+        let reader: CoreNotesReader
+        let field: BlockField
+        let noteId: String
+        let blockId: String
+        var session: EditorSession { model.session }
+
+        /// The block as the core holds it: its type, then its text.
         func line() async throws -> String {
             let blocks = try #require(try await reader.blocks(id: noteId))
             session.blocks = { blocks }
             let block = try #require(blocks.first { $0.id == blockId })
             return "\(block.kind) \(BlockText.shown(block.inline))"
         }
+
+        /// The type and level the toolbar's Turn into shows.
+        var shown: String {
+            "\(session.focusedKind ?? "none") \(session.focusedLevel.map(String.init) ?? "-")"
+        }
+
         func settle() async {
             session.enqueue {}
             await session.tail?.value
         }
+    }
 
-        _ = try await line()
-        let block = try #require(session.blocks().first)
+    private func onCore(_ kind: String, _ text: String, level: Int? = nil) async throws -> OnCore {
+        let vault = try TasksTestVault()
+        let writer = try vault.vault.notesWriter(store: TaskTestKeychain())
+        let noteId = try writer.create(title: "Agent Slash", folderPath: nil)
+        let blockId = UUID().uuidString.lowercased()
+        _ = try writer.editBlock(
+            noteId: noteId, edit: .insertBlock(kind: kind, afterBlockId: nil, text: text, newBlockId: blockId)
+        )
+        if let level {
+            _ = try writer.editBlock(noteId: noteId, edit: .setProp(blockId: blockId, name: "level", value: String(level)))
+        }
+        let editor = CoreBlockEditor(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+        let model = NoteEditorViewModel(noteId: noteId, editor: editor)
+        let session = model.session
+        session.model = model
+        let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
+        let block = try #require(try await reader.blocks(id: noteId)?.first { $0.id == blockId })
+        session.blocks = { [block] }
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let field = BlockField(block: block, session: session, style: style, alignment: .natural)
         field.render()
         session.focusChanged(to: field)
+        session.reload = { [weak session, weak field] in
+            guard let session, let field else { return }
+            let generation = session.landedWrites
+            guard let read = try? await reader.blocks(id: noteId)?.first(where: { $0.id == blockId }) else { return }
+            field.receive(read, generation: generation)
+        }
+        return OnCore(vault: vault, model: model, reader: reader, field: field, noteId: noteId, blockId: blockId)
+    }
+
+    /// On the real core: undo puts the line back as it was before the `/`,
+    /// in one step, and redo turns it again (desktop's
+    /// `slash-menu-convert.integration.test.ts` holds desktop to the same).
+    /// The toolbar's Turn into follows: a bullet and a numbered item share
+    /// one text view, so no new row takes the caret to read the type.
+    @Test(.timeLimit(.minutes(1))) func undoPutsTheLineBackAsItWasBeforeTheSlashAndRedoTurnsItAgain() async throws {
+        let core = try await onCore("bulletListItem", "Milk /numbered")
+        let field = core.field
         field.textView.text = "Milk "
         field.textView.selectedRange = NSRange(location: 5, length: 0)
         field.typeKeys("/numbered")
-        session.choose(try #require(session.suggestions.first { $0.id == "slash:numbered_list" }))
-        await settle()
-        #expect(try await line() == "numberedListItem Milk")
+        core.session.choose(try #require(core.session.suggestions.first { $0.id == "slash:numbered_list" }))
+        await core.settle()
+        #expect(try await core.line() == "numberedListItem Milk")
+        #expect(core.shown == "numberedListItem -")
 
-        session.undo()
-        await settle()
-        #expect(try await line() == "bulletListItem Milk")
+        core.session.undo()
+        await core.settle()
+        #expect(try await core.line() == "bulletListItem Milk")
+        #expect(core.shown == "bulletListItem -")
 
-        session.redo()
-        await settle()
-        #expect(try await line() == "numberedListItem Milk")
-        withExtendedLifetime((field, model, vault)) {}
+        core.session.redo()
+        await core.settle()
+        #expect(try await core.line() == "numberedListItem Milk")
+        #expect(core.shown == "numberedListItem -")
+        withExtendedLifetime(core) {}
+    }
+
+    /// The block menu's and the toolbar's Turn into: undo and redo bring the
+    /// heading's level back in the toolbar too, as in the block.
+    @Test(.timeLimit(.minutes(1))) func undoAndRedoOfATurnIntoShowTheLevelTheLineHas() async throws {
+        let core = try await onCore("heading", "Plan", level: 1)
+        core.session.turnInto(try #require(InsertableBlock.all.first { $0.kind == "heading" && $0.level == 2 }))
+        await core.settle()
+        #expect(core.shown == "heading 2")
+
+        core.session.undo()
+        await core.settle()
+        #expect(core.shown == "heading 1")
+
+        core.session.redo()
+        await core.settle()
+        #expect(core.shown == "heading 2")
+        withExtendedLifetime(core) {}
     }
 
     @Test func aRowOnAnEmptyLineStillTurnsIt() async throws {
