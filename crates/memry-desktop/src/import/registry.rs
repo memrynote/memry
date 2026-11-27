@@ -29,6 +29,9 @@ impl Registry {
             Arc::new(super::roam::RoamImporter),
             Arc::new(super::ticktick::TickTickImporter::default()),
             Arc::new(super::todoist::TodoistImporter::default()),
+            Arc::new(super::html::HtmlImporter::default()),
+            Arc::new(super::evernote::EvernoteImporter),
+            Arc::new(super::apple_journal::AppleJournalImporter),
         ] {
             registry
                 .register(importer)

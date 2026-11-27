@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { RefObject } from 'react'
 import { useRemindersForTarget } from '@/hooks/use-reminders'
+import { onReminderDue } from '@/services/reminder-service'
 
 /** Reminder fields needed to decide fired state. */
 interface FiredCandidate {
@@ -145,7 +146,7 @@ export function useFiredDatePillAnchors(noteId: string | undefined): Set<string>
 
   useEffect(() => {
     if (!noteId) return undefined
-    return window.api.onReminderDue((event) => {
+    return onReminderDue((event) => {
       const matches = event.reminders.some(
         (r) => r.targetType === 'note_date' && r.targetId === noteId
       )
