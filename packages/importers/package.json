@@ -27,7 +27,7 @@
     "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.9.0",
+    "fast-xml-parser": "^5.12.0",
     "gray-matter": "^4.0.3",
     "protobufjs": "7.6.5"
   },
