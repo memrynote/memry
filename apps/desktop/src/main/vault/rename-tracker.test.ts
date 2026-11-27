@@ -125,6 +125,21 @@ describe('rename-tracker', () => {
     expect(deferred).toHaveBeenCalledTimes(1)
   })
 
+  // The file's own rename event named the file it became: only that file's add
+  // takes the delete, ahead of older deletes of the same bytes, and a copy or
+  // a template note with the same bytes never does.
+  it('pairs a delete whose new path is known only with the add at that path', () => {
+    trackPendingDelete('note-older', 'hash-same', 'notes/older.md', vi.fn())
+    trackPendingDelete('note-a', 'hash-same', 'notes/a.md', vi.fn(), null, null, 'notes/b.md')
+
+    expect(checkForRename('hash-same', 'notes/b.md')).toMatchObject({ id: 'note-a' })
+
+    trackPendingDelete('note-c', 'hash-same', 'notes/c.md', vi.fn(), null, null, 'notes/d.md')
+    expect(checkForRename('hash-same', 'notes/copy.md')).toMatchObject({ id: 'note-older' })
+    expect(checkForRename('hash-same', 'notes/copy-2.md')).toBeNull()
+    expect(checkForRename('hash-same', 'notes/d.md')).toMatchObject({ id: 'note-c' })
+  })
+
   // ==========================================================================
   // T597: checkForRename reports rename without mutating cache inline
   // ==========================================================================
