@@ -756,7 +756,13 @@ function exactTuple(items: JsonSchemaNode[]): DesktopArgsTuple {
 export function desktopOperationJsonSchema(
   operation: AgentMcpDesktopOperation
 ): DesktopArgsJsonSchema {
-  const { prefixItems, ...schema } = z.toJSONSchema(desktopOperationArgsSchema(operation), {
+  // zod 4.6 closes a tuple with `items: false`. The tuples below carry their own `prefixItems`, so a
+  // top-level `items: false` would refuse every non-empty call; `maxItems` already bounds the length.
+  const {
+    prefixItems,
+    items: _closedTuple,
+    ...schema
+  } = z.toJSONSchema(desktopOperationArgsSchema(operation), {
     io: 'input',
     unrepresentable: 'any'
   }) as JsonSchemaNode
