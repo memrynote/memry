@@ -1,7 +1,7 @@
 // Search and the command palette (Electron `tests/e2e/search-command-palette.e2e.ts`, #3540): a
 // note is found by the `search_*` commands and the palette, a result opened from search lists in
-// the recents, and the palette's ⌘3 Tasks scope hides the note. Electron's task and inbox legs are
-// skipped below until the tasks and inbox commands are ported. The attachment-text cases are new in
+// the recents, and the palette's ⌘3 Tasks scope hides the note and finds a task. Electron's inbox
+// leg is skipped below until `inbox_capture_text` is ported. The attachment-text cases are new in
 // Tauri (#3542 lane I): a note is found by the words of a PDF or an image attached to it, which the
 // `memry-ml-worker` sidecar reads (pdfium for the text layer, Tesseract for the picture).
 import { readFileSync } from 'node:fs'
@@ -74,7 +74,59 @@ test('a note is found by search and the palette, and listed once opened', async 
   await page.keyboard.press('Escape')
 })
 
-test.skip('a task and an inbox item are found by search and the palette: needs `tasks_create` and `inbox_capture_text` (Electron `tasks:create`, `inbox:captureText`), not ported yet', async () => {})
+test('a task is found by search and by the palette in the Tasks scope', async ({ page }) => {
+  await appReady(page)
+  await vaultOpen(page)
+  const suffix = Math.random().toString(36).slice(2, 8)
+  const tag = `e2esearch${suffix}`
+  const noteTitle = `Search Note ${suffix}`
+  const taskTitle = `Search Task ${suffix}`
+  await createNote(page, {
+    title: noteTitle,
+    content: 'Note body for search coverage.',
+    tags: [tag]
+  })
+  const { projects } = await invoke<{ projects: Array<{ id: string }> }>(page, 'tasks_project_list')
+  const projectId = projects[0]?.id
+  if (!projectId) throw new Error('default task project missing')
+  const created = await invoke<{
+    success: boolean
+    task: { title: string } | null
+    error?: string
+  }>(page, 'tasks_create', { input: { projectId, title: taskTitle, priority: 3, tags: [tag] } })
+  if (!created.success || !created.task) throw new Error(created.error ?? 'failed to seed task')
+
+  await expect
+    .poll(
+      async () => {
+        const found = await invoke<Found>(page, 'search_query', {
+          input: { text: taskTitle, types: ['task'], limit: 10 }
+        })
+        return found.groups.flatMap((group) => group.results).map((item) => item.title)
+      },
+      { timeout: 20_000 }
+    )
+    .toContain(taskTitle)
+
+  await page.evaluate(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement) active.blur()
+  })
+  await page.keyboard.press(`${MOD}+k`)
+  const input = page.locator('[cmdk-input]')
+  await expect(input).toBeVisible()
+  await input.fill(noteTitle)
+  const dialog = page.locator('[cmdk-root]')
+  await expect(dialog.getByText(noteTitle, { exact: true }).first()).toBeVisible()
+  await page.keyboard.press(`${MOD}+3`)
+  await expect(dialog.getByRole('button', { name: /^Remove Tasks?$/ })).toBeVisible()
+  await expect(dialog.getByText(noteTitle, { exact: true })).toHaveCount(0)
+  await input.fill(taskTitle)
+  await expect(dialog.getByText(taskTitle, { exact: true }).first()).toBeVisible()
+  await page.keyboard.press('Escape')
+})
+
+test.skip('an inbox item is found by search: needs `inbox_capture_text` (Electron `inbox:captureText`), not ported yet', async () => {})
 
 // The worker's own fixtures: a two-page text PDF ("Alpha harbor lantern", "Beta orchard compass")
 // and a rendered line of text ("Heron count at dawn").
