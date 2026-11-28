@@ -4,10 +4,10 @@
 
 use std::sync::Arc;
 
-use memry_desktop::account::AccountService;
 use memry_desktop::account::binding::BindingState;
 use memry_desktop::account::session_events::{self, AccountEvent};
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::account::{AccountKeyCheck, AccountService};
 use memry_desktop::seams::reachability::DesktopReachability;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::session::Session;
@@ -22,7 +22,8 @@ use crate::commands::error::CommandError;
 use crate::events::{
     AuthSessionExpiredEvent, SessionExpiredReason, SyncDeviceRemovedEvent,
     SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncStatusChangedEvent,
-    SyncVaultBindingChangedEvent, VaultListChangedEvent, broadcast, broadcast_sync_event,
+    SyncVaultBindingChangedEvent, SyncVaultRecoveryNeededEvent, VaultListChangedEvent, broadcast,
+    broadcast_sync_event,
 };
 use crate::power::PowerMonitor;
 use crate::shell::{billing, services};
@@ -52,6 +53,10 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(reachability.clone());
     let power = app.state::<PowerMonitor>().sender();
     forward_power(&runtime, power.subscribe(), reachability.clone());
+    let recovery_app = app.clone();
+    account.on_vault_recovery_needed(Arc::new(move |reason| {
+        broadcast(&recovery_app, SyncVaultRecoveryNeededEvent { reason });
+    }));
     let keychain_recovered = broadcast::Sender::new(4);
     let recovered = keychain_recovered.clone();
     app.state::<Arc<KeyringStore>>()
@@ -108,18 +113,40 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 /// Runs the open vault's supervisor when the account is signed in: at launch, and after each
 /// sign-in that ends with the master key in the keychain. A supervisor already running is
-/// rebuilt, so it reads the new account. Off the async workers: the attach waits on the session
-/// lifecycle and a running supervisor's stop.
+/// rebuilt, so it reads the new account. A master key confirmed not the account's never syncs:
+/// the integrity check asks for recovery and signs out instead (`checkSyncIntegrity`, and the
+/// account check of `startSyncRuntime`, `sync/runtime.ts:475-491`). The attach itself runs off
+/// the async workers: it waits on the session lifecycle and a running supervisor's stop.
 pub fn attach_if_signed_in(app: AppHandle<Wry>) {
-    tauri::async_runtime::spawn_blocking(move || {
-        let Some(wiring) = app.try_state::<Arc<SyncWiring>>() else {
+    tauri::async_runtime::spawn(async move {
+        let Some(wiring) = app
+            .try_state::<Arc<SyncWiring>>()
+            .map(|w| w.inner().clone())
+        else {
             return;
         };
-        if !wiring.account.info().signed_in {
+        let account = wiring.account.clone();
+        if !tauri::async_runtime::spawn_blocking(move || account.info().signed_in)
+            .await
+            .unwrap_or(false)
+        {
             return;
         }
-        app.state::<Session>()
-            .attach_sync(Arc::clone(wiring.inner()).factory());
+        let session = app.state::<Session>().inner().clone();
+        match wiring.account.check_sync_integrity(&session).await {
+            Ok(AccountKeyCheck::Mismatch) => return,
+            Ok(_) => {}
+            Err(error) => {
+                tracing::error!(scope = "Sync", "sync integrity sign-out failed: {error}");
+                return;
+            }
+        }
+        let attached =
+            tauri::async_runtime::spawn_blocking(move || session.attach_sync(wiring.factory()))
+                .await;
+        if let Err(error) = attached {
+            tracing::error!(scope = "Sync", "sync attach failed: {error}");
+        }
     });
 }
 
