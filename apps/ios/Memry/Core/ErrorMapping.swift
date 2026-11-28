@@ -154,6 +154,19 @@ enum ErrorMapping {
     /// cancelled request.
     static let cancelled = copy("shell.cancelled", "Cancelled.", nil, .retry, visible: false)
 
+    /// Outcomes that are normal states, not faults: a task the view dropped,
+    /// a scan the user closed, a recovery phrase typed wrong, a plan with no
+    /// room for another vault. `Log.error` writes a line carrying one of these
+    /// codes at notice, so it stays in the device log and never becomes
+    /// `app_error_seen`. Desktop draws the same line with
+    /// `markExpectedCondition` (`apps/desktop/src/main/telemetry/expected-conditions.ts`).
+    static let expectedConditions: Set<ErrorCode> = [
+        cancelled.code, "transport.cancelled", "capture.cancelled",
+        "recovery.unknownWord", "recovery.badChecksum", "recovery.wrongWordCount", "recovery.nonAscii",
+        "recovery.verifierMismatch",
+        "api.vaultLimitReached"
+    ]
+
     static let unrecognised = copy(
         "shell.unrecognised",
         "Memry hit a problem it could not identify.",
