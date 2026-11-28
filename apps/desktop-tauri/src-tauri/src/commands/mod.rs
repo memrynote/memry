@@ -1,5 +1,5 @@
 //! Tauri commands, one module per domain. A domain step adds its module here and its command
-//! paths to `registry.rs`.
+//! paths to `registry/<area>.rs`.
 
 pub mod account;
 pub mod agent;
@@ -36,6 +36,7 @@ pub mod launch;
 pub mod linking;
 pub mod locale;
 pub mod logging;
+pub mod migration;
 pub mod notes;
 pub mod notes_import;
 pub mod notes_similarity;

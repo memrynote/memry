@@ -186,9 +186,15 @@ fn reupload(
     }
     moves.commit().map_err(failed)?;
 
+    // A file the uploader refused, unwritten since, would be refused again
+    // (#5711, `note-attachment-revival.ts:99-100`).
+    let refusals = upload_queue::refusals(conn)?;
     let queue = nested_tx::begin(conn).map_err(failed)?;
+    let mut queued = 0;
     for file in &plan.reupload {
-        upload_queue::enqueue(&queue, &note.id, file, now)?;
+        if upload_queue::queue_if_absent(&queue, vault, &refusals, &note.id, file, now)? {
+            queued += 1;
+        }
     }
     queue.commit().map_err(failed)?;
     // Each drop commits with its note outbox row; a crash before the last one
@@ -204,7 +210,7 @@ fn reupload(
             plan.drop_gone.len()
         );
     }
-    Ok((plan.reupload.len(), plan.drop_gone.len()))
+    Ok((queued, plan.drop_gone.len()))
 }
 
 /// One live note as the backfill sees it.

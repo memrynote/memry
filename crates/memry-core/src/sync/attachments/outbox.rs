@@ -74,7 +74,7 @@ pub async fn drain_uploads(
             if revoked.load(Ordering::SeqCst) {
                 return Ok(Settled::Revoked);
             }
-            let settled = upload_row(&db, &transfer, vault.as_ref(), &device_id, row).await;
+            let settled = upload_row(&db, &transfer, &vault, &device_id, row).await;
             if matches!(settled, Ok(Settled::Revoked)) {
                 revoked.store(true, Ordering::SeqCst);
             }
@@ -106,11 +106,11 @@ pub async fn drain_uploads(
 async fn upload_row(
     db: &Db,
     transfer: &AttachmentTransfer,
-    vault: &dyn VaultFiles,
+    vault: &Arc<dyn VaultFiles>,
     device_id: &str,
     row: PendingUpload,
 ) -> Result<Settled, StorageError> {
-    let Some(rel) = relative(vault, &row.disk_path) else {
+    let Some(rel) = relative(vault.as_ref(), &row.disk_path) else {
         return drop_row(db, row, "the file is outside the vault".to_owned()).await;
     };
     let owner = row.owner_id.clone();
@@ -118,10 +118,10 @@ async fn upload_row(
         .call(move |conn| read_attachment_references(conn, &owner))
         .await?;
     let name = rel.rsplit('/').next().unwrap_or(&rel).to_owned();
-    let mut result = upload_once(transfer, vault, &rel, &name, &reusable).await;
+    let mut result = upload_once(transfer, vault.as_ref(), &rel, &name, &reusable).await;
     if matches!(result, Err(TransferError::FileChanged)) {
         // Nothing of the changed bytes left; the new bytes go up from the start.
-        result = upload_once(transfer, vault, &rel, &name, &reusable).await;
+        result = upload_once(transfer, vault.as_ref(), &rel, &name, &reusable).await;
     }
     match result {
         Ok(attachment_id) => {
@@ -149,7 +149,7 @@ async fn upload_row(
             Ok(Settled::Uploaded)
         }
         Err(TransferError::Io(error)) if error.kind() == io::ErrorKind::NotFound => {
-            if file_is_deleted(db, vault, &row.owner_id).await? {
+            if file_is_deleted(db, vault.as_ref(), &row.owner_id).await? {
                 drop_row(db, row, "the file was deleted".to_owned()).await
             } else {
                 Ok(Settled::Unreachable)
@@ -159,7 +159,7 @@ async fn upload_row(
             ..
         }))) => Ok(Settled::Revoked),
         Err(error @ (TransferError::EmptyFile | TransferError::TooLarge { .. })) => {
-            drop_row(db, row, error.to_string()).await
+            refuse_row(db, vault.clone(), row, error.to_string()).await
         }
         Err(error) => {
             let text = error.to_string();
@@ -221,6 +221,25 @@ async fn drop_row(db: &Db, row: PendingUpload, reason: String) -> Result<Settled
     );
     let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
     db.call(move |conn| upload_queue::clear(conn, &owner, &path))
+        .await?;
+    Ok(Settled::Dropped(row, reason))
+}
+
+/// Drops a row the uploader refuses for good and remembers the refusal, so the
+/// next re-drive does not queue the unchanged file again (#5711,
+/// `attachment-outbox.ts:355-357`).
+async fn refuse_row(
+    db: &Db,
+    vault: Arc<dyn VaultFiles>,
+    row: PendingUpload,
+    reason: String,
+) -> Result<Settled, StorageError> {
+    eprintln!(
+        "memry-core: attachment upload of {} refused: {reason}",
+        row.owner_id
+    );
+    let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
+    db.call(move |conn| upload_queue::refuse(conn, vault.as_ref(), &owner, &path))
         .await?;
     Ok(Settled::Dropped(row, reason))
 }

@@ -415,6 +415,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_uploads(app, &session);
     register_task_defaults(app, &session);
     register_canvas_reconcile(app, &session);
+    super::inbox_jobs::register(app, &session);
     crate::ml_worker::register(app, &session);
     crate::reminders::register(app, &session);
     crate::commands::calendar_ics::register(app, &session);

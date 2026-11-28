@@ -59,6 +59,42 @@ pub fn complete_link(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<InboxItem>, StorageError> {
+    let preview = LinkPreview {
+        title,
+        description,
+        patch,
+        thumbnail_path: None,
+    };
+    complete_link_preview(conn, item_id, &preview, device_id, now_ms)
+}
+
+/// What a link's metadata job learned (`processMetadataJob`).
+pub struct LinkPreview<'a> {
+    pub title: Option<&'a str>,
+    pub description: Option<&'a str>,
+    pub patch: &'a Map<String, Value>,
+    /// The hero image the shell stored in `attachments/inbox/<id>/`; it
+    /// becomes the thumbnail. `None` keeps the stored one.
+    pub thumbnail_path: Option<&'a str>,
+}
+
+/// [`complete_link`] plus the stored hero image, in one write.
+pub fn complete_link_preview(
+    conn: &Connection,
+    item_id: &str,
+    preview: &LinkPreview<'_>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<InboxItem>, StorageError> {
+    let LinkPreview {
+        title,
+        description,
+        patch,
+        thumbnail_path,
+    } = *preview;
+    let thumbnail = thumbnail_path
+        .map(|path| super::ingest::own_path(item_id, path))
+        .transpose()?;
     let item = require_live(conn, item_id)?;
     let default_title = item.source_url.as_deref().map(urls::title_from_url);
     let mut changes: Vec<(&'static str, Change)> = Vec::new();
@@ -90,6 +126,9 @@ pub fn complete_link(
         "processingStatus",
         Change::set(if status { "failed" } else { "complete" }),
     ));
+    if let Some(thumbnail) = thumbnail {
+        changes.push(("thumbnailPath", Change::set(thumbnail)));
+    }
     edit(conn, item_id, changes, device_id, now_ms)
 }
 

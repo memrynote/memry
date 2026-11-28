@@ -1,13 +1,8 @@
-//! The bookmark and recents commands and events, appended to the task domain's lists by
-//! `registry/projects.rs`: `with_bookmark_commands!(collect_commands![...])` hands
-//! `collect_commands!` the list with these appended, and `with_bookmark_events!` does the same
-//! for `collect_events!`. Each hands its list on to `registry/reminders.rs`, which appends the
-//! reminder ones.
+//! The bookmark and recents commands and events.
 
-macro_rules! with_bookmark_commands {
-    ($collect:ident![$($commands:tt)*]) => {
-        with_reminder_commands!($collect![
-            $($commands)*
+macro_rules! bookmarks {
+    (commands $($chain:tt)*) => {
+        chain!(commands [
             crate::commands::bookmarks::bookmarks_bulk_create::<Wry>,
             crate::commands::bookmarks::bookmarks_bulk_delete::<Wry>,
             crate::commands::bookmarks::bookmarks_create::<Wry>,
@@ -21,17 +16,13 @@ macro_rules! with_bookmark_commands {
             crate::commands::bookmarks::bookmarks_toggle::<Wry>,
             crate::commands::recents::recents_list::<Wry>,
             crate::commands::recents::recents_record::<Wry>,
-        ])
+        ] $($chain)*)
     };
-}
-
-macro_rules! with_bookmark_events {
-    ($collect:ident![$($events:tt)*]) => {
-        with_reminder_events!($collect![
-            $($events)*
+    (events $($chain:tt)*) => {
+        chain!(events [
             crate::events::BookmarkCreatedEvent,
             crate::events::BookmarkDeletedEvent,
             crate::events::BookmarksReorderedEvent,
-        ])
+        ] $($chain)*)
     };
 }
