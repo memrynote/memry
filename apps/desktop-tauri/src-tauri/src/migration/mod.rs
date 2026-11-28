@@ -4,10 +4,11 @@
 //! Try again and Show details. The boot waits in the meantime (`startup::suspend_boot`) and
 //! resumes once the import succeeds.
 //!
-//! [`Backend`] is the seam to the import. Until Step 37e2 lands `run_first_launch`, the app
-//! uses [`NotWired`], which never migrates; an e2e build can script one with
-//! `MEMRY_E2E_MIGRATION` (`crate::e2e::migration`).
+//! [`Backend`] is the seam to the import. The app's is [`electron::ElectronBackend`], which runs
+//! `run_first_launch`; an e2e build can script one with `MEMRY_E2E_MIGRATION`
+//! (`crate::e2e::migration`).
 
+pub mod electron;
 pub mod local_storage;
 pub mod status;
 
@@ -56,34 +57,6 @@ pub trait Backend: Send + Sync {
     /// True once for each change the Electron app made to an imported vault after the import
     /// (the downgrade fingerprint of the import marker), so the user hears of it once.
     fn take_change_notice(&self) -> bool;
-}
-
-/// The app's backend until Step 37e2 wires `run_first_launch`: no launch migrates.
-struct NotWired;
-
-impl Backend for NotWired {
-    fn needed(&self) -> bool {
-        false
-    }
-
-    fn run(
-        &self,
-        _progress: &dyn ProgressSink,
-        _telemetry: &dyn TelemetrySink,
-    ) -> Result<(), MigrationFailure> {
-        Err(MigrationFailure {
-            check: "not-wired".to_owned(),
-            details: "the first-launch import is not wired yet".to_owned(),
-        })
-    }
-
-    fn backup(&self) -> PathBuf {
-        PathBuf::new()
-    }
-
-    fn take_change_notice(&self) -> bool {
-        false
-    }
 }
 
 /// Where a run sends Step 37e2's `migration_started`, `migration_completed` and
@@ -151,8 +124,7 @@ fn backend(app: &AppHandle<Wry>) -> Arc<dyn Backend> {
     if let Some(scripted) = crate::e2e::migration::scripted(app) {
         return scripted;
     }
-    let _ = app;
-    Arc::new(NotWired)
+    Arc::new(electron::ElectronBackend::new(app))
 }
 
 /// Shows a status on the migration page.

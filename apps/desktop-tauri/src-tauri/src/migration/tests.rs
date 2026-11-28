@@ -344,3 +344,29 @@ fn after_the_import_the_boot_uses_the_imported_locale_not_the_os_one() {
     assert_eq!(locale_after_import(&config, &live, os), "en");
     assert_eq!(live.get(), "en");
 }
+
+/// The production backend's events: the closed name list, counts and the check only. Red with
+/// a path in any field, or a name `Service::admit` drops.
+#[test]
+fn a_run_event_becomes_a_known_telemetry_event_without_a_path() {
+    use memry_desktop::electron_import::orchestrator::{MigrationEvent, MigrationEventName};
+
+    let event = super::electron::telemetry_event(&MigrationEvent {
+        name: MigrationEventName::Failed,
+        duration_ms: 1_250,
+        item_count: 3,
+        queue_count: 1,
+        error_code: Some("secrets:unreadable".to_owned()),
+    });
+
+    assert!(event.is_known(), "{event:?}");
+    assert_eq!(event.name, "migration_failed");
+    assert_eq!(event.result.as_deref(), Some("failed"));
+    assert_eq!(event.error_code.as_deref(), Some("secrets:unreadable"));
+    let metrics = event.metrics.as_ref().unwrap();
+    assert_eq!(metrics.duration_ms, Some(1_250.0));
+    assert_eq!(metrics.item_count, Some(3.0));
+    assert_eq!(metrics.queue_count, Some(1.0));
+    let json = serde_json::to_string(&event).unwrap();
+    assert!(!json.contains('/') && !json.contains('\\'), "{json}");
+}

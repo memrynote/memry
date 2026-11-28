@@ -541,7 +541,7 @@ fn the_session_opens_no_vault_the_migrator_refuses() {
     };
 
     assert!(
-        matches!(&error, SessionError::Invalid(m) if m == "refused"),
+        matches!(&error, SessionError::NotMigrated(m) if m == "refused"),
         "{error}"
     );
     assert!(
@@ -574,3 +574,4 @@ mod guards;
 mod move_vault;
 mod open_hook;
 mod resume;
+mod session_open;

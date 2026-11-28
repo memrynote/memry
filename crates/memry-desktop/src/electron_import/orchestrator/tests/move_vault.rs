@@ -70,7 +70,7 @@ fn a_folder_the_run_did_not_list_is_refused_until_moved_and_then_opens() {
     let stray = PathBuf::from(w.vault("Stray"));
     let session = session(&w);
 
-    let Err(SessionError::Invalid(refused)) = session.open(&stray, OpenSource::Select) else {
+    let Err(SessionError::NotMigrated(refused)) = session.open(&stray, OpenSource::Select) else {
         panic!("opened before the move");
     };
     assert!(refused.contains("did not move"), "{refused}");

@@ -2,18 +2,20 @@
 //! first opens it.
 
 use std::fs;
-use std::path::Path;
-use std::sync::PoisonError;
-use std::time::Instant;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, PoisonError};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use memry_core::storage::import::{DATA_FILE, read_marker};
 
 use super::marker::{Marker, MarkerVault};
 use super::vault::{self, VaultPhase, settled_section, store_name};
 use super::{
-    IMPORT_LOCK, ImportContext, MigrationEventName, Run, RunError, SCRATCH_DIR, electron_profile,
-    emit, marker_vault, preflight, probe,
+    IMPORT_LOCK, ImportContext, MigrationEventName, MigrationTelemetry, Run, RunError, SCRATCH_DIR,
+    electron_profile, emit, marker_vault, preflight, probe,
 };
+use crate::electron_import::ProfileEnv;
+use crate::electron_import::progress::{ProgressSink, ProgressUpdate};
 use crate::electron_import::report::{VaultSection, VaultStatus};
 use crate::electron_import::vault_db::CORE_DIR;
 use crate::electron_import::vault_prep::{
@@ -21,6 +23,44 @@ use crate::electron_import::vault_prep::{
 };
 use crate::electron_import::ystore_import::takes_unclaimed_legacy;
 use crate::electron_import::{ElectronConfig, ImportError, Scratch};
+use crate::session::VaultMigrator;
+
+/// The session's open hook as the shell installs it (`Session::set_vault_migrator`): every open
+/// runs [`migrate_vault`] on the folder before it creates `.memry/core`, and a refusal or a
+/// failed import stops the open with the run's message. The deferred import shows no progress:
+/// the open's own spinner covers it.
+pub fn vault_migrator(
+    env: ProfileEnv,
+    tauri_data_dir: PathBuf,
+    telemetry: Arc<dyn MigrationTelemetry>,
+    crash_after: Option<String>,
+) -> VaultMigrator {
+    Arc::new(move |path| {
+        let ctx = ImportContext {
+            env: env.clone(),
+            tauri_data_dir: tauri_data_dir.clone(),
+            progress: &NoProgress,
+            telemetry: &*telemetry,
+            crash_after: crash_after.clone(),
+            now_ms: wall_clock_ms,
+            free_space: preflight::free_space,
+        };
+        migrate_vault(&ctx, path).map_err(|error| error.to_string())
+    })
+}
+
+struct NoProgress;
+
+impl ProgressSink for NoProgress {
+    fn update(&self, _: ProgressUpdate) {}
+}
+
+/// The clock of a production run ([`ImportContext::now_ms`]).
+pub fn wall_clock_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
+}
 
 /// Imports a vault the first-launch run deferred, before the session opens it. Reads only the
 /// marker for a vault already settled, and `Ok` with nothing to do when there is no Electron
