@@ -221,17 +221,31 @@ pub(super) fn heading(line: &str) -> Option<(u8, String)> {
     } else {
         spaces
     };
-    let tail_matches = |tail: &[char]| {
-        if tail.iter().all(|c| is_js_whitespace(*c)) {
-            return true;
+    // The lazy `.+?` ends at the first `end` past `from` whose tail is all
+    // whitespace or a closing sequence (`\s+#+\s*`). Both are read off the
+    // line's right end, so one pass finds the answer.
+    let blank_from = rest.len()
+        - rest
+            .iter()
+            .rev()
+            .take_while(|c| is_js_whitespace(**c))
+            .count();
+    let mut end = blank_from.max(from + 1);
+    let marks_from = rest[..blank_from]
+        .iter()
+        .rposition(|c| *c != '#')
+        .map_or(0, |at| at + 1);
+    if marks_from < blank_from {
+        let gap_from = rest[..marks_from]
+            .iter()
+            .rposition(|c| !is_js_whitespace(*c))
+            .map_or(0, |at| at + 1);
+        let closing = gap_from.max(from + 1);
+        if closing < marks_from {
+            end = end.min(closing);
         }
-        let lead = tail.iter().take_while(|c| is_js_whitespace(**c)).count();
-        let marks = tail[lead..].iter().take_while(|c| **c == '#').count();
-        lead > 0 && marks > 0 && tail[lead + marks..].iter().all(|c| is_js_whitespace(*c))
-    };
-    (from + 1..=rest.len())
-        .find(|&end| tail_matches(&rest[end..]))
-        .map(|end| (hashes as u8, rest[from..end].iter().collect()))
+    }
+    Some((hashes as u8, rest[from..end].iter().collect()))
 }
 
 /// `/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/`
@@ -245,4 +259,61 @@ pub(super) fn is_table_separator(line: &str) -> bool {
         let cell = cell.strip_suffix(':').unwrap_or(cell);
         !cell.is_empty() && cell.chars().all(|c| c == '-')
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The regex read literally: the first `end` whose tail is a closing
+    /// sequence or whitespace, found by trying each one.
+    fn heading_by_search(line: &str) -> Option<(u8, String)> {
+        let hashes = line.chars().take_while(|c| *c == '#').count();
+        if !(1..=6).contains(&hashes) {
+            return None;
+        }
+        let rest: Vec<char> = line[hashes..].chars().collect();
+        let spaces = rest.iter().take_while(|c| is_js_whitespace(**c)).count();
+        if spaces == 0 {
+            return None;
+        }
+        let from = if spaces == rest.len() {
+            if spaces < 2 {
+                return None;
+            }
+            spaces - 1
+        } else {
+            spaces
+        };
+        let tail_matches = |tail: &[char]| {
+            if tail.iter().all(|c| is_js_whitespace(*c)) {
+                return true;
+            }
+            let lead = tail.iter().take_while(|c| is_js_whitespace(**c)).count();
+            let marks = tail[lead..].iter().take_while(|c| **c == '#').count();
+            lead > 0 && marks > 0 && tail[lead + marks..].iter().all(|c| is_js_whitespace(*c))
+        };
+        (from + 1..=rest.len())
+            .find(|&end| tail_matches(&rest[end..]))
+            .map(|end| (hashes as u8, rest[from..end].iter().collect()))
+    }
+
+    #[test]
+    fn a_heading_reads_like_its_regex_on_every_short_line() {
+        let alphabet = ['#', ' ', 'a', '\t'];
+        let mut lines = vec![String::new()];
+        for _ in 0..8 {
+            let longer: Vec<String> = lines
+                .iter()
+                .flat_map(|line| alphabet.iter().map(move |c| format!("{line}{c}")))
+                .collect();
+            for line in &longer {
+                for prefix in ["#", "###"] {
+                    let line = format!("{prefix}{line}");
+                    assert_eq!(heading(&line), heading_by_search(&line), "{line:?}");
+                }
+            }
+            lines = longer;
+        }
+    }
 }
