@@ -2154,22 +2154,42 @@ into embeds when the note opens (`normalizeYoutubeImages`, called from `use-edit
 This is byte-neutral: the embed writes the same line the image did.
 
 Some inline nodes have no `parse` rule that could recognise their markdown form, because
-that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]` and a date pill's
-`((date:…))` all reach the shared doc as plain text runs. Hash tags are the exception that
+that form is ordinary text: `[[wiki link]]` and a table cell's `[ ]` both reach the shared
+doc as plain text runs. Hash tags are the exception that
 stays text, because they need the note's tag list and colour map, which only the editor has.
 The renderer promotes the rest back into nodes when the note opens (`use-editor-sync.ts`).
 Every promoter has to be idempotent: the promoted node serialises back to the exact token
 it was built from, so the second open writes no CRDT update at all.
 
-A link mention's `((mention:…))` is promoted by main instead, when it builds the doc from
-markdown (`prepareFragmentSeed` in `blocknote-converter.ts`, which both the first seed and
-every external edit, restore and file-watcher feed go through). Promoting in each editor is
-not merge-safe. Two devices that open the same seeded note before they sync each replace the
-same text with their own node, and Yjs keeps both: every mention shows up twice (#3871). Main
-promotes every token the parser accepts, including tokens an older build wrote with
-`_ * ! ~ '` raw (#4478). The node writes those re-encoded, so the source record is what keeps
-the file's bytes: they stay until the paragraph holding the token is edited, or until the doc
-has no record. The renderer still promotes tokens in a doc an older build seeded.
+A link mention's `((mention:…))` and a date pill's `((date:…))` are promoted by main
+instead, when it builds the doc from markdown (`prepareFragmentSeed` in
+`blocknote-converter.ts`, which both the first seed and every external edit, restore and
+file-watcher feed go through). Promoting in each editor is not merge-safe. Two devices that
+open the same seeded note before they sync each replace the same text with their own node,
+and Yjs keeps both: every mention and every date shows up twice (#3871). Promoting at the
+seed also puts the node in the doc a client without desktop's editor reads, so a date shows
+as a date there instead of its base64 payload. Main promotes every token the parser accepts,
+including link mentions an older build wrote with `_ * ! ~ '` raw (#4478) and dates in the
+base64url alphabet or salvageable from a pre-`remind` payload (#1845). The node writes those
+in today's spelling, so the source record is what keeps the file's bytes: they stay until
+the paragraph holding the token is edited, or until the doc has no record. A token in code,
+emphasis or a colour stays text, because the node carries no styles and would drop the
+delimiters on write-back (#4652). The renderer still promotes tokens in a doc an older build
+seeded, with the same functions (`normalizeLinkMentions` and `normalizeDateMentions` in
+`@memry/editor-schema/inline`).
+
+The Rust core's markdown seed, which builds the doc for a journal day or note made from a
+template, a filed inbox article and a paste on iOS, promotes the same tokens by the same rule
+(`crates/memry-core/src/crdt/markdown_seed/mentions.rs`). Where its port cannot tell what
+desktop would build, it keeps the line as literal text instead: a link whose host it does not
+normalize (an IPv4 shorthand, a punycode or non-ASCII host, a `file` URL), a salvaged date that
+is not in ISO format, and a token inside a link address or an image. A note it keeps entirely as
+text, such as one holding CriticMarkup, keeps its tokens as text too. iOS also promotes the
+tokens a body already holds as text after each completed pull of a note's or journal day's body, as the renderer does on
+open (`promote_mention_tokens` in `crates/memry-core/src/domain/body_write.rs`), and asks for a
+sync when that changed the body. A body with nothing to promote is not written. So the #3871
+race remains for a body an older build seeded and for the tokens the core keeps as text, and it
+can now happen between desktop and iOS as well as between two desktops.
 
 The token carries only the URL, so a mention built from it has a domain and no title or
 favicon. The editor fills those in from a link preview, on open and on every change, and

@@ -14,6 +14,7 @@ import {
 } from '@blocknote/core'
 import {
   serializeDateMentionToken,
+  type DateMentionData,
   type DateMentionDateFormat,
   type DateMentionTimeFormat,
   type RemindOffset
@@ -30,6 +31,20 @@ export const dateMentionConfig = {
     timeFormat: { default: 'system' }
   },
   content: 'none' as const
+}
+
+export function createDateMentionContent(data: DateMentionData) {
+  return {
+    type: 'dateMention' as const,
+    props: {
+      anchorId: data.anchorId,
+      dateISO: data.dateISO,
+      hasTime: data.hasTime,
+      dateFormat: data.dateFormat,
+      remind: data.remind,
+      timeFormat: data.timeFormat
+    }
+  }
 }
 
 type DateMentionRender = CustomInlineContentImplementation<

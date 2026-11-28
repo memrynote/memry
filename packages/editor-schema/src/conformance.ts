@@ -150,7 +150,10 @@ const dateCases: RoundtripCase[] = [
   {
     name: 'two date pills in one line',
     markdown: `${date(dateMentionData())} and ${date(dateMentionData({ anchorId: 'b2' }))}`
-  }
+  },
+  // A token in a formatted run stays text, as a link mention's does (#4652).
+  { name: 'date token in bold', markdown: `Due **${date(dateMentionData())}** ok.` },
+  { name: 'date token in inline code', markdown: `Due \`${date(dateMentionData())}\` ok.` }
 ]
 
 const calloutCases: RoundtripCase[] = [

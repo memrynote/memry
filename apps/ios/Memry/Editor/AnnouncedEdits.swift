@@ -47,6 +47,12 @@ struct AnnouncedEdits: BlockEditing {
         return landed
     }
 
+    func promoteMentionTokens(noteId: String) async throws -> Bool {
+        let changed = try await editor.promoteMentionTokens(noteId: noteId)
+        if changed { await announce(noteId) }
+        return changed
+    }
+
     @MainActor private func announce(_ noteId: String) {
         NotificationCenter.default.post(name: Self.bodyChanged, object: noteId, userInfo: [Self.sourceKey: source])
     }

@@ -50,6 +50,13 @@ protocol BlockEditing: Sendable {
     /// children, marks and inline nodes. `false` when the vault holds no live
     /// note by that id.
     func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool
+
+    /// Turns the `((date:…))` and `((mention:…))` tokens an older desktop left
+    /// in the body as text into their chips, as desktop's editor does on open.
+    /// Writes nothing when there is none.
+    ///
+    /// - Returns: whether the body changed.
+    func promoteMentionTokens(noteId: String) async throws -> Bool
 }
 
 extension BlockEditing {
@@ -66,6 +73,7 @@ extension BlockEditing {
     /// The journal and test fakes move no block to another note.
     var movesBlocksBetweenNotes: Bool { false }
     func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool { false }
+    func promoteMentionTokens(noteId: String) async throws -> Bool { false }
 }
 
 /// What `BlockEditing.edit(noteId:blockId:locating:)` did.
@@ -122,6 +130,10 @@ struct CoreBlockEditor: BlockEditing {
     }
 
     var movesBlocksBetweenNotes: Bool { true }
+
+    func promoteMentionTokens(noteId: String) async throws -> Bool {
+        try await executor.run { try writer().promoteMentionTokens(noteId: noteId) }
+    }
 
     func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool {
         let landed = try await executor.run { try writer().appendBlockSnapshot(noteId: noteId, snapshot: snapshot) }

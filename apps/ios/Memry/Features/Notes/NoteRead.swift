@@ -72,6 +72,10 @@ final class NoteReadViewModel {
     private(set) var blocks: [Block] = []
     /// The page editor's `EditorSession.landedWrites`, set by the page.
     @ObservationIgnored var landedWrites: () -> Int = { 0 }
+    /// Promotes the body's text mention tokens after a pull, set by an
+    /// editable page (`NoteEditorViewModel.promoteMentionTokens`); answers
+    /// whether the body changed.
+    @ObservationIgnored var promoteMentionTokens: () async -> Bool = { false }
     /// The writes `blocks` includes: `landedWrites` as it was read (#4738).
     @ObservationIgnored private(set) var blocksGeneration = 0
     /// The first walk of the blocks has finished, whatever it found.
@@ -161,6 +165,7 @@ final class NoteReadViewModel {
             let summary = try await filler.fetchNoteBody(noteId: route.id)
             Log.sync.notice("fetched one note body", .count(Int(summary.updates)))
             fetch = summary.stopped ? .incomplete : .idle
+            if !summary.stopped { _ = await promoteMentionTokens() }
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("a note body could not be fetched", .code(mapped.code))
@@ -211,6 +216,9 @@ final class NoteReadViewModel {
             do {
                 let pulled = try await filler.fetchNoteBody(noteId: route.id)
                 stale = stale || pulled.updates > 0 || pulled.baselines > 0
+                // After the pull, never on the open's walk: a stale copy promoted
+                // beside a peer's promotion merges into two chips (#3871).
+                if !pulled.stopped, await promoteMentionTokens() { stale = true }
             } catch {
                 Log.sync.debug("a note body could not be pulled")
             }
@@ -278,17 +286,7 @@ final class NoteReadViewModel {
     /// and a SwiftUI body is not, and a picture that appeared a frame late
     /// would reflow the note under the reader's eyes.
     func loadAttachments() async {
-        var bound: [String: BlockAttachment] = [:]
-        for url in Self.attachmentUrls(in: blocks) {
-            do {
-                bound[url] = try await reader.attachmentForBlock(id: route.id, url: url)
-            } catch {
-                if Task.isCancelled { return }
-                let mapped = ErrorMapping.userFacing(error)
-                Log.storage.error("an attachment could not be resolved", .code(mapped.code))
-            }
-        }
-        attachments = bound
+        if let read = await readAttachments() { attachments = read }
     }
 
     /// The tags and properties, read after the note for the same reason the

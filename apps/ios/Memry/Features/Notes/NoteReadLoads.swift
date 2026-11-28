@@ -5,6 +5,22 @@ import MemryCore
 // answers `nil` when its task was cancelled, so the page keeps what it drew.
 
 extension NoteReadViewModel {
+    /// Every attachment-bearing block's binding. One that cannot be resolved
+    /// is logged and left out.
+    func readAttachments() async -> [String: BlockAttachment]? {
+        var bound: [String: BlockAttachment] = [:]
+        for url in Self.attachmentUrls(in: blocks) {
+            do {
+                bound[url] = try await reader.attachmentForBlock(id: route.id, url: url)
+            } catch {
+                if Task.isCancelled { return nil }
+                let mapped = ErrorMapping.userFacing(error)
+                Log.storage.error("an attachment could not be resolved", .code(mapped.code))
+            }
+        }
+        return bound
+    }
+
     /// A task block the vault holds no task for draws from its own props.
     func readTaskCards() async -> [String: TaskCard]? {
         var cards: [String: TaskCard] = [:]

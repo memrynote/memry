@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 447,
+    "exportedCaseCount": 449,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 457,
+    "caseCount": 459,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -166,6 +166,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "8c35e16828f8294b63e8ee6d7847f8448495fcfb85fbef11cba243d39769ae94"
+    },
+    {
+      "name": "date token in bold",
+      "markdown": "Due **((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))** ok.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "aac9df2198fc9c3a2e206290372c4230db7335c10c2a3081f45ad09c38b1495d"
+    },
+    {
+      "name": "date token in inline code",
+      "markdown": "Due `((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))` ok.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "56a75a089a4b67572cf4d690c3dbb158cfe9387abb173ca387a048fe76d3e410"
     },
     {
       "name": "info callout",

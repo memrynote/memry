@@ -382,7 +382,7 @@ struct NoteReadView: View {
             )
         )
         .modifier(NotePageSync(actions: actions, metadata: metadataModel, reminders: reminders))
-        .modifier(NotePageLoad(model: model, source: editorModel.source))
+        .modifier(NotePageLoad(model: model, source: editorModel.source, editor: editorModel))
         .modifier(NoteInspector(rail: NoteInspectorRail(
             model: model, metadataModel: metadataModel, backlinks: backlinks, open: openRoute
         ) { outlineJump = $0 }))

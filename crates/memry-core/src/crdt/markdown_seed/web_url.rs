@@ -109,6 +109,84 @@ pub(super) fn parse(raw: &str) -> Url {
     })
 }
 
+/// What `new URL(raw).hostname` gives.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Hostname {
+    /// `new URL` throws.
+    Throws,
+    Host(String),
+    /// A host this module does not normalize, or a shape it does not decide.
+    Unknown,
+}
+
+/// `new URL(raw).hostname`, decided by the scheme and the authority alone,
+/// so the path, query and fragment may hold anything [`parse`] leaves
+/// unknown. On top of [`parse`]: a port above 65535 throws, a dotted-quad
+/// IPv4 host is kept as it is, and another numeric-looking or a punycode
+/// host of a special scheme, which the WHATWG host parser rewrites or
+/// validates, is unknown, and so is every `file` host.
+pub(crate) fn hostname(raw: &str) -> Hostname {
+    // `new URL` strips leading and trailing C0 controls and spaces, and a
+    // tab or newline anywhere, which this does not follow.
+    let url = raw.trim_matches(|c: char| c <= ' ');
+    if url.contains(['\t', '\n', '\r']) {
+        return Hostname::Unknown;
+    }
+    // [`parse`] trims more than that.
+    let Some(colon) = url
+        .find(':')
+        .filter(|_| url.starts_with(|c: char| c.is_ascii_alphabetic()))
+    else {
+        return Hostname::Throws;
+    };
+    let head_end = match url[colon + 1..].strip_prefix("//") {
+        Some(after) => colon + 3 + after.find(['/', '?', '#']).unwrap_or(after.len()),
+        None => colon + 1,
+    };
+    let head = &url[..head_end];
+    let parts = match parse(head) {
+        Url::Invalid => return Hostname::Throws,
+        Url::Unknown => return Hostname::Unknown,
+        Url::Parsed(parts) => parts,
+    };
+    let authority = head[colon + 1..].trim_start_matches('/');
+    let host_port = authority.rsplit_once('@').map_or(authority, |(_, at)| at);
+    // [`parse`] took the port as digits.
+    let port = host_port
+        .rsplit_once(':')
+        .map_or("", |(_, port)| port.trim_start_matches('0'));
+    if port.len() > 5 || port.parse::<u32>().is_ok_and(|port| port > 65535) {
+        return Hostname::Throws;
+    }
+    if parts.scheme == "file" {
+        return Hostname::Unknown;
+    }
+    if SPECIAL.contains(&parts.scheme.as_str()) {
+        let labels: Vec<&str> = parts.host.split('.').collect();
+        let dotted_quad = labels.len() == 4
+            && labels.iter().all(|label| {
+                !label.is_empty()
+                    && label.chars().all(|c| c.is_ascii_digit())
+                    && (label.len() == 1 || !label.starts_with('0'))
+                    && label.parse::<u32>().is_ok_and(|value| value <= 255)
+            });
+        let last = labels.iter().rev().find(|label| !label.is_empty());
+        let numeric = last.is_some_and(|label| {
+            label.chars().all(|c| c.is_ascii_digit())
+                || label.get(..2).is_some_and(|p| p.eq_ignore_ascii_case("0x"))
+        });
+        let punycode = labels.iter().any(|label| {
+            label
+                .get(..4)
+                .is_some_and(|p| p.eq_ignore_ascii_case("xn--"))
+        });
+        if (numeric && !dotted_quad) || punycode {
+            return Hostname::Unknown;
+        }
+    }
+    Hostname::Host(parts.host)
+}
+
 /// What `img.src` gives for an `<img src>` (jsdom through BlockNote's `Image`
 /// parse): the WHATWG serialization of an absolute address, and the attribute
 /// as written for one that has no scheme, which fails to resolve against
@@ -385,6 +463,30 @@ mod tests {
             "http://e.com/a\\b",
         ] {
             assert_eq!(img_src(unreproduced), None, "{unreproduced}");
+        }
+    }
+
+    #[test]
+    fn a_hostname_is_decided_by_the_scheme_and_authority() {
+        let host = |raw: &str| Hostname::Host(raw.to_owned());
+        assert_eq!(hostname("https://WWW.A.com/é?q=é#é"), host("www.a.com"));
+        assert_eq!(hostname("http://1.2.3.4:80/"), host("1.2.3.4"));
+        assert_eq!(hostname("mailto:a@b"), host(""));
+        assert_eq!(hostname("foo://Host/x"), host("Host"));
+        assert_eq!(hostname(" http://a.com "), host("a.com"));
+        assert_eq!(hostname("a.com/x"), Hostname::Throws);
+        assert_eq!(hostname("http://a.com:65536/"), Hostname::Throws);
+        assert_eq!(hostname("\u{a0}http://a.com"), Hostname::Throws);
+        for unknown in [
+            "http://127.1/",
+            "http://01.2.3.4/",
+            "http://xn--e.com/",
+            "http://é.com/",
+            "http:a.com",
+            "file://localhost/x",
+            "http://a\n.com/",
+        ] {
+            assert_eq!(hostname(unknown), Hostname::Unknown, "{unknown}");
         }
     }
 

@@ -166,6 +166,14 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
         return true
     }
 
+    /// Promotes this bridge's date. Not through `perform`, whose re-read and
+    /// banner do not fit a write the page makes after each pull: the page
+    /// re-reads and asks for the sync when the body changed.
+    func promoteMentionTokens(noteId: String) async throws -> Bool {
+        let date = date
+        return try await store.attempt { core in try core.promoteDayMentionTokens(date: date) }
+    }
+
     /// Runs one write through `JournalStore.perform`, keeping the core's own
     /// error so the editor maps it (`ErrorMapping`) instead of a stand-in.
     @discardableResult

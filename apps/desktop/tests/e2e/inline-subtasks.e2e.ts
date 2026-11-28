@@ -243,7 +243,7 @@ async function setDocumentToParentSiblingSub(
             title: subArg.title,
             checked: false,
             // parentTaskId is still set: this is exactly the state after
-            // Shift+Tab, before ContentArea.tsx:567-576 clears it.
+            // Shift+Tab, before ContentArea.tsx:566-575 clears it.
             parentTaskId: parentArg.taskId
           }
         }
@@ -333,7 +333,7 @@ test.describe('Inline Subtasks', () => {
     // #when — restructure the document so the subtask becomes a top-level
     // sibling of the parent (still carrying parentTaskId in its props). This
     // is the exact post-Shift+Tab state. ContentArea's onChange handler at
-    // ContentArea.tsx:567-576 detects the top-level taskBlock with
+    // ContentArea.tsx:566-575 detects the top-level taskBlock with
     // parentTaskId and clears the linkage in the DB.
     await setDocumentToParentSiblingSub(
       page,

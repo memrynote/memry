@@ -27,7 +27,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
-use crate::crdt::{epoch, markdown_seed, resident, update_log};
+use crate::crdt::{epoch, inline_tokens, markdown_seed, resident, update_log};
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
 use crate::storage::nested_tx;
@@ -133,6 +133,29 @@ pub fn append_markdown(
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
+}
+
+/// Makes the `((date:…))` and `((mention:…))` tokens `doc_id`'s body holds as
+/// text their nodes ([`inline_tokens::promote_in`]), as desktop's editor does
+/// when it opens a body an older build seeded, in one update stored and
+/// queued as `item_type`. Liveness is the caller's to check.
+///
+/// - Returns: whether anything changed. A body with no token to promote
+///   authors no update and stores nothing, so opening a note never rewrites
+///   it.
+pub fn promote_mention_tokens(
+    conn: &Connection,
+    item_type: &str,
+    doc_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, CrdtError> {
+    let written = write_body(conn, item_type, doc_id, device_id, now_ms, |document| {
+        document.write(|txn| {
+            inline_tokens::promote_in(txn);
+        })
+    })?;
+    Ok(written.is_some())
 }
 
 /// Authors the update that appends `snapshots`, in order, to `doc_id`'s

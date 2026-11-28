@@ -22,6 +22,7 @@ use super::comments::encode;
 use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
 use super::media::{self, Media};
+use super::mentions;
 use super::nesting::{MAX_NESTING, TOO_DEEP};
 use super::runs;
 use super::{SeedInline, Unsupported};
@@ -196,11 +197,15 @@ fn inline_token(
                 // Desktop reads the address as it stands on one line only.
                 return Err(Unsupported("empty-label link across lines"));
             }
-            push_text(nodes, &encode(&collect(&text[i..end])));
+            push_text(nodes, &encode(&mentions::restore(&collect(&text[i..end]))));
             return Ok(Some(end));
         }
         if has_token(&href) {
             return Err(Unsupported("comment in a link address"));
+        }
+        if mentions::holds_placeholder(&href) {
+            // Desktop leaves its masked word in the address.
+            return Err(Unsupported("mention or date token in a link address"));
         }
         let children = parse_inline(inner, closers.depth() + 1)?;
         if contains_link(&children) {
@@ -270,6 +275,9 @@ fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, 
     if has_token(&alt) || has_token(&url) {
         // Desktop leaves its masked word in an image's props.
         return Err(Unsupported("comment in an image"));
+    }
+    if mentions::holds_placeholder(&alt) || mentions::holds_placeholder(&url) {
+        return Err(Unsupported("mention or date token in an image"));
     }
     Ok(Some((media::media(url, alt, title)?, paren_end + 1)))
 }

@@ -229,7 +229,11 @@ struct NotePageLoad: ViewModifier {
     let model: NoteReadViewModel
     /// This page's own writes, which it has drawn already.
     let source: UUID
+    /// An editable page's editor, which promotes the body's text mention
+    /// tokens after each pull of the body.
+    var editor: NoteEditorViewModel?
     @State private var reportedOpen = false
+    @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.vaultSyncPasses) private var vaultSyncPasses
     @Environment(\.firstSyncLanded) private var firstSyncLanded
 
@@ -239,6 +243,13 @@ struct NotePageLoad: ViewModifier {
             // waiting pictures, with no network round trip before them. A sync
             // pass joins the read instead of restarting it (#5247).
             .task {
+                if let editor {
+                    model.promoteMentionTokens = { [requestVaultSync] in
+                        guard await editor.promoteMentionTokens() else { return false }
+                        requestVaultSync?()
+                        return true
+                    }
+                }
                 await model.open()
                 reportOpen()
                 // After the body and its bindings are on screen, not before: the

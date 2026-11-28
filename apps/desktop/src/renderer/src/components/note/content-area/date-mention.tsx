@@ -1,7 +1,6 @@
 import { createDateMentionSpec } from '@memry/editor-schema/inline'
 import { isSameWeek, addWeeks, subWeeks } from 'date-fns'
 import {
-  type DateMentionData,
   type DateMentionDateFormat,
   type DateMentionTimeFormat,
   type RemindOffset
@@ -133,20 +132,6 @@ export function createDateMentionPillDom(props: {
   }
 
   return dom
-}
-
-export function createDateMentionContent(data: DateMentionData) {
-  return {
-    type: 'dateMention' as const,
-    props: {
-      anchorId: data.anchorId,
-      dateISO: data.dateISO,
-      hasTime: data.hasTime,
-      dateFormat: data.dateFormat,
-      remind: data.remind,
-      timeFormat: data.timeFormat
-    }
-  }
 }
 
 // Presentation only — the pill formats against the user's week-start and clock

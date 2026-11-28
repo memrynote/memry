@@ -9,6 +9,7 @@ use super::hard_breaks::unmask_hard_breaks;
 use super::inline::{Html, Tag};
 use super::links::allowed_href;
 use super::media::{Media, alt_width};
+use super::mentions;
 use super::{SeedInline, SeedMarks};
 
 /// One stage-3 run: styled text, a link holding styled text, or an inline
@@ -317,7 +318,8 @@ fn repair_link_text(content: &mut Vec<(String, SeedMarks)>, breaks: &[String]) {
 }
 
 /// `BREAK_ARTIFACT` and, on a run that opens a line,
-/// `LEADING_BREAK_ARTIFACT` stripped, then the hard-break tokens unmasked.
+/// `LEADING_BREAK_ARTIFACT` stripped, then the hard-break tokens unmasked and
+/// the mention and date tokens put back.
 /// Returns whether the strip emptied the run.
 fn repair_text(text: &mut String, opens_line: bool, breaks: &[String]) -> bool {
     let mut stripped = String::with_capacity(text.len());
@@ -340,11 +342,12 @@ fn repair_text(text: &mut String, opens_line: bool, breaks: &[String]) -> bool {
         stripped.remove(0);
     }
     let emptied = stripped.is_empty() && !text.is_empty();
-    *text = if breaks.is_empty() {
+    let unmasked = if breaks.is_empty() {
         stripped
     } else {
         unmask_hard_breaks(&stripped)
     };
+    *text = mentions::restore(&unmasked);
     emptied
 }
 

@@ -49,7 +49,8 @@ final class JournalDayPageModel {
             filler: context.filler,
             reachability: PathReachability.forAttachments
         )
-        editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
+        let editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
+        self.editor = editor
         metadata = NoteMetadataViewModel(
             noteId: id,
             writer: JournalMetadataWriter(bridge: bridge, definitions: context.metadataWriter)
@@ -58,6 +59,12 @@ final class JournalDayPageModel {
         backlinks = BacklinksViewModel(noteId: id, search: context.search)
         linkedTasks = LinkedTasksViewModel(noteId: id, reader: bridge)
         taskActions = NoteTaskActions(noteId: id, tasks: context.noteTasks)
+        // After each pull, as the note page's `NotePageLoad` sets it.
+        read.promoteMentionTokens = { [weak store] in
+            guard await editor.promoteMentionTokens() else { return false }
+            store?.requestSync?()
+            return true
+        }
     }
 
     /// Reads the day once, then builds its page. `nil` when the store has no
@@ -121,7 +128,9 @@ final class JournalDayPageModel {
         guard let filler = store.context?.filler, store.cachedDay(date) != nil else { return }
         do {
             let summary = try await filler.fetchNoteBody(noteId: read.route.id)
-            guard summary.updates > 0 || summary.baselines > 0 else { return }
+            // After the pull, never on the open's walk (`NoteRead.refreshFromRemote`).
+            let promoted = summary.stopped ? false : await read.promoteMentionTokens()
+            guard summary.updates > 0 || summary.baselines > 0 || promoted else { return }
             await store.refresh()
         } catch {
             Log.sync.debug("a journal day body could not be pulled")

@@ -236,15 +236,7 @@ fn unsupported_constructs_keep_their_text_as_literal_paragraphs() {
         "## Log\n<kbd>Ctrl</kbd> raw\n\n- [ ] Call {task:abc}\n\n- item ![photo](a.png)\n\nsee ((mention:n1|Note))",
     );
     let reasons: Vec<&str> = seeded.fallbacks.iter().map(|f| f.reason).collect();
-    assert_eq!(
-        reasons,
-        [
-            "HTML",
-            "task block",
-            "image in a list or quote",
-            "inline token"
-        ]
-    );
+    assert_eq!(reasons, ["HTML", "task block", "image in a list or quote"]);
     assert_eq!(seeded.fallbacks[0].lines, ["<kbd>Ctrl</kbd> raw"]);
 
     let document = fresh("fallback");

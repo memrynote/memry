@@ -3,7 +3,11 @@ import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { type Block, type PartialBlock } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
-import { normalizeLinkMentions, writeHtmlCommentTokens } from '@memry/editor-schema/inline'
+import {
+  normalizeDateMentions,
+  normalizeLinkMentions,
+  writeHtmlCommentTokens
+} from '@memry/editor-schema/inline'
 import { parseNoteMarkdown } from '@memry/editor-schema/note-markdown'
 import {
   serializeFileBlock,
@@ -585,15 +589,16 @@ export async function prepareFragmentSeed(
   // binds the custom block on first paint instead of a raw checkbox. Lines
   // ending in the plain-checkbox marker become checkboxes with `plain: true`,
   // which the editor never converts.
-  // `((mention:…))` becomes a `linkMention` node here, once, in the doc every
-  // device receives. Left as text, each device's editor promoted it on open,
-  // and two devices doing that before they synced merged into two chips per
-  // mention (#3871). A token in an unstyled run is promoted, legacy `_ * ! ~ '`
-  // included (#4478), and the source record keeps its bytes until its paragraph
-  // is edited. A token in code or emphasis stays text (#4652).
-  const normalized = normalizePlainCheckboxes(
-    normalizeTaskBlocks(normalizeLinkMentions(blocks).blocks, source).blocks
-  ).blocks
+  // `((mention:…))` and `((date:…))` become `linkMention` and `dateMention`
+  // nodes here, once, in the doc every device receives. Left as text, each
+  // device's editor promoted them on open, and two devices doing that before
+  // they synced merged into two nodes per token (#3871). A token in an unstyled
+  // run is promoted, a legacy link mention with `_ * ! ~ '` raw (#4478) and a
+  // salvaged legacy date (#1845) included, and the source record keeps its
+  // bytes until its paragraph is edited. A token in code or emphasis stays
+  // text (#4652).
+  const mentions = normalizeDateMentions(normalizeLinkMentions(blocks).blocks).blocks
+  const normalized = normalizePlainCheckboxes(normalizeTaskBlocks(mentions, source).blocks).blocks
   return {
     blocks: normalized,
     marks: critic.marks,

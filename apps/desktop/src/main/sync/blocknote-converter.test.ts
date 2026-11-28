@@ -3544,11 +3544,11 @@ describe('blocknote-converter table cell checkboxes', () => {
 })
 
 /**
- * #1845: what main writes for a date pill is exactly what the renderer's
- * collaborative promoter reads back (`date-mention-collab-promotion.test.ts`).
- * Main has no promoter of its own — a token it parses out of a vault file stays
- * plain text in the Y.Doc — so these are the two halves of the loop: the bytes
- * a node becomes, and the bytes an un-promoted token keeps.
+ * #1845: what main writes for a date pill is exactly what its seed and the
+ * renderer's collaborative promoter read back. The seed promotes a token it
+ * parses out of a vault file to a node, so these are the two halves of the
+ * loop: the bytes a node becomes, and the bytes a seeded token comes back as
+ * once the doc has no source record.
  *
  * Asserted as exact strings, never `toContain`: write-back byte-compares, so a
  * character of drift rewrites every note holding a date pill in every vault.
@@ -3619,26 +3619,32 @@ describe('a date pill keeps its exact bytes on the main path', () => {
     expect(await yDocToMarkdown(doc)).toMatch(/^\(\(date:[A-Za-z0-9,;]+\)\)$/)
   })
 
-  it('leaves a token it cannot promote byte-identical', async () => {
+  it("writes a seeded token back as today's token, in the closed alphabet", async () => {
     // Both shapes a vault can already hold: today's, and the base64url one
-    // written before the alphabet closed. Main must hand them back untouched.
+    // written before the alphabet closed. Both seed to the same node, which
+    // writes today's spelling; the source record keeps the file's bytes until
+    // the paragraph is edited.
     const current = serializeDateMentionToken(props)
-    const legacy = `((date:${legacyEncode({ ...props, anchorId: 'dm_0?x' })}))`
+    const legacyProps = { ...props, anchorId: 'dm_0?x' }
+    const legacy = `((date:${legacyEncode(legacyProps)}))`
 
     expect(await roundTrip(`due ${current} ok`)).toBe(`due ${current} ok`)
-    expect(await roundTrip(`due ${legacy} ok`)).toBe(`due ${legacy} ok`)
+    expect(await roundTrip(`due ${legacy} ok`)).toBe(
+      `due ${serializeDateMentionToken(legacyProps)} ok`
+    )
   })
 
   it('drops a stray escape from a token rather than carrying it', async () => {
-    // A `\` inside the run is the shape the report describes. remark-parse reads
-    // it as an escape and does not put it back, so the round trip heals the
-    // bytes — and the wider token class means the renderer would have promoted
-    // the pill either way.
-    const payload = legacyEncode({ ...props, anchorId: 'dm_0?x' })
-    const escaped = `((date:${markdownEscaped(payload)}))`
+    // A `\` inside the run is the shape the report describes. The wider token
+    // class still matches it, so the seed promotes the pill and the node
+    // writes the token without the escape.
+    const legacyProps = { ...props, anchorId: 'dm_0?x' }
+    const escaped = `((date:${markdownEscaped(legacyEncode(legacyProps))}))`
 
     expect(escaped).toContain('\\')
-    expect(await roundTrip(`due ${escaped} ok`)).toBe(`due ((date:${payload})) ok`)
+    expect(await roundTrip(`due ${escaped} ok`)).toBe(
+      `due ${serializeDateMentionToken(legacyProps)} ok`
+    )
   })
 })
 

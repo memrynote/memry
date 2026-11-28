@@ -17,10 +17,11 @@
  * then `parseNoteMarkdown`, the note pipeline both desktop processes share,
  * with `parseMarkdownToBlocksRepaired` through a `ServerBlockNoteEditor` on
  * desktop's schema (code block options included) and desktop's
- * `serializeBlocks`, and `blocksToYXmlFragment`. The layers before that
- * pipeline it does not reproduce (CriticMarkup, link references, wiki embeds),
- * and the layers no case here is proven against (colour spans, column regions,
- * `<!--` comments and sidecar markers, inline tokens, task blocks,
+ * `serializeBlocks`, then `normalizeLinkMentions` and `normalizeDateMentions`
+ * as `prepareFragmentSeed` runs them, and `blocksToYXmlFragment`. The layers
+ * before that pipeline it does not reproduce (CriticMarkup, link references,
+ * wiki embeds), and the layers no case here is proven against (colour spans,
+ * column regions, `<!--` comments and sidecar markers, task blocks,
  * plain-checkbox markers), are refused by {@link refuseUnreproduced} rather
  * than skipped. The proof that the result is desktop's is
  * `apps/desktop/src/main/sync/markdown-seed-vectors.test.ts`, which runs the
@@ -33,7 +34,11 @@
 import * as Y from 'yjs'
 import { createMemrySchema } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
-import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
+import {
+  normalizeDateMentions,
+  normalizeLinkMentions,
+  writeHtmlCommentTokens
+} from '@memry/editor-schema/inline'
 import { parseNoteMarkdown } from '@memry/editor-schema/note-markdown'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 // `@blocknote/server-util` is a dependency of `@memry/editor-schema`, not of
@@ -98,7 +103,6 @@ function refuseUnreproduced(name: string, markdown: string): void {
     // `blocks/columns.ts` `readColumnRegion`: an MCM start line, or a
     // Pandoc `:::` opener naming a columns class.
     ['column region', /^(?:---|===)\s*(?:start-multi-column|multi-column-start)|^:{3,}.*column/im],
-    ['inline token', /\(\((mention|date):/],
     ['task block', /\{task:/],
     ['plain checkbox', /\{check\}/],
     ['line terminator', /[\u2028\u2029]/]
@@ -132,13 +136,16 @@ async function serializeBlocks(blocks: SeedBlock[]): Promise<string> {
  * `prepareFragmentSeed` → `markdownToBlocks` → `markdownToBlocksPreserving` for
  * the reproduced layers: every comment masked before any line is split
  * (`@memry/shared/html-comments`), then the note pipeline both desktop
- * processes run (`@memry/editor-schema/note-markdown`).
+ * processes run (`@memry/editor-schema/note-markdown`), then the link and date
+ * mention promotion `prepareFragmentSeed` runs on the result, in its order.
  */
-function markdownToBlocks(markdown: string): Promise<SeedBlock[]> {
-  return parseNoteMarkdown<SeedBlock>(
+async function markdownToBlocks(markdown: string): Promise<SeedBlock[]> {
+  const blocks = await parseNoteMarkdown<SeedBlock>(
     { parse, serialize: serializeBlocks },
     maskHtmlComments(markdown.replace(/\r\n?/g, '\n'))
   )
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+  return normalizeDateMentions(normalizeLinkMentions(blocks as never[]).blocks).blocks
 }
 
 /** Fixed ids in place of `ensureBlockIds`' random ones; stripped below anyway. */
@@ -181,7 +188,7 @@ export async function buildMarkdownSeed(): Promise<Record<string, unknown>> {
       canonical: 'packages/contracts/scripts/fragment-canonical.ts',
       fragmentName: 'prosemirror',
       authoredBy:
-        "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
+        "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
       provenAgainst: 'apps/desktop/src/main/sync/markdown-seed-vectors.test.ts',
       blockIds: 'removed from every blockContainer line: BlockNote mints them at random',
       caseCount: cases.length

@@ -12,7 +12,8 @@
  * the REAL `editorSchema`, mounted, with REAL Yjs collaboration against a REAL
  * `Y.Doc`, and the REAL hook whose load effect does the promoting. Only main's
  * `markdownToYFragment` is stood in for — the fragment is seeded with the shape
- * that parser produces (one plain text run), because importing `src/main` here
+ * an older build's parser produced (one plain text run; today's seed builds the
+ * node itself), because importing `src/main` here
  * would drag `node:crypto`, `electron-log` and both databases into jsdom.
  */
 

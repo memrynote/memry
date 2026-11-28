@@ -281,6 +281,32 @@ impl NotesWriter {
             .map_err(CrdtError::from)?
     }
 
+    /// Makes the `((date:…))` and `((mention:…))` tokens the note's body holds
+    /// as text its date and link mention nodes, as desktop's editor does on
+    /// open (chapter 12 §12.1.1.1): a body an older desktop seeded keeps them
+    /// as text until something promotes them. Call it when the note opens.
+    ///
+    /// - Returns: whether the body changed. `false` when this vault holds no
+    ///   live note by that id, or when the body has no token to promote, which
+    ///   writes nothing.
+    pub fn promote_mention_tokens(&self, note_id: String) -> Result<bool, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                if !crate::domain::reads::note_exists(conn, &note_id) {
+                    return Ok(Ok(false));
+                }
+                Ok(body_write::promote_mention_tokens(
+                    conn,
+                    notes::ITEM_TYPE,
+                    &note_id,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
+    }
+
     /// Sets or clears a note's icon (N701).
     ///
     /// The payload spells it `emoji` (§13.7.1); it is `icon` here because that

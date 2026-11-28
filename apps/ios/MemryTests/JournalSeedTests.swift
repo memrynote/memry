@@ -36,6 +36,7 @@ final class ScriptedSeedJournal: JournalProtocol, @unchecked Sendable {
     func editDay(date: String, edit: BlockEdit) throws -> JournalEditResult { try base.editDay(date: date, edit: edit) }
     func entryId(date: String) throws -> String? { try base.entryId(date: date) }
     func heatmap(year: Int64) throws -> [JournalHeatmapEntry] { try base.heatmap(year: year) }
+    func promoteDayMentionTokens(date: String) throws -> Bool { try base.promoteDayMentionTokens(date: date) }
     func month(year: Int64, month: UInt32, today: String) throws -> JournalMonthRecord {
         try base.month(year: year, month: month, today: today)
     }

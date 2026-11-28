@@ -6,10 +6,10 @@
     "class": "markdown-seed",
     "canonical": "packages/contracts/scripts/fragment-canonical.ts",
     "fragmentName": "prosemirror",
-    "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
+    "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 173
+    "caseCount": 189
   },
   "cases": [
     {
@@ -1049,6 +1049,102 @@
       "pins": "a details block no toggle claims is text whose `<` is hidden behind a placeholder, and text spelling that placeholder stays as written",
       "markdown": "<details>\n<summary>x</summary>\nMEMRYDLT;summary>\n</details>",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>x</summary>\"\n3 element hardBreak\n3 text \"MEMRYDLT;summary>\"\n3 element hardBreak\n3 text \"</details>\""
+    },
+    {
+      "name": "date mention: in body text",
+      "pins": "a dateMention node between two text runs, every prop set from the token",
+      "markdown": "Due ((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) today.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Due \"\n3 element dateMention anchorId=\"dm_a1\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=true remind=\"none\" timeFormat=\"system\"\n3 text \" today.\""
+    },
+    {
+      "name": "date mention: two tokens in one line",
+      "pins": "two dateMention nodes in one paragraph, each with its own props",
+      "markdown": "((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) and ((date:eyJhbmNob3JJZCI6ImRtX2IyIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOmZhbHNlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element dateMention anchorId=\"dm_a1\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=true remind=\"none\" timeFormat=\"system\"\n3 text \" and \"\n3 element dateMention anchorId=\"dm_b2\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=false remind=\"none\" timeFormat=\"system\""
+    },
+    {
+      "name": "date mention: with a reminder",
+      "pins": "remind, dateFormat and timeFormat are carried from the token",
+      "markdown": "Call ((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOmZhbHNlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6IjFkIiwidGltZUZvcm1hdCI6IjI0aCJ9))",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Call \"\n3 element dateMention anchorId=\"dm_a1\" dateFormat=\"full\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=false remind=\"1d\" timeFormat=\"24h\""
+    },
+    {
+      "name": "date mention: in bold stays text",
+      "pins": "a token in a styled run stays text in that run (#4652)",
+      "markdown": "A **((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))** b.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"A \"\n3 text \"((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\" bold={}\n3 text \" b.\""
+    },
+    {
+      "name": "date mention: in inline code stays text",
+      "pins": "a token in a code span stays code text",
+      "markdown": "A `((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))` b.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"A \"\n3 text \"((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\" code={}\n3 text \" b.\""
+    },
+    {
+      "name": "date mention: in a fenced code block stays text",
+      "pins": "a code block's text is literal",
+      "markdown": "```\n((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\""
+    },
+    {
+      "name": "date mention: in a table cell",
+      "pins": "a token in a table cell is promoted",
+      "markdown": "| a | b |\n| - | - |\n| ((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) | x |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 element dateMention anchorId=\"dm_a1\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=true remind=\"none\" timeFormat=\"system\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x\""
+    },
+    {
+      "name": "date mention: in a list item",
+      "pins": "a token in a bullet item is promoted",
+      "markdown": "- call ((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\n- other",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"call \"\n3 element dateMention anchorId=\"dm_a1\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=true remind=\"none\" timeFormat=\"system\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"other\""
+    },
+    {
+      "name": "date mention: in a heading",
+      "pins": "a token in a heading is promoted",
+      "markdown": "## Plan ((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"Plan \"\n3 element dateMention anchorId=\"dm_a1\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=true remind=\"none\" timeFormat=\"system\""
+    },
+    {
+      "name": "date mention: a legacy token only salvage accepts",
+      "pins": "a token the strict parse refuses (boolean remind) is salvaged: hasTime false, remind none, dateFormat relative, timeFormat system",
+      "markdown": "Old ((date:eyJhbmNob3JJZCI6ImRtX29sZCIsImRhdGVJU08iOiIyMDk5LTA2LTE1IiwicmVtaW5kIjp0cnVlLCJsZWFkIjoxfQ)) end.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Old \"\n3 element dateMention anchorId=\"dm_old\" dateFormat=\"relative\" dateISO=\"2099-06-15\" hasTime=false remind=\"none\" timeFormat=\"system\"\n3 text \" end.\""
+    },
+    {
+      "name": "date mention: an unparseable token stays text",
+      "pins": "a payload that is not a JSON object, or not JSON, stays text",
+      "markdown": "Bad ((date:Im5vdCBhbiBvYmplY3Qi)) and ((date:bm90IGpzb24)) end.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Bad ((date:Im5vdCBhbiBvYmplY3Qi)) and ((date:bm90IGpzb24)) end.\""
+    },
+    {
+      "name": "link mention: in body text",
+      "pins": "a linkMention node: url from the token, domain its hostname, title, favicon and siteName empty",
+      "markdown": "See ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%3Fx%3D1)) here.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"See \"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/a_b?x=1\"\n3 text \" here.\""
+    },
+    {
+      "name": "link mention: www host",
+      "pins": "the domain drops the leading www.",
+      "markdown": "See ((mention:https%3A%2F%2Fwww.example.com%2Fpage)) here.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"See \"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://www.example.com/page\"\n3 text \" here.\""
+    },
+    {
+      "name": "link mention: in italics stays text",
+      "pins": "a token in a styled run stays text in that run (#4652)",
+      "markdown": "A *((mention:https%3A%2F%2Fexample.com%2Fa))* b.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"A \"\n3 text \"((mention:https%3A%2F%2Fexample.com%2Fa))\" italic={}\n3 text \" b.\""
+    },
+    {
+      "name": "link mention: in a table cell",
+      "pins": "a token in a table cell is promoted",
+      "markdown": "| a | b |\n| - | - |\n| ((mention:https%3A%2F%2Fexample.com%2Fcell)) | x |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/cell\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"x\""
+    },
+    {
+      "name": "link mention and date mention: in one paragraph",
+      "pins": "both kinds promote in one paragraph, in document order",
+      "markdown": "See ((mention:https%3A%2F%2Fexample.com%2Fa)) by ((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) ok.",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"See \"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/a\"\n3 text \" by \"\n3 element dateMention anchorId=\"dm_a1\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=true remind=\"none\" timeFormat=\"system\"\n3 text \" ok.\""
     }
   ]
 }

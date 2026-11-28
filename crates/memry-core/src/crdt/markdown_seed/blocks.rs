@@ -17,6 +17,7 @@ use super::hard_breaks::{JOIN, mask_hard_breaks, restore_hard_break_spelling};
 use super::inline::{Html, holds_media, inline_content};
 use super::lift::lift_images;
 use super::media::media_block;
+use super::mentions;
 use super::nesting::{MAX_NESTING, TOO_DEEP};
 use super::prepare::{fence_indented_code, line_fallback};
 use super::runs::block_content;
@@ -43,10 +44,12 @@ pub(super) fn parse_chunk(
     let fenced = fence_indented_code(&escape_wiki_link_pipes_in_table_rows(&chunk));
     let (masked, breaks) = mask_hard_breaks(&fenced);
     let lines: Vec<&str> = masked.split('\n').collect();
+    // A token mask changes no line, so `lines` are still the source's.
+    let tokens_masked = mentions::mask(&masked);
     let mut list = ListState::default();
     // The parser holds a placeholder on each empty item or heading line; the
     // source lines a fallback keeps are the ones without it.
-    for token in tokenize(&mask_empty_block_lines(&masked)) {
+    for token in tokenize(&mask_empty_block_lines(&tokens_masked)) {
         let converted = check_lines(&token, &lines).and_then(|()| match &token.kind {
             TokenKind::Paragraph { content } => {
                 list = ListState::default();
@@ -74,13 +77,21 @@ pub(super) fn parse_chunk(
         }
     }
     drop_empty_block_placeholders(&mut out[first_block..]);
-    if leaks_placeholder(&out[first_block..]) {
+    // A token placeholder left in a prop is desktop's masked word.
+    let leaks_token = tokens_masked != masked
+        && mentions::holds_placeholder(&format!("{:?}", &out[first_block..]));
+    let leak = if leaks_placeholder(&out[first_block..]) {
+        Some("empty item or heading inside a paragraph")
+    } else {
+        leaks_token.then_some("mention or date token in a prop")
+    };
+    if let Some(reason) = leak {
         out.truncate(first_block);
         fallbacks.truncate(first_fallback);
         let kept = source_text(&lines, &breaks);
         out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
         fallbacks.push(SeedFallback {
-            reason: "empty item or heading inside a paragraph",
+            reason,
             lines: kept,
         });
     }
@@ -270,7 +281,8 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
             // its string props, the language among them (`repairBlocks`).
             // A join inside such a fence is the `<br>` desktop writes there
             // (`repairRuns` restores the token only), so it is one here.
-            let code = restore_hard_break_spelling(code, breaks).replace(JOIN, "<br>");
+            let code =
+                mentions::restore(&restore_hard_break_spelling(code, breaks).replace(JOIN, "<br>"));
             let language = restore_hard_break_spelling(language, breaks);
             let content = if code.is_empty() {
                 Vec::new()

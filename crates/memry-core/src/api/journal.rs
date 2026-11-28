@@ -198,6 +198,31 @@ impl Journal {
             .map_err(CrdtError::from)?
     }
 
+    /// Makes the `((date:…))` and `((mention:…))` tokens the day's body holds
+    /// as text its date and link mention nodes, as
+    /// [`crate::api::notes_write::NotesWriter::promote_mention_tokens`] does
+    /// for a note. Never creates or revives the day.
+    ///
+    /// - Returns: whether the body changed. `false` when the day has no live
+    ///   entry, or no token to promote, which writes nothing.
+    pub fn promote_day_mention_tokens(&self, date: String) -> Result<bool, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                let Some(id) = journal::live_entry(conn, &date)? else {
+                    return Ok(Ok(false));
+                };
+                Ok(crate::domain::body_write::promote_mention_tokens(
+                    conn,
+                    journal::ITEM_TYPE,
+                    &id,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
+    }
+
     /// Deletes the day's entry (desktop's `journal:deleteEntry`). `false`
     /// when the day has none.
     pub fn delete_day(&self, date: String) -> Result<bool, StorageError> {

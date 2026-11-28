@@ -9,7 +9,6 @@ import { extractHeadings, normalizeWikiLinks, normalizeLoadedMarkdown } from '..
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeNoteBlocks } from '../normalize-note-blocks'
 import { normalizeInlineCheckboxes } from '../inline-checkbox-utils'
-import { normalizeDateMentions } from '../date-mention-utils'
 import { normalizeYoutubeImages } from '../youtube-image-utils'
 import {
   parseMarkdownPreservingBlanks,
@@ -17,7 +16,7 @@ import {
   serializeBlocksPreservingBlanks
 } from '../markdown-utils'
 import { recordLoadedMarkdownSource, serializeMarkdownPreservingSource } from '../markdown-source'
-import { normalizeLinkMentions } from '@memry/editor-schema/inline'
+import { normalizeDateMentions, normalizeLinkMentions } from '@memry/editor-schema/inline'
 import { fetchLinkPreview, type UrlPreviewData } from '@/lib/url-metadata'
 import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
@@ -199,6 +198,9 @@ function promoteInlineCheckboxesInSharedDoc(editor: any): void {
  * "opening a note must not rewrite it" (#1434) still holds. A token the parser
  * refuses is salvaged to a plain date instead, which does change the bytes —
  * once, on a note that was already unreadable.
+ *
+ * Main's seed builds the node itself now (#3871), so this only meets a doc
+ * seeded by an older build.
  */
 function promoteDateMentionsInSharedDoc(editor: any): void {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam

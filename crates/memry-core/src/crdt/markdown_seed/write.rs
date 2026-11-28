@@ -176,7 +176,8 @@ fn write_block(txn: &mut TransactionMut, container: &XmlElementRef, block: &Seed
                 SeedInline::Text { text, .. } => Some(text.as_str()),
                 SeedInline::HardBreak { .. }
                 | SeedInline::InlineImage { .. }
-                | SeedInline::HtmlComment { .. } => None,
+                | SeedInline::HtmlComment { .. }
+                | SeedInline::Token(_) => None,
             })
             .collect();
         if !code.is_empty() {
@@ -245,6 +246,11 @@ fn write_inline(txn: &mut TransactionMut, element: &XmlElementRef, content: &[Se
                 image.insert_attribute(txn, "alt", text(alt));
                 image.insert_attribute(txn, "src", text(src));
                 image.insert_attribute(txn, "width", Any::Number(f64::from(*width)));
+            }
+            SeedInline::Token(token) => {
+                run = None;
+                let node = element.push_back(txn, XmlElementPrelim::empty(token.tag()));
+                token.write_attributes(txn, &node);
             }
         }
     }

@@ -3,9 +3,9 @@
 //! Each function mirrors one step of `blocknote-converter.ts`'s
 //! `markdownToYFragment` path and names its source. Steps that only act on a
 //! construct this seed does not build (colour spans, link references,
-//! CriticMarkup, column regions, HTML comments, inline tokens) are not
-//! ported: their presence routes the text to the fallback instead
-//! ([`document_fallback`], [`line_fallback`]).
+//! CriticMarkup, column regions, HTML comments) are not ported: their
+//! presence routes the text to the fallback instead ([`document_fallback`],
+//! [`line_fallback`]).
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
@@ -184,8 +184,8 @@ pub(super) fn line_fallback(line: &str) -> Option<&'static str> {
     }) {
         return Some("HTML");
     }
-    if line.contains("((mention:") || line.contains("((date:") {
-        return Some("inline token");
+    if super::mentions::undecided(line) {
+        return Some("mention or date token this port cannot decide");
     }
     if line.contains("{task:") {
         return Some("task block");

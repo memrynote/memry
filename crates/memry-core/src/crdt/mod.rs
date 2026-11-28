@@ -31,6 +31,7 @@ pub mod canonical;
 pub mod comments;
 pub mod epoch;
 pub mod errors;
+pub mod inline_tokens;
 pub mod lifecycle;
 pub mod markdown_seed;
 pub mod node_shapes;

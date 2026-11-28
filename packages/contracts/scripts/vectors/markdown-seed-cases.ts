@@ -9,6 +9,7 @@
  */
 
 import { MARKDOWN_SEED_MASK_CASES } from './markdown-seed-cases-masks'
+import { MARKDOWN_SEED_MENTION_CASES } from './markdown-seed-cases-mentions'
 import { MARKDOWN_SEED_MORE_CASES } from './markdown-seed-cases-more'
 
 export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string; pins: string }> =
@@ -617,5 +618,6 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'a second paragraph holding a code span of one space'
     },
     ...MARKDOWN_SEED_MORE_CASES,
-    ...MARKDOWN_SEED_MASK_CASES
+    ...MARKDOWN_SEED_MASK_CASES,
+    ...MARKDOWN_SEED_MENTION_CASES
   ]

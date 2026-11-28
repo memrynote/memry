@@ -221,6 +221,12 @@ final class JournalStore {
         }
     }
 
+    /// Runs `work` on the core queue; the caller handles a failure.
+    func attempt<T: Sendable>(_ work: @escaping @Sendable (any JournalProtocol) throws -> T) async throws -> T {
+        let core = core
+        return try await executor.run { try work(core) }
+    }
+
     /// Reads without syncing; a failure is reported and answers `nil`.
     func read<T: Sendable>(_ work: @escaping @Sendable (any JournalProtocol) throws -> T) async -> T? {
         let core = core

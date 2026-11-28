@@ -253,6 +253,22 @@ final class NoteEditorViewModel {
         }
     }
 
+    /// Promotes the body's text date and link mention tokens before a walk
+    /// (`BlockEditing.promoteMentionTokens`). A failure leaves the text and is
+    /// logged: the walk still shows the body.
+    ///
+    /// - Returns: whether the body changed.
+    func promoteMentionTokens() async -> Bool {
+        guard let editor else { return false }
+        do {
+            return try await editor.promoteMentionTokens(noteId: noteId)
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("a body's mention tokens could not be promoted", .code(mapped.code))
+            return false
+        }
+    }
+
     /// Whether a block can be moved to another note from here.
     var canMoveBlocks: Bool { editor?.movesBlocksBetweenNotes ?? false }
 

@@ -4713,6 +4713,17 @@ public protocol JournalProtocol: AnyObject, Sendable {
     func month(year: Int64, month: UInt32, today: String) throws  -> JournalMonthRecord
     
     /**
+     * Makes the `((date:…))` and `((mention:…))` tokens the day's body holds
+     * as text its date and link mention nodes, as
+     * [`crate::api::notes_write::NotesWriter::promote_mention_tokens`] does
+     * for a note. Never creates or revives the day.
+     *
+     * - Returns: whether the body changed. `false` when the day has no live
+     * entry, or no token to promote, which writes nothing.
+     */
+    func promoteDayMentionTokens(date: String) throws  -> Bool
+    
+    /**
      * The day's reminders, every status, sorted by time.
      */
     func reminders(date: String) throws  -> [JournalReminder]
@@ -4996,6 +5007,25 @@ open func month(year: Int64, month: UInt32, today: String)throws  -> JournalMont
         FfiConverterInt64.lower(year),
         FfiConverterUInt32.lower(month),
         FfiConverterString.lower(today),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Makes the `((date:…))` and `((mention:…))` tokens the day's body holds
+     * as text its date and link mention nodes, as
+     * [`crate::api::notes_write::NotesWriter::promote_mention_tokens`] does
+     * for a note. Never creates or revives the day.
+     *
+     * - Returns: whether the body changed. `false` when the day has no live
+     * entry, or no token to promote, which writes nothing.
+     */
+open func promoteDayMentionTokens(date: String)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_promote_day_mention_tokens(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),uniffiCallStatus
     )
 })
 }
@@ -6440,6 +6470,18 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func moveToFolder(id: String, folderPath: String?) throws 
     
     /**
+     * Makes the `((date:…))` and `((mention:…))` tokens the note's body holds
+     * as text its date and link mention nodes, as desktop's editor does on
+     * open (chapter 12 §12.1.1.1): a body an older desktop seeded keeps them
+     * as text until something promotes them. Call it when the note opens.
+     *
+     * - Returns: whether the body changed. `false` when this vault holds no
+     * live note by that id, or when the body has no token to promote, which
+     * writes nothing.
+     */
+    func promoteMentionTokens(noteId: String) throws  -> Bool
+    
+    /**
      * Retitles a note.
      *
      * The title is a field, so it merges per field: a rename here and an edit
@@ -6845,6 +6887,26 @@ open func moveToFolder(id: String, folderPath: String?)throws   {try rustCallWit
         FfiConverterOptionString.lower(folderPath),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * Makes the `((date:…))` and `((mention:…))` tokens the note's body holds
+     * as text its date and link mention nodes, as desktop's editor does on
+     * open (chapter 12 §12.1.1.1): a body an older desktop seeded keeps them
+     * as text until something promotes them. Call it when the note opens.
+     *
+     * - Returns: whether the body changed. `false` when this vault holds no
+     * live note by that id, or when the body has no token to promote, which
+     * writes nothing.
+     */
+open func promoteMentionTokens(noteId: String)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_promote_mention_tokens(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -38973,6 +39035,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_journal_month() != 19432) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_journal_promote_day_mention_tokens() != 63771) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_journal_reminders() != 4961) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -39148,6 +39213,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_move_to_folder() != 52953) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_promote_mention_tokens() != 10486) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_rename() != 25883) {

@@ -30,13 +30,16 @@
 //! between paragraphs, Memry's `<details data-memry-toggle>` toggles, and
 //! inline bold, italic, strike, code and links, and Obsidian `%% … %%`
 //! comments as `htmlComment` nodes ([`comments`], [`comment_nodes`]), and so
-//! is a link with no label (`[](u)`), written back as it was. Wiki links,
-//! tags and `{{…}}` tokens stay plain text, which is what desktop's converter
-//! does with them too, and so does a `<details>` block another app wrote.
+//! is a link with no label (`[](u)`), written back as it was. A `((date:…))`
+//! or `((mention:…))` token in an unstyled run becomes its `dateMention` or
+//! `linkMention` node, as desktop's seed promotes it (§12.1.1.1, [`mentions`]).
+//! Wiki links, tags and `{{…}}` tokens stay plain text, which is what
+//! desktop's converter does with them too, and so does a `<details>` block
+//! another app wrote.
 //!
 //! **Fallback**: a construct outside that set (raw HTML and `<!--` comments, an
-//! image in a list or a quote, a video beside text, an inline mention or date
-//! token, a task block or plain-checkbox marker, a quote or callout holding a
+//! image in a list or a quote, a video beside text, a token whose node this
+//! port cannot decide, a task block or plain-checkbox marker, a quote or callout holding a
 //! list or a nested quote, a callout of a user-defined type or with a body
 //! this port cannot serialize back) keeps its block's source lines as literal
 //! text, one paragraph per non-blank line, and is reported in
@@ -73,6 +76,7 @@ mod links;
 mod markers;
 mod mask_word;
 mod media;
+mod mentions;
 mod nesting;
 mod prepare;
 mod roundtrip;
@@ -82,7 +86,7 @@ mod shapes;
 mod table;
 mod toggles;
 mod tokens;
-mod web_url;
+pub(crate) mod web_url;
 mod write;
 
 use yrs::{ReadTxn as _, XmlFragment as _};
@@ -92,6 +96,7 @@ use nesting::{MAX_NESTING, TOO_DEEP};
 pub(crate) use links::destination as link_destination;
 
 use crate::crdt::errors::CrdtError;
+use crate::crdt::inline_tokens::InlineToken;
 use crate::crdt::{BODY_FRAGMENT, Document};
 
 /// One block the seed writes.
@@ -227,6 +232,8 @@ pub enum SeedInline {
         alt: String,
         width: u32,
     },
+    /// A `((date:…))` or `((mention:…))` token's node (chapter 12 §12.1.1.1).
+    Token(InlineToken),
 }
 
 /// The marks on one text run.
@@ -318,6 +325,7 @@ pub fn plan(markdown: &str) -> SeedPlan {
         };
     }
     restore_details_markup(&mut out);
+    mentions::promote(&mut out);
     for fallback in &mut fallbacks {
         for line in &mut fallback.lines {
             *line = line.replace(toggles::details_lt_token(), "<");
@@ -496,105 +504,4 @@ fn random_block_id() -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn text(value: &str) -> SeedInline {
-        SeedInline::Text {
-            text: value.to_owned(),
-            marks: SeedMarks::default(),
-        }
-    }
-
-    #[test]
-    fn a_block_id_is_a_v4_uuid() {
-        let id = random_block_id();
-        assert_eq!(id.len(), 36);
-        assert_eq!(&id[14..15], "4");
-        assert!(matches!(&id[19..20], "8" | "9" | "a" | "b"));
-        assert_ne!(id, random_block_id());
-    }
-
-    #[test]
-    fn pasted_ai_markdown_becomes_memry_blocks() {
-        let plan = plan(
-            "| a |\n|---|\n| 1 |\n\n> [!note]\n> body\n\n$$\nx^2\n$$\n\n![c](https://e.com/c.png)\n\n```mermaid\nA-->B\n```",
-        );
-        assert!(plan.fallbacks.is_empty(), "{:?}", plan.fallbacks);
-        let kinds: Vec<&SeedKind> = plan.blocks.iter().map(|block| &block.kind).collect();
-        assert!(matches!(kinds[0], SeedKind::Table { .. }));
-        assert_eq!(
-            kinds[1],
-            &SeedKind::Callout {
-                kind: "note".to_owned(),
-                fold: "none".to_owned()
-            }
-        );
-        assert_eq!(plan.blocks[1].content, vec![text("body")]);
-        assert_eq!(
-            kinds[2],
-            &SeedKind::Math {
-                latex: "x^2".to_owned()
-            }
-        );
-        assert!(matches!(kinds[3], SeedKind::Image { url, .. } if url == "https://e.com/c.png"));
-        assert_eq!(kinds[4], &SeedKind::Diagram);
-    }
-
-    #[test]
-    fn a_foreign_details_block_stays_its_text() {
-        let plan = plan("<details>\n<summary>More</summary>\nbody\n</details>");
-        assert!(plan.fallbacks.is_empty(), "{:?}", plan.fallbacks);
-        let shown: Vec<&SeedInline> = plan.blocks[0].content.iter().collect();
-        assert_eq!(shown[0], &text("<details>"));
-        assert_eq!(shown[2], &text("<summary>More</summary>"));
-    }
-
-    #[test]
-    fn raw_html_keeps_its_lines_as_literal_paragraphs() {
-        let plan = plan("<kbd>Ctrl</kbd> raw\n\nafter");
-        assert_eq!(plan.fallbacks[0].reason, "HTML");
-        assert_eq!(plan.blocks[0], SeedBlock::literal("<kbd>Ctrl</kbd> raw"));
-        assert_eq!(
-            plan.blocks[1],
-            SeedBlock::new(SeedKind::Paragraph, vec![text("after")])
-        );
-    }
-
-    #[test]
-    fn a_comment_desktop_would_leave_its_word_in_stays_literal_and_whole() {
-        for (markdown, lines) in [
-            ("$$\nx %% y %% z\n$$", vec!["$$", "x %% y %% z", "$$"]),
-            (
-                "![a %% b %% c](https://e.com/i.png)",
-                vec!["![a %% b %% c](https://e.com/i.png)"],
-            ),
-            (
-                "[a](https://e.com/%% b %%)",
-                vec!["[a](https://e.com/%% b %%)"],
-            ),
-        ] {
-            let plan = plan(markdown);
-            assert_eq!(plan.fallbacks.len(), 1, "{markdown}");
-            assert_eq!(plan.fallbacks[0].lines, lines, "{markdown}");
-            assert!(
-                !plan.blocks.iter().any(|block| {
-                    block
-                        .content
-                        .iter()
-                        .any(|piece| matches!(piece, SeedInline::HtmlComment { .. }))
-                }),
-                "{markdown}"
-            );
-        }
-    }
-
-    #[test]
-    fn a_html_comment_across_lines_sends_the_whole_text_to_the_fallback() {
-        let plan = plan("# a\n\n<!--\n# b\n-->\n\nc");
-        assert_eq!(plan.fallbacks[0].reason, "HTML");
-        assert_eq!(plan.blocks.len(), 5);
-        let single = super::plan("# a\n\n<!-- b -->\n\nc");
-        assert_eq!(single.blocks[0].kind, SeedKind::Heading { level: 1 });
-    }
-}
+mod tests;

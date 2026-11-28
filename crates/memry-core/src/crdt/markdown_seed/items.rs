@@ -35,7 +35,9 @@ pub(super) fn items(content: &[SeedInline]) -> Result<Vec<Item>, Unsupported> {
         let (text, marks) = match piece {
             SeedInline::Text { text, marks } => (text.as_str(), marks),
             SeedInline::HardBreak { marks } => ("\n", marks),
-            SeedInline::InlineImage { .. } | SeedInline::HtmlComment { .. } => {
+            SeedInline::InlineImage { .. }
+            | SeedInline::HtmlComment { .. }
+            | SeedInline::Token(_) => {
                 return Err(UNSERIALIZED);
             }
         };

@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
-  createDateMentionContent,
   createDateMentionPillDom,
   formatDateMentionLabel,
   setDateMentionPrefs
@@ -10,23 +9,6 @@ import { buildNowMentionValue } from './date-suggestions'
 // Wednesday. Local-time ISO (no trailing Z) keeps the calendar-day math
 // stable regardless of the machine's timezone.
 const now = new Date('2026-06-17T12:00:00')
-
-describe('date-mention content', () => {
-  it('builds inline content from token data', () => {
-    const c = createDateMentionContent({
-      anchorId: 'dm_1',
-      dateISO: '2026-06-20T09:00:00.000Z',
-      hasTime: true,
-      dateFormat: 'relative',
-      remind: '1h',
-      timeFormat: '24h'
-    })
-    expect(c.type).toBe('dateMention')
-    expect(c.props.anchorId).toBe('dm_1')
-    expect(c.props.remind).toBe('1h')
-    expect(c.props.timeFormat).toBe('24h')
-  })
-})
 
 describe('formatDateMentionLabel', () => {
   it('uses Today / Tomorrow / Yesterday', () => {
