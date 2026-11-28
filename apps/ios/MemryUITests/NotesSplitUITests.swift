@@ -537,7 +537,7 @@ final class NotesSplitUITests: XCTestCase {
         let farEntry = outlineEntry("\(run) far")
         XCTAssertTrue(farEntry.waitForExistence(timeout: 15), "the outline does not list the far heading")
         farEntry.tap()
-        XCTAssertTrue(far.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the far heading")
+        XCTAssertTrue(waitUntilShown(far), "the outline did not scroll to the far heading")
         attach("inspector-outline-far")
 
         // A rotation there and back brings the rail back alone: the list
@@ -877,6 +877,26 @@ final class NotesSplitUITests: XCTestCase {
     /// A heading block in the note body.
     private func heading(_ text: String) -> XCUIElement {
         app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS %@", text)).firstMatch
+    }
+
+    /// Waits up to 5 s for `element` to sit inside the window and clear of the
+    /// on-screen keyboard. After the outline scrolls the page to the note's last
+    /// heading on a simulator with the software keyboard up, `isHittable`
+    /// throws "Activation point invalid" for every block on screen, a heading in
+    /// plain view included, so visibility is read off the frame.
+    private func waitUntilShown(_ element: XCUIElement) -> Bool {
+        let deadline = Date().addingTimeInterval(5)
+        repeat {
+            if element.exists {
+                var visible = app.windows.firstMatch.frame
+                let keyboard = app.keyboards.firstMatch
+                if keyboard.exists { visible.size.height = min(visible.height, keyboard.frame.minY - visible.minY) }
+                let frame = element.frame
+                if !frame.isEmpty, visible.contains(frame) { return true }
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return false
     }
 
     /// The page menu's Full width row, the menu left open.
