@@ -752,7 +752,13 @@ export class VaultWatcher {
    */
   private async repeatsAdd(filePath: string, stats: Stats | null): Promise<boolean> {
     const vaultPath = this.vaultPath
-    if (!vaultPath || !(await this.addedFileKeys.unchanged(filePath, stats, contentHashOf))) {
+    if (!vaultPath) return false
+    try {
+      if (!(await this.addedFileKeys.unchanged(filePath, stats, contentHashOf))) return false
+    } catch (error) {
+      // A file another process holds (EBUSY, EPERM) cannot be hashed: the
+      // event runs, and its own read reports what it finds.
+      logger.warn('Could not tell an event from its add; running it', { path: filePath, error })
       return false
     }
     const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
