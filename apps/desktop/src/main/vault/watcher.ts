@@ -103,6 +103,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
+import { foldNotePath } from '@memry/storage-data'
 import { holdsBinaryChange } from './case-twin-hold'
 
 const logger = createLogger('Watcher')
@@ -421,13 +422,13 @@ export class VaultWatcher {
    * rename inside that wait gets no `change`, and its unlink needs the key
    * (#5549). One write reports several raw events, so each file is stat'ed
    * once per event-loop turn, right after the turn's fs events; a rename that
-   * beats the stat keeps the hash-only match. A file's own `rename` event
-   * that names another file names the file it was renamed to (`RenameTargets`).
+   * beats the stat keeps the hash-only match. A file's own event that names
+   * another file names the file it was renamed to (`RenameTargets`).
    *
    * A case-only rename on a disk that ignores case leaves the old spelling
    * openable, so chokidar hears no unlink, and only the folder's FSEvents
    * stream reports the new spelling, seconds late or never. When the disk now
-   * spells the file as its `rename` event names it, the event is the unlink,
+   * spells the file as its own event names it, the event is the unlink,
    * which adds the file in its new spelling. chokidar's own unlink of the old
    * spelling, if it comes, finds no row.
    */
@@ -435,7 +436,9 @@ export class VaultWatcher {
     if (!this.isReady || typeof details !== 'object' || details === null) return
     const watchedPath = 'watchedPath' in details ? details.watchedPath : null
     if (typeof watchedPath !== 'string') return
-    if (event === 'rename' && eventPath && path.basename(watchedPath) !== eventPath) {
+    // On a loaded machine kqueue can fold a write and the rename after it into
+    // one `change`, which names the new file all the same.
+    if (eventPath && path.basename(watchedPath) !== eventPath) {
       const target = path.join(path.dirname(watchedPath), eventPath)
       if (isSupportedPath(target) && this.isCaseOnlyRename(watchedPath, target)) {
         this.handleFileDelete(watchedPath, { renamedTo: target })
@@ -461,6 +464,8 @@ export class VaultWatcher {
   private isCaseOnlyRename(filePath: string, target: string): boolean {
     const vaultPath = this.vaultPath
     if (!vaultPath) return false
+    // A folder's events name its files: checked by name first, without a disk read.
+    if (foldNotePath(path.basename(filePath)) !== foldNotePath(path.basename(target))) return false
     const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
     const targetPath = normalizeRelativePath(path.relative(vaultPath, target))
     return diskCaseOf(vaultPath, relativePath) === targetPath
