@@ -93,11 +93,12 @@ function refuseUnreproduced(name: string, markdown: string): void {
   const layers: Array<[string, RegExp]> = [
     ['CriticMarkup', /\{(\+\+|--|~~|==|>>)/],
     ['link reference definition', /^ {0,3}\[[^\]]+\]:/m],
-    // Toggle markup lines and file markers are reproduced; any other tag,
-    // comment or sidecar marker is not.
+    // Toggle markup lines, file markers and raw HTML the editor has no node for
+    // are reproduced; a tag the editor handles (a mark, a link, an image, a
+    // break, a colour span, a checkbox), a comment and a sidecar marker are not.
     [
-      'HTML, colour span or marker line',
-      /<(?!details[\s>]|\/details>|summary>|\/summary>|!-- file:\{)[A-Za-z/!?]/
+      'handled HTML, colour span or marker line',
+      /<\/?(?:b|strong|i|em|u|s|del|strike|code|a|img|br|span|input)(?![\w-])|<!--(?! file:\{)/i
     ],
     ['wiki embed', /!\[\[/],
     // `blocks/columns.ts` `readColumnRegion`: an MCM start line, or a
