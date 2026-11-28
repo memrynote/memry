@@ -1131,10 +1131,11 @@ is that nothing is _lost_ on the way through:
   `<span>`, or no span, stays text, so it is not lost when the note also has a coloured span.
   Past 100 of them open at once, the next ones and their closing tags stay as text too, so a
   pasted block of thousands of nested `<b>` or `<ul><li>` opens at once instead of hanging the
-  editor. Tags the parser closes by itself (the next `<li>`, `<td>` or `<tr>`) do not count as
-  open. Text that spells a tag MemryNote renders, such as the words `<b>` typed in a note, is
-  saved as `\<b>` so that it is still those words the next time the note is opened, and a
-  `\<b>` already in a file is read the same way.
+  editor. Tags the parser closes by itself (the next `<li>`, `<td>` or `<tr>`), a list item and
+  a table cell do not count as open, so a list of a hundred items that each open a `<b>` stays
+  formatting. Text that spells a tag MemryNote renders, such as the words `<b>` or `<span>` typed
+  in a note, is saved as `\<b>` or `\<span>` so that it is still those words the next time the
+  note is opened, and a `\<b>` already in a file is read the same way.
 - **Code inside link text keeps the link.** ``[`a`](https://…)`` stays a link. The editor
   cannot style text as both code and a link, so it shows the backticks inside the link, and the
   file keeps the code span.
