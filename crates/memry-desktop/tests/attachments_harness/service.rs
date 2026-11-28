@@ -38,6 +38,7 @@ use memry_desktop::session::at_rest_key::AtRestKeys;
 use memry_desktop::sync::attachments::AttachmentSync;
 use memry_desktop::sync::attachments::vault_files::DesktopVaultFiles;
 use memry_desktop::sync::backend::{SyncBackend, VaultSyncBackend};
+use memry_desktop::sync::events::OnSyncEvent;
 
 use super::{Device, MIB, REL, Server, VAULT_ID, content, routes};
 
@@ -77,11 +78,26 @@ pub(super) fn sync_of(device: &Device, auto: &Arc<AtomicBool>) -> AttachmentSync
 }
 
 fn sync_on(device: &Device, auto: &Arc<AtomicBool>, network: &Network) -> AttachmentSync {
+    sync_telling(device, auto, network, Arc::new(|_| {}))
+}
+
+/// The device's drivers, telling `on_event` what they did.
+pub(super) fn sync_told(device: &Device, on_event: OnSyncEvent) -> AttachmentSync {
+    sync_telling(device, &on(), &Network::default(), on_event)
+}
+
+fn sync_telling(
+    device: &Device,
+    auto: &Arc<AtomicBool>,
+    network: &Network,
+    on_event: OnSyncEvent,
+) -> AttachmentSync {
     let auto = Arc::clone(auto);
     AttachmentSync::new(
         device.db.clone(),
         Arc::new(DesktopVaultFiles::new(device.vault.clone())),
         Arc::new(move || auto.load(Ordering::SeqCst)),
+        on_event,
         network,
         tokio::runtime::Handle::current(),
     )

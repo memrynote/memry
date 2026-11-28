@@ -19,6 +19,8 @@ macro_rules! sync {
     };
     (events $($chain:tt)*) => {
         chain!(events [
+            crate::events::SyncAttachmentMaterializedEvent,
+            crate::events::SyncAttachmentUploadFailedEvent,
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,
             crate::events::SyncInitialSyncProgressEvent,

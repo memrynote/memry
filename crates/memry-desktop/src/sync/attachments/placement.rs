@@ -9,17 +9,23 @@
 //!
 //! Neither replaces a file, and neither rewrites the body. A failure is logged and leaves the
 //! file where it landed.
+//!
+//! A download can land before the body that links it: [`place_linked_downloads`] places it
+//! once the write-back wrote that body (`placeLinkedDownloads`, `crdt-writeback.ts:724`).
 
 use std::io::{self, Read};
 use std::path::Path;
 
 use memry_core::api::errors::StorageError;
+use memry_core::storage::Db;
 use memry_core::sync::attachments::backfill::embedded_files;
 use memry_core::sync::attachments::queue::VaultFiles;
 use memry_core::sync::attachments::store::{files, upload_queue};
 use rusqlite::{Connection, OptionalExtension, params};
 
+use super::vault_files::DesktopVaultFiles;
 use crate::attachments::reconcile_downloaded_name;
+use crate::vault::consumer::rows::now_ms;
 use crate::vault::file_types::file_type_of_extension;
 use crate::vault::fs_atomic::rename_no_replace;
 
@@ -38,16 +44,7 @@ pub(super) fn settle(
     let Some(body) = body_of(conn, vault, owner)? else {
         return Ok(rel);
     };
-    let placed = match linked_path(conn, vault, owner, &rel, &body)? {
-        Some(to) => match move_to(vault.root(), &rel, &to) {
-            Ok(()) => to,
-            Err(error) => {
-                tracing::warn!(owner_id = owner, %error, "a downloaded attachment stays where it landed");
-                rel.clone()
-            }
-        },
-        None => rel.clone(),
-    };
+    let placed = place(conn, vault, owner, &rel, &body)?.unwrap_or_else(|| rel.clone());
     let settled = match placed.rsplit_once('/') {
         Some((folder, name)) if placed == rel && folder == format!("attachments/{owner}") => {
             let name = reconcile_downloaded_name(vault.root(), owner, name, &body);
@@ -59,6 +56,71 @@ pub(super) fn settle(
         files::move_record(conn, owner, &rel, &settled, now_ms)?;
     }
     Ok(settled)
+}
+
+/// `placeLinkedDownloads`: every recorded file of `owner` in `attachments/<owner>/` that its
+/// body links elsewhere moves there ([`linked_path`]), and its record with it.
+pub(crate) fn place_linked_downloads(
+    conn: &Connection,
+    vault: &dyn VaultFiles,
+    owner: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    // The records first: most notes have none, and the body is a disk read on the DB writer.
+    let folder = format!("attachments/{owner}/");
+    let mut landed = files::records(conn, owner)?;
+    landed.retain(|row| row.path.starts_with(&folder));
+    if landed.is_empty() {
+        return Ok(());
+    }
+    let Some(body) = body_of(conn, vault, owner)? else {
+        return Ok(());
+    };
+    for row in landed {
+        if let Some(to) = place(conn, vault, owner, &row.path, &body)? {
+            files::move_record(conn, owner, &row.path, &to, now_ms)?;
+        }
+    }
+    Ok(())
+}
+
+/// [`place_linked_downloads`] for the write-back pass that just wrote `note_id`'s body under
+/// `root`. A failure is logged and leaves the files where they landed.
+pub(crate) fn place_after_write(root: &Path, db: &Db, note_id: &str) {
+    let (files, owner) = (
+        DesktopVaultFiles::new(root.to_path_buf()),
+        note_id.to_owned(),
+    );
+    let placed =
+        db.call_blocking(move |conn| place_linked_downloads(conn, &files, &owner, now_ms()));
+    if let Err(error) = placed {
+        tracing::warn!(
+            scope = "vault_writeback",
+            note_id,
+            "placing linked downloads failed: {error}"
+        );
+    }
+}
+
+/// Moves the file `rel` to its [`linked_path`], answering where it went. A failed move is logged
+/// and leaves the file.
+fn place(
+    conn: &Connection,
+    vault: &dyn VaultFiles,
+    owner: &str,
+    rel: &str,
+    body: &str,
+) -> Result<Option<String>, StorageError> {
+    let Some(to) = linked_path(conn, vault, owner, rel, body)? else {
+        return Ok(None);
+    };
+    Ok(match move_to(vault.root(), rel, &to) {
+        Ok(()) => Some(to),
+        Err(error) => {
+            tracing::warn!(owner_id = owner, %error, "a downloaded attachment stays where it landed");
+            None
+        }
+    })
 }
 
 /// The markdown of the live note `owner`, `None` when it has no `.md` file to read.

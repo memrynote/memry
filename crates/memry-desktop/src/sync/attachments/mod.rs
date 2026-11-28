@@ -13,6 +13,10 @@ mod placement;
 mod runners;
 pub mod vault_files;
 
+pub(crate) use placement::place_after_write;
+#[cfg(test)]
+pub(crate) use placement::place_linked_downloads;
+
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,6 +35,8 @@ use memry_core::sync::state::SyncState;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
+use crate::sync::events::OnSyncEvent;
+
 /// Whether background downloads run (`sync.attachmentAutoDownload`); on-demand downloads always
 /// do.
 pub type AutoDownload = Arc<dyn Fn() -> bool + Send + Sync>;
@@ -45,6 +51,8 @@ struct Inner {
     db: Db,
     vault: Arc<dyn VaultFiles>,
     auto_download: AutoDownload,
+    /// Tells the renderer what a transfer did.
+    on_event: OnSyncEvent,
     runtime: tokio::runtime::Handle,
     /// The last pass pulled to the feed head (`lastRunCaughtUp`); a pause or going offline
     /// clears it.
@@ -83,6 +91,7 @@ impl AttachmentSync {
         db: Db,
         vault: Arc<dyn VaultFiles>,
         auto_download: AutoDownload,
+        on_event: OnSyncEvent,
         reachability: &dyn Reachability,
         runtime: tokio::runtime::Handle,
     ) -> Self {
@@ -90,6 +99,7 @@ impl AttachmentSync {
             db,
             vault,
             auto_download,
+            on_event,
             runtime,
             caught_up: AtomicBool::new(false),
             paused: AtomicBool::new(false),

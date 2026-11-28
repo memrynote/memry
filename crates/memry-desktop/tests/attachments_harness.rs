@@ -17,6 +17,8 @@
 
 #[path = "device_key/mod.rs"]
 mod device_key;
+#[path = "attachments_harness/events.rs"]
+mod events;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
 #[path = "attachments_harness/placement.rs"]

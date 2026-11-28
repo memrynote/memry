@@ -46,6 +46,8 @@
 //!   prefix, and each pair's file is moved without replacing anything
 //!   ([`crate::attachments::reconcile_renames`]). A locked or excluded note's files keep their
 //!   names, and a kept file is no write, so it moves nothing.
+//!   A file sync downloaded into that folder before the body linked it elsewhere moves there
+//!   ([`crate::sync::attachments::place_after_write`]).
 //! - **One session.** A pass names the vault session it was started in and writes nothing
 //!   once that session closed.
 //!

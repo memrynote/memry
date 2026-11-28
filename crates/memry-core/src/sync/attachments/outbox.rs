@@ -30,23 +30,40 @@ pub struct UploadDrain {
     pub uploaded: usize,
     /// Rows kept for a later pass (network, disk, or any other failure).
     pub failed: usize,
-    /// Rows that reached [`STUCK_UPLOAD_ATTEMPTS`] on this pass.
+    /// Rows that reached [`STUCK_UPLOAD_ATTEMPTS`] on this pass, except those [`Self::over_plan`]
+    /// already named.
     pub stuck: Vec<PendingUpload>,
+    /// Rows the server refused on their first try as larger than the plan allows (413
+    /// `STORAGE_FILE_TOO_LARGE`). They stay queued, as Electron's do.
+    pub over_plan: Vec<PendingUpload>,
     /// Rows dropped because they can never upload: the file is gone, outside
-    /// the vault, empty or too large. Each with the reason, for the user.
-    pub dropped: Vec<(PendingUpload, String)>,
+    /// the vault, empty or too large.
+    pub dropped: Vec<DroppedUpload>,
     /// Rows kept untouched because the vault or the note's folder is away.
     pub unreachable: usize,
     /// The server refused this device; the drain stopped and counted nothing.
     pub revoked: bool,
 }
 
+/// A row the drain dropped, and why.
+#[derive(Debug)]
+pub struct DroppedUpload {
+    pub row: PendingUpload,
+    pub reason: String,
+    /// The file is over the size cap, which the user is told. Electron drops a deleted or empty
+    /// file silently (`attachment-outbox.ts:218-238`).
+    pub too_large: bool,
+}
+
 enum Settled {
     Uploaded,
     Unreachable,
     Revoked,
-    Failed(Option<PendingUpload>),
-    Dropped(PendingUpload, String),
+    Failed {
+        stuck: Option<PendingUpload>,
+        over_plan: Option<PendingUpload>,
+    },
+    Dropped(DroppedUpload),
 }
 
 /// Uploads every due row once, three at a time (`drainAttachmentOutbox`).
@@ -90,11 +107,12 @@ pub async fn drain_uploads(
             Settled::Uploaded => drained.uploaded += 1,
             Settled::Unreachable => drained.unreachable += 1,
             Settled::Revoked => drained.revoked = true,
-            Settled::Failed(stuck) => {
+            Settled::Failed { stuck, over_plan } => {
                 drained.failed += 1;
                 drained.stuck.extend(stuck);
+                drained.over_plan.extend(over_plan);
             }
-            Settled::Dropped(row, reason) => drained.dropped.push((row, reason)),
+            Settled::Dropped(dropped) => drained.dropped.push(dropped),
         }
     }
     if drained.revoked {
@@ -158,10 +176,14 @@ async fn upload_row(
         Err(TransferError::Attachment(AttachmentError::Api(ApiError::DeviceRevoked {
             ..
         }))) => Ok(Settled::Revoked),
-        Err(error @ (TransferError::EmptyFile | TransferError::TooLarge { .. })) => {
-            refuse_row(db, vault.clone(), row, error.to_string()).await
+        Err(error @ TransferError::EmptyFile) => {
+            refuse_row(db, vault.clone(), row, error.to_string(), false).await
+        }
+        Err(error @ TransferError::TooLarge { .. }) => {
+            refuse_row(db, vault.clone(), row, error.to_string(), true).await
         }
         Err(error) => {
+            let over_plan = is_over_plan(&error);
             let text = error.to_string();
             eprintln!(
                 "memry-core: attachment upload of {} failed, kept for retry: {text}",
@@ -171,9 +193,11 @@ async fn upload_row(
             let attempts = db
                 .call(move |conn| upload_queue::mark_failed(conn, &owner, &path, &text, now_ms()))
                 .await?;
-            Ok(Settled::Failed(
-                (attempts == STUCK_UPLOAD_ATTEMPTS).then_some(PendingUpload { attempts, ..row }),
-            ))
+            let row = PendingUpload { attempts, ..row };
+            Ok(Settled::Failed {
+                stuck: (attempts == STUCK_UPLOAD_ATTEMPTS && !over_plan).then(|| row.clone()),
+                over_plan: (attempts == 1 && over_plan).then_some(row),
+            })
         }
     }
 }
@@ -214,6 +238,19 @@ async fn upload_once(
     Ok(uploaded.attachment_id)
 }
 
+/// The server's plan-limit refusal (`classifyError`'s `file_too_large`, `sync-errors.ts:176`).
+fn is_over_plan(error: &TransferError) -> bool {
+    matches!(
+        error,
+        TransferError::Attachment(AttachmentError::Api(ApiError::Status {
+            status: 413,
+            code,
+            message,
+        })) if code.as_deref() == Some("STORAGE_FILE_TOO_LARGE")
+            || message.contains("STORAGE_FILE_TOO_LARGE")
+    )
+}
+
 async fn drop_row(db: &Db, row: PendingUpload, reason: String) -> Result<Settled, StorageError> {
     eprintln!(
         "memry-core: attachment upload of {} dropped: {reason}",
@@ -222,7 +259,11 @@ async fn drop_row(db: &Db, row: PendingUpload, reason: String) -> Result<Settled
     let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
     db.call(move |conn| upload_queue::clear(conn, &owner, &path))
         .await?;
-    Ok(Settled::Dropped(row, reason))
+    Ok(Settled::Dropped(DroppedUpload {
+        row,
+        reason,
+        too_large: false,
+    }))
 }
 
 /// Drops a row the uploader refuses for good and remembers the refusal, so the
@@ -233,6 +274,7 @@ async fn refuse_row(
     vault: Arc<dyn VaultFiles>,
     row: PendingUpload,
     reason: String,
+    too_large: bool,
 ) -> Result<Settled, StorageError> {
     eprintln!(
         "memry-core: attachment upload of {} refused: {reason}",
@@ -241,5 +283,9 @@ async fn refuse_row(
     let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
     db.call(move |conn| upload_queue::refuse(conn, vault.as_ref(), &owner, &path))
         .await?;
-    Ok(Settled::Dropped(row, reason))
+    Ok(Settled::Dropped(DroppedUpload {
+        row,
+        reason,
+        too_large,
+    }))
 }
