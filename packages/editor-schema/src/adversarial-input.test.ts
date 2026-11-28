@@ -107,7 +107,17 @@ const cases: Array<[string, () => unknown]> = [
   ['BlockNote reads a paragraph ending in tabs', () => markdownToHTML(`a${'\t'.repeat(20_000)}x`)],
   ['BlockNote reads a delimiter row', () => markdownToHTML(`| a |\n${delimiter(20_000)}`)],
   ['BlockNote reads a table row after a paragraph', () => markdownToHTML(`a\n${pipes(22)}`)],
-  ['BlockNote reads a table row after a quote', () => markdownToHTML(`> a\n${pipes(22)}`)]
+  ['BlockNote reads a table row after a quote', () => markdownToHTML(`> a\n${pipes(22)}`)],
+  // A closer search that fails reads to the end for every opener after it.
+  ['BlockNote reads a run of unclosed italics', () => markdownToHTML('*a '.repeat(5000))],
+  ['BlockNote reads a run of unclosed bold', () => markdownToHTML('**a '.repeat(5000))],
+  ['BlockNote reads a run of unclosed underscores', () => markdownToHTML('_a '.repeat(5000))],
+  ['BlockNote reads a run of unclosed strikethrough', () => markdownToHTML('~~a '.repeat(5000))],
+  ['BlockNote reads a run of unclosed link texts', () => markdownToHTML('[a'.repeat(8000))],
+  ['BlockNote reads a run of unclosed image texts', () => markdownToHTML('![a'.repeat(5000))],
+  ['BlockNote reads a run of unclosed link addresses', () => markdownToHTML('[a](b'.repeat(5000))],
+  // Each break trims the spaces off everything written so far.
+  ['BlockNote reads many hard breaks', () => markdownToHTML(`${'a  \n'.repeat(8000)}b`)]
 ]
 
 const elapsed = (run: () => unknown): number => {
