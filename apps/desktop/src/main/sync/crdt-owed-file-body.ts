@@ -7,11 +7,14 @@
  * file is ahead of the doc. While it stands, no write-back touches the file,
  * and the next complete merge of the server body into the live doc applies the
  * file on top of it (`CrdtProvider.takeFileAfterMerge`). Durable, because the
- * edit may wait for the server across restarts. Never written with a store.
+ * edit may wait for the server across restarts. With a store, written for a
+ * doc the store never held (`oweUnsyncedFileBody`), and for a stored doc older
+ * than a file a launch with no store wrote (`CrdtProvider.takeOfflineEdit`).
  *
  * Cleared when the doc takes the file (a feed, a seed, or `takeOwedFile`), when
- * `takeOwedFile` finds the doc refuses it, when the take finds no file, and on
- * a purge.
+ * `takeOwedFile` finds the doc refuses it, when the take finds no file, when
+ * the merged doc already holds a file a launch with no store wrote
+ * (`takeFileAfterMerge`), and on a purge.
  *
  * Never throws: a database that cannot be read or written reads as "not owed".
  *

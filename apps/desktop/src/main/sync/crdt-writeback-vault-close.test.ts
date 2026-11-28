@@ -50,6 +50,7 @@ import { checkForRename, clearAllPendingDeletes, trackPendingDelete } from '../v
 import { pushFinalSnapshots } from './final-snapshot-push'
 import { deleteCaseTwin } from '../vault/case-twin-file'
 import { deleteNoteMetadata, upsertNoteMetadata } from '@memry/storage-data'
+import { markSyncIneligible, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import type * as PersistenceModule from './crdt-persistence'
 import type * as LoggerModule from '../lib/logger'
 
@@ -630,6 +631,10 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     bind(vaultA)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     registerJournalHandlers()
+    // An install that does not sync: there an open takes a marked file in at
+    // once. A synced note waits for its server body first, which
+    // crdt-in-memory-session-edits.test.ts covers (`takeOfflineEdit`).
+    markSyncIneligible()
     await getCrdtProvider().initPersistence()
   })
 
@@ -638,6 +643,7 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     clearAllPendingDeletes()
     resetWritebackState()
     resetCrdtProvider()
+    resetSyncDecision()
     vi.useRealTimers()
     resetIpcMocks()
     vi.restoreAllMocks()
@@ -727,8 +733,10 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     await settle(closing)
 
     // The store never answers again. The next session opens it afresh, with
-    // the doc it holds from before the keystroke.
+    // the doc it holds from before the keystroke, and its runtime decides
+    // again that the install does not sync.
     store.queues = []
+    markSyncIneligible()
     await getCrdtProvider().initPersistence()
     const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
 
@@ -1032,6 +1040,8 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
         disk.recover()
         resetCrdtProvider()
         store.queues = []
+        // The vault close reset the sync decision; the next session decides again.
+        markSyncIneligible()
         await getCrdtProvider().initPersistence()
         return { id, file: dayFile(vaultA), kept: 'From A. Typed. More.' }
       }

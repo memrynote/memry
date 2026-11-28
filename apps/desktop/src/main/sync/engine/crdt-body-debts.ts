@@ -46,6 +46,7 @@ export type CrdtBodyDebtReason =
   | 'snapshot_refused'
   | 'local_only'
   | 'compaction'
+  | 'unstored_file'
   | 'legacy'
 
 export interface CrdtBodyDebt {

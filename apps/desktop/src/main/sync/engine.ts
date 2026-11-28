@@ -602,9 +602,10 @@ export class SyncEngine extends SyncEventEmitter {
   /**
    * Owe a note a whole-body pull, durably, and flag it until that pull merges:
    * a note leaving local-only (#2299), whose change-feed bodies were skipped,
-   * or remote updates a compaction dropped.
+   * remote updates a compaction dropped, or a stored doc older than a file a
+   * launch with no store wrote (#5698).
    */
-  oweCrdtPull(noteId: string, reason: 'local_only' | 'compaction'): boolean {
+  oweCrdtPull(noteId: string, reason: 'local_only' | 'compaction' | 'unstored_file'): boolean {
     return this.crdtSync.oweWholeBody(noteId, reason)
   }
 

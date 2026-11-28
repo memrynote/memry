@@ -222,12 +222,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
 
   /**
    * Owe a note its whole body from a provider hook: a note leaving local-only,
-   * or remote updates a compaction dropped. The dropped updates' sequences are
+   * a stored doc older than a file a launch with no store wrote, or remote
+   * updates a compaction dropped. The dropped updates' sequences are
    * already recorded as applied, so the watermark is ahead of the doc and is
    * dropped, or the probe would settle the note without a walk (#2297 B-H2).
    * Answers whether the debt is durable (#2421).
    */
-  oweWholeBody(noteId: string, reason: 'local_only' | 'compaction'): boolean {
+  oweWholeBody(noteId: string, reason: 'local_only' | 'compaction' | 'unstored_file'): boolean {
     const compaction = reason === 'compaction'
     if (compaction) this.forgetWatermark(noteId)
     this.pendingPulls.add(noteId)

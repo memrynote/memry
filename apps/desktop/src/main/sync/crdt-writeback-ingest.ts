@@ -150,22 +150,29 @@ async function docVersionOf(
 /**
  * The write-back's outside-edit ingest, run at a doc's first open in a session
  * and at every open while the file is marked unstored (#5319, #5698,
- * `takeOfflineEdit`, `takesUnstoredFile`).
+ * `takeOfflineEdit`, `takesUnstoredFile`). Resolves true, taking nothing, for
+ * a marked file the doc lacks when `waitsForServer` answers that the server
+ * may hold its text: the caller decides it after the merge.
  */
-export async function ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<void> {
+export async function ingestOfflineEdit(
+  noteId: string,
+  doc: Y.Doc,
+  waitsForServer: () => boolean
+): Promise<boolean> {
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId)
   // A binary note's file is its blob, never an outside edit of the body (#5412).
-  if (!cached || isBinaryNoteRow(cached)) return
+  if (!cached || isBinaryNoteRow(cached)) return false
   const raw = cached.contentHash ? await readVaultFile(getVaultRoot(), cached.path) : null
-  if (raw === null) return
+  if (raw === null) return false
   // A file written from a doc its store may never have held is taken in only
   // when it holds something the store lacks (`takesUnstoredFile`, #5698).
   const unstored = holdsUnstoredFile(cached)
   const takes = unstored
     ? takesUnstoredFile(indexDb, noteId, cached, raw, doc)
     : isOutsideEdit(indexDb, noteId, cached, raw)
-  if (!takes) return
+  if (!takes) return false
+  if (unstored && waitsForServer()) return true
   const parsed = parseNote(raw, toAbsolutePath(cached.path))
   // The doc may hold edits the file lacks: it is kept as a version before
   // the file replaces its body (#5698).
@@ -177,9 +184,10 @@ export async function ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<voi
       log.warn('Could not keep the doc as a version; the doc and the file keep what they hold', {
         noteId
       })
-      return
+      return false
     }
     pass = version
   }
   await ingestOutsideEditFirst(indexDb, noteId, cached, raw, parsed, pass, unstored)
+  return false
 }

@@ -11,6 +11,7 @@ import type { SyncContext } from './sync-context'
 import type { CrdtSnapshotMeta } from '../http-client'
 import type * as RetryModule from '@memry/sync-client/retry'
 import type * as PathsModule from '../../lib/paths'
+import type * as NoteQueriesModule from '@main/database/queries/notes'
 
 const EDITOR_WINDOW = vi.hoisted(() => 7)
 const AUTHOR_CLIENT = 0xffffffff
@@ -132,7 +133,8 @@ vi.mock('../../database/client', () => ({
   getIndexDatabase: () => ({}),
   isDatabaseInitialized: () => true
 }))
-vi.mock('@main/database/queries/notes', () => ({
+vi.mock('@main/database/queries/notes', async (importOriginal) => ({
+  UNSTORED_FILE: (await importOriginal<typeof NoteQueriesModule>()).UNSTORED_FILE,
   getNoteCacheById: (_db: unknown, noteId: string) => (h.row?.id === noteId ? h.row : undefined),
   updateNoteCache: vi.fn()
 }))

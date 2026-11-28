@@ -45,14 +45,14 @@ import {
 import { getCrdtInMemorySessions, recordCrdtPersistenceOutcome } from '../store'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
-import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
+import { clearOwedFileBody, owesFileBody, recordOwedFileBody } from './crdt-owed-file-body'
 import { getVaultRoot } from '../vault/notes-io'
 import { refusesCaseTwinFile } from '../vault/note-sync'
 import { openVaultFile } from '../lib/paths'
 import { completeWithin, SHUTDOWN_CLOSE_VAULT_RESERVE_MS } from '../shutdown-sequence'
 import { OutsideVaultError } from '../lib/errors'
 import { parseNote } from '../vault/frontmatter'
-import { holdsUnstoredFile, recordBaseline } from './writeback-baseline'
+import { holdsUnstoredFile, recordBaseline, takesUnstoredFile } from './writeback-baseline'
 import { isBinaryNote } from './note-body-apply'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { seedFragment } from './converter-worker-bridge'
@@ -86,6 +86,8 @@ const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
 /** The store's state of a note, applied to its live doc by a late store's switch (`adoptLateStore`). */
 const ORIGIN_LATE_STORE = 'late-store'
+/** This device's updates still queued for the server, applied to a stored doc (`applyQueuedUpdates`). */
+const ORIGIN_OUTBOX = 'outbox'
 /** Store meta key of the seed-duplicate repair's per-note marker (#5289). */
 const SEED_REPAIR_META_KEY = 'seedDuplicateRepairedAt'
 /**
@@ -281,8 +283,10 @@ interface ActiveDoc {
   /**
    * Opened unseeded with no store, and neither a remote update, a seed nor
    * `takeFileAfterMerge` has reached it yet. A body fed into such a doc shares
-   * no Yjs items with the server body (#2536, #2646). An editor bound to it
-   * shows its loading state until it ends (`crdt:doc-loaded`, #5290).
+   * no Yjs items with the server body (#2536, #2646). With a store, loaded
+   * older than a file a launch with no store wrote, until `takeFileAfterMerge`
+   * decides that file (`takeOfflineEdit`). An editor bound to it shows its
+   * loading state until it ends (`crdt:doc-loaded`, #5290).
    */
   awaitingMerge: boolean
   /**
@@ -343,7 +347,7 @@ export class CrdtProvider {
   private deferSnapshot: ((noteId: string) => void) | null = null
   /** Answers whether the owe is durable (#2421). */
   private oweRemoteMerge:
-    | ((noteId: string, reason: 'local_only' | 'compaction') => boolean)
+    | ((noteId: string, reason: 'local_only' | 'compaction' | 'unstored_file') => boolean)
     | null = null
   /** See `setRemoteMerge`. */
   private mergeRemote: ((noteId: string) => Promise<boolean>) | null = null
@@ -481,7 +485,7 @@ export class CrdtProvider {
    * change feed skipped its bodies without flagging it.
    */
   setOweRemoteMerge(
-    owe: ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null
+    owe: ((noteId: string, reason: 'local_only' | 'compaction' | 'unstored_file') => boolean) | null
   ): void {
     this.oweRemoteMerge = owe
     if (owe) void this.oweStoredCompactions(owe)
@@ -1104,9 +1108,10 @@ export class CrdtProvider {
     if (existing && !existing.closing) {
       if (windowId) existing.windowIds.add(windowId)
       this.touchDoc(existing)
-      // With a store, only a late store's switch leaves a doc waiting for its
-      // server body (`adoptLateStore`), and the wait is what keeps a seed from
-      // landing beside that body. It ends as it does with no store.
+      // With a store, a doc waits for its server body after a late store's
+      // switch (`adoptLateStore`) or over a file a launch with no store wrote
+      // (`takeOfflineEdit`), and the wait is what keeps a seed from landing
+      // beside that body. It ends as it does with no store.
       if (!options?.skipSeed && !(this.persistence && existing.awaitingMerge)) {
         await this.seedFromMarkdown(noteId, existing.doc)
       }
@@ -1174,7 +1179,14 @@ export class CrdtProvider {
     mergeRemote: ((noteId: string) => Promise<boolean>) | null,
     timeoutMs: number = EDITOR_OPEN_MERGE_TIMEOUT_MS
   ): Promise<Y.Doc> {
-    if (this.persistence) return this.open(noteId, windowId)
+    if (this.persistence) {
+      const stored = await this.open(noteId, windowId)
+      // A stored doc older than its file merges first (`takeOfflineEdit`).
+      if (this.isAwaitingMerge(noteId)) {
+        await this.settleEditorDoc(noteId, stored, mergeRemote ?? this.mergeRemote, timeoutMs)
+      }
+      return stored
+    }
 
     const doc = await this.open(noteId, windowId, { skipSeed: true })
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
@@ -1214,13 +1226,16 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (entry?.doc !== doc) return
     const empty = doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0
-    if (empty && this.waitsForRemoteBody(noteId, merged, true)) {
+    // A stored body older than its file (`takeOfflineEdit`) waits until a merge completes.
+    const stale = this.persistence !== null && !empty
+    if ((empty || (stale && !merged)) && this.waitsForRemoteBody(noteId, merged, true)) {
       // Still waiting even if something ended the wait without filling the doc.
       entry.awaitingMerge = true
-      log.info('Editor opened empty until the server body merges', { noteId, merged })
+      log.info('Editor opened until the server body merges', { noteId, merged, empty })
       return
     }
-    if (merged) await this.takeFileAfterMerge(noteId, doc)
+    // Unmerged, a stored body takes its file now: the server holds none of it.
+    if (merged || stale) await this.takeFileAfterMerge(noteId, doc)
     else if (empty) await this.seedFromMarkdownPublic(noteId)
   }
 
@@ -1230,7 +1245,8 @@ export class CrdtProvider {
    * (#5290). A note the server never saw seeds here, since no pull would ever
    * name it. With no merge wired, a doc seeds only once the runtime's start
    * settled that this install does not sync (`waitsForRemoteBody`). With a
-   * store, only a late store's switch leaves a doc waiting (`adoptLateStore`).
+   * store, a late store's switch (`adoptLateStore`) and a file a launch with
+   * no store wrote (`takeOfflineEdit`) leave a doc waiting.
    */
   async resumeWaitingEditorDocs(): Promise<void> {
     const merge = this.mergeRemote
@@ -1372,6 +1388,16 @@ export class CrdtProvider {
         log.warn('The vault file a note owes does not exist; nothing is left to take', { noteId })
         return true
       }
+      // A file a launch with no store wrote (`takeOfflineEdit`): the merged
+      // doc already holds what of it reached the server. Taken whole only when
+      // it holds more.
+      if (
+        holdsUnstoredFile(cached) &&
+        !takesUnstoredFile(getIndexDatabase(), noteId, cached, raw, doc)
+      ) {
+        clearOwedFileBody(noteId)
+        return true
+      }
       // Loaded on first use: the external feed reads this provider back, so a
       // static import is a cycle. This path is already async I/O.
       const { takeOwedFile } = await import('./crdt-external-feed')
@@ -1449,7 +1475,7 @@ export class CrdtProvider {
       this.onDocUpdate(noteId, update, origin)
     })
 
-    if (loaded) await this.takeOfflineEdit(noteId, doc)
+    if (loaded) await this.takeOfflineEdit(noteId, doc, entry)
 
     await this.evictInactiveDocsIfNeeded()
 
@@ -1468,19 +1494,62 @@ export class CrdtProvider {
    * not only the first: the store this doc was read from may lack the file's
    * bytes, in this session too, once an earlier doc of the note closed with
    * a store that failed (#5698).
+   *
+   * A launch with no store marks every file it writes (`holdsDoc`), and its
+   * edits are in the file, in the outbox until pushed, and on the server once
+   * pushed, but never in the store. The doc first takes the outbox's updates
+   * (`applyQueuedUpdates`). When it still lacks the file's text and the server
+   * may hold that text as Yjs items, taking the file in now would add it a
+   * second time, which every device shows once both merge. The file is then
+   * owed (no write-back writes over it), the note owes a pull, and the doc
+   * waits (`awaitingMerge`) until `takeFileAfterMerge` decides the file
+   * against the merged doc. A note the server never held, or an install that
+   * does not sync, takes the file in now (`waitsForRemoteBody`).
    */
-  private async takeOfflineEdit(noteId: string, doc: Y.Doc): Promise<void> {
+  private async takeOfflineEdit(noteId: string, doc: Y.Doc, entry: ActiveDoc): Promise<void> {
     if (this.offlineEditChecked.has(noteId) && !this.holdsUnstoredFile(noteId)) return
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return
     this.offlineEditChecked.add(noteId)
     try {
-      await crdtWriteback().ingestOfflineEdit(noteId, doc)
+      const queued = this.holdsUnstoredFile(noteId) && this.applyQueuedUpdates(noteId, doc)
+      const waits = await crdtWriteback().ingestOfflineEdit(noteId, doc, () =>
+        this.waitsForRemoteBody(noteId, false, true)
+      )
+      if (waits) {
+        recordOwedFileBody(noteId)
+        entry.awaitingMerge = true
+        this.oweRemoteMerge?.(noteId, 'unstored_file')
+        log.info('A file written with no store waits for the server body', { noteId })
+      } else if (queued) {
+        // The outbox's updates may run ahead of the file.
+        crdtWriteback().scheduleWriteback(noteId, doc, 'local')
+      }
     } catch (err) {
       log.warn('Could not check the file for an edit made while the app was closed', {
         noteId,
         error: err
       })
     }
+  }
+
+  /**
+   * Applies the note's updates queued in the outbox to `doc`, read from the
+   * store; true when the doc took any. A launch with no store queued them
+   * without storing them, and a store that holds them takes nothing new. The
+   * origin keeps them out of the outbox a second time.
+   */
+  private applyQueuedUpdates(noteId: string, doc: Y.Doc): boolean {
+    const rows = new SyncQueueManager(getDatabase()).takeNoteBodyRows(
+      noteId,
+      Number.MAX_SAFE_INTEGER
+    )
+    const updates = rows
+      .filter((row) => row.payload !== NOTE_BODY_FULL_STATE_PAYLOAD)
+      .map((row) => Buffer.from(row.payload, 'base64'))
+    if (updates.length === 0) return false
+    const before = Y.encodeStateVector(doc)
+    Y.applyUpdate(doc, Y.mergeUpdates(updates), ORIGIN_OUTBOX)
+    return !Buffer.from(before).equals(Y.encodeStateVector(doc))
   }
 
   /**
@@ -1834,7 +1903,12 @@ export class CrdtProvider {
     // bound to the empty doc would type a second body beside the server's
     // (#5290). With nothing pending, an empty fragment is the server's body.
     const { pendingStructs } = entry.doc.store
-    if (entry.doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0 || pendingStructs === null) {
+    // A stored doc older than its file waits for `takeFileAfterMerge`.
+    const decidesFile = this.persistence !== null && entry.awaitingMerge && owesFileBody(noteId)
+    if (
+      !decidesFile &&
+      (entry.doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0 || pendingStructs === null)
+    ) {
       this.endAwaitingMerge(noteId, entry)
     }
     return true
@@ -2673,9 +2747,10 @@ export class CrdtProvider {
     // is exactly true here. Suppressing the debt would make the guards below
     // read as redundant when they are the only thing holding the body back.
     entry.accumulatedBytes += update.byteLength
-    // Neither a remote update nor the state a late store's switch applies is
-    // a local edit the server is owed.
-    const local = origin !== ORIGIN_NETWORK && origin !== ORIGIN_LATE_STORE
+    // Neither a remote update, the state a late store's switch applies, nor
+    // the outbox's own updates is a local edit the server is owed again.
+    const local =
+      origin !== ORIGIN_NETWORK && origin !== ORIGIN_LATE_STORE && origin !== ORIGIN_OUTBOX
     if (local) {
       entry.pendingSnapshotBytes += update.byteLength
     }
@@ -2846,9 +2921,12 @@ export class CrdtProvider {
    * Whether the store holds every update `doc`, an instance of the note's doc,
    * has made so far: it is the open doc and nothing of it is storing, or its
    * close landed a store of its whole state. Any other instance is unknown to
-   * the store's side, so a store of the note says nothing about it.
+   * the store's side, so a store of the note says nothing about it. With no
+   * store, none: the next launch with one reads an older doc, so every file
+   * this session writes carries the unstored mark (`takeOfflineEdit`).
    */
   holdsDoc(noteId: string, doc: Y.Doc): boolean {
+    if (!this.persistence) return false
     if (this.storedAtClose.has(doc)) return true
     return this.docs.get(noteId)?.doc === doc && !this.isStoring(noteId)
   }
@@ -2861,12 +2939,14 @@ export class CrdtProvider {
    * store that missed this one's updates) never answers unless its close
    * stored it. Never rejects. Never resolves while the store keeps failing or
    * after the store is torn down (`ActiveDoc.storedWaiters`, `recordDocFile`,
-   * #5698).
+   * #5698). With no store it is never answered and never queued, so a session
+   * of write-backs keeps no waiter: a late store's switch stores the whole
+   * doc, and the next write-back or open clears the mark.
    */
   whenStored(noteId: string, doc: Y.Doc): Promise<void> {
     if (this.holdsDoc(noteId, doc)) return Promise.resolve()
     const entry = this.docs.get(noteId)
-    if (entry?.doc !== doc) return new Promise(() => {})
+    if (!this.persistence || entry?.doc !== doc) return new Promise(() => {})
     return new Promise((resolve) => entry.storedWaiters.push(resolve))
   }
 
