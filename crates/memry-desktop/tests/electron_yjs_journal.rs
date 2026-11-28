@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use memry_desktop::electron_import::journal_replay::{BulkApplyJournal, EntrySkip, replay};
 use memry_desktop::electron_import::profile::{locate_profile, vault_dir_name};
 use memry_desktop::electron_import::ystore_import::{
-    LegacyStore, SkipReason, YStoreFold, fold_vault_store,
+    ImportClaim, LegacyStore, SkipReason, YStoreFold, fold_vault_store,
 };
 use memry_desktop::electron_import::{ElectronConfig, ElectronProfile, Scratch};
 use sha2::{Digest, Sha256};
@@ -35,7 +35,15 @@ fn fold_as(f: &ElectronProfileFixture, vault: &Path, vault_uuid: &str) -> YStore
     let config = ElectronConfig::read(&profile).unwrap().unwrap();
     let scratch = Scratch::new(f.scratch_root()).unwrap();
     let path = vault.to_string_lossy();
-    fold_vault_store(&profile, &path, vault_uuid, Some(&config), &scratch).unwrap()
+    fold_vault_store(
+        &profile,
+        &path,
+        vault_uuid,
+        Some(&config),
+        &scratch,
+        ImportClaim::Unrecorded,
+    )
+    .unwrap()
 }
 
 /// The body of a folded document, as the editor reads it.

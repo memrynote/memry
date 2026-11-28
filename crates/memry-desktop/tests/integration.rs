@@ -138,6 +138,8 @@ mod calendar_feeds;
 mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "canvas_assets.rs"]
+mod canvas_assets;
 #[path = "canvas_files.rs"]
 mod canvas_files;
 #[path = "canvas_folders.rs"]

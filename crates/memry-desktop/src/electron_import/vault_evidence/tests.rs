@@ -72,6 +72,7 @@ fn reads_the_checked_values_from_a_copy_and_leaves_the_vault_byte_identical() {
             device_id: Some("me".to_owned()),
             device_public_key: Some("my-key=".to_owned()),
             inline_ai_reenter: true,
+            ledger: None,
         }
     );
     assert_eq!(

@@ -1,13 +1,8 @@
-//! The reminder commands and events, appended to the task domain's lists by
-//! `registry/bookmarks.rs`: `with_reminder_commands!(collect_commands![...])` hands
-//! `collect_commands!` the list with these appended, and `with_reminder_events!` does the same
-//! for `collect_events!`. Each hands its list on to `registry/stickies.rs`, which appends the
-//! sticky ones.
+//! The reminder commands and events.
 
-macro_rules! with_reminder_commands {
-    ($collect:ident![$($commands:tt)*]) => {
-        with_sticky_commands!($collect![
-            $($commands)*
+macro_rules! reminders {
+    (commands $($chain:tt)*) => {
+        chain!(commands [
             crate::commands::reminders::reminder_bulk_dismiss,
             crate::commands::reminders::reminder_count_pending,
             crate::commands::reminders::reminder_create,
@@ -20,14 +15,10 @@ macro_rules! with_reminder_commands {
             crate::commands::reminders::reminder_list,
             crate::commands::reminders::reminder_snooze,
             crate::commands::reminders::reminder_update,
-        ])
+        ] $($chain)*)
     };
-}
-
-macro_rules! with_reminder_events {
-    ($collect:ident![$($events:tt)*]) => {
-        with_sticky_events!($collect![
-            $($events)*
+    (events $($chain:tt)*) => {
+        chain!(events [
             crate::events::ReminderClickedEvent,
             crate::events::ReminderCreatedEvent,
             crate::events::ReminderDeletedEvent,
@@ -35,6 +26,6 @@ macro_rules! with_reminder_events {
             crate::events::ReminderDueEvent,
             crate::events::ReminderSnoozedEvent,
             crate::events::ReminderUpdatedEvent,
-        ])
+        ] $($chain)*)
     };
 }

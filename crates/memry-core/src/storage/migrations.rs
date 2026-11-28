@@ -279,6 +279,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "attachment_revivals",
         sql: include_str!("migrations/data/0045_attachment_revivals.sql"),
     },
+    Migration {
+        version: 46,
+        name: "note_pulled_marks",
+        sql: include_str!("migrations/data/0046_note_pulled_marks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -479,6 +484,8 @@ mod legacy_numbering;
 mod note_file_marks_tests;
 #[cfg(test)]
 mod note_large_files_tests;
+#[cfg(test)]
+mod note_pulled_marks_tests;
 #[cfg(test)]
 mod numbering_tests;
 #[cfg(test)]

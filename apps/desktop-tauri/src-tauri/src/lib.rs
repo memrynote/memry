@@ -1,5 +1,9 @@
 //! MemryNote desktop shell. `run()` owns the boot sequence; domain steps register startup work
-//! with `startup::register` and commands in `registry.rs`.
+//! with `startup::register` in their own `register_stages`, chained here, and commands in
+//! `registry/<area>.rs`.
+
+// `registry::areas!` expands two macro levels per area (`registry.rs`), past the default 128.
+#![recursion_limit = "256"]
 
 pub mod autostart;
 pub mod badge;
@@ -77,20 +81,12 @@ fn register_stages() {
     startup::register(Stage::Logging, "init logging", init_logging);
     guards::register_stages();
     shell::services::register_stages();
-    startup::register(
-        Stage::Protocols,
-        "loopback server",
-        shell::loopback::start_server,
-    );
+    shell::loopback::register_stages();
     commands::unsplash::register_stages();
     commands::attachment_sources::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
-    startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
-    startup::register(
-        Stage::Handlers,
-        "import grants",
-        commands::notes_import::init,
-    );
+    shell::drop_stage::register_stages();
+    commands::notes_import::register_stages();
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
     shell::inbox_review::register_stages();

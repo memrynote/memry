@@ -14,6 +14,7 @@ mod leveldb_log;
 mod leveldb_manifest;
 mod leveldb_table;
 pub mod local_storage;
+pub mod orchestrator;
 pub mod profile;
 pub mod progress;
 pub mod report;
@@ -91,8 +92,8 @@ pub enum ImportError {
     /// The source holds data whose importer a later build brings. The message is the user's:
     /// `area` in their words, and what to do. `detail` names the table or key, for logs.
     #[error(
-        "This version of MemryNote cannot move this vault's {area} yet. Nothing was changed. \
-         Keep using the previous MemryNote app for this vault, and update MemryNote to try again."
+        "This version of MemryNote cannot move this vault's {area} yet. Your data is still in \
+         the previous MemryNote app. Keep using it, and update MemryNote to try again."
     )]
     NotReady { area: &'static str, detail: String },
     /// A queued delete has no clock, and `memry-config.json` names no device to stamp one with
