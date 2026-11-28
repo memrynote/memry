@@ -1,5 +1,6 @@
 //! The account's events: sign-in, session and device linking.
 
+use memry_desktop::account::VaultRecoveryReason;
 use memry_desktop::account::binding::BindingState;
 use serde::Serialize;
 
@@ -62,6 +63,13 @@ pub struct AuthSessionExpiredEvent {
 #[serde(rename_all = "camelCase")]
 pub struct SyncDeviceRemovedEvent {
     pub unsynced_count: u32,
+}
+
+/// The master key cannot decrypt the account's data: the user must restore it with the recovery
+/// phrase (`sync:vault-recovery-needed`, `VaultRecoveryNeededEvent`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct SyncVaultRecoveryNeededEvent {
+    pub reason: VaultRecoveryReason,
 }
 
 /// Another device asks to be linked (`sync:linking-request`).

@@ -20,6 +20,8 @@ mod svg_inert;
 mod unsplash_server;
 mod vault_env;
 
+#[path = "account_key_check.rs"]
+mod account_key_check;
 #[path = "account_oauth.rs"]
 mod account_oauth;
 #[path = "account_service.rs"]

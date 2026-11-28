@@ -13,17 +13,23 @@ pub mod device;
 mod devices;
 #[cfg(feature = "e2e")]
 pub mod e2e_bootstrap;
+mod keys;
 mod linking;
 mod oauth;
 pub mod otp_clipboard;
 mod recovery;
 mod repair;
 pub mod session_events;
+pub mod sync_attach;
 mod teardown;
 pub mod vault_directory;
 pub mod vault_sync;
 
 pub use devices::DeviceList;
+pub use keys::{
+    AccountKeyCheck, OnVaultRecoveryNeeded, VaultKeyErrorKind, VaultRecoveryReason,
+    classify_vault_key_error, is_keychain_unreadable_error, vault_recovery_reason,
+};
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
 pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
@@ -214,6 +220,8 @@ pub struct AccountService {
     /// One vault download at a time, from the registry lookup to the registered folder: two
     /// downloads of one vault would both miss the registry and make two folders bound to it.
     downloads: Mutex<()>,
+    /// Who hears that the user must recover the account's key (`sync:vault-recovery-needed`).
+    recovery: keys::RecoveryListener,
 }
 
 /// The signed-in account's term on this install, ended by each sign-out (#4783). A write that
@@ -315,6 +323,7 @@ impl AccountService {
             at_rest_keys,
             epoch: AccountEpoch::default(),
             downloads: Mutex::new(()),
+            recovery: keys::RecoveryListener::default(),
         };
         service.restore();
         Ok(service)

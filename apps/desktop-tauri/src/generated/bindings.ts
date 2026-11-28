@@ -1311,6 +1311,7 @@ export const events = {
 	syncSecurityWarningEvent: makeEvent<SyncSecurityWarningEvent, SyncSecurityWarningEvent>("sync-security-warning-event"),
 	syncStatusChangedEvent: makeEvent<SyncStatusChangedEvent, SyncStatusChangedEvent>("sync-status-changed-event"),
 	syncVaultBindingChangedEvent: makeEvent<SyncVaultBindingChangedEvent, SyncVaultBindingChangedEvent>("sync-vault-binding-changed-event"),
+	syncVaultRecoveryNeededEvent: makeEvent<SyncVaultRecoveryNeededEvent, SyncVaultRecoveryNeededEvent>("sync-vault-recovery-needed-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
 	tagDeletedEvent: makeEvent<TagDeletedEvent, TagDeletedEvent>("tag-deleted-event"),
@@ -5721,6 +5722,14 @@ export type SyncStatusValue = "idle" | "syncing" | "offline" | "error" | "local_
 /**  The open vault's binding changed (`sync:vault-binding-changed`). */
 export type SyncVaultBindingChangedEvent = VaultBindingState;
 
+/**
+ *  The master key cannot decrypt the account's data: the user must restore it with the recovery
+ *  phrase (`sync:vault-recovery-needed`, `VaultRecoveryNeededEvent`).
+ */
+export type SyncVaultRecoveryNeededEvent = {
+	reason: VaultRecoveryReason,
+};
+
 /**  One record of a [`SyncItemSyncedEvent`]. */
 export type SyncedItem = {
 	itemId: string,
@@ -6651,6 +6660,9 @@ export type VaultNoticeList = {
  *  reads `vault_notices_list`.
  */
 export type VaultNoticesChangedEvent = null;
+
+/**  `VaultRecoveryNeededEvent['reason']` (`packages/contracts/src/ipc-events.ts:250`). */
+export type VaultRecoveryReason = "vault-key-mismatch" | "master-key-missing";
 
 export type VaultStatus = {
 	isOpen: boolean,

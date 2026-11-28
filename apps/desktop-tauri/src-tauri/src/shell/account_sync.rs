@@ -7,6 +7,7 @@ use std::sync::Arc;
 use memry_desktop::account::AccountService;
 use memry_desktop::account::binding::BindingState;
 use memry_desktop::account::session_events::{self, AccountEvent};
+use memry_desktop::account::sync_attach::{AttachTrigger, SyncAttach};
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
 use memry_desktop::seams::reachability::DesktopReachability;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
@@ -22,7 +23,8 @@ use crate::commands::error::CommandError;
 use crate::events::{
     AuthSessionExpiredEvent, SessionExpiredReason, SyncDeviceRemovedEvent,
     SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncStatusChangedEvent,
-    SyncVaultBindingChangedEvent, VaultListChangedEvent, broadcast, broadcast_sync_event,
+    SyncVaultBindingChangedEvent, SyncVaultRecoveryNeededEvent, VaultListChangedEvent, broadcast,
+    broadcast_sync_event,
 };
 use crate::power::PowerMonitor;
 use crate::shell::{billing, services};
@@ -52,6 +54,10 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(reachability.clone());
     let power = app.state::<PowerMonitor>().sender();
     forward_power(&runtime, power.subscribe(), reachability.clone());
+    let recovery_app = app.clone();
+    account.on_vault_recovery_needed(Arc::new(move |reason| {
+        broadcast(&recovery_app, SyncVaultRecoveryNeededEvent { reason });
+    }));
     let keychain_recovered = broadcast::Sender::new(4);
     let recovered = keychain_recovered.clone();
     app.state::<Arc<KeyringStore>>()
@@ -69,6 +75,12 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         Arc::new(move |open| closing.close(&open.vault)),
     );
     app.manage(at_rest_keys);
+
+    app.manage(Arc::new(SyncAttach::new(
+        account.clone(),
+        keychain_recovered.clone(),
+        reachability.as_ref(),
+    )));
 
     let billing = billing::manage(app, runtime.clone(), account.clone(), session.clone());
     let bindings = Arc::new(OpenVaultBinding::default());
@@ -102,24 +114,34 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     });
     app.manage(bindings);
     app.manage(wiring);
-    attach_if_signed_in(app.clone());
+    attach(app.clone(), AttachTrigger::Launch);
     Ok(())
 }
 
-/// Runs the open vault's supervisor when the account is signed in: at launch, and after each
-/// sign-in that ends with the master key in the keychain. A supervisor already running is
-/// rebuilt, so it reads the new account. Off the async workers: the attach waits on the session
-/// lifecycle and a running supervisor's stop.
+/// Runs the open vault's supervisor when the account is signed in, after each sign-in that ends
+/// with the master key in the keychain. A supervisor already running is rebuilt, so it reads the
+/// new account. The account check runs first (`SyncAttach`): a master key confirmed not the
+/// account's never syncs, and one that cannot be checked now holds the attach until it can.
 pub fn attach_if_signed_in(app: AppHandle<Wry>) {
-    tauri::async_runtime::spawn_blocking(move || {
-        let Some(wiring) = app.try_state::<Arc<SyncWiring>>() else {
+    attach(app, AttachTrigger::Flow);
+}
+
+fn attach(app: AppHandle<Wry>, trigger: AttachTrigger) {
+    tauri::async_runtime::spawn(async move {
+        let (Some(wiring), Some(gate)) = (
+            app.try_state::<Arc<SyncWiring>>()
+                .map(|w| w.inner().clone()),
+            app.try_state::<Arc<SyncAttach>>()
+                .map(|g| g.inner().clone()),
+        ) else {
             return;
         };
-        if !wiring.account.info().signed_in {
-            return;
-        }
-        app.state::<Session>()
-            .attach_sync(Arc::clone(wiring.inner()).factory());
+        let session = app.state::<Session>().inner().clone();
+        let attaching = session.clone();
+        gate.run(&session, trigger, move || {
+            attaching.attach_sync(wiring.factory());
+        })
+        .await;
     });
 }
 

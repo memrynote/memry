@@ -14,6 +14,7 @@ macro_rules! sync_account {
         chain!(events [
             crate::events::SyncDeviceRemovedEvent,
             crate::events::SyncVaultBindingChangedEvent,
+            crate::events::SyncVaultRecoveryNeededEvent,
         ] $($chain)*)
     };
 }
