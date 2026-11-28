@@ -36,6 +36,11 @@ pub use owed::Taken;
 
 use writeback::after_walk;
 
+/// What the open vault does with a canvas path the watcher saw removed outside the app.
+pub type CanvasGone = Arc<dyn Fn(&OpenVault, &str) + Send + Sync>;
+/// [`CanvasGone`] bound to one open.
+pub(super) type OpenCanvasGone = Arc<dyn Fn(&str) + Send + Sync>;
+
 pub struct VaultTier {
     /// Holds the device key the feed writes under.
     store: Arc<dyn SecureStore>,
@@ -44,6 +49,8 @@ pub struct VaultTier {
     /// watcher reports into it.
     activity: Arc<ActivityLog>,
     identity: Mutex<Arc<dyn NoteIdentity>>,
+    /// What a canvas path the watcher saw removed does, from the next open on.
+    canvas_gone: Mutex<Option<CanvasGone>>,
     /// Every session's failed write-backs, for the notice.
     failures: broadcast::Sender<WriteBackFailed>,
     /// The open vault's handles. A close stops the watcher and the consumer first and leaves
@@ -131,6 +138,7 @@ impl VaultTier {
             rows: RowOwner::new(),
             activity: ActivityLog::new(),
             identity: Mutex::new(Arc::new(DeferIdentity)),
+            canvas_gone: Mutex::new(None),
             failures: broadcast::channel(64).0,
             open: Mutex::new(None),
             echo: Mutex::new(None),
@@ -205,6 +213,12 @@ impl VaultTier {
     /// notes identity, `crate::notes::identity`).
     pub fn set_identity(&self, identity: Arc<dyn NoteIdentity>) {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
+    }
+
+    /// The canvas side of a removal outside the app (`crate::canvas::watch::gone_hook`), from
+    /// the next open on. Without it a removed canvas document deletes nothing.
+    pub fn set_canvas_gone(&self, hook: CanvasGone) {
+        *lock(&self.canvas_gone) = Some(hook);
     }
 
     /// The editor whose windows hold their typing while an outside edit of their note applies
@@ -475,6 +489,10 @@ impl VaultTier {
             untaken: Mutex::default(),
             emptied: Mutex::default(),
             writeback: Some(writeback.clone()),
+            canvas_gone: lock(&self.canvas_gone).clone().map(|hook| {
+                let view = vault.clone();
+                Arc::new(move |path: &str| hook(&view, path)) as OpenCanvasGone
+            }),
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;

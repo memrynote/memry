@@ -251,6 +251,12 @@ impl Run {
     }
 
     fn take(&mut self, event: VaultEvent) {
+        if let VaultEvent::CanvasGone { path } = &event {
+            if let Some(gone) = &self.applier.canvas_gone {
+                gone(path);
+            }
+            return;
+        }
         let rescanned = matches!(event, VaultEvent::Rescanned { .. });
         let path = match &event {
             VaultEvent::Added { path, .. } | VaultEvent::Changed { path, .. } => Some(path.clone()),

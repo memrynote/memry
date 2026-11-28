@@ -84,7 +84,7 @@ pub(crate) use converter::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 #[cfg(test)]
 pub(crate) use tier::Hold;
-pub use tier::{Taken, VaultTier};
+pub use tier::{CanvasGone, Taken, VaultTier};
 
 use run::{AfterWalk, Consumer, inbox};
 

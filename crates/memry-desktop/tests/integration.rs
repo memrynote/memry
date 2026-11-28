@@ -150,6 +150,8 @@ mod canvas_reconcile;
 mod canvas_service;
 #[path = "canvas_vault_id.rs"]
 mod canvas_vault_id;
+#[path = "canvas_watch.rs"]
+mod canvas_watch;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]

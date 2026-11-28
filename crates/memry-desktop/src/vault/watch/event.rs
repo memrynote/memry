@@ -40,6 +40,10 @@ pub enum VaultEvent {
         new_path: String,
         content_hash: Option<String>,
     },
+    /// A canvas document under `canvases/`, or a folder of them, is gone for good: the rename
+    /// window closed, the vault is there and the path is not on disk. The canvas service decides
+    /// which canvas, if any, that deletes (`canvas::watch`).
+    CanvasGone { path: String },
     /// A file of a type the vault does not index appeared.
     Unsupported { path: String },
     /// A file exists and could not be read (hard-linked, not UTF-8 is not checked here,
@@ -80,6 +84,7 @@ impl VaultEvent {
             Self::Changed { .. } => "changed",
             Self::Removed { .. } => "removed",
             Self::Renamed { .. } => "renamed",
+            Self::CanvasGone { .. } => "canvas_gone",
             Self::Unsupported { .. } => "unsupported",
             Self::Unreadable { .. } => "unreadable",
             Self::Unreachable => "unreachable",
