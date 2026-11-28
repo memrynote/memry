@@ -57,7 +57,7 @@ const cases: Array<[string, () => unknown]> = [
 // A list item's link text or hard breaks over many lines join into one line, and each join read the rest
 // of the paragraph again. These time how the cost grows rather than one size against the limit: 16 times
 // the lines cost about 16 times as much read once each, and 256 times read again for each line. Each input
-// keeps the least CPU time of five runs, because a loaded runner preempts the long input more often.
+// keeps its fastest of five runs.
 const longListItems: Array<[string, (count: number) => string, number]> = [
   ['link text over many lines', (count) => `- [a\n${'b\n'.repeat(count)}](u)`, 500],
   ['hard breaks on many lines', (count) => `- a  \n${'b  \n'.repeat(count)}`, 500],
@@ -73,25 +73,24 @@ const longListItems: Array<[string, (count: number) => string, number]> = [
   ]
 ]
 
-const cpuTime = (markdown: string): number => {
-  let least = Infinity
-  for (let run = 0; run < 5; run++) {
-    const start = process.cpuUsage()
-    maskHardBreaks(markdown)
-    const { user, system } = process.cpuUsage(start)
-    least = Math.min(least, user + system)
-  }
-  return least
+// The CPU time this thread spends in `run`, in milliseconds. Wall time also counts the time a loaded
+// runner gives other work, and process CPU time counts the test files running on other threads.
+const elapsed = (run: () => unknown): number => {
+  const start = process.threadCpuUsage()
+  run()
+  const { user, system } = process.threadCpuUsage(start)
+  return (user + system) / 1000
 }
+
+const fastest = (markdown: string): number =>
+  Math.min(...Array.from({ length: 5 }, () => elapsed(() => maskHardBreaks(markdown))))
 
 describe('adversarial markdown input', () => {
   it.each(cases)('%s runs in linear time', (_name, run) => {
-    const start = performance.now()
-    run()
-    expect(performance.now() - start).toBeLessThan(LIMIT_MS)
+    expect(elapsed(run)).toBeLessThan(LIMIT_MS)
   })
 
   it.each(longListItems)('a list item of %s is masked in linear time', (_name, item, count) => {
-    expect(cpuTime(item(count * 16)) / cpuTime(item(count))).toBeLessThan(64)
+    expect(fastest(item(count * 16)) / fastest(item(count))).toBeLessThan(64)
   })
 })

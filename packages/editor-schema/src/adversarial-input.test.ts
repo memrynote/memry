@@ -123,17 +123,19 @@ const cases: Array<[string, () => unknown]> = [
   ['BlockNote reads many hard breaks', () => markdownToHTML(`${'a  \n'.repeat(8000)}b`)]
 ]
 
+// The CPU time this thread spends in `run`, in milliseconds. Wall time also counts the time a loaded
+// runner gives other work, and process CPU time counts the test files running on other threads.
 const elapsed = (run: () => unknown): number => {
-  const start = performance.now()
+  const start = process.threadCpuUsage()
   run()
-  return performance.now() - start
+  const { user, system } = process.threadCpuUsage(start)
+  return (user + system) / 1000
 }
 
 // A comment, CDATA section, instruction or declaration with no end is read to the end of the text from
-// every opener. 0.54.2 reads each one cheaply, so a line long enough to fail the limit there brushes it
-// here on a loaded runner. These time how the cost grows instead: 16 times the openers cost about 16 times
-// as much read once each, and 256 times read to the end from each. Each line keeps the least CPU time of
-// five runs, because a loaded runner preempts the long line more often than the short one.
+// every opener. 0.54.2 reads each one cheaply, so a line long enough to fail the limit there costs a fair
+// share of it here too. These time how the cost grows instead: 16 times the openers cost about 16 times
+// as much read once each, and 256 times read to the end from each. Each line keeps its fastest of five runs.
 const unclosedOpeners: Array<[string, (openers: number) => string, number]> = [
   ['comments', (openers) => `a ${'<!--'.repeat(openers)}`, 1250],
   ['CDATA sections', (openers) => `a ${'<![CDATA['.repeat(openers)}`, 250],
@@ -141,18 +143,18 @@ const unclosedOpeners: Array<[string, (openers: number) => string, number]> = [
   ['declarations', (openers) => `a ${'<!a'.repeat(openers)}`, 1250]
 ]
 
-const cpuTime = (line: string): number => {
-  let least = Infinity
-  for (let run = 0; run < 5; run++) {
-    const start = process.cpuUsage()
-    markdownToHTML(line)
-    const { user, system } = process.cpuUsage(start)
-    least = Math.min(least, user + system)
-  }
-  return least
-}
+const fastest = (line: string): number =>
+  Math.min(...Array.from({ length: 5 }, () => elapsed(() => markdownToHTML(line))))
 
 describe('adversarial markdown input', () => {
+  // Each nested link costs the parser a few stack frames. Before its code is optimized, 0.54.2 read links
+  // nested 2125 deep and the first linear-time patch only 2000, so this runs before the cases below warm
+  // the parser up.
+  it('BlockNote reads links nested 2050 deep', () => {
+    const depth = 2050
+    expect(markdownToHTML(`${'[a '.repeat(depth)}${'](u)'.repeat(depth)}`)).toContain('href="u"')
+  })
+
   it.each(cases)('%s runs in linear time', (_name, run) => {
     expect(elapsed(run)).toBeLessThan(LIMIT_MS)
   })
@@ -160,16 +162,9 @@ describe('adversarial markdown input', () => {
   it.each(unclosedOpeners)(
     'BlockNote reads many unclosed %s in linear time',
     (_name, line, openers) => {
-      expect(cpuTime(line(openers * 16)) / cpuTime(line(openers))).toBeLessThan(64)
+      expect(fastest(line(openers * 16)) / fastest(line(openers))).toBeLessThan(64)
     }
   )
-
-  // Each nested link costs the parser a few stack frames. 0.54.2 read links nested 2125 deep, and the
-  // linear-time patch must not lower that.
-  it('BlockNote reads links nested 2050 deep', () => {
-    const depth = 2050
-    expect(markdownToHTML(`${'[a '.repeat(depth)}${'](u)'.repeat(depth)}`)).toContain('href="u"')
-  })
 
   it('a long table row ends a paragraph in linear time', () => {
     // Before the fix the long row never returned, so the short one fails first.
