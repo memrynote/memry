@@ -37,7 +37,9 @@ const TRIGGERS: Array<[string, string]> = [
   ['a comment across lines', '%% c\nd %%'],
   ['an empty-label link', '[](u)'],
   ['an empty-label link across lines', '[](u\nv)'],
-  ['a details tag', '<details>']
+  ['a details tag', '<details>'],
+  ['a code span of spaces', '` `'],
+  ['a code span of a space and a pipe', '` |`']
 ]
 
 const PLACES: Array<[string, string]> = [

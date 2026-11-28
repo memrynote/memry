@@ -10,7 +10,7 @@
 
 use memry_core::crdt::markdown_seed::{SeedInline, SeedKind, plan};
 
-const TRIGGERS: [(&str, &str); 13] = [
+const TRIGGERS: [(&str, &str); 15] = [
     ("a hard break", "x  \ny"),
     ("a backslash break", "x\\\ny"),
     ("a mention token", "((mention:a_b_c))"),
@@ -24,6 +24,8 @@ const TRIGGERS: [(&str, &str); 13] = [
     ("an empty-label link", "[](u)"),
     ("an empty-label link across lines", "[](u\nv)"),
     ("a details tag", "<details>"),
+    ("a code span of spaces", "` `"),
+    ("a code span of a space and a pipe", "` |`"),
 ];
 
 const PLACES: [(&str, &str); 19] = [
