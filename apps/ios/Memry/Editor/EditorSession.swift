@@ -310,13 +310,14 @@ final class EditorSession {
     }
 
     /// Scrolls the page until the line with the caret clears the toolbar.
-    /// The page's bottom inset counts the keys and not the toolbar above
-    /// them, so the reveals UIKit runs for each keyboard change leave a line
-    /// under the toolbar: on an iPad mini in landscape, a new note's first
-    /// line after Return in the title. This one runs after them, a turn
-    /// later: one of them still reveals the title's caret. Only a line on
-    /// screen that the toolbar covers moves: a page the user scrolled away
-    /// from the caret stays where it is as the keys change.
+    /// The reveals UIKit runs for each keyboard change leave the line under
+    /// the toolbar or the keys: on an iPad mini in landscape, a new note's
+    /// first line after Return in the title. This one runs after them, a turn
+    /// later: one of them still reveals the title's caret. The page's bottom
+    /// inset counts the keys and, once UIKit has sized it, the toolbar too.
+    /// Only a line inside the page that the toolbar or the keys cover moves:
+    /// a page the user scrolled away from the caret stays where it is as the
+    /// keys change.
     private func revealCaret() {
         guard let textView = field?.textView, textView.isFirstResponder, accessory.window != nil,
               let caret = textView.selectedTextRange?.end
@@ -326,9 +327,10 @@ final class EditorSession {
         guard let page = ancestor as? UIScrollView else { return }
         var line = textView.convert(textView.caretRect(for: caret), to: page)
         let toolbarTop = accessory.convert(accessory.bounds, to: page).minY
-        let visible = page.bounds.inset(by: page.adjustedContentInset)
-        guard visible.minY <= line.minY, line.maxY <= visible.maxY, line.maxY > toolbarTop else { return }
-        line.size.height += visible.maxY - toolbarTop
+        let insets = page.adjustedContentInset
+        let inside = page.bounds.inset(by: UIEdgeInsets(top: insets.top, left: 0, bottom: 0, right: 0))
+        guard inside.minY <= line.minY, line.maxY <= inside.maxY, line.maxY > toolbarTop else { return }
+        line.size.height += max(0, page.bounds.maxY - insets.bottom - toolbarTop)
         page.scrollRectToVisible(line, animated: true)
     }
 
