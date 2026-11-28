@@ -107,6 +107,7 @@ beside the sidebar's **New** button, and the **+** on the tab bar).
 - **Reorder** — drag a category to reorder categories, or drag a tag chip between or within
   categories to change its category and its position at the same time.
 - **Search** — the hub's search box filters both category and tag names as you type.
+- **A–Z view** — the **Categories / A–Z** toggle in the hub's toolbar switches to one flat list of every tag, sorted alphabetically in your language's order, each with its count. Dragging is off in this view; search still filters it. Each tab remembers the view you picked.
 
 The sidebar's Tags section mirrors the hub's categories and order. Its sort control defaults
 to **Manual** (the hub's drag order), with Most used, Least used, A → Z, and Z → A as

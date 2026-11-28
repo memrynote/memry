@@ -19,7 +19,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { withAlpha } from '@/components/note/tags-row/tag-colors'
+import { tagLabelColor, withAlpha } from '@/components/note/tags-row/tag-colors'
 import {
   countFilterConditions,
   serializeCondition,
@@ -519,7 +519,7 @@ export function FilterBuilder({
                   lockedCondition.color
                     ? {
                         backgroundColor: withAlpha(lockedCondition.color, 0.12),
-                        color: lockedCondition.color
+                        color: tagLabelColor(lockedCondition.color)
                       }
                     : undefined
                 }

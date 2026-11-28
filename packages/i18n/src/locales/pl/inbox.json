@@ -279,12 +279,10 @@
         "description": "Za {count, plural, one {# godzinę} few {# godziny} many {# godzin} other {# godziny}}"
       },
       "tomorrow": {
-        "label": "Jutro",
-        "description": "Jutro o 9:00"
+        "label": "Jutro"
       },
       "nextWeek": {
-        "label": "Następny tydzień",
-        "description": "W poniedziałek o 9:00"
+        "label": "Następny tydzień"
       },
       "inMinutes": {
         "label": "Za {count, plural, one {# minutę} few {# minuty} many {# minut} other {# minuty}}"

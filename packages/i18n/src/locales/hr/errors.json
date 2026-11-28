@@ -360,7 +360,8 @@
     "createFailed": "Stvaranje predloška nije uspjelo",
     "updateFailed": "Ažuriranje predloška nije uspjelo",
     "deleteFailed": "Brisanje predloška nije uspjelo",
-    "duplicateFailed": "Dupliciranje predloška nije uspjelo"
+    "duplicateFailed": "Dupliciranje predloška nije uspjelo",
+    "nameTaken": "Predložak naziva „{name}” već postoji. Odaberite drugi naziv."
   },
   "customIcon": {
     "unreadableImage": "Tu sliku nije moguće pročitati. Pokušajte s PNG, JPG, GIF, WEBP ili SVG datotekom.",

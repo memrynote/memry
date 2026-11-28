@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Název kategorie",
     "tagNamePlaceholder": "Název štítku",
     "uncategorized": "Nezařazené",
+    "view": {
+      "label": "Zobrazení štítků",
+      "categories": "Kategorie",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Všechny štítky",
+      "empty": "Zatím žádné štítky"
+    },
     "search": {
       "placeholder": "Hledat kategorie a štítky",
       "empty": "Vašemu hledání neodpovídají žádné kategorie ani štítky"

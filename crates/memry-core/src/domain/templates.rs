@@ -180,8 +180,8 @@ pub(crate) struct Seed {
 /// whose `content` is not a string would otherwise produce an empty note and
 /// look like the user's own doing.
 ///
-/// A built-in lives in code, not in the vault (desktop
-/// `vault/built-in-templates.ts`), so it is read from there.
+/// A built-in lives in code, not in the vault
+/// (`packages/app-core/src/built-in-templates.ts`), so it is read from there.
 pub(crate) fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, StorageError> {
     if let Some(b) = BUILT_INS.iter().find(|b| b.id == template_id) {
         let properties =

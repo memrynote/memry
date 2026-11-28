@@ -1,12 +1,11 @@
 /**
- * Built-in note templates.
+ * Built-in note templates, shared by desktop and the CLI. Code constants:
+ * fixed ids, identical on every device, never stored or synced.
  *
- * A leaf module on purpose: templates.ts and templates-migration.ts both need
- * this array, and importing it from templates.ts would close an import cycle
- * (vault/index -> templates-migration -> templates -> ... -> vault/index) that
- * leaves the array undefined at module-init time.
- *
- * @module vault/built-in-templates
+ * A leaf module on purpose: desktop's templates.ts and templates-migration.ts
+ * both need this array, and hosting it in templates.ts would close an import
+ * cycle (vault/index -> templates-migration -> templates -> ... -> vault/index)
+ * that leaves the array undefined at module-init time.
  */
 
 import type { Template } from '@memry/contracts/templates-api'

@@ -8,8 +8,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { asc, eq } from 'drizzle-orm'
 import { settings, templates } from '@memry/db-schema/data-schema'
+import { BUILT_IN_IDS, BUILT_IN_TEMPLATES } from '@memry/app-core/built-in-templates'
 import { createId } from '@memry/app-core/ids'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
+import { nameKey } from '@memry/shared/note-names'
+import { uniqueTemplateName } from '@memry/shared/template-names'
 import type { DataDb } from './database.ts'
 import { getMemryDir, safeFilename } from './paths.ts'
 export type {
@@ -23,8 +26,9 @@ export type {
 // Custom templates live in the `templates` table of data.db and sync as
 // whole-row LWW; `.memry/templates/<id>.md` is the retired pre-sync location,
 // read once by the migration below and otherwise only kept as a downgrade
-// path. Desktop's built-in templates are code constants over there and never
-// appear in the table — or in CLI listings.
+// path. Built-in templates are code constants (@memry/app-core/built-in-templates)
+// and never appear in the table or in CLI listings, but their names are taken,
+// as on desktop.
 
 const MIGRATION_KEY = 'templates.importedFromFiles'
 
@@ -152,6 +156,35 @@ function migrateLegacyTemplateFiles(dataDb: DataDb, vaultPath: string): void {
   }
 }
 
+/**
+ * Keys (`nameKey`) of every name a template can be picked by: the built-ins and
+ * the custom rows, except `exceptId`. Mirrors desktop's `takenNameKeys`; rows
+ * carrying a built-in id are ghosts desktop hides, so they are skipped.
+ */
+function takenNameKeys(dataDb: DataDb, exceptId?: string): Set<string> {
+  const keys = new Set<string>()
+  for (const t of BUILT_IN_TEMPLATES) {
+    const key = nameKey(t.name)
+    if (key) keys.add(key)
+  }
+  for (const row of dataDb
+    .select({ id: templates.id, name: templates.name })
+    .from(templates)
+    .all()) {
+    if (row.id === exceptId || BUILT_IN_IDS.has(row.id)) continue
+    const key = nameKey(row.name)
+    if (key) keys.add(key)
+  }
+  return keys
+}
+
+function assertNameFree(dataDb: DataDb, name: string, exceptId?: string): void {
+  const key = nameKey(name)
+  if (key && takenNameKeys(dataDb, exceptId).has(key)) {
+    throw new Error(`A template named "${name.trim()}" already exists. Choose a different name.`)
+  }
+}
+
 export function createTemplatesService({
   vaultPath,
   dataDb
@@ -174,6 +207,7 @@ export function createTemplatesService({
     async create(input) {
       const name = input.name.trim()
       if (!name) throw new Error('Template name is required')
+      assertNameFree(dataDb, name)
 
       const now = new Date().toISOString()
       const row: typeof templates.$inferInsert = {
@@ -197,6 +231,11 @@ export function createTemplatesService({
     async update(id, input) {
       const existing = await this.get(id)
       if (!existing) throw new Error(`Template not found: ${id}`)
+      // Only a real rename is checked, as on desktop: sync can leave two
+      // templates with one name, and either must stay editable.
+      if (input.name !== undefined && nameKey(input.name) !== nameKey(existing.name)) {
+        assertNameFree(dataDb, input.name, id)
+      }
 
       dataDb
         .update(templates)
@@ -221,7 +260,7 @@ export function createTemplatesService({
       const existing = await this.get(id)
       if (!existing) throw new Error(`Template not found: ${id}`)
       return this.create({
-        name: newName,
+        name: uniqueTemplateName(newName, takenNameKeys(dataDb)),
         description: existing.description,
         icon: existing.icon,
         tags: [...existing.tags],

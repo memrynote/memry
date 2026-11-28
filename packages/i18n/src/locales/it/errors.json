@@ -360,7 +360,8 @@
     "createFailed": "Impossibile creare il modello",
     "updateFailed": "Impossibile aggiornare il modello",
     "deleteFailed": "Impossibile eliminare il modello",
-    "duplicateFailed": "Impossibile duplicare il modello"
+    "duplicateFailed": "Impossibile duplicare il modello",
+    "nameTaken": "Esiste già un modello chiamato “{name}”. Scegli un nome diverso."
   },
   "customIcon": {
     "unreadableImage": "Impossibile leggere l'immagine. Prova con un file PNG, JPG, GIF, WEBP o SVG.",

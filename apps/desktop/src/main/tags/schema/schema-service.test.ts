@@ -31,6 +31,7 @@ import { getAllTagsWithCounts } from '@main/database/queries/tags'
 import { __resetMainI18nForTest, setMainI18n } from '../../lib/main-i18n'
 import { PropertyDefinitionsService } from '../../vault/property-definitions'
 import { addPreset } from '../presets'
+import { createTemplate } from '../../vault/templates'
 import { runTagSchemaCommand } from './commands'
 import { rewriteSchemaReferences } from './references'
 import { saveTagViews } from './views'
@@ -161,6 +162,21 @@ describe('ready-made tags', () => {
     expect(row('meeting')?.schema.t).toBe(1)
     expect(data.db.select().from(templates).all()).toHaveLength(templateCount)
     expect(queue.peek(100)).toEqual([])
+  })
+
+  it('numbers a preset template whose name another template already has instead of failing', async () => {
+    const taken = await createTemplate({ name: 'Meeting', tags: [], properties: [], content: '' })
+
+    await addPreset(db(), 'meeting')
+
+    const names = data.db
+      .select()
+      .from(templates)
+      .all()
+      .map((t) => t.name)
+    expect(names).toContain('Meeting 2')
+    expect(names.filter((n) => n === 'Meeting')).toEqual([taken.name])
+    expect(row('meeting')?.schema.template).toMatchObject({ autofill: true })
   })
 
   it('merges into an existing tag, keeping its own fields first', async () => {

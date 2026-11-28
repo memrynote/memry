@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Názov kategórie",
     "tagNamePlaceholder": "Názov značky",
     "uncategorized": "Nezaradené",
+    "view": {
+      "label": "Zobrazenie značiek",
+      "categories": "Kategórie",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Všetky značky",
+      "empty": "Zatiaľ žiadne značky"
+    },
     "search": {
       "placeholder": "Hľadať kategórie a značky",
       "empty": "Hľadaniu nezodpovedajú žiadne kategórie ani značky"

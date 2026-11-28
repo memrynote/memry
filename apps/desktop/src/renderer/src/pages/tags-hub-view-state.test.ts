@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DEFAULT_TAGS_HUB_VIEW,
   TAGS_HUB_SCROLL_KEY,
   TAGS_HUB_VIEW_STATE_KEYS,
-  parseTagsHubQuery
+  parseTagsHubQuery,
+  parseTagsHubView
 } from './tags-hub-view-state'
 
 describe('tags hub view state', () => {
@@ -25,5 +27,24 @@ describe('tags hub view state', () => {
     expect(parseTagsHubQuery('')).toBe('')
     expect(parseTagsHubQuery(null)).toBeUndefined()
     expect(parseTagsHubQuery(3)).toBeUndefined()
+  })
+})
+
+describe('tags hub view choice', () => {
+  it('stores the view under its own key, apart from the query and the scroll slot', () => {
+    expect(TAGS_HUB_VIEW_STATE_KEYS.view).not.toBe(TAGS_HUB_VIEW_STATE_KEYS.query)
+    expect(TAGS_HUB_VIEW_STATE_KEYS.view).not.toBe(TAGS_HUB_SCROLL_KEY)
+  })
+
+  it('accepts the two views it knows', () => {
+    expect(parseTagsHubView('categories')).toBe('categories')
+    expect(parseTagsHubView('az')).toBe('az')
+  })
+
+  it('rejects anything else so the page falls back to Categories', () => {
+    for (const raw of [undefined, null, '', 'AZ', 'grid', 1, { view: 'az' }]) {
+      expect(parseTagsHubView(raw)).toBeUndefined()
+    }
+    expect(DEFAULT_TAGS_HUB_VIEW).toBe('categories')
   })
 })

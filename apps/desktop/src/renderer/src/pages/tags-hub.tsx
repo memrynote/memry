@@ -27,13 +27,18 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import {
+  DEFAULT_TAGS_HUB_VIEW,
   TAGS_HUB_SCROLL_KEY,
   TAGS_HUB_VIEW_STATE_KEYS,
-  parseTagsHubQuery
+  parseTagsHubQuery,
+  parseTagsHubView,
+  type TagsHubView
 } from './tags-hub-view-state'
+import { getActiveLocale } from '@/lib/active-locale'
 import { Search } from '@/lib/icons'
 import { useTagCategories, type HubTag } from '@/hooks/use-tag-categories'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -50,6 +55,8 @@ import {
   type TagDragSession
 } from '@/components/tags-hub/drag-session'
 import { filterHub } from '@/components/tags-hub/filter'
+import { buildAzTagList } from '@/components/tags-hub/az-tags'
+import { AzList } from '@/components/tags-hub/az-list'
 import { PresetOfferStrip } from '@/features/tag-fields/hub/PresetOfferStrip'
 
 // Space picks up/drops a drag; Enter is left alone so focusing a chip and
@@ -106,6 +113,9 @@ const hubMeasuring: MeasuringConfiguration = {
   droppable: { strategy: MeasuringStrategy.BeforeDragging }
 }
 
+const VIEW_TOGGLE_ITEM_CLASS =
+  'h-6 rounded-[5px] border-none px-2.5 text-xs/4 font-medium text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm'
+
 type ActiveDrag = { kind: 'tag'; tag: HubTag } | { kind: 'category'; name: string; count: number }
 
 function findHubTag(state: HubState, tag: string): HubTag | null {
@@ -159,6 +169,13 @@ export function TagsHubPage(): React.JSX.Element {
     parse: parseTagsHubQuery
   })
   const isSearching = query.trim().length > 0
+  const [view, setView] = useTabViewState<TagsHubView>({
+    key: TAGS_HUB_VIEW_STATE_KEYS.view,
+    defaultValue: DEFAULT_TAGS_HUB_VIEW,
+    parse: parseTagsHubView
+  })
+  const isAz = view === 'az'
+  const locale = getActiveLocale()
 
   // Radix puts the scrolling element INSIDE the root: `ScrollArea` renders a
   // viewport that owns the overflow, and the root never scrolls. The restore
@@ -182,7 +199,20 @@ export function TagsHubPage(): React.JSX.Element {
   )
   const filteredCategories = filtered.categories
   const filteredUncategorized = filtered.uncategorized
-  const hasResults = filteredCategories.length > 0 || filteredUncategorized.length > 0
+  const azTags = useMemo(
+    () =>
+      isAz
+        ? buildAzTagList(
+            { categories: displayCategories, uncategorized: displayUncategorized },
+            query,
+            locale
+          )
+        : [],
+    [isAz, displayCategories, displayUncategorized, query, locale]
+  )
+  const hasResults = isAz
+    ? azTags.length > 0
+    : filteredCategories.length > 0 || filteredUncategorized.length > 0
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -201,7 +231,9 @@ export function TagsHubPage(): React.JSX.Element {
   // sensor means dnd-kit can't start a drag at all, and `handleDragEnd` bails
   // before touching `reorder()` even if a drag end event arrived some other
   // way.
-  const activeSensors = isSearching ? [] : sensors
+  // The A-Z view has no order to rearrange and no category to drop into, so it
+  // takes no drag either.
+  const activeSensors = isSearching || isAz ? [] : sensors
 
   const categoryIds = useMemo(() => filteredCategories.map((c) => c.id), [filteredCategories])
 
@@ -315,7 +347,7 @@ export function TagsHubPage(): React.JSX.Element {
       // event arrives while a query is active, never let it reach
       // `reorder()` — reordering a filtered view would write sort orders
       // that don't reflect the real, unfiltered order.
-      if (isSearching) {
+      if (isSearching || isAz) {
         applyOverride(null)
         return
       }
@@ -380,7 +412,7 @@ export function TagsHubPage(): React.JSX.Element {
       // settles, so nothing snaps back mid-flight.
       void reorder({ tags: assignments }).finally(() => applyOverride(null))
     },
-    [isSearching, displayCategories, displayUncategorized, reorder, applyOverride]
+    [isSearching, isAz, displayCategories, displayUncategorized, reorder, applyOverride]
   )
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -419,7 +451,7 @@ export function TagsHubPage(): React.JSX.Element {
                   scrolling past every category. `items-start` keeps the search
                   field pinned to the top row when the create affordance
                   expands into a name input plus colour palette. */}
-              <div className="flex items-start gap-2 pb-[22px]">
+              <div className="flex flex-wrap items-start gap-2 pb-[22px]">
                 <InlineCreateRow onCreateCategory={createCategory} onCreateTag={createTag} />
                 <div className="relative shrink-0">
                   <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -439,12 +471,35 @@ export function TagsHubPage(): React.JSX.Element {
                     className="h-8 w-[240px] rounded-md border border-transparent bg-transparent ps-8 pe-2.5 text-xs placeholder:text-muted-foreground transition-colors focus:border-ring focus:outline-none"
                   />
                 </div>
+                {/* Segmented view switch, pinned to the inline end so the
+                    create and search controls keep their place in both views.
+                    Radix reports '' when the pressed item is pressed again; a
+                    view always stays selected. */}
+                <ToggleGroup
+                  type="single"
+                  value={view}
+                  aria-label={t('tagsHub.view.label')}
+                  onValueChange={(next) => {
+                    const parsed = parseTagsHubView(next)
+                    if (parsed) setView(parsed)
+                  }}
+                  className="ms-auto mt-0.5 shrink-0 gap-0.5 rounded-md bg-muted p-0.5"
+                >
+                  <ToggleGroupItem value="categories" className={VIEW_TOGGLE_ITEM_CLASS}>
+                    {t('tagsHub.view.categories')}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="az" className={VIEW_TOGGLE_ITEM_CLASS}>
+                    {t('tagsHub.view.az')}
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
               {!isSearching && <PresetOfferStrip />}
               {isSearching && !hasResults ? (
                 <div className="border-t border-border py-[22px] text-sm text-muted-foreground">
                   {t('tagsHub.search.empty')}
                 </div>
+              ) : isAz ? (
+                <AzList tags={azTags} onTagOpen={handleTagOpen} />
               ) : (
                 <>
                   <SortableContext items={categoryIds} strategy={verticalListSortingStrategy}>

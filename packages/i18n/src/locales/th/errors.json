@@ -360,7 +360,8 @@
     "createFailed": "สร้างเทมเพลตไม่สำเร็จ",
     "updateFailed": "อัปเดตเทมเพลตไม่สำเร็จ",
     "deleteFailed": "ลบเทมเพลตไม่สำเร็จ",
-    "duplicateFailed": "ทำสำเนาเทมเพลตไม่สำเร็จ"
+    "duplicateFailed": "ทำสำเนาเทมเพลตไม่สำเร็จ",
+    "nameTaken": "มีเทมเพลตชื่อ “{name}” อยู่แล้ว โปรดเลือกชื่ออื่น"
   },
   "customIcon": {
     "unreadableImage": "อ่านรูปภาพนั้นไม่สำเร็จ ลองใช้ไฟล์ PNG JPG GIF WEBP หรือ SVG",

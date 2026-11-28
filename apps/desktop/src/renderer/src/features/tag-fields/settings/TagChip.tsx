@@ -1,6 +1,6 @@
 import { Tag } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
-import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, withAlpha, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { cn } from '@/lib/utils'
 
 interface TagChipProps {
@@ -18,7 +18,7 @@ export function TagChip({ name, color, icon, className }: TagChipProps): React.J
         'inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-medium',
         className
       )}
-      style={{ backgroundColor: withAlpha(text, 0.12), color: text }}
+      style={{ backgroundColor: withAlpha(text, 0.12), color: tagLabelColor(text) }}
     >
       {icon ? (
         <NoteIconDisplay value={icon} className="size-3 text-[11px] leading-none" />

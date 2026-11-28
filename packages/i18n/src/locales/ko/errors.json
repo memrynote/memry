@@ -360,7 +360,8 @@
     "createFailed": "템플릿을 만들지 못했습니다.",
     "updateFailed": "템플릿을 업데이트하지 못했습니다.",
     "deleteFailed": "템플릿을 삭제하지 못했습니다.",
-    "duplicateFailed": "템플릿을 복제하지 못했습니다."
+    "duplicateFailed": "템플릿을 복제하지 못했습니다.",
+    "nameTaken": "“{name}”(이)라는 이름의 템플릿이 이미 있습니다. 다른 이름을 선택하세요."
   },
   "customIcon": {
     "unreadableImage": "이미지를 읽지 못했습니다. PNG, JPG, GIF, WEBP 또는 SVG 파일을 사용해 보세요.",

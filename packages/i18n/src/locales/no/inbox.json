@@ -279,12 +279,10 @@
         "description": "Om {count, plural, one {# time} other {# timer}}"
       },
       "tomorrow": {
-        "label": "I morgen",
-        "description": "I morgen kl. 09.00"
+        "label": "I morgen"
       },
       "nextWeek": {
-        "label": "Neste uke",
-        "description": "Mandag kl. 09.00"
+        "label": "Neste uke"
       },
       "inMinutes": {
         "label": "Om {count, plural, one {# minutt} other {# minutter}}"

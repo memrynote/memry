@@ -36,6 +36,7 @@ import {
 } from './journal-query-keys'
 import { mergeInlineTagEdits, type InlineTagEdit } from './use-inline-tag-edits'
 import { getI18n } from 'react-i18next'
+import { isHour12 } from '@/lib/time-format'
 
 const log = createLogger('Hook:JournalEntry')
 
@@ -79,7 +80,8 @@ function applyJournalTemplate(template: Template, date: string): AppliedJournalT
     }).format(dateObj),
     time: new Intl.DateTimeFormat(locale, {
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: isHour12()
     }).format(new Date()),
     dayOfWeek: new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
   })

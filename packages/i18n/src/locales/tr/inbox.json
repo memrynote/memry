@@ -279,12 +279,10 @@
         "description": "{count, plural, one {# saat sonra} other {# saat sonra}}"
       },
       "tomorrow": {
-        "label": "Yarın",
-        "description": "Yarın saat 09:00"
+        "label": "Yarın"
       },
       "nextWeek": {
-        "label": "Gelecek hafta",
-        "description": "Pazartesi saat 09:00"
+        "label": "Gelecek hafta"
       },
       "inMinutes": {
         "label": "{count, plural, one {# dakika sonra} other {# dakika sonra}}"

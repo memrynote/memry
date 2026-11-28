@@ -360,7 +360,8 @@
     "createFailed": "Gagal membuat templat",
     "updateFailed": "Gagal memperbarui templat",
     "deleteFailed": "Gagal menghapus templat",
-    "duplicateFailed": "Gagal menduplikat templat"
+    "duplicateFailed": "Gagal menduplikat templat",
+    "nameTaken": "Templat bernama “{name}” sudah ada. Pilih nama lain."
   },
   "customIcon": {
     "unreadableImage": "Gambar tersebut tidak dapat dibaca. Coba file PNG, JPG, GIF, WEBP, atau SVG.",

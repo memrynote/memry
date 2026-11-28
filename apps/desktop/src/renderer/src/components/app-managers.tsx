@@ -3,6 +3,7 @@ import { MotionConfig } from 'motion/react'
 import { useTabSessionPersistence } from '@/contexts/tabs/persistence'
 import { UpdateReleaseNotesTabOpener } from '@/components/updater/update-release-notes-tab-opener'
 import { useThemeSync } from '@/hooks/use-theme-sync'
+import { useClockFormatSync } from '@/hooks/use-clock-format-sync'
 import { useWeekStartSync } from '@/hooks/use-week-start-sync'
 import { wasEnteredBySwitch } from '@/lib/vault-switch-state'
 
@@ -13,6 +14,7 @@ import { wasEnteredBySwitch } from '@/lib/vault-switch-state'
 export function ThemeSyncManager({ children }: { children: React.ReactNode }): React.JSX.Element {
   const { reduceMotion } = useThemeSync()
   useWeekStartSync()
+  useClockFormatSync()
   // 'user' follows the OS; motion's own default ('never') would ignore it.
   return (
     <MotionConfig reducedMotion={reduceMotion === 'on' ? 'always' : 'user'}>

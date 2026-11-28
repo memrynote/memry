@@ -360,7 +360,8 @@
     "createFailed": "Kunne ikke opprette malen",
     "updateFailed": "Kunne ikke oppdatere malen",
     "deleteFailed": "Kunne ikke slette malen",
-    "duplicateFailed": "Kunne ikke duplisere malen"
+    "duplicateFailed": "Kunne ikke duplisere malen",
+    "nameTaken": "Det finnes allerede en mal med navnet «{name}». Velg et annet navn."
   },
   "customIcon": {
     "unreadableImage": "Bildet kunne ikke leses. Prøv en PNG-, JPG-, GIF-, WEBP- eller SVG-fil.",

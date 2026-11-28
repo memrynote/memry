@@ -13,6 +13,8 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { formatDate } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { formatTimeOfDay } from '@/lib/time-format'
 import {
   Sheet,
   SheetContent,
@@ -47,7 +49,7 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { notesService, type SnapshotDetail } from '@/services/notes-service'
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -135,6 +137,9 @@ function VersionHistorySession({
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   const dateFormat = useDateFormat()
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null)
   const [previewContent, setPreviewContent] = useState<SnapshotDetail | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -428,7 +433,7 @@ function VersionHistorySession({
                       <div>
                         <div className="font-medium text-sm">{previewContent.title}</div>
                         <div className="text-xs text-muted-foreground">
-                          {`${formatDate(new Date(previewContent.createdAt), dateFormat)} ${format(new Date(previewContent.createdAt), 'p')}`}
+                          {`${formatDate(new Date(previewContent.createdAt), dateFormat)} ${formatTimeOfDay(new Date(previewContent.createdAt), clockFormat)}`}
                         </div>
                       </div>
                       <div className="flex items-center gap-1">

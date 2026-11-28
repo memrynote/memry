@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Назва категорії",
     "tagNamePlaceholder": "Назва тегу",
     "uncategorized": "Без категорії",
+    "view": {
+      "label": "Вигляд тегів",
+      "categories": "Категорії",
+      "az": "А–Я"
+    },
+    "azList": {
+      "heading": "Усі теги",
+      "empty": "Тегів поки немає"
+    },
     "search": {
       "placeholder": "Шукати категорії й теги",
       "empty": "Жодна категорія чи тег не відповідає вашому запиту"

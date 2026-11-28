@@ -360,7 +360,8 @@
     "createFailed": "Nie udało się utworzyć szablonu",
     "updateFailed": "Nie udało się zaktualizować szablonu",
     "deleteFailed": "Nie udało się usunąć szablonu",
-    "duplicateFailed": "Nie udało się zduplikować szablonu"
+    "duplicateFailed": "Nie udało się zduplikować szablonu",
+    "nameTaken": "Szablon o nazwie „{name}” już istnieje. Wybierz inną nazwę."
   },
   "customIcon": {
     "unreadableImage": "Nie udało się odczytać tego obrazu. Użyj pliku PNG, JPG, GIF, WEBP lub SVG.",

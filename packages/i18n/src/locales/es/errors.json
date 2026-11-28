@@ -360,7 +360,8 @@
     "createFailed": "No se pudo crear la plantilla",
     "updateFailed": "No se pudo actualizar la plantilla",
     "deleteFailed": "No se pudo eliminar la plantilla",
-    "duplicateFailed": "No se pudo duplicar la plantilla"
+    "duplicateFailed": "No se pudo duplicar la plantilla",
+    "nameTaken": "Ya existe una plantilla llamada «{name}». Elige otro nombre."
   },
   "customIcon": {
     "unreadableImage": "No se pudo leer esa imagen. Prueba con un archivo PNG, JPG, GIF, WEBP o SVG.",

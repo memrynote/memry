@@ -20,7 +20,8 @@ import { formatTimeOfDay } from '@/lib/time-format'
 export interface ReminderPreset {
   id: string
   label: string
-  description?: string
+  /** Hint shown beside the label. Takes the clock format because some hints name a time. */
+  description?: (clockFormat: ClockFormat) => string
   getDate: () => Date
 }
 
@@ -134,7 +135,7 @@ export function getLaterToday(): Date {
 // Standard Presets
 // ============================================================================
 
-// Labels and descriptions are read lazily (via getters) so they follow the
+// Labels (getters) and descriptions (functions) are read lazily so they follow the
 // active language instead of freezing whatever locale was loaded at import time.
 
 /**
@@ -146,11 +147,8 @@ export const standardPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.laterToday.label')
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.laterToday.description', {
-        count: 4
-      })
-    },
+    description: () =>
+      getI18n().getFixedT(null, 'inbox')('reminder.presets.laterToday.description', { count: 4 }),
     getDate: getLaterToday
   },
   {
@@ -158,9 +156,10 @@ export const standardPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.tomorrow.label')
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.tomorrow.description')
-    },
+    description: (clockFormat) =>
+      getI18n().getFixedT(null, 'inbox')('reminder.dateTime.tomorrowAt', {
+        time: formatTimeOfDay(getTomorrow(9), clockFormat)
+      }),
     getDate: () => getTomorrow(9)
   },
   {
@@ -168,8 +167,12 @@ export const standardPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.nextWeek.label')
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.nextWeek.description')
+    description: (clockFormat) => {
+      const monday = getNextMonday(9)
+      return getI18n().getFixedT(null, 'inbox')('reminder.dateTime.dateAt', {
+        date: monday.toLocaleDateString(getActiveLocale(), { weekday: 'long' }),
+        time: formatTimeOfDay(monday, clockFormat)
+      })
     },
     getDate: () => getNextMonday(9)
   },
@@ -178,9 +181,7 @@ export const standardPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.inMonths.label', { count: 1 })
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.sameDayNextMonth')
-    },
+    description: () => getI18n().getFixedT(null, 'inbox')('reminder.presets.sameDayNextMonth'),
     getDate: () => getInMonths(1, 9)
   }
 ]
@@ -194,9 +195,7 @@ export const journalPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.inWeeks.label', { count: 1 })
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.reviewInAWeek')
-    },
+    description: () => getI18n().getFixedT(null, 'inbox')('reminder.presets.reviewInAWeek'),
     getDate: () => getInWeeks(1, 9)
   },
   {
@@ -204,9 +203,7 @@ export const journalPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.inMonths.label', { count: 1 })
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.monthlyReflection')
-    },
+    description: () => getI18n().getFixedT(null, 'inbox')('reminder.presets.monthlyReflection'),
     getDate: () => getInMonths(1, 9)
   },
   {
@@ -214,9 +211,7 @@ export const journalPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.inMonths.label', { count: 3 })
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.quarterlyReflection')
-    },
+    description: () => getI18n().getFixedT(null, 'inbox')('reminder.presets.quarterlyReflection'),
     getDate: () => getInMonths(3, 9)
   },
   {
@@ -224,9 +219,7 @@ export const journalPresets: ReminderPreset[] = [
     get label() {
       return getI18n().getFixedT(null, 'inbox')('reminder.presets.inYears.label', { count: 1 })
     },
-    get description() {
-      return getI18n().getFixedT(null, 'inbox')('reminder.presets.anniversaryReminder')
-    },
+    description: () => getI18n().getFixedT(null, 'inbox')('reminder.presets.anniversaryReminder'),
     getDate: () => getInMonths(12, 9)
   }
 ]

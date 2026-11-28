@@ -14,7 +14,7 @@ import type { DataDb } from '../database/types'
 import { createLogger } from '../lib/logger'
 import { getMemryDir } from './init'
 import { readVaultFileSync } from '../lib/paths'
-import { BUILT_IN_IDS } from './built-in-templates'
+import { BUILT_IN_IDS } from '@memry/app-core/built-in-templates'
 
 const log = createLogger('TemplatesMigration')
 

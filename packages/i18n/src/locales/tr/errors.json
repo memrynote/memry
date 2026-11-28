@@ -360,7 +360,8 @@
     "createFailed": "Şablon oluşturulamadı",
     "updateFailed": "Şablon güncellenemedi",
     "deleteFailed": "Şablon silinemedi",
-    "duplicateFailed": "Şablon çoğaltılamadı"
+    "duplicateFailed": "Şablon çoğaltılamadı",
+    "nameTaken": "“{name}” adında bir şablon zaten var. Farklı bir ad seçin."
   },
   "customIcon": {
     "unreadableImage": "Bu görsel okunamadı. PNG, JPG, GIF, WEBP veya SVG dosyası deneyin.",

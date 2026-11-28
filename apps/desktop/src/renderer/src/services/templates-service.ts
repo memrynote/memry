@@ -67,6 +67,7 @@ interface TemplateCreateResponse {
   success: boolean
   template: Template | null
   error?: string
+  errorCode?: 'template-name-taken'
 }
 
 interface TemplateListResponse {

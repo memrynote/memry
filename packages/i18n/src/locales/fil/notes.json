@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Pangalan ng kategorya",
     "tagNamePlaceholder": "Pangalan ng tag",
     "uncategorized": "Walang kategorya",
+    "view": {
+      "label": "View ng tag",
+      "categories": "Mga kategorya",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Lahat ng tag",
+      "empty": "Wala pang mga tag"
+    },
     "search": {
       "placeholder": "Maghanap ng mga kategorya at tag",
       "empty": "Walang kategorya o tag na tumutugma sa iyong paghahanap"
