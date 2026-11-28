@@ -144,6 +144,8 @@ mod canvas_assets;
 mod canvas_files;
 #[path = "canvas_folders.rs"]
 mod canvas_folders;
+#[path = "canvas_reconcile.rs"]
+mod canvas_reconcile;
 #[path = "canvas_service.rs"]
 mod canvas_service;
 #[path = "canvas_vault_id.rs"]

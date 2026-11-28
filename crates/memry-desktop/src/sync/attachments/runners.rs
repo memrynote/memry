@@ -26,6 +26,8 @@ use rusqlite::{Connection, OptionalExtension, params};
 use tokio::time::{MissedTickBehavior, interval};
 
 use super::{Inner, Live, lock, placement};
+use crate::sync::error_category::SyncErrorCategory;
+use crate::sync::events::SyncEvent;
 
 pub(super) const UPLOAD_EVERY: Duration = Duration::from_secs(5 * 60);
 pub(super) const DOWNLOAD_EVERY: Duration = Duration::from_secs(15 * 60);
@@ -110,11 +112,34 @@ async fn redrive_uploads(inner: &Inner, live: &Live) {
     .await
     {
         Ok(drain) => {
-            for (row, reason) in &drain.dropped {
-                tracing::warn!(owner_id = %row.owner_id, path = %row.disk_path, %reason, "attachment upload dropped");
+            for dropped in &drain.dropped {
+                let row = &dropped.row;
+                tracing::warn!(owner_id = %row.owner_id, path = %row.disk_path, reason = %dropped.reason, "attachment upload dropped");
+                if dropped.too_large {
+                    tell_failed(
+                        inner,
+                        &row.owner_id,
+                        &row.disk_path,
+                        dropped.reason.clone(),
+                        None,
+                    );
+                }
+            }
+            for row in &drain.over_plan {
+                tracing::warn!(owner_id = %row.owner_id, path = %row.disk_path, "attachment upload over the plan's file size");
+                let error = "the file is larger than the plan allows".to_owned();
+                tell_failed(
+                    inner,
+                    &row.owner_id,
+                    &row.disk_path,
+                    error,
+                    Some(SyncErrorCategory::FileTooLarge),
+                );
             }
             for row in &drain.stuck {
                 tracing::error!(owner_id = %row.owner_id, path = %row.disk_path, attempts = row.attempts, "attachment upload stuck");
+                let error = format!("the upload failed {} times", row.attempts);
+                tell_failed(inner, &row.owner_id, &row.disk_path, error, None);
             }
             if drain.revoked {
                 tracing::warn!("attachment uploads stopped: this device is revoked");
@@ -309,6 +334,8 @@ pub(super) async fn eager_download(inner: &Arc<Inner>, live: &Live, wanted: Atta
 async fn download(inner: &Inner, live: &Live, request: DownloadRequest) {
     let (owner, id) = (request.owner_id.clone(), request.attachment_id.clone());
     let into_dir = matches!(request.target, DownloadTarget::Dir(_));
+    let (DownloadTarget::Dir(going) | DownloadTarget::Path(going)) = &request.target;
+    let going = going.to_string_lossy().into_owned();
     let Ok(outcome) = live.queue.enqueue(request).await else {
         return;
     };
@@ -342,6 +369,7 @@ async fn download(inner: &Inner, live: &Live, request: DownloadRequest) {
             };
             tracing::error!(owner_id = %owner, attachment_id = %id, reason = reason.as_str(), %error, "attachment download failed");
             let (owner, id, text) = (owner.clone(), id.clone(), error.to_string());
+            tell_failed(inner, &owner, &going, text.clone(), None);
             inner
                 .db
                 .call(move |conn| {
@@ -351,9 +379,34 @@ async fn download(inner: &Inner, live: &Live, request: DownloadRequest) {
                 .await
         }
     };
-    if let Err(error) = written {
-        tracing::error!(owner_id = %owner, attachment_id = %id, %error, "could not record an attachment download");
+    match written {
+        Ok(()) if outcome.is_ok() => {
+            (inner.on_event)(&SyncEvent::AttachmentMaterialized { note_id: owner });
+        }
+        Ok(()) => {}
+        Err(error) => {
+            tracing::error!(owner_id = %owner, attachment_id = %id, %error, "could not record an attachment download");
+            if outcome.is_ok() {
+                tell_failed(inner, &owner, &going, error.to_string(), None);
+            }
+        }
     }
+}
+
+/// Tells the renderer an attachment of `owner` did not move (`ATTACHMENT_UPLOAD_FAILED`).
+fn tell_failed(
+    inner: &Inner,
+    owner: &str,
+    disk_path: &str,
+    error: String,
+    category: Option<SyncErrorCategory>,
+) {
+    (inner.on_event)(&SyncEvent::AttachmentFailed {
+        note_id: owner.to_owned(),
+        disk_path: disk_path.to_owned(),
+        error,
+        category,
+    });
 }
 
 /// The server does not have the attachment and never will (`markDownloadFailed`).

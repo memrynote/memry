@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 46);
+    assert_eq!(version, 47);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -303,6 +303,23 @@ fn a_database_at_0045_gains_note_pulled_marks_at_0046() {
 
     assert_eq!(version, 46);
     assert!(table_names(&db).iter().any(|n| n == "note_pulled_marks"));
+}
+
+#[test]
+fn a_database_at_0046_gains_canvas_scene_marks_at_0047() {
+    let db = Db::open_in_memory().expect("open");
+    let at_46 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..46]))
+        .expect("migrate to 46");
+    assert_eq!(at_46, 46);
+    assert!(!table_names(&db).iter().any(|n| n == "canvas_scene_marks"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..47]))
+        .expect("step forward");
+
+    assert_eq!(version, 47);
+    assert!(table_names(&db).iter().any(|n| n == "canvas_scene_marks"));
 }
 
 #[test]

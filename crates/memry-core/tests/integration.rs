@@ -77,6 +77,8 @@ mod api_vault_reads;
 mod api_vault_sync;
 #[path = "attachment_cache.rs"]
 mod attachment_cache;
+#[path = "attachment_delete_records.rs"]
+mod attachment_delete_records;
 #[path = "attachment_download.rs"]
 mod attachment_download;
 #[path = "attachment_holds.rs"]

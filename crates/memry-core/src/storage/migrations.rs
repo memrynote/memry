@@ -284,6 +284,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_pulled_marks",
         sql: include_str!("migrations/data/0046_note_pulled_marks.sql"),
     },
+    Migration {
+        version: 47,
+        name: "canvas_scene_marks",
+        sql: include_str!("migrations/data/0047_canvas_scene_marks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -471,6 +476,8 @@ pub fn run_atomic(
 mod agent_records_tests;
 #[cfg(test)]
 mod attachment_sync_tests;
+#[cfg(test)]
+mod canvas_scene_marks_tests;
 #[cfg(test)]
 mod canvases_tests;
 #[cfg(test)]

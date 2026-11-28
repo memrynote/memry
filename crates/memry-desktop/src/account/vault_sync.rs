@@ -270,6 +270,7 @@ impl SyncWiring {
             open.vault.db_handle(),
             Arc::new(DesktopVaultFiles::new(open.path.clone())),
             auto_download,
+            Arc::clone(&self.on_event),
             self.reachability.as_ref(),
             self.runtime.clone(),
         )
