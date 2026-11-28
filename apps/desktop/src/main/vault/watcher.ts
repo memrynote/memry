@@ -423,6 +423,13 @@ export class VaultWatcher {
    * once per event-loop turn, right after the turn's fs events; a rename that
    * beats the stat keeps the hash-only match. A file's own `rename` event
    * that names another file names the file it was renamed to (`RenameTargets`).
+   *
+   * A case-only rename on a disk that ignores case leaves the old spelling
+   * openable, so chokidar hears no unlink, and only the folder's FSEvents
+   * stream reports the new spelling, seconds late or never. When the disk now
+   * spells the file as its `rename` event names it, the event is the unlink,
+   * which adds the file in its new spelling. chokidar's own unlink of the old
+   * spelling, if it comes, finds no row.
    */
   private recordRawEvent(event: string, eventPath: string, details: unknown): void {
     if (!this.isReady || typeof details !== 'object' || details === null) return
@@ -430,7 +437,11 @@ export class VaultWatcher {
     if (typeof watchedPath !== 'string') return
     if (event === 'rename' && eventPath && path.basename(watchedPath) !== eventPath) {
       const target = path.join(path.dirname(watchedPath), eventPath)
-      if (isSupportedPath(target)) this.renameTargets.record(watchedPath, target)
+      if (isSupportedPath(target) && this.isCaseOnlyRename(watchedPath, target)) {
+        this.handleFileDelete(watchedPath, { renamedTo: target })
+      } else if (isSupportedPath(target)) {
+        this.renameTargets.record(watchedPath, target)
+      }
     }
     // A file's own fs.watch names the file; a folder's names the child.
     const filePath =
@@ -444,6 +455,15 @@ export class VaultWatcher {
       for (const written of this.rawWrites) this.recordIdentity(written)
       this.rawWrites.clear()
     })
+  }
+
+  /** Whether the disk spells `filePath` as `target`, which differs only in case. */
+  private isCaseOnlyRename(filePath: string, target: string): boolean {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return false
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+    const targetPath = normalizeRelativePath(path.relative(vaultPath, target))
+    return diskCaseOf(vaultPath, relativePath) === targetPath
   }
 
   private recordIdentity(filePath: string): void {
@@ -1507,11 +1527,17 @@ export class VaultWatcher {
     absolutePath: string,
     {
       keepUnpaired = false,
-      deferred = null
-    }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
+      deferred = null,
+      renamedTo: caseRenamedTo = null
+    }: {
+      keepUnpaired?: boolean
+      deferred?: DeferredDeletes | null
+      /** The new spelling of a case-only rename (`recordRawEvent`). */
+      renamedTo?: string | null
+    } = {}
   ): void {
     const lastChangeKey = this.recentIdentities.take(absolutePath)
-    const renamedTo = this.renameTargets.take(absolutePath)
+    const renamedTo = this.renameTargets.take(absolutePath) ?? caseRenamedTo
     this.renamedFileKeys.delete(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
