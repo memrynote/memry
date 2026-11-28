@@ -43,6 +43,7 @@ import {
   serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
 import { sidecarMarkerLines } from '@memry/shared/block-markers'
+import { hideBacktickLanguages, spellBacktickLanguages } from '@memry/shared/code-fence-language'
 import { extractInlineColorRuns, restoreInlineColorTokens } from '@memry/shared/inline-colors'
 import {
   assembleMarkdownWithBlanks,
@@ -752,9 +753,10 @@ async function serializeBlocks(
   editor: ServerBlockNoteEditor,
   blocks: PartialBlock[]
 ): Promise<string> {
+  const { blocks: spelled, languages } = hideBacktickLanguages(blocks)
   const { blocks: wrapped, replacements } = extractInlineColorRuns(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-    withPlainCheckboxMarkers(blocks as never[])
+    withPlainCheckboxMarkers(spelled as never[])
   )
   // The server editor exports the blocks before its first await, so the
   // export runs inside the token scope.
@@ -762,7 +764,7 @@ async function serializeBlocks(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     await writeHtmlCommentTokens(wrapped as PartialBlock[], (b) => editor.blocksToMarkdownLossy(b))
   )
-  return restoreInlineColorTokens(md, replacements)
+  return restoreInlineColorTokens(spellBacktickLanguages(md, languages), replacements)
 }
 
 function canSerializeChildNatively(parent: Block, child: Block): boolean {

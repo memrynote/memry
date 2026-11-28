@@ -32,6 +32,7 @@ import { serializeBookmark } from './bookmark-block'
 import { serializeTaskBlockTree } from './task-block/task-block-utils'
 import { serializeFileBlock } from './file-block-markers'
 import { createLogger } from '@/lib/logger'
+import { hideBacktickLanguages, spellBacktickLanguages } from '@memry/shared/code-fence-language'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
 const log = createLogger('MarkdownUtils')
@@ -101,12 +102,15 @@ function hasMarkerSerializedChildren(block: Block): boolean {
 // text/background colors would be dropped by blocksToMarkdownLossy, so colored
 // runs are wrapped in tokens first and re-emitted as `<span style="…">` after.
 async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
-  const { blocks: wrapped, replacements } = extractInlineColorRuns(withPlainCheckboxMarkers(blocks))
+  const { blocks: spelled, languages } = hideBacktickLanguages(blocks)
+  const { blocks: wrapped, replacements } = extractInlineColorRuns(
+    withPlainCheckboxMarkers(spelled)
+  )
   const md = normalizeSerializedMarkdown(
     // oxlint-disable-next-line typescript/await-thenable -- `editor` is untyped, so TS picks the sync overload; serializers may be async
     await writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
   )
-  return restoreInlineColorTokens(md, replacements)
+  return restoreInlineColorTokens(spellBacktickLanguages(md, languages), replacements)
 }
 
 async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): Promise<string> {

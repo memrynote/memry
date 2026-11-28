@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 453,
+    "exportedCaseCount": 457,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 463,
+    "caseCount": 467,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2938,6 +2938,34 @@
       "canonical": "> [\\](u\n> v)",
       "pending": null,
       "sha256": "777ee195f7cb267d904303b837b1c6a96f9fc05a1052e8f2c5344d50566feb10"
+    },
+    {
+      "name": "code language with a backtick",
+      "markdown": "~~~`` x\nc\n~~~",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9233ac30f0a9e5925d9d6e1d5a4162f1d145fc838f8be4dc22f7a08fc7431d4f"
+    },
+    {
+      "name": "code language with a backtick, in a backtick fence",
+      "markdown": "```  `` x\nc\n```",
+      "canonical": "~~~`` x\nc\n~~~",
+      "pending": null,
+      "sha256": "78b39c61f53b3631d8b32f07718eef1071232769d542cd2f8804a4433b3b007d"
+    },
+    {
+      "name": "code language with backticks, a code line of tildes",
+      "markdown": "~~~~``` x\n~~~\n~~~~",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4ffc56a6e7a5da31110df7cdf2a58a969b29b5e4070acc97deefbf5dd929d99c"
+    },
+    {
+      "name": "code language with a backtick, under a list item",
+      "markdown": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n~~~`b`\nc\n~~~\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "59014af80e905c4c6698652779f4add32616bcbe4c5219024d2c7a96b0cb9a6a"
     },
     {
       "name": "code span of one space alone",

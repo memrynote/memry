@@ -15,6 +15,7 @@
     "./block-colors": "./src/block-colors.ts",
     "./block-markers": "./src/block-markers.ts",
     "./inline-colors": "./src/inline-colors.ts",
+    "./code-fence-language": "./src/code-fence-language.ts",
     "./date-mention": "./src/date-mention.ts",
     "./block-nesting": "./src/block-nesting.ts",
     "./youtube": "./src/youtube.ts",

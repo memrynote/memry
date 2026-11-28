@@ -1285,10 +1285,10 @@
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"%% c %%`\"\n3 text \"x\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"js %% c %%\"\n5 text \"  x\""
     },
     {
-      "name": "fence info string: a code span of blanks holds its blanks, any other blank at the edge is trimmed",
-      "pins": "a backtick fence whose info string holds a backtick is no fence to the parse that hides code-span blanks, so the blanks of a span of blanks in it stay in the language, and any other leading or trailing blank is trimmed as BlockNote trims it; a tilde fence is a fence there, so its blanks are trimmed",
-      "markdown": "```  ``` x\na\n```\n\n``` ```  y\nb\n```\n\n```  `` z\nc\n```\n\n~~~  ``` w\nd\n~~~\n\n```  ```|\ne\n```",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"  ``` x\"\n3 text \"a\"\n1 element blockContainer\n2 element codeBlock language=\"```  y\"\n3 text \"b\"\n1 element blockContainer\n2 element codeBlock language=\"`` z\"\n3 text \"c\"\n1 element blockContainer\n2 element codeBlock language=\"``` w\"\n3 text \"d\"\n1 element blockContainer\n2 element codeBlock language=\"```|\"\n3 text \"e\""
+      "name": "fence info string: a backtick in it, blanks around it",
+      "pins": "BlockNote trims the language of every fence it opens, and a backtick in the info string of a backtick fence is no reason to keep the blanks of a code span of blanks in it",
+      "markdown": "```  ``` x\na\n```\n\n``` ```  y\nb\n```\n\n```  `` z\nc\n```\n\n~~~  ``` w\nd\n~~~\n\n```  ```|\ne\n```\n\n- a\n\n    ```  ``` v\n    f\n    ```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"``` x\"\n3 text \"a\"\n1 element blockContainer\n2 element codeBlock language=\"```  y\"\n3 text \"b\"\n1 element blockContainer\n2 element codeBlock language=\"`` z\"\n3 text \"c\"\n1 element blockContainer\n2 element codeBlock language=\"``` w\"\n3 text \"d\"\n1 element blockContainer\n2 element codeBlock language=\"```|\"\n3 text \"e\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"``` v\"\n5 text \"  f\""
     },
     {
       "name": "mask in a prop: a comment in an address, an alt and a formula",

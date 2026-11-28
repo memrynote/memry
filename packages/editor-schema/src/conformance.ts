@@ -1662,6 +1662,22 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '> [](u\n> v)',
     canonical: '> [\\](u\n> v)'
   },
+  // A language with a backtick cannot follow a fence of backticks, so the block is written with tildes.
+  { name: 'code language with a backtick', markdown: '~~~`` x\nc\n~~~' },
+  {
+    name: 'code language with a backtick, in a backtick fence',
+    markdown: '```  `` x\nc\n```',
+    canonical: '~~~`` x\nc\n~~~'
+  },
+  {
+    name: 'code language with backticks, a code line of tildes',
+    markdown: '~~~~``` x\n~~~\n~~~~'
+  },
+  {
+    name: 'code language with a backtick, under a list item',
+    markdown:
+      '- a\n\n<!-- memry:block-nesting-level=1 -->\n\n~~~`b`\nc\n~~~\n\n<!-- memry:block-nesting-level=0 -->'
+  },
   // A block holding only a code span of spaces lost the span, and with it the block.
   { name: 'code span of one space alone', markdown: '` `' },
   { name: 'code span of spaces alone before a paragraph', markdown: '`  `\n\nb' },

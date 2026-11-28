@@ -36,6 +36,18 @@ import { MASK_WORD } from '@memry/shared/mask-word'
  * for reading a source the way an older build read it.
  */
 
+/**
+ * A backtick fence opener whose info string holds a backtick. CommonMark opens
+ * no fence there, so the fence tracker does not skip the line, but BlockNote's
+ * block tokenizer does read it as one, at any depth a list item strips the
+ * indent to, and trims its language: ```` ```  ``` x ````
+ * is the language ```` ``` x ````. Masked, the span of blanks it holds would
+ * keep them in the language, a language no markdown can spell back (a tilde
+ * fence is trimmed too) and one the core's seed, which reads the language as
+ * BlockNote does, never builds.
+ */
+const TICKED_FENCE_OPENER = /^ *`{3,}[^`\n]*`/
+
 const UNSAFE_LINE = /[[\]]|<(?!br\s*\/?>)/i
 const CODE_TOKEN = new RegExp(`MEMRYCSP${MASK_WORD}(\\d+)X`, 'g')
 
@@ -157,7 +169,7 @@ export function maskCellCodeSpans(
   const masked = markdown
     .split('\n')
     .map((line) => {
-      if (fence.consume(line)) return line
+      if (fence.consume(line) || TICKED_FENCE_OPENER.test(line)) return line
       if (!line.includes('|')) {
         return maskLine(line, chars, { spaces: true, pipes: false, blankOnly: true })
       }

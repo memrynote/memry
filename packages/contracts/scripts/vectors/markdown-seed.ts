@@ -49,6 +49,10 @@ import {
   createServerBlockSpecs,
   createServerInlineSpecs
 } from '@memry/editor-schema/server'
+import {
+  hideBacktickLanguages,
+  spellBacktickLanguages
+} from '../../../shared/src/code-fence-language.ts'
 import { normalizeSerializedMarkdown } from '../../../shared/src/empty-lines.ts'
 import {
   extractInlineColorRuns,
@@ -122,7 +126,9 @@ function parse(markdown: string): Promise<SeedBlock[]> {
 /** `blocknote-converter.ts` `serializeBlocks`, the callout and quote claims' proof. */
 async function serializeBlocks(blocks: SeedBlock[]): Promise<string> {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
-  const marked = withPlainCheckboxMarkers(blocks as never[])
+  const { blocks: spelled, languages } = hideBacktickLanguages(blocks)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+  const marked = withPlainCheckboxMarkers(spelled as never[])
   const { blocks: wrapped, replacements } = extractInlineColorRuns(marked)
   const markdown = normalizeSerializedMarkdown(
     await writeHtmlCommentTokens(wrapped, (b) =>
@@ -130,7 +136,7 @@ async function serializeBlocks(blocks: SeedBlock[]): Promise<string> {
       serverEditor().blocksToMarkdownLossy(b as never)
     )
   )
-  return restoreInlineColorTokens(markdown, replacements)
+  return restoreInlineColorTokens(spellBacktickLanguages(markdown, languages), replacements)
 }
 
 /**
