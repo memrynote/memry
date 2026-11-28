@@ -15,9 +15,10 @@ use crate::api::errors::StorageError;
 use crate::domain::inbox::queries::FiledVoice;
 use crate::domain::note_files::{self, FiledTextFile, NoteFile, NoteFileStat, StampMark};
 use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
+use crate::domain::note_pulled_marks;
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
-use crate::domain::owed_file_body;
 use crate::domain::properties;
+use crate::domain::{owed_file_aliases, owed_file_body};
 use crate::storage::Db;
 
 pub struct NoteFiles {
@@ -150,6 +151,25 @@ impl NoteFiles {
             .call_blocking(move |conn| owed_file_body::clear(conn, &note_id))
     }
 
+    /// Whether the note's file owes its record's aliases ([`owed_file_aliases`]).
+    pub fn owes_file_aliases(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| owed_file_aliases::owes(conn, &note_id))
+    }
+
+    /// Every note whose file owes its record's aliases, in id order.
+    pub fn owed_file_aliases(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(owed_file_aliases::list)
+    }
+
+    /// The file holds its record's aliases: the debt is paid. True when there was one.
+    pub fn clear_owed_file_aliases(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .call_blocking(move |conn| owed_file_aliases::clear(conn, &note_id))
+    }
+
     /// Whether the last read of the note's file found it large-file class
     /// ([`note_files::is_large_file`]).
     pub fn is_large_file(&self, note_id: &str) -> Result<bool, StorageError> {
@@ -197,6 +217,52 @@ impl NoteFiles {
         let id = id.to_owned();
         self.db
             .read_blocking(move |conn| note_files::placed(conn, &id))
+    }
+
+    /// A pull changed the note: its file is owed the record's place and frontmatter
+    /// ([`note_pulled_marks::mark_pulled`]).
+    pub fn mark_pulled(&self, id: &str, title_before: Option<&str>) -> Result<(), StorageError> {
+        let (id, title_before) = (id.to_owned(), title_before.map(str::to_owned));
+        self.db.call_blocking(move |conn| {
+            note_pulled_marks::mark_pulled(conn, &id, title_before.as_deref())
+        })
+    }
+
+    /// [`note_pulled_marks::pulled_mark`].
+    pub fn pulled_mark(
+        &self,
+        id: &str,
+    ) -> Result<Option<note_pulled_marks::PulledMark>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_pulled_marks::pulled_mark(conn, &id))
+    }
+
+    /// [`note_pulled_marks::settle_pulled`].
+    pub fn settle_pulled(&self, id: &str, pulls: i64) -> Result<(), StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| note_pulled_marks::settle_pulled(conn, &id, pulls))
+    }
+
+    /// [`note_pulled_marks::fail_pulled`].
+    pub fn fail_pulled(&self, id: &str, pulls: i64) -> Result<Option<u32>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| note_pulled_marks::fail_pulled(conn, &id, pulls))
+    }
+
+    /// [`note_pulled_marks::forget_pulled`].
+    pub fn forget_pulled(&self, id: &str) -> Result<(), StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| note_pulled_marks::forget_pulled(conn, &id))
+    }
+
+    /// [`note_pulled_marks::pulled_notes`].
+    pub fn pulled_notes(&self, tries: u32) -> Result<Vec<String>, StorageError> {
+        self.db
+            .read_blocking(move |conn| note_pulled_marks::pulled_notes(conn, tries))
     }
 
     /// The write-back wrote the record's property `values` into the note's file

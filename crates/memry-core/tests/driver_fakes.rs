@@ -3,12 +3,13 @@
 //!
 //! Real `AuthSession`, `HttpClient`, sealing, signature checks, SQLite, apply
 //! and push. The server answers by route from what it holds: `/sync/pull` the
-//! sealed records asked for, `/sync/manifest` its live records, `/sync/push`
+//! sealed records asked for, `/sync/manifest` its live records above the
+//! asked cursor with the server cursor of their last write, `/sync/push`
 //! accepts everything, and `/sync/changes` serves the pages a test queued, then
 //! an empty page at the head.
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
@@ -45,6 +46,9 @@ const MASTER_KEY: [u8; 32] = [7u8; 32];
 /// The server: the records it holds, the feed pages queued, every request.
 pub struct FakeServer {
     records: Mutex<BTreeMap<String, (String, Json, bool)>>,
+    /// The server cursor of each record's last write; every write takes the next one.
+    cursors: Mutex<BTreeMap<String, i64>>,
+    last_cursor: AtomicI64,
     pages: Mutex<VecDeque<String>>,
     calls: Mutex<Vec<HttpRequest>>,
     peer_secret: Vec<u8>,
@@ -68,6 +72,8 @@ impl FakeServer {
         let (_, peer_secret) = sodium::sign_seed_keypair(&[PEER_SEED; 32]).expect("a keypair");
         Arc::new(Self {
             records: Mutex::default(),
+            cursors: Mutex::default(),
+            last_cursor: AtomicI64::new(0),
             pages: Mutex::default(),
             calls: Mutex::default(),
             peer_secret: peer_secret.to_vec(),
@@ -299,6 +305,8 @@ impl FakeServer {
             &RecordMaterial::random(),
         )
         .expect("sealed");
+        let cursor = self.last_cursor.fetch_add(1, Ordering::SeqCst) + 1;
+        self.cursors.lock().unwrap().insert(id.to_owned(), cursor);
         self.records.lock().unwrap().insert(
             id.to_owned(),
             (
@@ -368,10 +376,20 @@ impl FakeServer {
             }
             "/sync/manifest" => {
                 let records = self.records.lock().unwrap();
+                let cursors = self.cursors.lock().unwrap();
+                let after: i64 = request
+                    .url
+                    .split("cursor=")
+                    .nth(1)
+                    .and_then(|rest| rest.split('&').next())
+                    .and_then(|cursor| cursor.parse().ok())
+                    .unwrap_or(0);
                 let items: Vec<Json> = records
                     .iter()
-                    .filter(|(_, (_, _, deleted))| !deleted)
-                    .map(|(id, (item_type, _, _))| json!({"id": id, "type": item_type}))
+                    .filter(|(id, (_, _, deleted))| !deleted && cursors[*id] > after)
+                    .map(|(id, (item_type, _, _))| {
+                        json!({"id": id, "type": item_type, "serverCursor": cursors[id]})
+                    })
                     .collect();
                 json!({ "items": items }).to_string()
             }
@@ -580,6 +598,11 @@ impl Desktop {
         Self::drive(db, FakeServer::new(), declaration, observers).await
     }
 
+    /// A driver sending `declaration` over the vault `db` holds, bound to `vault-1`.
+    pub async fn over(db: Db, declaration: Declaration) -> Self {
+        Self::drive(db, FakeServer::new(), declaration, Vec::new()).await
+    }
+
     /// The app restarted: a new driver over the same `data.db` and server.
     #[cfg(feature = "markdown")]
     pub async fn reopen(self, declaration: Declaration) -> Self {
@@ -616,6 +639,7 @@ impl Desktop {
                 first_sync: FirstSyncLimits::ALL,
                 max_pages_per_pass: MAX_PAGES_PER_PASS,
                 vault_root: None,
+                own_writes: None,
             },
             seeds: Vec::new(),
             pass_gate: Arc::default(),

@@ -13,15 +13,17 @@
 //!   equal-clock identical skip (§6.5.2 P4) is the one every type uses.
 //! - **A concurrent clock over a different scene keeps both drawings.** The
 //!   local scene is copied to a new canvas titled `<title> (conflict copy)`,
-//!   owned by the same note, under a fresh clock of this device's, and queued
-//!   for push. The remote scene then wins under the merged clock. Identical
+//!   owned by the same note, in the merge's vault
+//!   ([`server_vault::merged_vault_id`]), under a fresh clock of this device's,
+//!   and queued for push. The remote scene then wins under the merged clock. Identical
 //!   scenes merge the clocks and copy nothing. A tombstoned local row has no
 //!   drawing to save (desktop's file is gone), so it gets no copy; it stays
 //!   deleted while its `delete` is queued and is revived once that delete has
 //!   been pushed ([`requeue::queued_tombstone`], the rule every merge keeps).
 //! - **An absent key keeps the local value.** `title`, `folder`, `icon` and
 //!   `ownerNoteId` absent from the remote mean an older client that never
-//!   stated them, and `null` is a real clear. `vaultId` always stays local.
+//!   stated them, and `null` is a real clear. `vaultId` stays local unless the
+//!   remote states the bound server id ([`server_vault::merged_vault_id`], #5669).
 //! - **A restamp contests only `vaultId`** ([`server_vault::restamp`], which
 //!   desktop's handler does not know). A concurrent remote restamp whose base
 //!   this live canvas is strictly after leaves this canvas as it is under the
@@ -31,6 +33,10 @@
 //! The copy and the overwrite are one transaction, as desktop's are. The copy
 //! is a new item no peer has; the merged original is re-queued beside it
 //! (§6.5.2 P3, [`crate::sync::hardening::requeue`]).
+//!
+//! - **An applied scene's asset sidecar is recorded** for the canvas
+//!   (`recordSceneAssets`), in the same transaction, so the shell's next save
+//!   rebuilds the sidecar instead of pushing it empty.
 //!
 //! Deletes are not here. [`crate::sync::apply`]'s tombstone path already lets
 //! only a local clock strictly after the delete keep the item (#2198, #2409).
@@ -53,6 +59,7 @@ use crate::sync::hardening::requeue;
 use crate::sync::{outbox, server_vault};
 
 use super::ITEM_TYPE;
+use super::scene_assets::record_scene_assets;
 
 /// The schema keys `CanvasSyncPayloadSchema` refuses `null` for
 /// (`packages/contracts/src/sync-payloads.ts:187-207`).
@@ -101,6 +108,7 @@ pub fn apply_remote(
         && server_vault::restamp_superseded(remote.object(), &clock_in(local.object())?);
     let restamped_local =
         server_vault::restamp_superseded(local.object(), &clock_in(remote.object())?);
+    let vault_id = server_vault::merged_vault_id(&tx, local.object(), remote.object())?;
     let local_scene = local.object().get("scene").and_then(Value::as_str);
     if merged_clock.is_some()
         && live
@@ -114,11 +122,16 @@ pub fn apply_remote(
                 record.item_id
             ),
         })?;
-        write_conflict_copy(&tx, local.object(), device, now_ms)?;
+        write_conflict_copy(&tx, local.object(), vault_id.as_ref(), device, now_ms)?;
     }
 
     let winner = if restamped_remote { &local } else { &remote };
-    let changes = kept_changes(local.object(), winner.object(), merged_clock.as_ref())?;
+    let changes = kept_changes(
+        local.object(),
+        winner.object(),
+        vault_id,
+        merged_clock.as_ref(),
+    )?;
     let merged = InboundRecord {
         payload_json: winner.merge(&changes),
         ..record.clone()
@@ -127,10 +140,11 @@ pub fn apply_remote(
 }
 
 /// The remote payload's edits that keep what desktop keeps: an absent
-/// [`KEPT_WHEN_ABSENT`] key, the local `vaultId`, and the merged clock.
+/// [`KEPT_WHEN_ABSENT`] key, the merge's `vault_id`, and the merged clock.
 fn kept_changes(
     local: &Object,
     remote: &Object,
+    vault_id: Option<Value>,
     merged_clock: Option<&VectorClock>,
 ) -> Result<Vec<(&'static str, Change)>, StorageError> {
     let mut changes: Vec<(&'static str, Change)> = KEPT_WHEN_ABSENT
@@ -138,10 +152,10 @@ fn kept_changes(
         .filter(|key| !remote.contains_key(*key))
         .filter_map(|key| Some((key, Change::Set(local.get(key)?.clone()))))
         .collect();
-    if let Some(vault_id) = local.get("vaultId").filter(|value| value.is_string())
-        && remote.get("vaultId") != Some(vault_id)
+    if let Some(vault_id) = vault_id
+        && remote.get("vaultId") != Some(&vault_id)
     {
-        changes.push(("vaultId", Change::Set(vault_id.clone())));
+        changes.push(("vaultId", Change::Set(vault_id)));
     }
     if let Some(clock) = merged_clock {
         let clock = serde_json::to_value(clock).map_err(|error| StorageError::Failed {
@@ -152,10 +166,13 @@ fn kept_changes(
     Ok(changes)
 }
 
-/// `createConflictCopy`: the losing local drawing as a new canvas, queued.
+/// `createConflictCopy`: the losing local drawing as a new canvas, queued, in the merge's vault:
+/// a copy on the stored pre-bind id would be hidden on every fresh device (#5784, desktop #5788).
+/// Its sidecar's images are recorded for the copy (`recordSceneAssets`).
 fn write_conflict_copy(
     tx: &Connection,
     local: &Object,
+    vault_id: Option<&Value>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
@@ -166,7 +183,7 @@ fn write_conflict_copy(
     let copy_id = mint_id();
     let payload = object(json!({
         "id": copy_id,
-        "vaultId": local.get("vaultId"),
+        "vaultId": vault_id.or(local.get("vaultId")),
         "title": format!("{title} (conflict copy)"),
         "scene": local.get("scene"),
         "folder": local.get("folder"),
@@ -176,6 +193,12 @@ fn write_conflict_copy(
         "deletedAt": null,
     }));
     insert_local(tx, ITEM_TYPE, &copy_id, payload, now_ms)?;
+    if let (Some(vault_id), Some(scene)) = (
+        local.get("vaultId").and_then(Value::as_str),
+        local.get("scene").and_then(Value::as_str),
+    ) {
+        record_scene_assets(tx, vault_id, &copy_id, scene, now_ms)?;
+    }
     outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &copy_id), now_ms)?;
     Ok(())
 }
@@ -197,6 +220,16 @@ fn finish(
         record
     };
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
+    if outcome == ApplyOutcome::Applied && record.deleted_at.is_none() {
+        let applied =
+            StoredPayload::parse(&record.payload_json).map_err(|error| StorageError::Failed {
+                what: format!("canvas {}: {error}", record.item_id),
+            })?;
+        let text = |key| applied.object().get(key).and_then(Value::as_str);
+        if let (Some(vault_id), Some(scene)) = (text("vaultId"), text("scene")) {
+            record_scene_assets(&tx, vault_id, &record.item_id, scene, now_ms)?;
+        }
+    }
     if merged && outcome == ApplyOutcome::Applied {
         requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;
     }

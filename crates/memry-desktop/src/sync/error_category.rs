@@ -3,10 +3,10 @@
 //! the user to do the wrong thing (a paying user to pay, a revoked device to retry).
 
 use memry_core::api::errors::{ApiError, AuthError, SyncError, TransportError};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// `packages/contracts/src/ipc-sync-ops.ts` `SyncErrorCategory`, every member.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncErrorCategory {
     NetworkOffline,

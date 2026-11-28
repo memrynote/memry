@@ -277,6 +277,12 @@ Every device remembers the clock of each delete it makes or applies for such an 
 happens strictly after the delete: the server accepts it inside retention too, a stale copy from a
 device that missed the delete is refused or merged rather than applied over it, and the device's
 own late tombstone does not delete it.
+A note or journal delete the desktop sends later carries the body vector of the doc it held
+(`bodyStateVector`, protocol chapter 05 §5.8), so a peer keeps text the delete never covered as an
+inbox copy. Its own deferred delete writes the vector into `sync_pending_deletes` before the doc is
+purged. A delete the CLI queued (it cannot read the doc) takes the vector when the watcher sees the
+CLI's unlink, which also sends it right away, or, when the desktop was closed, at the next runtime
+start before the first pull (`coverQueuedContentDeletes`). With no doc, the delete goes without one.
 At runtime start the desktop replays the deletes it still owes (`sync_pending_deletes`), except for
 such an id that has a live local row again: that delete is retired instead, so a re-create made
 while sync was off, or before its delete's clock was recorded, is pushed live rather than deleted on
@@ -296,7 +302,7 @@ and `/sync/pull` returns the delete in a `purgedTombstones` list next to `items`
 ciphertext. The entry carries no record signature, since the shed deleted the payload it covered.
 Instead, a delete pushed by a current client carries a delete attestation: an Ed25519 signature by
 the deleting device over `{purpose, id, type, deletedAt, clock}` (protocol 04 §4.8.4). The server
-verifies it on push, rejecting a bad one per item as `SYNC_INVALID_SIGNATURE`, and keeps it through
+verifies it on push, rejecting a bad one per item as `SYNC_INVALID_DELETE_ATTESTATION`, and keeps it through
 the shed. It serves the attestation with the entry as `signerDeviceId` and `deleteAttestation`.
 The desktop applies an entry only if the request asked for that id, the type carries a required
 clock, the entry has one, and the attestation verifies under the signer's key over the entry's own
@@ -1138,8 +1144,8 @@ across devices:
   through, offers no empty file and no file whose size and mtime still match
   a refusal. A write changes them, and the
   next pass offers the file again. A refusal whose file changed or is gone is
-  let go at the next refusal. Sign-out clears `sync_state`, so after the next
-  sign-in each refused file is offered and refused once more. An empty file
+  let go at the next refusal. The refusals describe this device's files, so
+  sign-out keeps them (`device-local-state.ts`). An empty file
   drops silently. A media file that holds text is reported: a vault-activity
   failure and an upload-failed toast that says why, once per refusal rather
   than on every re-drive. The drain's summary log counts dropped rows by
@@ -1165,8 +1171,10 @@ across devices:
   (#5415). When a restore lands and the file still holds text, the server blob
   is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
   a warning logs the count and sends it to telemetry, and the restore never
-  requests that attachment again. A corrupt list is logged and read as empty. In on-demand download mode, or with no access token, the request is
-  released with no failure row and the next runtime start asks again.
+  requests that attachment again. A corrupt list is read as empty, logged,
+  sent to telemetry, and removed, so the next runtime start does not report
+  it again. In on-demand download mode, or with no access token, the request
+  is released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
   row's note exists. A vault on a removable or network drive that is away for a
@@ -1203,12 +1211,108 @@ across devices:
   (note, attachment). Only the outcome writes here: the request itself no longer
   counts as a result, so a 404 and a success are no longer the same event. A
   transient failure (5xx, network, decrypt) keeps its retry on an exponential
-  backoff from one minute. A `404`/`410` — the server saying it does not have
+  backoff from one minute. So does a manifest whose `id` is not the attachment
+  asked for, from the single GET or under a batch key: the download refuses it
+  before any chunk request or write, as memry-core does, because landing it
+  would put another file's bytes under this id, and a server mix-up is no
+  evidence the blob is gone. A `404`/`410` — the server saying it does not have
   this blob — is re-probed at most once a day, three times, and then never
   automatically again. Session state (in-flight claims and this session's
   successes) is still in memory and still cleared on runtime teardown, because
   the file is on disk and a re-request is cheap; the verdicts deliberately are
   not, since surviving a sync stop/start is the whole point.
+- **Journal-day pictures** — a journal payload has no `attachmentReferences`.
+  The day's pictures ride a `note` record under the day's id, which the note
+  handler otherwise skips because the row is the journal's
+  (`belongsToOtherType`). On that skip it still merges the record's
+  references into the day's row and asks for the files as for a note, and
+  leaves the journal's path, title and clock alone (#5731). A record from
+  the Rust core (iOS) may also carry `removedAttachmentReferences`, the ids a
+  core device removed from the day. Desktop's schema accepts the optional key,
+  ignores it, and never sends it (protocol chapter 14 §14.7.4). With
+  auto-download off, opening the day asks for them: the journal page calls
+  `sync:download-note-files` with the day's id, like the note page (#5735).
+  When the day merge folds a legacy foreign journal id into `j<date>`, the day
+  takes over the foreign row's references (a union) and its attachment file
+  records, so the files under `attachments/<foreignId>/` that the folded body
+  embeds still resolve and are not uploaded again. A foreign row from before
+  the record (#2651) has references no record names. Ids are random per
+  upload and a stored name carries none, so the day records those
+  references against the foreign folder's unrecorded files on disk only when
+  one reference and one file are unrecorded and the foreign text folded into
+  the day embeds that file, and then nothing is downloaded again. Otherwise it counts the files as known and the references stay owed. A download for a
+  file that is already present then lands a second copy in
+  `attachments/j<date>/`. A file that is really missing moves to where the
+  body links it. The files stay where they are. The carry pushes the day's
+  `note` record with the unioned references, as an upload to the day does,
+  so a device that never held the foreign row can fetch the pictures the
+  folded body embeds; the server keeps each attachment by its own id, so the
+  bytes are not uploaded again (#5746).
+- **Downloads on open** — with attachment auto-download off
+  (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
+  no file, so opening a note or a file asks instead: the note, journal and file
+  pages call `sync:download-note-files` with the note id
+  (`apps/desktop/src/main/ipc/sync-attachment-handlers.ts`). Main lists what
+  this device lacks from local state only (`owed-note-downloads.ts`): a binary
+  note's own file when it is not on disk, and each referenced attachment with
+  no recorded file on disk. A note from before the attachment record (#2651)
+  has no record of its embeds. While sync runs, an attachment no record names
+  is requested: the downloader checks it against the file on disk, and its
+  record keeps the next open local. The note body cannot stand in for that
+  check, because a pull can name an embed before its text is written back, a
+  legacy `memry-file://` link is not read as a vault path, and a file on disk
+  can be truncated. While sync is off nothing can download, and the open only
+  decides whether to show "Sync isn't running". Then such an attachment counts
+  as held while every file the body embeds is on disk, so a held vault does not
+  show the alert for files it already has. A note that lacks nothing sends no
+  request. Each
+  file goes through the download queue as `interactive`, so it jumps queued
+  background work, and lands with the same steps as a pull's download (record,
+  rename to the body's name, `ATTACHMENT_MATERIALIZED`). The call resolves when
+  every file has landed or failed. An open does not wait out a transient
+  failure's backoff, because the user asked now. A 404 keeps its window: inside
+  the 24 hours after a 404 an open reports the file as not on the server yet
+  and sends no request, so opens never spend the three 404 probes that give a
+  reference up faster than the pull does. A file the server has answered as
+  gone three times is reported whatever the setting, and not requested. Neither
+  404 answer offers Try again (`retry: 'none'`). With no sync runtime (a held
+  vault, a plan without sync, sync not started) the call asks the server
+  nothing and reports that sync is not running (`retry: 'whenSyncRuns'`, no
+  Try again). The note page and the file page then ask again on each sync
+  status change, so a note restored at launch downloads once the runtime
+  starts. The note page also asks again on a status change while it shows
+  nothing, which downloads a file a pull adds to the open note; a failure that
+  offers Try again waits for the click. With auto-download on, the call
+  requests nothing. Each request holds its own claim on the download
+  (`DownloadClaim`), and only its holder can release it, so a pull's request
+  settling late cannot free a download an open took. A sync runtime restart
+  drops every claim, so a pull's request still waiting for its access token
+  when the runtime restarts does not download: a request the new runtime makes
+  for the same file is the only one, and a 404 counts once. It records the
+  download as owed instead (`markDroppedDownloadOwed`), so the re-driver asks
+  for it when nothing else does. A failure row the new runtime already wrote
+  keeps its window, and a download the new runtime landed or a pull in it
+  still holds is not owed: the re-driver would write over an edit made since.
+  One an open holds is owed, since a second restart clears it without owing
+  it, and its landing clears the row. A pull's
+  request that is queued or mid-transfer when the runtime restarts settles as
+  `DownloadQueueClearedError` and is owed the same way: the new runtime's pull
+  starts from its cursor, and with auto-download on an open asks for nothing,
+  so without the row the file would land only when its note is pulled again
+  (#5697). The teardown owes every pull's request still unsettled while the
+  vault's databases are open, then aborts running transfers and waits for
+  their outcomes at most a few seconds (on quit, within the shutdown budget).
+  A download that settles after its vault's database closed or another
+  vault's opened writes nothing, so teardown never waits unbounded and a late
+  outcome never lands in the next vault. The re-driver asks
+  once per owed file. When the file is already there, an embed is found
+  through its attachment record with no request, and a binary note's file
+  that has the manifest's size and sha256 costs one manifest read: no chunk is
+  fetched and nothing is written over it. Whether the download would land on
+  that file is asked first (`landingFor`), with no conflict copy kept and
+  nothing recorded, so a landing elsewhere runs once, after the download. Opening a binary note
+  whose file has not downloaded keeps its row: `getFileById` drops a row with a
+  missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a
   reference to a blob that is genuinely gone would otherwise live in the note's
   payload forever and be handed to every device that ever pulls it. On the pull
@@ -1266,7 +1370,11 @@ attachment's id is dropped from the note, and its local file is queued for
 upload again, which adds the new id and pushes the note. Holds would not cover
 this: a hold ends with the 30-day grace period, and a device can stay offline
 longer. The pending checks live in memory, so a restart before one settles
-loses it.
+loses it. Both this check and the 30-day release read an attachment's chunks
+from its signed manifest, and both refuse a manifest whose `id` is not the
+attachment asked for (#5664): dereferencing its chunks would free another
+attachment's. The release then frees nothing and keeps its record, and the
+check stays pending, until the server answers with the right manifest.
 
 ### Binary note records pushed as markdown
 
@@ -1440,10 +1548,12 @@ queue now hands the service the ids it will start next. The first download that 
 fetches it with up to 99 queued ones through `POST /sync/attachments/manifests/batch`. Presigned
 URLs go into one cache keyed by chunk hash, with their expiry. A chunk with no live URL presigns the
 uncovered chunks of its own download first, then those of the batched downloads, up to 1,024 per
-call, and a caller whose chunk is already in flight waits for that call. The batch route charges
-`blob_download` one token per distinct id, so the limit still bounds R2 reads. The bytes still
-download eagerly, so an attachment opens offline after bootstrap as before. A server without the
-batch route answers 404, and the desktop then fetches each manifest alone for 10 minutes.
+call, and a caller whose chunk is already in flight waits for that call. A chunk a `200` answer
+leaves out (the vault holds no such chunk) is fetched through the proxy, which answers its 404, and
+later calls stop presigning it for other downloads. The batch route charges `blob_download` one
+token per distinct id, so the limit still bounds R2 reads. The bytes still download eagerly, so an
+attachment opens offline after bootstrap as before. A server without the batch route answers 404,
+and the desktop then fetches each manifest alone for 10 minutes.
 
 `GET /auth/devices` is the key directory every client verifies item and CRDT signatures against,
 not the device-management list (`GET /devices`, which hides revoked devices). It keeps revoked

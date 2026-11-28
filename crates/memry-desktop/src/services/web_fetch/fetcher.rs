@@ -2,6 +2,9 @@
 //! the web client. Extraction is synchronous and runs inside `spawn_blocking`, so each request
 //! blocks that thread on the async client through a runtime handle captured before the call.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use tokio::runtime::Handle;
 use wreq::Method;
 use wreq::header::{CONTENT_TYPE, HeaderName, HeaderValue};
@@ -12,13 +15,19 @@ use crate::web::extract::fetch::{FetchRequest, FetchResponse, Fetcher};
 pub struct BlockingFetcher {
     web: WebFetch,
     handle: Handle,
+    /// Set once the caller stopped waiting for the extraction; every later request is refused.
+    abandoned: Arc<AtomicBool>,
 }
 
 impl BlockingFetcher {
     /// `handle` must not be the runtime of the calling thread's task: [`Fetcher::fetch`] blocks
     /// on it, which panics inside an async context. Call `fetch` from `spawn_blocking`.
-    pub fn new(web: WebFetch, handle: Handle) -> Self {
-        Self { web, handle }
+    pub fn new(web: WebFetch, handle: Handle, abandoned: Arc<AtomicBool>) -> Self {
+        Self {
+            web,
+            handle,
+            abandoned,
+        }
     }
 }
 
@@ -26,6 +35,9 @@ impl Fetcher for BlockingFetcher {
     /// The page deadline and HTML cap apply to every request. The error string never carries the
     /// URL; Defuddle logs it and continues without the async extractor.
     fn fetch(&self, request: FetchRequest) -> Result<FetchResponse, String> {
+        if self.abandoned.load(Ordering::SeqCst) {
+            return Err("The extraction was abandoned".to_owned());
+        }
         let method = Method::from_bytes(request.method.as_bytes())
             .map_err(|_| "Invalid request method".to_owned())?;
         let mut builder = self.web.client.request(method, request.url.as_str());

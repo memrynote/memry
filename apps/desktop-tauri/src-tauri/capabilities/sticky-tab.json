@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "sticky-tab",
+  "description": "Permissions of the sticky's edge tab window",
+  "windows": ["sticky-tab"],
+  "permissions": ["core:default", "boot", "sticky-tab"]
+}

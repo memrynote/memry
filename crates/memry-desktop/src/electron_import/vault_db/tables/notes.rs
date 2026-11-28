@@ -42,6 +42,7 @@ struct NoteRow {
 
 pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
     let (data, index, vault) = (ctx.source, ctx.index, ctx.vault_dir);
+    let queued_creates = super::queue::queued_creates(data)?;
     let mut files = Vec::new();
     let mut pins = Vec::new();
     let mut unread = 0u64;
@@ -59,15 +60,11 @@ pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> 
             let journal_date = text(row, "journal_date")?;
             // Electron's push sends the body only for a queued `create`: the one its seed of
             // unclocked rows queues (`seedUnclockedNotes`, `journal-handler.ts:299-317`), or one
-            // still in `sync_queue`. `synced_at` does not say: a day pushed from this device is
-            // never marked synced, and an offline edit clears it on a row the server holds.
+            // still in `sync_queue`, its rows folded (`queue::queued_creates`). `synced_at` does
+            // not say: a day pushed from this device is never marked synced, and an offline edit
+            // clears it on a row the server holds.
             let seeded = text(row, "clock")?.is_none() && (journal_date.is_some() || !local_only);
-            let item_type = if journal_date.is_some() {
-                "journal"
-            } else {
-                "note"
-            };
-            let create = seeded || queued_create(data, item_type, &id)?;
+            let create = seeded || queued_creates.contains(&id);
             let note = NoteRow {
                 id,
                 path: required_text(row, "path", rowid)?,
@@ -123,16 +120,6 @@ pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> 
         stats.notices.push(("unreadNoteFiles", unread));
     }
     Ok(stats)
-}
-
-/// Whether Electron's `sync_queue` holds a `create` of the item.
-fn queued_create(data: &Connection, item_type: &str, id: &str) -> Result<bool, ImportError> {
-    data.prepare_cached(
-        "SELECT EXISTS(SELECT 1 FROM sync_queue \
-         WHERE type = ?1 AND item_id = ?2 AND operation = 'create')",
-    )
-    .and_then(|mut stmt| stmt.query_row([item_type, id], |row| row.get(0)))
-    .map_err(|e| source_error(SourceDb::Data, e))
 }
 
 fn required_text(row: &Row<'_>, name: &str, rowid: i64) -> Result<String, ImportError> {
@@ -214,7 +201,7 @@ fn note_payload(
         }
     }
     // `noteCoverForPush`, only for a file that was read. Its marker writes are not repeated:
-    // the `note-cover:` rows are carried by the sync state import (36c).
+    // the core keeps no marker, so the sync state import skips the `note-cover:` rows.
     if let Some(fields) = fields {
         match fields.cover {
             Some(cover) => {

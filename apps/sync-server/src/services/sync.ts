@@ -210,7 +210,9 @@ const verifySignatureWithDevice = async (
  * §4.8.4), or null when the write attests nothing: not an attestable delete
  * (deleteClaimOf), or an old client that sent none. One that is present on an
  * attestable delete and does not verify under the signer's key is the item's
- * own SYNC_INVALID_SIGNATURE, like a bad item signature. v2 must name the vault
+ * own SYNC_INVALID_DELETE_ATTESTATION: the item signature already verified, so
+ * this is not the device-key mismatch SYNC_INVALID_SIGNATURE tells desktop to
+ * repair (#5247 B17b). v2 must name the vault
  * the push is routed to; v1, from builds before #5247, names none.
  */
 const verifyDeleteAttestation = async (
@@ -229,7 +231,7 @@ const verifyDeleteAttestation = async (
   }
   if (!valid) {
     throw new AppError(
-      ErrorCodes.SYNC_INVALID_SIGNATURE,
+      ErrorCodes.SYNC_INVALID_DELETE_ATTESTATION,
       'Delete attestation verification failed',
       403
     )

@@ -143,3 +143,73 @@ fn an_index_built_with_the_stale_body_cache_heals_on_the_next_reindex() {
 
     assert_eq!(hits(&data, &index), [DAY]);
 }
+
+/// An install indexed before body `#tags` were read in every script: its
+/// `note_body_tags` lacks `퓨리`, and the index is stamped version 2. The next
+/// reindex reads the body again and caches the tag (#5716).
+#[test]
+fn an_index_built_before_tags_in_every_script_reads_them_on_the_next_reindex() {
+    let (data, index) = databases();
+    let doc = Doc::with_client_id(99);
+    let fragment = doc.get_or_insert_xml_fragment("prosemirror");
+    {
+        let mut txn = doc.transact_mut();
+        let container = fragment.insert(&mut txn, 0, XmlElementPrelim::empty("blockContainer"));
+        let paragraph = container.insert(&mut txn, 0, XmlElementPrelim::empty("paragraph"));
+        paragraph.insert(&mut txn, 0, XmlTextPrelim::new("Meeting #퓨리 and #work"));
+    }
+    let update = doc
+        .transact()
+        .encode_state_as_update_v1(&StateVector::default());
+    sync_items::apply_remote(
+        &data,
+        &InboundRecord {
+            item_type: "journal".to_owned(),
+            item_id: DAY.to_owned(),
+            payload_json: r#"{"date":"2026-09-21","content":"Meeting","clock":{"d":1}}"#.to_owned(),
+            server_cursor: Some(1),
+            signer_device_id: Some("device-b".to_owned()),
+            updated_at: NOW,
+            deleted_at: None,
+        },
+        NOW,
+    )
+    .expect("the day's record");
+    HeldBody::never_purged(&data, DAY)
+        .and_then(|held| held.append_server_update(1, &update, NOW + 1))
+        .expect("the body");
+    search::reindex(&data, &index, NOW + 2).expect("the first reindex");
+    let body_tags = || -> Vec<String> {
+        let mut statement = data
+            .prepare("SELECT tag FROM note_body_tags WHERE note_id = ?1 ORDER BY tag")
+            .expect("the body tags query");
+        statement
+            .query_map(params![DAY], |row| row.get(0))
+            .expect("the body tags")
+            .collect::<Result<_, _>>()
+            .expect("the body tags")
+    };
+    assert_eq!(body_tags(), ["work", "퓨리"]);
+
+    data.execute(
+        "DELETE FROM note_body_tags WHERE note_id = ?1 AND tag = '퓨리'",
+        params![DAY],
+    )
+    .expect("the rows the older build cached");
+    for (key, value) in [
+        (STAMPS_KEY, "2".to_owned()),
+        (NOTES_WATERMARK_KEY, (NOW + 10).to_string()),
+        (TASKS_WATERMARK_KEY, (NOW + 10).to_string()),
+    ] {
+        index
+            .execute(
+                "UPDATE index_meta SET value = ?2 WHERE key = ?1",
+                params![key, value],
+            )
+            .expect("the older index meta");
+    }
+
+    search::reindex(&data, &index, NOW + 3).expect("the next reindex");
+
+    assert_eq!(body_tags(), ["work", "퓨리"]);
+}

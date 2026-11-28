@@ -34,6 +34,7 @@
 //!   shutdown, and behind an update too large for the incremental route. All
 //!   CRDT pushes share one [`CrdtAdmission`].
 
+mod attachments;
 mod bodies;
 mod cipher;
 #[cfg(feature = "markdown")]
@@ -60,6 +61,7 @@ use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
 use crate::domain::task_activity::superseded::SupersededObserver;
+use crate::domain::unclocked_seed::UnclockedSeed;
 use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
 use crate::protocol::auth::TokenManager;
 use crate::protocol::http::{HttpClient, TokenProvider};
@@ -67,6 +69,7 @@ use crate::protocol::types::Declaration;
 use crate::seams::reachability::{Reachability, ReachabilityObserver};
 use crate::seams::transport::Transport;
 use crate::storage::Db;
+use crate::sync::delete_keep::{OwnWrites, VaultFiles};
 use pause::PauseSwitch;
 
 use super::admission::CrdtAdmission;
@@ -106,6 +109,9 @@ pub struct DriverConfig {
     /// The vault folder a delete reads a note's file in when its body log
     /// does not replay ([`PullLoop::with_vault_root`]).
     pub vault_root: Option<PathBuf>,
+    /// The bytes this device writes to that folder's files itself
+    /// ([`PullLoop::with_vault_files`]).
+    pub own_writes: Option<Arc<dyn OwnWrites>>,
 }
 
 impl DriverConfig {
@@ -117,6 +123,7 @@ impl DriverConfig {
             first_sync: FirstSyncLimits::ALL,
             max_pages_per_pass: super::engine::MAX_PAGES_PER_PASS,
             vault_root: None,
+            own_writes: None,
         }
     }
 }
@@ -247,7 +254,10 @@ impl SyncDriver {
             .with_hardening()
             .with_signer_keys(cipher.clone());
             match &config.vault_root {
-                Some(root) => pull.with_vault_root(root.clone()),
+                Some(root) => pull.with_vault_files(VaultFiles {
+                    root: root.clone(),
+                    own_writes: config.own_writes.clone(),
+                }),
                 None => pull,
             }
         };
@@ -311,7 +321,8 @@ impl SyncDriver {
             .with_gate(pass_gate)
             .with_max_pages(config.max_pages_per_pass)
             .with_seed(Arc::new(TagSeed(Arc::new(tags))))
-            .with_seed(ProjectSeed::over(db.clone(), device_id.clone()));
+            .with_seed(ProjectSeed::over(db.clone(), device_id.clone()))
+            .with_seed(Arc::new(UnclockedSeed::new(db.clone(), device_id.clone())));
         #[cfg(feature = "markdown")]
         if declaration.classify(crate::domain::vault_locks::ITEM_TYPE)
             == crate::protocol::types::ArrivingItemType::Subscribed

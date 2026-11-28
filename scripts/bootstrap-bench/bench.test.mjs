@@ -18,6 +18,7 @@ import {
   findBootstrapDb,
   noBootstrapDbWarning,
   NO_DB_WARN_MS,
+  catchUpHeadMs,
   feedHeadMs,
   iosMarks,
   tauriStartMs
@@ -745,6 +746,27 @@ describe('rust-core shells', () => {
     ]
     assert.equal(feedHeadMs(requests, 1_000), 2_600)
     assert.equal(feedHeadMs(requests.slice(1, 3), 1_000), null)
+  })
+
+  it('waits past the first sync for the pass that reads the feed to its head (#5880)', () => {
+    const page = (startMs, hasMore) =>
+      request({ path: '/sync/changes?cursor=1', startMs, endMs: startMs + 100, hasMore })
+    const close = request({
+      method: 'POST',
+      path: '/sync/bootstrap/close',
+      startMs: 3_000,
+      endMs: 3_050
+    })
+    // The first sync's own feed head, then its bodies, then the close.
+    const firstSync = [page(500, false), request({ path: '/sync/crdt/snapshot/n', startMs: 2_000 })]
+    assert.equal(catchUpHeadMs([...firstSync, close], 2_500), null)
+    assert.equal(catchUpHeadMs([...firstSync, close, page(3_100, true)], 2_500), null)
+    assert.equal(
+      catchUpHeadMs([...firstSync, close, page(3_100, true), page(3_400, false)], 2_500),
+      3_500
+    )
+    // No close sent: the first head page after the bodies mark.
+    assert.equal(catchUpHeadMs([...firstSync, page(2_600, false)], 2_500), 2_700)
   })
 
   it('reads hasMore off a compressed feed page', async () => {

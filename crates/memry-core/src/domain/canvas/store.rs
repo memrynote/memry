@@ -27,6 +27,7 @@ use crate::sync::outbox;
 use crate::sync::server_vault::RecordVault;
 
 use super::folder_paths::normalize_folder;
+use super::scene_assets::record_scene_assets;
 use super::{CANVAS_SCENE_SYNC_CAP_BYTES, Canvas, ITEM_TYPE, NewCanvas, canonical_scene};
 
 /// Whether a saved canvas was queued for push.
@@ -122,20 +123,23 @@ pub fn get(conn: &Connection, canvas_id: &str) -> Result<Option<Canvas>, Storage
 }
 
 /// Every live canvas of the vault whose local id is `vault_id`, most recently
-/// changed first, without scenes (`listCanvases`): those stating its
-/// [`RecordVault`] stamp or its local id. A payload that named no vault lists
-/// in every one.
+/// changed first, without scenes (`listCanvases`): every one once the vault is
+/// bound ([`RecordVault::lists_every_record`]), else those stating its local id.
+/// A payload that named no vault lists in every one.
 pub fn list(conn: &Connection, vault_id: &str) -> Result<Vec<Canvas>, StorageError> {
     let vault = RecordVault::read(conn, vault_id)?;
     let mut statement = conn
         .prepare_cached(&format!(
             "SELECT {COLUMNS} FROM canvases c
-             WHERE c.vault_id IN (?1, ?2, '') AND c.deleted_at IS NULL
+             WHERE (?3 OR c.vault_id IN (?1, ?2, '')) AND c.deleted_at IS NULL
              ORDER BY c.updated_at DESC, c.id"
         ))
         .map_err(failed)?;
     statement
-        .query_map([vault.stamp(), vault.local()], read_row)
+        .query_map(
+            params![vault.stamp(), vault.local(), vault.lists_every_record()],
+            read_row,
+        )
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
@@ -143,6 +147,8 @@ pub fn list(conn: &Connection, vault_id: &str) -> Result<Vec<Canvas>, StorageErr
 
 /// Creates a canvas, queued for push unless its scene is over the cap. It
 /// states the [`RecordVault`] stamp of the vault whose local id is `vault_id`.
+/// The scene's asset sidecar is recorded for the new id: an adopted document and a
+/// conflict copy arrive with one (`reconcile.ts:593`).
 pub fn create(
     conn: &Connection,
     canvas: &NewCanvas<'_>,
@@ -172,6 +178,7 @@ pub fn create(
     }));
     let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
+    record_scene_assets(&tx, vault_id, &id, &scene, now_ms)?;
     commit(tx, &id, &scene, now_ms)
 }
 
@@ -361,13 +368,14 @@ pub(crate) fn placements(
     let mut statement = conn
         .prepare_cached(
             "SELECT id, folder FROM canvases
-             WHERE vault_id IN (?1, ?2, '') AND deleted_at IS NULL ORDER BY id",
+             WHERE (?3 OR vault_id IN (?1, ?2, '')) AND deleted_at IS NULL ORDER BY id",
         )
         .map_err(failed)?;
     statement
-        .query_map([vault.stamp(), vault.local()], |row| {
-            Ok((row.get(0)?, row.get(1)?))
-        })
+        .query_map(
+            params![vault.stamp(), vault.local(), vault.lists_every_record()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)

@@ -59,6 +59,10 @@ enum NoteBodyPreview: Equatable, Sendable {
 }
 
 extension NoteReadViewModel {
+    /// Whether this screen can offer to fetch a body at all. An affordance
+    /// that leads nowhere is worse than its absence.
+    var canFetchBody: Bool { filler != nil }
+
     /// Whether the page draws `preview` in place of blocks yet.
     ///
     /// A text preview waits for the walk: drawn first, a large note's whole
@@ -235,40 +239,99 @@ extension NoteReadViewModel {
     /// existing views rather than rebuilding the screen, which is what keeps
     /// the reader's scroll position.
     ///
-    /// **Deferred is not failure.** On a metered path the core answers
-    /// `deferred` and writes nothing; the placeholder simply stays, which is
-    /// the feature working rather than an error to report.
+    /// **Opening is asking** (#5644). The user opened this note, so its
+    /// attachments download on any usable path whatever the Download
+    /// attachments setting (`SettingsCopy.downloadFooter`). Offline asks
+    /// nothing; the sync pass after a reconnect runs this again. A deferred
+    /// answer is not an error: the placeholder stays.
+    ///
+    /// Each download shows in `attachmentFetches` while it runs and after it
+    /// fails, and every exit clears `.downloading`. An attachment another run
+    /// is downloading, or whose file another run landed, is skipped, so the
+    /// pass-triggered run and Try again never fetch the same bytes twice. A
+    /// failed file is asked again by a run only when waiting can fix it
+    /// (`asksOnSync`). `tryAgain` (the button) also asks after a `.retry`
+    /// failure; a `.blocked` one waits for a new screen.
     ///
     /// A single failure does not abandon the rest: one unverifiable manifest
     /// must not stop the other pictures in the note from arriving.
-    func fetchWaitingAttachments() async {
+    ///
+    /// A sync pass cancels the run that `NotePageLoad` started for it. The
+    /// cancelled run asks for no further picture: the next run asks for the
+    /// rest, and the core joins it to a download still running (#5674).
+    func fetchWaitingAttachments(tryAgain: Bool = false) async {
         guard let filler else { return }
         // The screen passes `PathReachability.forAttachments`. With none, the
-        // documented answer for "we have not seen a path" is `.cellular`:
-        // usable, metered, and the honest unknown, so an unmetered-only
-        // attachment defers rather than spending a stranger's data plan.
-        let reachable = reachability?.current() ?? PathReachability.unknownPath
+        // answer for "we have not seen a path" is usable (`unknownPath`).
+        let reachable = AttachmentDownload.openedPath(
+            on: reachability?.current() ?? PathReachability.unknownPath
+        )
+        guard reachable != .offline else { return }
 
-        var landed = false
-        for (_, binding) in attachments {
-            guard case let .bound(attachment) = binding,
-                  attachment.localPath == nil
-            else { continue }
+        // A peer's picture binds only once its manifest names it (#5675).
+        if attachments.values.contains(.unknown) {
+            await nameUnboundAttachments(with: filler)
+        }
+
+        var waiting: [String] = []
+        for case let .bound(attachment) in attachments.values
+            where attachment.intactPath(under: attachmentURL) == nil && !waiting.contains(attachment.attachmentId) {
+            waiting.append(attachment.attachmentId)
+        }
+        var landed: [String] = []
+        for id in waiting where asks(for: id, tryAgain: tryAgain) {
+            guard !Task.isCancelled else { break }
+            attachmentFetches[id] = .downloading
             do {
-                let summary = try await filler.fetchAttachment(
-                    attachmentId: attachment.attachmentId,
-                    reachable: reachable
-                )
-                if summary.downloaded { landed = true }
+                let summary = try await filler.fetchAttachment(attachmentId: id, reachable: reachable)
+                if summary.downloaded { landed.append(id) } else { attachmentFetches[id] = nil }
             } catch {
-                if Task.isCancelled { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.sync.error("an attachment could not be fetched", .code(mapped.code))
+                attachmentFetches[id] = .failed(mapped)
             }
         }
 
-        if landed {
-            await loadAttachments()
+        // Not the caller's task: the next run skips what this one marked
+        // downloading, so what landed here is rebound here or not at all, and
+        // `loadAttachments` binds nothing on a cancelled task. The mark holds
+        // until the rebind: cleared before it, another run would find the
+        // file neither downloading nor bound and download it again.
+        if !landed.isEmpty {
+            await Task { await loadAttachments() }.value
+            for id in landed { attachmentFetches[id] = nil }
+        }
+    }
+
+    /// Read as each download starts, not when the run listed `waiting`: a run
+    /// that started earlier holds a stale list.
+    private func asks(for id: String, tryAgain: Bool) -> Bool {
+        if let fetch = attachmentFetches[id] {
+            let asksAgain = if tryAgain, case let .failed(error) = fetch {
+                error.recourse != .blocked
+            } else {
+                fetch.asksOnSync
+            }
+            guard asksAgain else { return false }
+        }
+        return !attachments.values.contains { binding in
+            guard case let .bound(attachment) = binding else { return false }
+            return attachment.attachmentId == id && attachment.intactPath(under: attachmentURL) != nil
+        }
+    }
+
+    /// A peer's picture has no name here until its manifest is read, so its
+    /// block resolves to nothing (#5675). Opening the note reads the names,
+    /// whatever the Download attachments setting, and re-resolves.
+    private func nameUnboundAttachments(with filler: any VaultFilling) async {
+        do {
+            if try await filler.fetchNoteManifests(noteId: route.id) > 0 {
+                await loadAttachments()
+            }
+        } catch {
+            if Task.isCancelled { return }
+            let mapped = ErrorMapping.userFacing(error)
+            Log.sync.error("a note's attachments could not be named", .code(mapped.code))
         }
     }
 

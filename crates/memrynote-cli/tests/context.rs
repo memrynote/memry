@@ -318,3 +318,213 @@ fn concurrent_first_opens_leave_a_usable_vault() {
     }
     assert_eq!(rig.vault_status(), rig_ok(&rig));
 }
+
+/// `vault reindex` beside a running app never sets a damaged index aside: the app's open handles
+/// would lose their file. The command fails and the file stays byte for byte.
+#[test]
+fn a_reindex_refuses_a_damaged_index_and_leaves_it() {
+    let rig = Rig::new();
+    assert_eq!(rig.vault_status().0, 0);
+    let core = rig.path("vault/.memry/core");
+    write(&core.join("index.db"), b"damaged index");
+
+    let vault = rig.path("vault");
+    let (code, out, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "reindex",
+    ]);
+    assert_eq!((code, out.as_str()), (1, ""), "{err}");
+    assert!(
+        err.starts_with("The search index cannot be updated here"),
+        "{err}"
+    );
+    assert_eq!(
+        std::fs::read(core.join("index.db")).expect("index"),
+        b"damaged index"
+    );
+    let siblings: Vec<_> = std::fs::read_dir(&core)
+        .expect("core")
+        .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
+        .filter(|name| name.starts_with("index.db") && name != "index.db")
+        .collect();
+    assert!(siblings.is_empty(), "set aside: {siblings:?}");
+}
+
+/// `vault update-config` refuses a folder outside the vault (`vaultFolder`, #5678): nothing is
+/// written or created.
+#[test]
+fn update_config_refuses_a_folder_outside_the_vault() {
+    let rig = Rig::new();
+    write(&rig.path("vault/.memry/config.json"), b"{}");
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "update-config",
+        r#"{"defaultNoteFolder":"../outside"}"#,
+    ]);
+    assert_eq!(code, 1);
+    assert_eq!(
+        err,
+        "Refusing to set defaultNoteFolder: \"../outside\" is the vault itself or outside it.\n"
+    );
+    assert!(!rig.path("outside").exists(), "a folder outside the vault");
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        b"{}"
+    );
+}
+
+/// `vault config` is a read: a config without the default keys stays as it is.
+#[test]
+fn vault_config_leaves_a_partial_config_as_it_is() {
+    let rig = Rig::new();
+    let partial = br#"{"theme":"kept","excludePatterns":["x"]}"#;
+    write(&rig.path("vault/.memry/config.json"), partial);
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&["--vault", vault.to_str().expect("utf-8"), "vault", "config"]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        partial
+    );
+}
+
+/// `vault update-config` waiting on the app's write (the vault config lock) keeps what the app
+/// wrote meanwhile: the merge runs on the file as it is once the lock is taken.
+#[test]
+fn update_config_keeps_what_the_app_wrote_while_it_waited() {
+    let rig = Rig::new();
+    let config = rig.path("vault/.memry/config.json");
+    write(&config, br#"{"theme":"old"}"#);
+    let held = std::fs::File::create(rig.path("vault/.memry/config.json.lock")).expect("lock");
+    held.lock().expect("hold");
+    let vault = rig.path("vault");
+    let vault = vault.to_str().expect("utf-8");
+    std::thread::scope(|scope| {
+        let cli = scope.spawn(|| {
+            rig.run(&[
+                "--vault",
+                vault,
+                "vault",
+                "update-config",
+                r#"{"custom":1}"#,
+            ])
+        });
+        // Let the command open the vault and reach the lock: a lower bound, never asserted.
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        std::fs::write(&config, br#"{"theme":"new"}"#).expect("the app's write");
+        held.unlock().expect("release");
+        let (code, _, err) = cli.join().expect("cli");
+        assert_eq!(code, 0, "{err}");
+    });
+    let file: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&config).expect("config")).expect("json");
+    assert_eq!(file["theme"], "new", "{file}");
+    assert_eq!(file["custom"], 1, "{file}");
+}
+
+/// A folder through a link is refused (`vaultFolder`, #5723): a link can lead out of the vault.
+#[cfg(unix)]
+#[test]
+fn update_config_refuses_a_folder_through_a_link() {
+    let rig = Rig::new();
+    write(&rig.path("vault/.memry/config.json"), b"{}");
+    std::fs::create_dir(rig.path("elsewhere")).expect("elsewhere");
+    std::os::unix::fs::symlink(rig.path("elsewhere"), rig.path("vault/link")).expect("link");
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "update-config",
+        r#"{"defaultNoteFolder":"link/sub"}"#,
+    ]);
+    assert_eq!(code, 1);
+    assert_eq!(
+        err,
+        "Refusing to set defaultNoteFolder: \"link\" is a link, and a path through a link can lead outside the vault.\n"
+    );
+    assert!(
+        !rig.path("elsewhere/sub").exists(),
+        "created outside the vault"
+    );
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        b"{}"
+    );
+}
+
+/// An absolute folder lands inside the vault, as `path.join(vaultPath, folder)` put it.
+#[test]
+fn update_config_puts_an_absolute_folder_inside_the_vault() {
+    let rig = Rig::new();
+    write(&rig.path("vault/.memry/config.json"), b"{}");
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "update-config",
+        r#"{"journalFolder":"/abs/daily"}"#,
+    ]);
+    assert_eq!(code, 0, "{err}");
+    assert!(
+        rig.path("vault/abs/daily").is_dir(),
+        "not created in the vault"
+    );
+}
+
+/// On Windows a folder name ending in a dot or a space is refused (`vaultFolder`): Windows drops
+/// it, so the folder on disk would be another one than the config names.
+#[cfg(windows)]
+#[test]
+fn update_config_refuses_a_folder_windows_trims() {
+    let rig = Rig::new();
+    write(&rig.path("vault/.memry/config.json"), b"{}");
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "update-config",
+        r#"{"journalFolder":"daily./x"}"#,
+    ]);
+    assert_eq!(code, 1);
+    assert_eq!(
+        err,
+        "Refusing to set journalFolder: \"daily./x\" ends in a dot or a space, which Windows drops, so it names another folder.\n"
+    );
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        b"{}"
+    );
+}
+
+/// A reindex that meets the app's write on `index.db` says the index is busy, not damaged,
+/// and commits nothing.
+#[test]
+fn a_reindex_beside_a_writer_says_the_index_is_busy() {
+    let rig = Rig::new();
+    assert_eq!(rig.vault_status().0, 0);
+    let index = rig.path("vault/.memry/core/index.db");
+    drop(memry_core::storage::index_db::open_keeping(&index).expect("a fresh index"));
+    let writer = rusqlite::Connection::open(&index).expect("writer");
+    writer
+        .execute_batch("BEGIN IMMEDIATE")
+        .expect("hold the write lock");
+
+    let vault = rig.path("vault");
+    let (code, out, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "reindex",
+    ]);
+    assert_eq!((code, out.as_str()), (1, ""), "{err}");
+    assert!(err.starts_with("The search index is busy"), "{err}");
+    writer.execute_batch("ROLLBACK").expect("release");
+}

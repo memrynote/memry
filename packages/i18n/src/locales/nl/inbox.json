@@ -579,7 +579,10 @@
       "journalOff": "Dagboek staat uit in Instellingen.",
       "sendFailed": "Kan de sticky niet verzenden.",
       "undoExpired": "Het is te laat om dit ongedaan te maken.",
-      "undoFailed": "Kan het verzenden niet ongedaan maken."
+      "undoFailed": "Kan het verzenden niet ongedaan maken.",
+      "journalBusy": "Het dagboekitem van vandaag wordt nog opgeslagen. Probeer het zo opnieuw.",
+      "folderExcluded": "De map Sticky is uitgesloten. Haal hem in Instellingen uit de uitgesloten mappen om notities te verzenden.",
+      "projectMissing": "Het project van deze taak bestaat niet. Kies een standaardproject in Instellingen, of verzend dit als notitie."
     },
     "inputLabel": "Sticky-tekst",
     "dismissError": "Sluiten"

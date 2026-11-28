@@ -5,6 +5,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useInboxPreferences } from '@/hooks/use-inbox-preferences'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { ReviewTimeInput } from '@/components/settings/review-time-input'
+import { settingsService } from '@/services/settings-service'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { ImageFilingMode } from '@memry/domain-inbox'
@@ -26,7 +27,7 @@ export function InboxSettings() {
   const handleSendTest = useCallback(async () => {
     setIsSendingTest(true)
     try {
-      const { supported } = await window.api.settings.sendTestInboxReviewNotification()
+      const { supported } = await settingsService.sendTestInboxReviewNotification()
       if (supported) {
         toast.success(t('inbox.reviewReminder.test.sent'), {
           description: t('inbox.reviewReminder.test.sentHint')

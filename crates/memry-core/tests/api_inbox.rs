@@ -271,3 +271,46 @@ fn the_review_reminder_reads_desktops_defaults_and_writes_the_synced_keys() {
     assert_eq!(payload["settings"]["inbox"]["reviewReminderTime"], "07:30");
     assert!(payload["fieldClocks"]["inbox.reviewReminderEnabled"].is_object());
 }
+
+#[test]
+fn a_link_preview_stores_its_hero_as_the_thumbnail_in_the_same_write() {
+    let (vault, inbox) = open();
+    let link = inbox
+        .capture_link("https://example.com/post".into(), None, false)
+        .expect("capture")
+        .item;
+    let outside = inbox.complete_link_with_thumbnail(
+        link.id.clone(),
+        Some("Post".into()),
+        None,
+        r#"{"fetchStatus":"complete"}"#.into(),
+        Some("attachments/inbox/other/thumbnail.png".into()),
+    );
+    assert!(outside.is_err(), "a hero outside the capture's folder");
+    assert_eq!(
+        inbox
+            .get(link.id.clone())
+            .expect("get")
+            .expect("item")
+            .processing_status
+            .as_deref(),
+        Some("pending"),
+        "a refused hero writes nothing"
+    );
+    let hero = format!("attachments/inbox/{}/thumbnail.png", link.id);
+    let done = inbox
+        .complete_link_with_thumbnail(
+            link.id.clone(),
+            Some("Post".into()),
+            Some("About it.".into()),
+            r#"{"url":"https://example.com/post","fetchStatus":"complete"}"#.into(),
+            Some(hero.clone()),
+        )
+        .expect("complete");
+    assert_eq!(done.thumbnail_path.as_deref(), Some(hero.as_str()));
+    assert_eq!(done.title, "Post");
+    assert_eq!(done.processing_status.as_deref(), Some("complete"));
+    let pushed = payload(&vault, &link.id);
+    assert_eq!(pushed["thumbnailPath"], Value::from(hero));
+    assert_eq!(pushed["processingStatus"], "complete");
+}

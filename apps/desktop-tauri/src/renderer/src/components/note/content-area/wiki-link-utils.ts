@@ -380,26 +380,31 @@ export function normalizeWikiLinks(
 // MARKDOWN UTILITIES
 // =============================================================================
 
-export function normalizeMarkdownHardBreaks(markdown: string): string {
-  const lines = markdown.split('\n')
+/**
+ * Prepare a note body read from the vault for the renderer's parse, and as the
+ * source the save diffs against.
+ *
+ * Line endings become `\n`. A file written on Windows ends its lines with
+ * `\r\n`, and BlockNote's parser and the task-line scanners split on `\n` only,
+ * so every line kept a trailing `\r` and lists, numbered lists and code fences
+ * rendered as literal `- item` text. Main's seed does the same
+ * (`withLfLineEndings`), and the write-back puts the file's own line endings
+ * back (`serializeParsedMarkdownNote`).
+ *
+ * A backslash hard break outside fenced code becomes a plain line break.
+ */
+export function normalizeLoadedMarkdown(markdown: string): string {
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n')
   const normalized: string[] = []
   let inCodeBlock = false
 
-  for (const line of lines) {
-    let lineBody = line
-    let lineEnding = ''
-
-    if (lineBody.endsWith('\r')) {
-      lineEnding = '\r'
-      lineBody = lineBody.slice(0, -1)
-    }
-
+  for (const lineBody of lines) {
     const trimmed = lineBody.trimStart()
     const isFence = trimmed.startsWith('```') || trimmed.startsWith('~~~')
 
     if (isFence) {
       inCodeBlock = !inCodeBlock
-      normalized.push(lineBody + lineEnding)
+      normalized.push(lineBody)
       continue
     }
 
@@ -410,12 +415,12 @@ export function normalizeMarkdownHardBreaks(markdown: string): string {
         if (nextLine.trim() === '') {
           continue
         }
-        normalized.push(nextLine + lineEnding)
+        normalized.push(nextLine)
         continue
       }
     }
 
-    normalized.push(lineBody + lineEnding)
+    normalized.push(lineBody)
   }
 
   return normalized.join('\n')

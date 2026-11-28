@@ -1,0 +1,513 @@
+{
+  "source": "evernote",
+  "cases": [
+    {
+      "name": "sample",
+      "sources": [
+        "My   Notebook .enex",
+        ".enex",
+        "empty.enex",
+        "bad-date.enex"
+      ],
+      "exactCreated": true,
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.evernote.scanning",
+            "message": "Scanning .enex files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.evernote.scanning",
+            "message": "Scanning .enex files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Sample & Evernote &#233; Note",
+            "params": {
+              "title": "Sample & Evernote &#233; Note"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "photo.png",
+          "size": 70,
+          "sha256": "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Sample & Evernote &#233; Note",
+            "params": {
+              "title": "Sample & Evernote &#233; Note"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "4f083683.pdf",
+          "size": 18,
+          "sha256": "100c072474380c4db1c1d08a044238853cd6271092e14b333e2ec89b28c71301"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Sample & Evernote &#233; Note",
+            "params": {
+              "title": "Sample & Evernote &#233; Note"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Sample & Evernote &#233; Note",
+          "folder": "Evernote/My Notebook",
+          "tags": [
+            "work",
+            "two words"
+          ],
+          "properties": [],
+          "created": "2023-10-15T14:30:22Z",
+          "modified": "2023-10-16T08:00:00Z",
+          "content": "Hello from **Evernote**!\n\n- [x] Finished **task**\n\n- [ ] Pending task\n\nafter break\n\n- [ ] Upper case is unchecked\n\n![photo.png](attachments/note-1/photo.png)\n\n<!-- file:{\"url\":\"attachments/note-1/4f083683.pdf\",\"name\":\"4f083683.pdf\",\"size\":18,\"mimeType\":\"application/pdf\"} -->\n\n\n\n[site](https://evernote.com)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Sample & Evernote &#233; Note",
+            "params": {
+              "title": "Sample & Evernote &#233; Note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Sample & Evernote &#233; Note",
+            "params": {
+              "title": "Sample & Evernote &#233; Note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "Untitled",
+          "folder": "Evernote/My Notebook",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": "Escaped & ENML"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 2,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 2,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing ",
+            "params": {
+              "title": ""
+            }
+          },
+          "imported": 2,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-3",
+          "title": "",
+          "folder": "Evernote/My Notebook",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": "- a\n  - b\n\n| c |\n| --- |"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing ",
+            "params": {
+              "title": ""
+            }
+          },
+          "imported": 3,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing ",
+            "params": {
+              "title": ""
+            }
+          },
+          "imported": 3,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Dup resource",
+            "params": {
+              "title": "Dup resource"
+            }
+          },
+          "imported": 3,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-4",
+          "name": "f829b914.png",
+          "size": 70,
+          "sha256": "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Dup resource",
+            "params": {
+              "title": "Dup resource"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-4",
+          "title": "Dup resource",
+          "folder": "Evernote/My Notebook",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": "![f829b914.png](attachments/note-4/f829b914.png)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Dup resource",
+            "params": {
+              "title": "Dup resource"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Dup resource",
+            "params": {
+              "title": "Dup resource"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Root",
+            "params": {
+              "title": "Root"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-5",
+          "title": "Root",
+          "folder": "Evernote/.enex",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": "root"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Root",
+            "params": {
+              "title": "Root"
+            }
+          },
+          "imported": 5,
+          "attachments": 3,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Root",
+            "params": {
+              "title": "Root"
+            }
+          },
+          "imported": 5,
+          "attachments": 3,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Root",
+            "params": {
+              "title": "Root"
+            }
+          },
+          "imported": 5,
+          "attachments": 3,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 1,
+          "total": 1,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 5,
+        "attachments": 3,
+        "skipped": 0,
+        "failed": [
+          {
+            "item": "<input>/bad-date.enex",
+            "error": "raw.trim is not a function"
+          }
+        ]
+      }
+    }
+  ]
+}

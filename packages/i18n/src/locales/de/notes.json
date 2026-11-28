@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Dateien dieser Notiz werden heruntergeladen…",
+      "failed": "Die Dateien dieser Notiz konnten nicht heruntergeladen werden: {error}",
+      "failedFallback": "der Download ist fehlgeschlagen",
+      "retry": "Erneut versuchen"
+    },
     "empty": {
       "title": "Keine Notiz ausgewählt",
       "body": "Wähle in der Seitenleiste eine Notiz aus, um sie anzuzeigen"

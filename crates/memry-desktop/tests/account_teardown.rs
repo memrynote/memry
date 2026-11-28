@@ -11,6 +11,8 @@ use memry_core::crypto::agent_envelope::Purpose;
 use memry_core::crypto::keys;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::storage::repositories::instants;
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::account::binding::{Applied, BindingState};
 use memry_desktop::account::session_events::AccountEvent;
 use memry_desktop::account::vault_sync::{BINDING_RETRY, OpenVaultBinding, SyncWiring};
@@ -20,6 +22,7 @@ use memry_desktop::registry::VaultRegistry;
 use memry_desktop::registry::config::AppConfig;
 use memry_desktop::session::{OpenSource, OpenVault, Session};
 use memry_desktop::sync::signals::AuthSignal;
+use memry_desktop::tasks::reminders;
 use serde_json::{Value, json};
 use tokio::sync::broadcast;
 
@@ -420,6 +423,61 @@ async fn a_vault_bound_to_another_account_is_held_foreign_without_asking_the_ser
         memry_desktop::sync::gate::VaultBinding::Foreign
     );
     assert!(!s.script.called("/sync/vaults"));
+}
+
+/// A reminder that fired on a local-only vault stamps its inbox item with the shared firing
+/// actor, which names no session: signing in later still offers the normal choice.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_fired_reminder_does_not_make_an_unbound_vault_foreign() {
+    let s = signed_in();
+    s.open.vault.set_account_binding("not json").unwrap();
+    let payload = json!({
+        "targetType": "journal",
+        "targetId": "2026-03-20",
+        "title": "Call Ada",
+        "remindAt": "2026-03-20T09:00:00.000Z",
+        "status": "pending",
+        "clock": {"server-device": 1},
+    });
+    s.open
+        .vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            sync_items::apply_remote(
+                conn,
+                &InboundRecord {
+                    item_type: "reminder".to_owned(),
+                    item_id: "rem_local".to_owned(),
+                    payload_json: payload.to_string(),
+                    server_cursor: None,
+                    signer_device_id: Some("server-device".to_owned()),
+                    updated_at: 0,
+                    deleted_at: None,
+                },
+                0,
+            )?;
+            Ok(())
+        })
+        .unwrap();
+    let now = instants::to_epoch_ms("2026-03-20T09:01:00.000Z").unwrap();
+    let fired = reminders::tick(&s.open.vault.db_handle(), now).unwrap();
+    assert_eq!(fired.fired.len(), 1);
+    s.script.answer(200, json!([]));
+    let registry = VaultRegistry::new(s.config.clone());
+
+    let applied = s
+        .account
+        .apply_open_vault_binding(&s.open, &registry)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        applied,
+        Applied::Held(BindingState::NeedsDecision {
+            account_vault_count: 0,
+            merge_target: None,
+        })
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -224,8 +224,12 @@ function persistMarkdownNote(
   if (bodyUnread) return
 
   setNoteTags(db, note.noteId, { header: note.headerTags, inline: note.tags })
-  setNoteProperties(db, note.noteId, note.properties ?? {}, (name, value) =>
-    getPropertyType(db, name, value, inferPropertyType)
+  setNoteProperties(
+    db,
+    note.noteId,
+    note.properties ?? {},
+    (name, value) => getPropertyType(db, name, value, inferPropertyType),
+    'file'
   )
 
   // Null properties after a body read mark the large-file tier, which keeps no links.
@@ -245,8 +249,12 @@ function persistFileNote(note: Extract<NoteProjectionRecord, { kind: 'file' }>):
     // and links read from the markdown that overwrote the blob; a file has none.
     if ((existing.fileType ?? 'markdown') === 'markdown') {
       setNoteTags(db, note.noteId, { header: [], inline: [] })
-      setNoteProperties(db, note.noteId, {}, (name, value) =>
-        getPropertyType(db, name, value, inferPropertyType)
+      setNoteProperties(
+        db,
+        note.noteId,
+        {},
+        (name, value) => getPropertyType(db, name, value, inferPropertyType),
+        'file'
       )
       const before = linkKeys(db, note.noteId)
       setNoteLinks(db, note.noteId, [])

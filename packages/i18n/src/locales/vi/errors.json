@@ -45,6 +45,7 @@
     "applyTemplateFailed": "Không thể áp dụng mẫu",
     "appendBlocksFailed": "Không thể di chuyển khối sang ghi chú đó",
     "appendIntoCaseTwin": "Ghi chú đó dùng chung tệp với một ghi chú có tên chỉ khác nhau ở chữ hoa và chữ thường. Hãy đổi tên một trong hai ghi chú, rồi di chuyển lại khối.",
+    "appendIntoBinary": "Chỉ có thể di chuyển khối sang ghi chú, không thể di chuyển sang tệp hình ảnh, PDF, âm thanh hoặc video.",
     "caseTwinMoveRefused": "Ghi chú này dùng chung tệp với một ghi chú có tên chỉ khác nhau về chữ hoa và chữ thường, nên không thể di chuyển theo cách này. Hãy đổi tên hoặc di chuyển ghi chú kia, hoặc xóa bản sao bạn không cần.",
     "exportPdfFailed": "Không thể xuất PDF",
     "exportHtmlFailed": "Không thể xuất HTML",
@@ -77,6 +78,9 @@
     "uploadFailed": "Không thể tải lên tệp đính kèm",
     "uploadProgressFailed": "Không thể lấy tiến trình tải lên",
     "downloadFailed": "Không thể tải xuống tệp đính kèm",
+    "downloadGone": "Tệp này không còn trên máy chủ đồng bộ. Nếu thiết bị khác vẫn còn tệp này, hãy thêm lại tệp từ thiết bị đó.",
+    "downloadMissing": "Tệp này chưa có trên máy chủ đồng bộ. Hãy mở lại vào ngày mai để kiểm tra.",
+    "downloadNeedsSync": "Đồng bộ không chạy nên không thể tải xuống tệp này. Tệp sẽ tự tải xuống khi đồng bộ chạy.",
     "downloadProgressFailed": "Không thể lấy tiến trình tải xuống",
     "exceedsMaxSize": "Tệp quá lớn: {size} vượt quá giới hạn {limit}",
     "exceedsPlanLimit": "Tệp lớn hơn mức gói của bạn cho phép: {size} vượt quá {limit}",
@@ -242,6 +246,8 @@
     "keptNotPulled": "Thư mục này có một ghi chú mà tệp của nó đã bị xóa bên ngoài memrynote, và nội dung của ghi chú chưa được đồng bộ về thiết bị này, nên không thể chuyển vào thùng rác. Không có gì bị xóa. Hãy chờ đồng bộ xong, hoặc xóa riêng ghi chú đó trước.",
     "keptUnwritable": "Thư mục này có một ghi chú mà tệp của nó đã bị xóa bên ngoài memrynote, và không thể lưu nội dung của ghi chú vào tệp để đưa vào thùng rác. Không có gì bị xóa. Hãy xóa riêng ghi chú đó trước.",
     "trashUnavailable": "Không thể chuyển thư mục này vào thùng rác. Những gì còn trong thư mục chưa bị xóa.",
+    "deleteCaseTwins": "Thư mục này và một thư mục cùng tên nhưng viết khác, ví dụ khác chữ hoa và chữ thường, là cùng một thư mục trên ổ đĩa, nên xóa nó sẽ xóa ghi chú trong cả hai. Thay vào đó, hãy xóa từng ghi chú mà bạn không cần.",
+    "deleteWindowsName": "Tên thư mục này kết thúc bằng dấu chấm hoặc dấu cách, vốn bị Windows bỏ qua, nên xóa nó có thể xóa luôn một thư mục khác. Thay vào đó, hãy xóa từng ghi chú trong thư mục.",
     "setConfigFailed": "Không thể đặt cấu hình thư mục"
   },
   "folderView": {

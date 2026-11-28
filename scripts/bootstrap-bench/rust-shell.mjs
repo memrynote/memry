@@ -136,6 +136,34 @@ export function feedHeadMs(requests, startMs) {
   return end
 }
 
+/**
+ * When the shell's first pass after its first sync read the feed to its head,
+ * or null before. A Tauri first sync ends in `POST /sync/bootstrap/close`, and
+ * the driver then runs passes to the head before the install is done
+ * (crates/memry-core src/sync/driver/mod.rs `first_sync`): those read the feed
+ * rows past the first sync's record cursor, body rows and purged markers
+ * included, which the first sync does not declare. Ending the run at the
+ * bodies mark kills the app before that pass, so the first reopen read them
+ * instead (#5880). `afterMs` bounds the search when no close was sent.
+ */
+export function catchUpHeadMs(requests, afterMs) {
+  const sorted = requests
+    .filter((r) => !r.refused && r.method !== 'WS')
+    .toSorted((a, b) => a.startMs - b.startMs)
+  const closes = sorted.filter(
+    (r) => r.method === 'POST' && r.path.split('?')[0] === '/sync/bootstrap/close'
+  )
+  const from = closes.length > 0 ? closes.at(-1).endMs : afterMs
+  const head = sorted.find(
+    (r) =>
+      r.startMs >= from &&
+      r.method === 'GET' &&
+      r.path.startsWith('/sync/changes') &&
+      r.hasMore === false
+  )
+  return head ? head.endMs : null
+}
+
 const TAURI_LINE =
   /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3}) .*bootstrap window opened/
 

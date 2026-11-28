@@ -111,6 +111,7 @@ const snapshotPlan = (bytes: Uint8Array): DocumentPlan => ({
       length: 0,
       sha256: new Uint8Array(32)
     },
+    packId: 'p1',
     meta: { sequenceNum: 4, revision: 'r4' },
     read: async () => bytes
   },
@@ -161,7 +162,8 @@ const createHarness = (
           from: () => ({
             all: () => deviceKeys.map((key, i) => ({ deviceId: `device-${i}`, key })),
             // The pack-seed settle markers (pack-seeded-docs.ts): none listed.
-            where: () => ({ all: () => [] })
+            // And no note row yet, as on a fresh device before its pull.
+            where: () => ({ all: () => [], get: () => undefined })
           })
         })
       },

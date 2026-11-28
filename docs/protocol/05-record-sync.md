@@ -216,11 +216,12 @@ sending** (`crates/memry-core/src/sync/outbox/collapse.rs:38-67`, rationale at `
 
 Rejection reasons a client MUST handle:
 
-| Reason                 | Meaning                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| `SYNC_REPLAY_DETECTED` | §5.7; drop the queued row, the server is ahead                   |
-| `SYNC_DELETE_WINS`     | §5.8; the id is tombstoned and this write did not see the delete |
-| `SYNC_INVALID_ITEM`    | §5.4; the item cannot satisfy the schema — permanent, retire it  |
+| Reason                            | Meaning                                                                                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SYNC_REPLAY_DETECTED`            | §5.7; drop the queued row, the server is ahead                                                                                                        |
+| `SYNC_DELETE_WINS`                | §5.8; the id is tombstoned and this write did not see the delete                                                                                      |
+| `SYNC_INVALID_ITEM`               | §5.4; the item cannot satisfy the schema — permanent, retire it                                                                                       |
+| `SYNC_INVALID_DELETE_ATTESTATION` | chapter 04 §4.8.4; this delete's attestation did not verify. Refuses this item only: the item signature verified, so it is never a device-key failure |
 
 `SYNC_INVALID_ITEM` carries the failing issue after the code, so a client MAY
 log the reason verbatim. The verdict is permanent — resending the same bytes
@@ -404,7 +405,12 @@ at 9:30 looks seen under the 60 s rule. A `note` or `journal` delete therefore
 puts an optional `bodyStateVector` inside its encrypted payload: the standard
 base64 of the Yjs v1 state vector of the deleter's body doc at delete time
 (desktop: the loaded doc, `ContentSyncService.bodyStateVector`; the core: its
-whole update log, `body_state_vector`). It is no text, travels end to end
+whole update log, `body_state_vector`). A delete desktop sends later, one
+deferred while sync was off or one the CLI queued (which reads no doc), takes
+the vector into its pending row before the doc is purged
+(`apps/desktop/src/main/sync/pending-deletes.ts:150`); one the CLI queued while
+desktop was closed takes it at the next sync start, before the first pull
+(`apps/desktop/src/main/sync/local-doc-delete.ts:83`). It is no text, travels end to end
 encrypted, and needs no server, D1 or envelope change. The receiver compares it
 with its own body state: desktop with the merged state vector of every body
 update the server confirmed from it (`note_body_sync.pushed_state_vector`, data
@@ -1040,7 +1046,7 @@ tombstone: an id in `deleted` with no verified delete records nothing. The Rust
 core still honours a bare tombstone an older build filed: it is a `sync_items`
 row of type `_tombstone` (`crates/memry-core/src/sync/store.rs:31`), checked
 before an apply (`crates/memry-core/src/sync/store.rs:170`,
-`crates/memry-core/src/sync/apply.rs:223`). The rest of this
+`crates/memry-core/src/sync/apply.rs:264`). The rest of this
 section describes those rows.
 
 §5.12.1 establishes that a `deleted[]` entry is an **id with no
@@ -1223,38 +1229,38 @@ The Rust core produces attestations on every attestable delete it pushes
 
 The Rust core meets the re-upload rule above for `note`, `journal` and
 `bookmark` only after it asks the server by id
-(`PROBED`, `crates/memry-core/src/sync/hardening/manifest.rs:94`, §5.15, #4785).
+(`PROBED`, `crates/memry-core/src/sync/hardening/manifest.rs:98`, §5.15, #4785).
 A run from cursor 0 is never served the markers below its cursor, a first
 sync's refs pass reads the feed without the token, and a marker the pull skipped
 or refused leaves no trace, so a note another device deleted can look like a
 lost create, and the server would accept its `create` over the marker. Before
 it queues one, the manifest check sends `POST /sync/pull` for the id, which
-serves a marker whatever the cursor (`manifest.rs:218`), and applies nothing
+serves a marker whatever the cursor (`manifest.rs:260`), and applies nothing
 it reads:
 
 - A tombstone or a marker: no `create`. The local row stays live. Its clock is
   recorded only when a device signed it: a marker the pull's own admission and
-  attestation accept (`purged.rs:194`, `:264`; `manifest.rs:281`), or a
+  attestation accept (`purged.rs:194`, `:264`; `manifest.rs:322`), or a
   tombstone whose envelope signature verifies under its signer's key
-  (`manifest.rs:261`). The server is untrusted, and a recorded clock is signed
+  (`manifest.rs:302`). The server is untrusted, and a recorded clock is signed
   into a re-created journal day
   (`crates/memry-core/src/domain/recreate.rs:37`). An unverified answer records
   nothing, and the row is asked about again at the next check. A clock is
   recorded for the id in the row's own spelling, for these three types only,
   never `folder_config`, whose recorded clock reads as a deleted folder
-  (`manifest.rs:356-361`; `crates/memry-core/src/domain/folders.rs:223`).
+  (`manifest.rs:397-402`; `crates/memry-core/src/domain/folders.rs:223`).
 - A live row or a lost blob: no `create`.
-- Nothing named: `create` (`manifest.rs:338`), and a body snapshot of a note or
+- Nothing named: `create` (`manifest.rs:379`), and a body snapshot of a note or
   journal (`crates/memry-core/src/sync/driver/repairs.rs:27`).
 - A failed request: nothing of these types is queued until the next check
-  (`manifest.rs:179`).
+  (`manifest.rs:221`).
 
 A row whose recorded delete clock its own clock does not follow is not asked
-about (`manifest.rs:373`, Electron's `isNoteKnownDeleted`). Each row is asked
+about (`manifest.rs:415`, Electron's `isNoteKnownDeleted`). Each row is asked
 about at most once per check, so once per 30 minutes, and one check asks about
-at most 1,000 rows, ten requests (`MAX_PROBED`, `manifest.rs:99`, `:510`). The
-rows are taken in `(type, id)` order (`:484`), starting after the last row the
-previous check asked and wrapping around (`:502-505`), so of N rows each is asked
+at most 1,000 rows, ten requests (`MAX_PROBED`, `manifest.rs:102`, `:526`). The
+rows are taken in `(type, id)` order (`:500`), starting after the last row the
+previous check asked and wrapping around (`:518-521`), so of N rows each is asked
 within ceil(N / 1,000) checks, even when rows that never resolve (an
 unattested marker, an unknown signer) come first. A delete landing between
 the answer and the push is a signed tombstone, which §5.8 refuses; the core keeps
@@ -1390,19 +1396,40 @@ paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 (`apps/desktop/src/main/sync/engine/sync-context.ts:118-124`).
 
 The Rust core's desktop driver runs the manifest check at most every 30
-minutes (`crates/memry-core/src/sync/hardening/manifest.rs:68`), diffs on
-`(type, id)` with a note and a journal of one id as one item (`manifest.rs:436`),
-pulls by id a live server row it holds no row of (`manifest.rs:470-475`, `:166`), and
+minutes (`crates/memry-core/src/sync/hardening/manifest.rs:75`), diffs on
+`(type, id)` with a note and a journal of one id as one item (`manifest.rs:442`),
+pulls by id a live server row it holds no row of (`manifest.rs:478-483`, `:191`), and
 queues as `create` a live clocked local row the server does not list, of the
-types in `REUPLOADED` (`manifest.rs:75`). Of the types the server re-creates over
+types in `REUPLOADED` (`manifest.rs:79`). Of the types the server re-creates over
 a purged tombstone it re-uploads only `note`, `journal` and `bookmark`
-(`PROBED`, `manifest.rs:94`), and only after `POST /sync/pull` for the id names
+(`PROBED`, `manifest.rs:98`), and only after `POST /sync/pull` for the id names
 nothing: a tombstone or a marker queues nothing and records its clock when a
 device signed it, and a
 failed request queues none until the next check (§5.12.3, #4785). Electron
 re-uploads those types without asking and has the resurrection hole
 (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:335`, `:821`,
 `apps/desktop/src/main/sync/manifest-check.ts:193-245`).
+
+After a check that listed every row and left nothing to retry (no refused or
+quarantined listed row, no row to ask about), the core stores the highest
+`serverCursor` it listed in the `meta` row `sync.manifest_watermark`
+(`crates/memry-core/src/sync/hardening/manifest_watermark.rs:44`, #5861). The
+next check lists only the rows above it (`GET /sync/manifest?limit=&cursor=`,
+`apps/sync-server/src/services/sync.ts:1243`) and checks the server-only
+direction alone, so an app reopen reads one page, not every page. It lists
+every row instead when the stored value is missing, unreadable, of another
+format version, vault or declaration, or written 24 hours or more ago or in
+the future (`manifest_watermark.rs:88-93`), and when the listing from it names a
+row at or below it, a row without its cursor, or a cursor that does not
+advance (`crates/memry-core/src/sync/hardening/manifest.rs:167-172`). The
+local-only direction needs every row, so data migration 0040's triggers delete
+the watermark whenever a row other than `task_activity` leaves the outbox or
+`sync_items`
+(`crates/memry-core/src/storage/migrations/data/0040_manifest_watermark.sql:14`, `:20`).
+A check replaces the watermark with its own token first and writes the next one
+only after the rows it pulled committed and only while its token is still
+there, so a crash or a failed check leaves no watermark
+(`manifest_watermark.rs:105-121`).
 
 ## 5.16 Clock skew
 

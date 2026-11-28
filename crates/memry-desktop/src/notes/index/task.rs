@@ -73,6 +73,7 @@ impl TaskHandle {
     }
 
     /// Asks for a reindex, run once the open walk ended; `None` when the task already ended.
+    /// Its progress is the shared pass's, throttled by the task.
     pub fn reindex(&self, progress: Progress) -> Option<Answer> {
         let (answer, receiver) = reply::channel();
         self.0
@@ -286,31 +287,52 @@ impl Indexer {
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
+        // One throttle for the askers' shared pass, until it answers them: a pass a first sync
+        // held and its rerun never report backwards, but for the rerun's last step, which ends
+        // the askers' progress. An asker that joins during the hold is told no step before the
+        // held pass's, so the shared `NoteIndex::indexing` never goes back.
+        let mut shared = ProgressThrottle::new(PROGRESS_INTERVAL);
         // The indexer holds its sender, so `changed` never ends while this runs.
         let mut first_sync = self.first_sync.subscribe();
         while !cancel.is_cancelled() {
             // An asked reindex stays pending while a first sync runs, which holds its search
-            // reindex (#5409): its answer says the search is current.
-            if owed.walked() && !waiting.is_empty() && !self.first_sync.is_running() {
-                // A reindex reports through its own callback, which refreshes the list. The
-                // open's build ends after it, once the rows hold every note.
+            // reindex (#5409): its answer says the search is current. The inbox is read first,
+            // so one pass answers every asker already waiting when it starts; one asked during
+            // it waits in the inbox for a pass of its own.
+            if owed.walked()
+                && !waiting.is_empty()
+                && !self.first_sync.is_running()
+                && commands.is_empty()
+            {
+                // A reindex reports through its askers' callbacks, which refresh the list. The
+                // open's build ends after it, once the rows hold every note, and before the
+                // askers hear: an asker that failed reads `NoteIndex::indexing` for the status
+                // carrying its error, which then says the indexing ended.
                 let carried = std::mem::take(&mut owed.report);
-                for (mut progress, answer) in std::mem::take(&mut waiting) {
-                    match self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined)
-                    {
-                        // A first sync that started meanwhile held its search reindex: the
-                        // asker waits for it to end, as one asked during it does.
-                        None => waiting.push((progress, answer)),
-                        // The asker may have gone; the work is done either way.
-                        Some(done) => {
-                            let _ = answer.send(done);
+                let mut progress = |step| {
+                    if shared.offer(step, Instant::now()) {
+                        for (asker, _) in &mut waiting {
+                            asker(step);
                         }
                     }
-                }
+                };
+                let outcome =
+                    self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined);
                 if carried {
                     report(OpenBuild::Ended {
                         walked: owed.indexed,
                     });
+                }
+                // `None`: a first sync that started meanwhile held its search reindex, and every
+                // asker waits for it to end, as one asked during it does.
+                if let Some(done) = outcome {
+                    shared = ProgressThrottle::new(PROGRESS_INTERVAL);
+                    for (_, answer) in waiting.drain(..) {
+                        // The asker may have gone; the work is done either way.
+                        let _ = answer.send(done.clone());
+                    }
+                    #[cfg(feature = "test-hooks")]
+                    super::after_reindex_answer(&self.root);
                 }
             }
             let next = owed.next(self.first_sync.is_running());
@@ -484,7 +506,7 @@ impl Indexer {
     fn reindex(
         &self,
         owed: &mut Owed,
-        progress: &mut Progress,
+        progress: &mut dyn FnMut(IndexProgress),
         cancel: &CancelToken,
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
@@ -494,22 +516,9 @@ impl Indexer {
         let scan = std::mem::take(&mut owed.scan);
         owed.retype = false;
         let stop = || cancel.is_cancelled();
-        let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let outcome = self.scan(true).map_err(IndexError::from).and_then(|notes| {
-            let mut progress = |step| {
-                if throttle.offer(step, Instant::now()) {
-                    progress(step);
-                }
-            };
             let typing = self.typing_all()?;
-            self.pass(
-                notes,
-                typing,
-                &mut owed.links,
-                &stop,
-                &mut progress,
-                announce,
-            )
+            self.pass(notes, typing, &mut owed.links, &stop, progress, announce)
         });
         if let Ok(pass) = &outcome
             && pass.reindexed

@@ -42,6 +42,7 @@ use rusqlite::{Connection, params};
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
+use crate::domain::inbox::review;
 use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -184,6 +185,7 @@ pub(crate) fn apply_many(
     })?;
     let mut settings = settings_of(payload.object())?;
     let mut field_clocks = field_clocks_of(payload.object())?;
+    let schedule = review::schedule(&settings);
     let mut any = false;
     for (path, segments, change) in parsed {
         if !apply_at(&mut settings, &segments, change, path)? {
@@ -200,6 +202,7 @@ pub(crate) fn apply_many(
         // Nothing changed, so nothing is written — not even the seed row.
         return Ok((payload.raw().to_owned(), false));
     }
+    review::rearm_if_rescheduled(&tx, &schedule, &review::schedule(&settings))?;
 
     let changes = [
         ("settings", Change::Set(Value::Object(settings))),

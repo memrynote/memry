@@ -11,11 +11,11 @@ This directory owns the Tauri v2 desktop app (`@memry/desktop-tauri`), the app t
 
 ## Dual renderer rule
 
-Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts`, `lib/launch-marks.ts`, `lib/startup/`, `services/vault-service.ts`, `hooks/use-account-vaults.ts`, `components/vault-switcher.tsx`, `pages/settings/vault-section.tsx` and `pages/settings/journal-section.tsx` (a refused journal folder change shows its message and puts the saved folder back, as the date format field does; Electron refuses no folder). The Tauri copy has no `pdf-host.html` and no `src/pdf-host/`: the `memry-ml-worker` sidecar reads PDFs instead (#3542). Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
+Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts`, `lib/launch-marks.ts`, `lib/startup/`, `services/vault-service.ts`, `hooks/use-account-vaults.ts`, `components/vault-switcher.tsx`, `pages/settings/vault-section.tsx` and `pages/settings/journal-section.tsx` (a refused journal folder change shows its message and puts the saved folder back, as the date format field does; Electron refuses no folder). The Tauri copy has no `pdf-host.html` and no `src/pdf-host/`: the `memry-ml-worker` sidecar reads PDFs instead (#3542). Voice capture records PCM through an AudioWorklet (`lib/pcm-capture*.ts`) instead of `MediaRecorder`, because the three webviews write different containers. So `hooks/use-voice-capture.ts`, `lib/voice-memo-audio.ts` and the recorder callers (`voice-recorder.tsx`, `capture-bar.tsx`, `capture-input.tsx`, `quick-capture.tsx`, `agent-chat/voice-dictation-button.tsx`) take an `AudioBuffer` (#3541). Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
 
 ## Commands
 
-- Name a command `<domain>_<verb>` in snake_case. Its module lives in `src-tauri/src/commands/<domain>.rs`, and its path goes in `src-tauri/src/registry.rs` under the domain's comment, one fully qualified path per line, domains in alphabetical order.
+- Name a command `<domain>_<verb>` in snake_case. Its module lives in `src-tauri/src/commands/<domain>.rs`, and its path goes in its area's `src-tauri/src/registry/<area>.rs`, one fully qualified path per line. A new area adds its module to `registry.rs` and its name to the `areas!` chain there. `registry.rs` and `events/mod.rs` list no command or event (`tests/registration_layout.rs`).
 - Command types derive `Serialize`, `Deserialize` and `specta::Type` with `#[serde(rename_all = "camelCase")]`.
 - No 64-bit integer that needs more than 53 bits crosses IPC. Ids and hashes travel as strings. The builder casts `i64` to a JavaScript number because every `i64` that crosses is an epoch-millisecond timestamp, a count or a size.
 - A command returns `Result<T, CommandError>`. A rejected call throws the serialized `CommandError { kind, code, message }`, which `extractErrorMessage` reads. Call `log_failure(command, &error)` in the `map_err`. Messages never carry secrets.
@@ -27,7 +27,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 ## Events
 
 - An event is a struct deriving `tauri_specta::Event`, named `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). The wire name is the one tauri-specta derives. Legacy channel strings are not used.
-- List it in `registry.rs` and emit it after commit with `events::broadcast` or `events::send_to`. Both log a failed delivery and return, so they are safe inside a transaction. Do not call `emit` directly.
+- Define it in `src-tauri/src/events/<area>.rs`, list it in `registry/<area>.rs`, and emit it after commit with `events::broadcast` or `events::send_to`. Both log a failed delivery and return, so they are safe inside a transaction. Do not call `emit` directly.
 
 ## Sync
 
@@ -52,10 +52,12 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 - Cmd/Ctrl+R and F5 reload the page in debug builds only (`windows/scripts/dev-keys.js`). In a release build View > Reload is the only reload.
 - React DevTools, which the Electron app loaded as an extension, has no counterpart here. Read component state through the inspector.
 - `pnpm seed1k` (`cargo xtask seed bench [--vault <dir>] [--count 1000] [--seed 42]`, from `crates/`) wipes `~/MemryBenchVault` and writes the benchmark vault in Rust (`crates/xtask`). The same count and seed give the TypeScript generator's bytes; `crates/xtask/tests/bulk_notes_golden.rs` holds the hashes it recorded. The demo, rich and small seeds still run on Electron until Step 40f.
+- `pnpm bench:memory -- --app <build> --vault <dir>` (`cargo xtask measure-memory`) measures the app and its web view processes on a temp profile under `MEMRY_DEVICE=memory-bench`; `pnpm bench:queries` runs `crates/memry-desktop/benches/vault_queries.rs`. Both are described in `apps/docs/src/contribute/testing.md`.
 
 ## Startup
 
 - `startup::register(stage, name, f)` adds work to a boot stage (`Paths`, `Logging`, `Guards`, ... `Schedulers`). `run()` executes stages in enum order. A failing stage exits with code 2. Do not edit `run()` to add boot work.
+- A registration can pause the boot with `startup::suspend_boot()`: the stages after it wait while the event loop runs, until `startup::resume_boot(app)` runs them on the main thread. The first-launch migration (`src-tauri/src/migration/`, `Stage::Migration`) is the one user: no telemetry, account, vault or sync stage may sort before it (`tests/startup.rs`).
 - `StartupState` is the one startup type. Rust publishes it as `window.__MEMRY_STARTUP__` through the main window's init script, and `src/renderer/src/lib/startup/` applies it before first paint.
 
 ## The not-ported shim

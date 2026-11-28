@@ -21,6 +21,7 @@ struct InboxDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(InboxRouter.self) private var router
+    @Environment(\.vaultSyncPasses) private var syncPasses
     @State private var item: InboxItemRecord?
     @State private var loaded = false
     @State private var title = ""
@@ -39,6 +40,11 @@ struct InboxDetailView: View {
                     VStack(alignment: .leading, spacing: Tokens.Space.inset) {
                         header(item)
                         InboxDetailContent(item: item, store: store, editable: !isArchived && !isFiled)
+                            .task(id: item.id) { await store.downloadFile(of: item) }
+                            // Opened offline, it downloads once a pass runs.
+                            .onChange(of: syncPasses) {
+                                Task { await store.downloadFile(of: item, afterPass: true) }
+                            }
                     }
                     .measuredColumn(Tokens.Size.reading)
                     .padding(.horizontal, InboxLayout.edge)

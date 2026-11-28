@@ -261,7 +261,7 @@ fn notes_and_journal_days_import_as_electron_pushes_them() {
     let files_before = vault_files(&vault.root);
 
     let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
     assert_eq!(report.tables["data.db/note_metadata"].target_count, 5);
     assert_eq!(report.tables["data.db/note_positions"].target_count, 1);
     assert_eq!(report.tables["index.db/note_snapshots"].target_count, 1);
@@ -440,7 +440,7 @@ fn hostile_note_files_take_electrons_paths() {
         .unwrap();
 
     let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
     assert_eq!(
         report.notices.get("unreadNoteFiles"),
         Some(&1),

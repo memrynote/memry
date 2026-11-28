@@ -52,7 +52,7 @@ private final class RecordedTitles: NotesWriting, @unchecked Sendable {
     }
 }
 
-extension NoteTitleRehostTests {
+extension KeyWindowSuites.NoteTitleRehostTests {
     /// #4691: the page menu's Rename over a title typed and not yet committed.
     /// Nested so it runs one test at a time with the re-host tests: both put a
     /// page in a scene window and give its title the caret.

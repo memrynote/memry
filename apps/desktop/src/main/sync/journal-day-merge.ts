@@ -13,9 +13,10 @@
  * build ignores the keys.
  */
 import { createHash } from 'crypto'
-import { eq, like } from 'drizzle-orm'
+import { relative, sep } from 'path'
+import { and, eq, like, ne } from 'drizzle-orm'
 import * as Y from 'yjs'
-import { foldTag } from '@memry/shared/tag-fold'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -26,22 +27,38 @@ import { compare as compareClocks, merge as mergeClocks } from '@memry/sync-clie
 import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
-import { deleteNoteMetadata, getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
+import {
+  deleteNoteMetadata,
+  getNoteMetadataById,
+  getNoteMetadataByPath,
+  updateNoteMetadata
+} from '@memry/storage-data'
+import { attachmentFiles } from '@memry/db-schema/data-schema'
+import type { NoteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { foldTag } from '@memry/shared/tag-fold'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
+import { getStatus as getVaultStatus } from '../vault/status'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
 import { createJournalEntry } from '../journal/create-entry'
 import { addJournalTags } from '../journal/update-entry'
+import { mergeTagLists } from '../vault/frontmatter'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
 import { EMPTY_DOC_UPDATE_BYTES, getCrdtProvider } from './crdt-provider'
+import {
+  countNoteFiles,
+  isRecordedAttachment,
+  ownFolderFiles,
+  referencedVaultFiles
+} from './attachment-files'
 import { getJournalSyncService } from './journal-sync'
+import { enqueueLocalSyncUpdate } from './local-mutations'
+import { JOURNAL_DAY_MERGE_KEY_PREFIX as KEY_PREFIX } from './journal-day-merge-key'
 import { recordPendingDelete } from './pending-deletes'
 
 const log = createLogger('JournalDayMerge')
-
-const KEY_PREFIX = 'journalDayMerge:'
 
 export interface OwedJournalDayMerge {
   foreignId: string
@@ -71,12 +88,30 @@ export interface OwedJournalDayMerge {
    */
   tags?: string[]
   /**
+   * The clock of the local row `tags` were read from, merged across
+   * sightings. Absent in an owed merge an older build wrote, and when the row
+   * was edited since its sync: its tags all count as unpushed.
+   */
+  holderClock?: VectorClock | null
+  /**
+   * The holder tags the device that deleted the foreign id may never have
+   * seen, weighed against its tombstone's clock (`unpushedHolderTags`). Added
+   * when the id was deleted elsewhere. Absent until a tombstone is weighed:
+   * every holder tag counts. Later weighings add to it.
+   */
+  unpushedTags?: string[]
+  /**
    * The foreign record's `tags`. Skipped like `recordMarkdown` when the id was
    * deleted elsewhere: the deleting device merged them, and a tag removed
    * since must not come back. The newest record's replace the ones kept, for
    * the same reason (core: `journal_day_merge/owed.rs`).
    */
   recordTags?: string[]
+  /**
+   * The attachment references of the local row that gave the day up. The row
+   * goes before the merge runs, so they are kept here for the day (OL-M47).
+   */
+  attachmentReferences?: string[]
 }
 
 /**
@@ -95,8 +130,18 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const fallbackMarkdown = merge.fallbackMarkdown ?? kept?.fallbackMarkdown
   const recordMarkdown = merge.recordMarkdown ?? kept?.recordMarkdown
   const deleted = merge.deleted || kept?.deleted
-  const tags = unionTags(kept?.tags ?? [], merge.tags ?? [])
+  const tags = mergeTagLists(kept?.tags ?? [], merge.tags ?? [])
   const recordTags = merge.recordTags ?? kept?.recordTags ?? []
+  const attachmentReferences = unionOf(kept?.attachmentReferences, merge.attachmentReferences)
+  const holderClock =
+    kept?.holderClock && merge.holderClock
+      ? mergeClocks(kept.holderClock, merge.holderClock)
+      : (merge.holderClock ?? kept?.holderClock ?? undefined)
+  // A sighting reads the holder's tags as its day file holds them now: an
+  // unpushed tag the user removed since stays removed (#5694).
+  const weighed = addWeighing(kept?.unpushedTags, merge.unpushedTags)
+  const held = new Set((merge.tags ?? []).map(foldTag))
+  const unpushedTags = merge.tags ? weighed?.filter((tag) => held.has(foldTag(tag))) : weighed
   const value = JSON.stringify({
     ...merge,
     clock,
@@ -104,7 +149,10 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
     ...(recordMarkdown ? { recordMarkdown } : {}),
     ...(deleted ? { deleted: true } : {}),
     tags: tags.length > 0 ? tags : undefined,
-    recordTags: recordTags.length > 0 ? recordTags : undefined
+    recordTags: recordTags.length > 0 ? recordTags : undefined,
+    attachmentReferences: attachmentReferences.length > 0 ? attachmentReferences : undefined,
+    holderClock,
+    unpushedTags
   })
   db.insert(syncState)
     .values({ key: KEY_PREFIX + merge.foreignId, value, updatedAt: new Date() })
@@ -116,15 +164,109 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
 /**
  * A tombstone for an owed id means another device merged and deleted it. What
  * this device holds of its body still merges, but it owes no tombstone, and an
- * empty body no longer keeps it owed.
+ * empty body no longer keeps it owed. The tags of a holder the day already
+ * displaced are weighed against `tombstone` (#5659), on every delivery.
  */
-export function markOwedJournalDayMergeDeleted(db: DrizzleDb, foreignId: string): void {
+export function markOwedJournalDayMergeDeleted(
+  db: DrizzleDb,
+  foreignId: string,
+  tombstone: VectorClock | undefined
+): void {
   const owed = listOwedJournalDayMerges(db).find((merge) => merge.foreignId === foreignId)
-  if (!owed || owed.deleted) return
+  if (!owed) return
+  const unpushedTags = addWeighing(
+    owed.unpushedTags,
+    owed.tags && owed.holderClock
+      ? unpushedHolderTags(db, foreignId, owed.tags, owed.holderClock, tombstone ?? {})
+      : undefined
+  )
   db.update(syncState)
-    .set({ value: JSON.stringify({ ...owed, deleted: true }), updatedAt: new Date() })
+    .set({
+      value: JSON.stringify({ ...owed, deleted: true, unpushedTags }),
+      updatedAt: new Date()
+    })
     .where(eq(syncState.key, KEY_PREFIX + foreignId))
     .run()
+}
+
+/**
+ * The first weighing sets the unpushed list and later ones add to it. What a
+ * weighing reads is gone after the first: the tombstone drops the holder's
+ * queued edit, and `j<D>` removes its row (REVIEW-5691). No list is kept
+ * before a weighing, so the union never keeps a tag from before the first.
+ */
+function addWeighing(
+  kept: string[] | undefined,
+  weighed: string[] | undefined
+): string[] | undefined {
+  return kept && weighed ? mergeTagLists(kept, weighed) : (weighed ?? kept)
+}
+
+/**
+ * The holder tags the device that deleted `foreignId` may never have seen
+ * (§1.9.1 step 6; core `HolderTags::read`). None when no edit of the holder is
+ * queued and the tombstone's clock covers the holder row's: the deleting
+ * device merged the row as it is. Otherwise every one, as with no clock on
+ * either side: desktop keeps no snapshot of the last synced tags, so it adds a
+ * tag back rather than drop one.
+ */
+function unpushedHolderTags(
+  db: DrizzleDb,
+  foreignId: string,
+  tags: string[],
+  holderClock: VectorClock | null,
+  tombstone: VectorClock
+): string[] {
+  if (!holderClock || Object.keys(holderClock).length === 0) return tags
+  if (Object.keys(tombstone).length === 0) return tags
+  const order = compareClocks(holderClock, tombstone)
+  if (order !== 'before' && order !== 'equal') return tags
+  const queued = db
+    .select({ id: syncQueue.id })
+    .from(syncQueue)
+    .where(
+      and(
+        eq(syncQueue.type, 'journal'),
+        eq(syncQueue.itemId, foreignId),
+        ne(syncQueue.operation, 'delete')
+      )
+    )
+    .get()
+  return queued ? tags : []
+}
+
+/**
+ * A local holder's tags as its owed merge keeps them: weighed against
+ * `tombstone`, by default the one recorded for it, when there is one. A row
+ * edited since its sync holds an edit that neither its clock nor the queue
+ * may show: one made outside the app is never ticked, and is queued only by
+ * the next start's dirty sweep (REVIEW-5691). It has no clock to weigh, so
+ * every tag counts. Unknown `tags` (no readable day file) weigh nothing and
+ * leave the kept ones as they are: read as none, they would drop every
+ * unpushed tag the owed merge holds.
+ */
+export function holderTags(
+  db: DrizzleDb,
+  holderId: string,
+  tags: string[] | undefined,
+  row: Pick<NoteMetadata, 'clock' | 'syncedAt' | 'modifiedAt'> | undefined,
+  tombstone: VectorClock | null = readTombstoneClock(db, 'journal', holderId)
+): Pick<OwedJournalDayMerge, 'tags' | 'holderClock' | 'unpushedTags'> {
+  // The dirty sweep's test (`recoverDirtyJournals`).
+  const edited = !row?.syncedAt || row.modifiedAt > row.syncedAt
+  const holderClock = edited ? null : (row.clock ?? null)
+  if (!tags) return { holderClock }
+  return {
+    tags,
+    holderClock,
+    ...(tombstone
+      ? { unpushedTags: unpushedHolderTags(db, holderId, tags, holderClock, tombstone) }
+      : {})
+  }
+}
+
+function isOwed(db: DrizzleDb, foreignId: string): boolean {
+  return listOwedJournalDayMerges(db).some((owed) => owed.foreignId === foreignId)
 }
 
 export function listOwedJournalDayMerges(db: DrizzleDb): OwedJournalDayMerge[] {
@@ -161,6 +303,8 @@ export function journalTombstonedPast(
 
 export interface JournalDayMergeDeps {
   db: DrizzleDb
+  /** The open vault, where a foreign row's attachment files are. */
+  vaultPath: string
   deviceId: string
   /** Merges the server's body for `id` into its local doc. False when it is not fully merged. */
   pullBody: (id: string) => Promise<boolean>
@@ -202,6 +346,124 @@ export interface JournalDayMergeDeps {
   enqueueDelete: (id: string, payload: string) => void
 }
 
+function unionOf(a: string[] | null | undefined, b: string[] | null | undefined): string[] {
+  return [...new Set([...(a ?? []), ...(b ?? [])])]
+}
+
+/**
+ * The day takes over the foreign id's attachments: its references, and its
+ * file records, so `attachments/<foreignId>/…` that the folded body embeds
+ * still resolves and is neither downloaded again nor uploaded as a second
+ * copy. The files stay where they are. Idempotent, so a crash before the
+ * tombstone carries the same set again. False when the day has no row to
+ * carry to.
+ *
+ * A day's pictures are fetchable wherever the day is. A journal payload has
+ * no `attachmentReferences`, so the day names them to peers in a `note`
+ * record under its id, as an upload to the day does (`recordOnNote`, #5731).
+ * The server keeps each attachment by its own id, not by note (chapter 14
+ * §14.7), so the bytes the foreign id uploaded need no second upload: a
+ * device that never held the foreign row fetches them once the day names
+ * their ids (#5746). Pushed on every carry, so a crash between the row write
+ * and the push still names them on the retry.
+ */
+function carryAttachments(
+  db: DrizzleDb,
+  vaultPath: string,
+  foreignId: string,
+  targetId: string,
+  references: string[],
+  /** The foreign text folded into the day, when the fold built it from text. */
+  body: string | null
+): boolean {
+  const day = getNoteMetadataById(db, targetId)
+  if (!day) return false
+  const merged = unionOf(day.attachmentReferences, references)
+  if (merged.length > (day.attachmentReferences ?? []).length) {
+    updateNoteMetadata(db, targetId, { attachmentReferences: merged })
+  }
+  for (const record of db
+    .select()
+    .from(attachmentFiles)
+    .where(eq(attachmentFiles.noteId, foreignId))
+    .all()) {
+    db.insert(attachmentFiles)
+      .values({ ...record, noteId: targetId })
+      .onConflictDoNothing()
+      .run()
+  }
+  const embedded = body ? referencedVaultFiles(body, vaultPath, day.path, foreignId) : []
+  recordUnnamedFiles(db, vaultPath, foreignId, targetId, references, embedded)
+  if (references.length > 0) enqueueLocalSyncUpdate('note', targetId)
+  return true
+}
+
+/**
+ * A foreign row from before the file record (#2651) names its references in
+ * no record, so the day would owe each one a download into its own folder: a
+ * second copy of a file already in `attachments/<foreignId>/` (REVIEW-5743).
+ * The files there that no record pairs with an id hold those references.
+ * Ids are random per upload, stored names carry no id, and this device keeps
+ * no hash or size per id, so a file pairs with an id only when one reference
+ * and one file are unrecorded and the text folded into the day embeds that
+ * file: a stale file left in the folder is not the picture (VERIFY-5743R3).
+ * With no text, as when the body came as Yjs state, nothing pairs.
+ * Otherwise the files are counted as known, as `recordAttachmentFile` counts
+ * an older note's, so none is uploaded again,
+ * and the references stay owed: the downloader moves a file that is really
+ * missing to where the body links it, and one already here may land a second
+ * copy (VERIFY-5743R2).
+ */
+function recordUnnamedFiles(
+  db: DrizzleDb,
+  vaultPath: string,
+  foreignId: string,
+  targetId: string,
+  references: string[],
+  embedded: string[]
+): void {
+  const unnamed = references.filter((id) => !isRecordedAttachment(db, targetId, id))
+  if (unnamed.length === 0) return
+  const paired = new Set(
+    db
+      .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+      .from(attachmentFiles)
+      .where(eq(attachmentFiles.noteId, targetId))
+      .all()
+      .flatMap((row) => (row.attachmentId === null ? [] : [row.path]))
+  )
+  const files = ownFolderFiles(vaultPath, foreignId).filter(
+    (file) => !paired.has(relative(vaultPath, file).split(sep).join('/'))
+  )
+  if (files.length === 0) return
+  // A file is recorded under an attachment id only when nothing else could be
+  // that attachment. Directory order is not upload order, so two or more never
+  // pair by position: a wrong pair revives the wrong bytes under an id.
+  if (files.length !== 1 || unnamed.length !== 1 || !embedded.includes(files[0])) {
+    countNoteFiles(db, vaultPath, targetId, files)
+    log.warn('A foreign journal names attachments no file can be paired with', {
+      foreignId,
+      targetId,
+      unnamed: unnamed.length,
+      files: files.length
+    })
+    return
+  }
+  const [attachmentId] = unnamed
+  db.insert(attachmentFiles)
+    .values({
+      noteId: targetId,
+      path: relative(vaultPath, files[0]).split(sep).join('/'),
+      attachmentId,
+      recordedAt: Date.now()
+    })
+    .onConflictDoUpdate({
+      target: [attachmentFiles.noteId, attachmentFiles.path],
+      set: { attachmentId, recordedAt: Date.now() }
+    })
+    .run()
+}
+
 /** Log fields: never the fallback text, which is the user's journal. */
 function describe(merge: OwedJournalDayMerge): { foreignId: string; date: string } {
   return { foreignId: merge.foreignId, date: merge.date }
@@ -219,6 +481,24 @@ export async function drainJournalDayMerges(deps: JournalDayMergeDeps): Promise<
   return settled
 }
 
+/** Whether `j<date>`'s day file lacks one of `tags`, by the tag fold. */
+function dayLacksTag(db: DrizzleDb, date: string, tags: string[]): boolean {
+  if (tags.length === 0) return false
+  const held =
+    getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === generateJournalId(date)
+      ? (readDayTags(date) ?? [])
+      : []
+  const keys = new Set(held.map(foldTag))
+  return tags.some((tag) => !keys.has(foldTag(tag)))
+}
+
+/** A deleted id's tags the deleting device saw were added by it. */
+function addedTags(merge: OwedJournalDayMerge): string[] {
+  return merge.deleted
+    ? (merge.unpushedTags ?? merge.tags ?? [])
+    : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
+}
+
 /** `j<date>` has no row here and this device recorded its tombstone. */
 function dayDeleted(db: DrizzleDb, targetId: string): boolean {
   return !getNoteMetadataById(db, targetId) && readTombstoneClock(db, 'journal', targetId) !== null
@@ -226,6 +506,11 @@ function dayDeleted(db: DrizzleDb, targetId: string): boolean {
 
 async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): Promise<boolean> {
   const targetId = generateJournalId(merge.date)
+  // Read before `ensureDay` removes a foreign row that holds the day.
+  const references = unionOf(
+    merge.attachmentReferences,
+    getNoteMetadataById(deps.db, merge.foreignId)?.attachmentReferences
+  )
   // A deleted id's server body is already in the day, merged by the device
   // that deleted it; only what this device holds is left to fold in.
   const bodyPulled = merge.deleted === true || (await deps.pullBody(merge.foreignId))
@@ -242,7 +527,13 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
   // state and its holder file text still fold: they may never have been
   // pushed (#2984).
   if (!merge.deleted) fallback ??= merge.recordMarkdown ?? null
-  const hasBody = bodyPulled && (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)))
+  const tags = addedTags(merge)
+  // A tag the day lacks may exist nowhere else, as one added offline to a
+  // blank holder: it merges with no body (#5659, #5699).
+  const carriesTags = dayLacksTag(deps.db, merge.date, tags)
+  const hasBody =
+    bodyPulled &&
+    (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)) || carriesTags)
   const step = planJournalDayMerge({
     deleted: merge.deleted === true,
     bodyPulled,
@@ -255,16 +546,23 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     return false
   }
   if (step.action === 'merge') {
+    // A user delete of the held day during an await above forgot the merge:
+    // the day is never built from it (§1.9.1).
+    if (!isOwed(deps.db, merge.foreignId)) return true
     await deps.ensureDay(merge.date)
     await deps.relinkTasks(merge.foreignId, targetId)
-    if (!(await deps.absorbBody(targetId, merge.foreignId, fallback))) {
+    if (!(await deps.absorbBody(targetId, merge.foreignId, fallback)) && !carriesTags) {
       log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
       return false
     }
-    const tags = merge.deleted
-      ? (merge.tags ?? [])
-      : unionTags(merge.tags ?? [], merge.recordTags ?? [])
-    if (tags.length > 0) await deps.addDayTags(merge.date, tags)
+    // Invariant (#5694): the tags added are the holder's as it holds them
+    // when the day takes it over, never as they were when the merge was owed.
+    // `ensureDay` owes a holder `F` again from its day file as it removes it,
+    // so the owed merge is read back after it.
+    const owed = listOwedJournalDayMerges(deps.db).find((o) => o.foreignId === merge.foreignId)
+    const added = owed ? addedTags(owed) : tags
+    if (added.length > 0) await deps.addDayTags(merge.date, added)
+    carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references, fallback)
   }
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
@@ -276,6 +574,12 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     if (deps.holdsTextNow(merge.foreignId, merge.date)) {
       log.info('Blank foreign journal gained text; the forget waits', describe(merge))
       return false
+    }
+    if (
+      !carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references, null) &&
+      references.length
+    ) {
+      log.warn('A forgotten foreign journal leaves its attachments with no day', describe(merge))
     }
     deps.removeRow(merge.foreignId)
   }
@@ -319,8 +623,11 @@ export function readDayBody(date: string): string | null {
   return readDay(date)?.content ?? null
 }
 
-export function readDayTags(date: string): string[] {
-  const tags: unknown = readDay(date)?.frontmatter.tags
+/** Undefined when the day file is missing or will not read: its tags are unknown, not none. */
+export function readDayTags(date: string): string[] | undefined {
+  const day = readDay(date)
+  if (!day) return undefined
+  const tags: unknown = day.frontmatter.tags
   return Array.isArray(tags) ? tags.map(String) : []
 }
 
@@ -332,17 +639,6 @@ function readDay(date: string): ReturnType<typeof parseJournalEntry> | null {
     log.warn('Could not read a journal day file', { date, error })
     return null
   }
-}
-
-/** By tag key, keeping the first spelling and its order, as the core's `tags::dedupe`. */
-function unionTags(kept: string[], added: string[]): string[] {
-  const seen = new Set<string>()
-  return [...kept, ...added].filter((tag) => {
-    const key = foldTag(tag.trim())
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
 }
 
 /**
@@ -371,7 +667,8 @@ export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<voi
       date,
       clock: row?.clock ?? null,
       fallbackMarkdown: readDayBody(date),
-      tags: readDayTags(date)
+      ...holderTags(db, holder.id, readDayTags(date), row),
+      attachmentReferences: row?.attachmentReferences ?? undefined
     })
     removeJournalRow(db, holder.id)
   } else if (readDayBody(date)?.trim()) {
@@ -388,10 +685,12 @@ export async function runJournalDayMerges(
   if (listOwedJournalDayMerges(db).length === 0) return
   const deviceId = getCurrentDeviceId(db)
   const journalSync = getJournalSyncService()
-  if (!deviceId || !journalSync) return
+  const vaultPath = getVaultStatus().path
+  if (!deviceId || !journalSync || !vaultPath) return
   const provider = getCrdtProvider()
   await drainJournalDayMerges({
     db,
+    vaultPath,
     deviceId,
     pullBody,
     localHolderText: (id, date) =>

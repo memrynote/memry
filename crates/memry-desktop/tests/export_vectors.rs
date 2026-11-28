@@ -134,7 +134,7 @@ fn write_children(doc: &Document, id: NodeId, in_pre: bool, out: &mut String) {
 }
 
 fn canonical_html(html: &str) -> String {
-    let doc = Document::parse_html(html);
+    let doc = Document::parse_html(html).expect("parse");
     let mut out = String::new();
     write_children(&doc, doc.root(), false, &mut out);
     out

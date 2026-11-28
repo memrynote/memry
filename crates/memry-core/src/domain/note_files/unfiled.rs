@@ -31,9 +31,18 @@ pub struct Unfiled {
 }
 
 /// A live markdown note, or a live day not owed a move of its file, that no row names.
+///
+/// Invariant, a live day owns its file (#5766, #5786): an id a live journal day holds reads as
+/// the day, never as the `notes` row a peer's same-id `note` record keeps beside it (Electron
+/// names a day's pictures that way, #5731). That row never names the day's first file (here),
+/// never places or patches it ([`placed`]), and its tombstone never sends the day's file to the
+/// trash ([`super::rows_of_deleted_notes`]). The journal layer alone places a day's file, at its
+/// date's path under the vault's format, and moves it there when a note record named it first
+/// (the desktop write-back's `day_place`).
 const UNFILED: &str = "SELECT id, title, folder_path, 0 AS is_day, aliases FROM notes n
   WHERE n.deleted_at IS NULL AND n.file_type = 'markdown'
     AND NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = n.id)
+    AND NOT EXISTS (SELECT 1 FROM journal_entries d WHERE d.id = n.id AND d.deleted_at IS NULL)
  UNION ALL
  SELECT id, date, NULL, 1,
         (SELECT aliases FROM journal_aliases a WHERE a.journal_id = j.id)
@@ -83,12 +92,14 @@ pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageEr
 /// The live markdown note or journal day `id` as its record reads now, whether or not a row
 /// names its file: what a pulled change gives the file it has (desktop write-back, #5309; a
 /// day's tags, other names and properties, #5509). `None` for a deleted day or note, and for a
-/// file note.
+/// file note. A live day's id reads as the day ([`UNFILED`]'s invariant, #5766).
 pub fn placed(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageError> {
     let found = conn
         .query_row(
-            "SELECT title, folder_path, 0, aliases FROM notes
+            "SELECT title, folder_path, 0, aliases FROM notes n
               WHERE id = ?1 AND deleted_at IS NULL AND file_type = 'markdown'
+                AND NOT EXISTS (SELECT 1 FROM journal_entries d
+                                 WHERE d.id = n.id AND d.deleted_at IS NULL)
              UNION ALL
              SELECT date, NULL, 1,
                     (SELECT aliases FROM journal_aliases a WHERE a.journal_id = j.id)

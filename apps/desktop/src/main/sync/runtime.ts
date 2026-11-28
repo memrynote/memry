@@ -112,7 +112,9 @@ import { recordNoteBodyPush } from './note-body-push-record'
 import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { createNoteBodyPush } from './note-body-push'
+import { isBinaryNote } from './note-body-apply'
 import { recoverDirtyItems } from './dirty-recovery'
+import { coverQueuedContentDeletes } from './local-doc-delete'
 import {
   markSyncEligible,
   markSyncIneligible,
@@ -294,7 +296,7 @@ let vaultKeyFailureLogged = false
 // prompt + sign-out) a single time, not on every failing pull cycle.
 let vaultKeyMismatchHandled = false
 
-function resetSyncServiceSingletons(): void {
+function resetSyncServiceSingletons(downloadSettleTimeoutMs?: number): Promise<void> {
   // The next start decides again and must pull again before a Readwise run
   // trusts the notes on disk (#1417).
   resetSyncDecision()
@@ -332,13 +334,16 @@ function resetSyncServiceSingletons(): void {
   // runtime's NetworkMonitor, so it has to die with the runtime: a carried-over
   // queue stays subscribed to a stopped monitor (reconnect wake-up dead, its
   // `online` flag frozen) and would upload vault A's leftovers under vault B.
-  // The DownloadQueue is disposed by the same registered reset.
-  resetAttachmentQueue()
+  // The DownloadQueue is disposed by the same registered reset, which owes its
+  // pull's requests while the vault's databases are open and resolves once its
+  // downloads recorded their outcomes, or after a bounded wait (REVIEW-5722).
+  const downloadsSettled = resetAttachmentQueue(downloadSettleTimeoutMs)
   // The re-drivers only make sense while a runtime is up to serve them.
   stopAttachmentDownloadRedriver()
   attachmentUploadRedriver.stop()
   deletedAssetReleaseRunner.stop()
   reviveHealRunner.stop()
+  return downloadsSettled
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
@@ -635,6 +640,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         recordPush: (noteId, event, pushed) =>
           recordNoteBodyPush(noteId, event, Date.now(), db, pushed),
         requestSnapshot: (noteId) => snapshotScheduler.request(noteId),
+        isBinaryNote: (noteId) => isBinaryNote(db, noteId),
         isSyncPaused
       })
 
@@ -905,6 +911,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         if (!crdtProvider.isNoteLocalOnly(noteId)) engine.markCrdtRemoteStateUnmerged(noteId)
       }
 
+      // Before the first pull, so a CLI delete takes the body vector this
+      // device held (#5661); the flush in `recoverDirtyItems` sends it.
+      await coverQueuedContentDeletes(runtimeSyncDb)
       recoverDirtyItems(runtimeSyncDb, adapters)
 
       pendingRuntime = {
@@ -1038,7 +1047,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       resetCrdtProvider()
 
       setActiveRuntime(null)
-      resetSyncServiceSingletons()
+      await resetSyncServiceSingletons()
       if (!pauseForKeychain(error, keychainDeps)) log.error('Failed to start sync runtime', error)
       // sync_enabled only fires on success, so a fleet-wide startup regression
       // would show up as an unexplained DROP in sync_enabled — emit the
@@ -1119,7 +1128,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   setOnTokenRefreshed(null)
   setOnSessionEnded(null)
 
-  resetSyncServiceSingletons()
+  const downloadsSettled = resetSyncServiceSingletons(options?.downloadSettleTimeoutMs?.())
 
   if (!active) {
     await getCrdtProvider()
@@ -1128,6 +1137,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
         log.error('Failed to destroy CrdtProvider while runtime inactive', err)
       })
     resetCrdtProvider()
+    await downloadsSettled
     return
   }
 
@@ -1149,5 +1159,6 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   active.ws.disconnect()
   active.network.removeListener('status-changed', active.onNetworkStatusChanged)
   active.network.stop()
+  await downloadsSettled
   log.info('Sync runtime stopped')
 }

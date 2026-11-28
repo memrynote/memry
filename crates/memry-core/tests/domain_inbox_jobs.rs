@@ -10,6 +10,11 @@ use rusqlite::{Connection, params};
 
 const NOW: i64 = 1_790_251_200_000;
 const DEVICE: &str = "desk";
+const ALL: &[InboxJobType] = &[
+    InboxJobType::MetadataScrape,
+    InboxJobType::ArticleExtract,
+    InboxJobType::Transcription,
+];
 
 fn open(label: &str) -> Db {
     let dir = tempfile::Builder::new()
@@ -40,7 +45,7 @@ fn a_capture_keeps_one_job_per_type_and_requeue_resets_it() {
         assert_eq!(first.max_attempts, 2);
         assert_eq!(first.next_run_at, NOW);
 
-        let claimed = jobs::claim_next(conn, NOW)?.expect("due");
+        let claimed = jobs::claim_next(conn, NOW, ALL)?.expect("due");
         jobs::fail(conn, &claimed.id, run(&claimed), "HTTP 403", 5_000, NOW)?;
 
         let again = jobs::enqueue(conn, &item, InboxJobType::MetadataScrape, NOW + 10)?;
@@ -65,23 +70,51 @@ fn the_earliest_due_job_is_claimed_and_a_future_one_waits() {
         let b = link(conn, "https://example.com/b");
         jobs::enqueue(conn, &a, InboxJobType::ArticleExtract, NOW + 100)?;
         jobs::enqueue(conn, &b, InboxJobType::MetadataScrape, NOW)?;
-        assert_eq!(jobs::next_due(conn)?, Some(NOW));
+        assert_eq!(jobs::next_due(conn, ALL)?, Some(NOW));
 
-        let job = jobs::claim_next(conn, NOW)?.expect("b is due");
+        let job = jobs::claim_next(conn, NOW, ALL)?.expect("b is due");
         assert_eq!(job.item_id, b);
         assert_eq!(job.status, InboxJobStatus::Running);
         assert_eq!(job.attempts, 1);
         assert_eq!(job.started_at, Some(NOW));
         assert!(
-            jobs::claim_next(conn, NOW + 99)?.is_none(),
+            jobs::claim_next(conn, NOW + 99, ALL)?.is_none(),
             "a is not due yet"
         );
-        assert_eq!(jobs::next_due(conn)?, Some(NOW + 100));
-        assert_eq!(jobs::claim_next(conn, NOW + 100)?.expect("a").item_id, a);
-        assert_eq!(jobs::next_due(conn)?, None);
+        assert_eq!(jobs::next_due(conn, ALL)?, Some(NOW + 100));
+        assert_eq!(
+            jobs::claim_next(conn, NOW + 100, ALL)?.expect("a").item_id,
+            a
+        );
+        assert_eq!(jobs::next_due(conn, ALL)?, None);
         Ok(())
     })
     .expect("claim");
+}
+
+#[test]
+fn a_runner_claims_and_waits_on_only_the_types_it_names() {
+    let db = open("types");
+    db.call_blocking(|conn| {
+        let item = link(conn, "https://example.com/a");
+        let voice = jobs::enqueue(conn, &item, InboxJobType::Transcription, NOW)?;
+        jobs::enqueue(conn, &item, InboxJobType::MetadataScrape, NOW + 100)?;
+        let links = &[InboxJobType::MetadataScrape, InboxJobType::ArticleExtract];
+        assert_eq!(jobs::next_due(conn, links)?, Some(NOW + 100));
+        assert!(jobs::claim_next(conn, NOW, links)?.is_none());
+        let job = jobs::claim_next(conn, NOW + 100, links)?.expect("the link's job");
+        assert_eq!(job.job_type, InboxJobType::MetadataScrape);
+        assert_eq!(jobs::next_due(conn, links)?, None);
+        assert!(jobs::claim_next(conn, NOW + 200, &[])?.is_none());
+        let left = jobs::list(
+            conn,
+            std::slice::from_ref(&item),
+            &[InboxJobStatus::Pending],
+        )?;
+        assert_eq!(left, vec![voice]);
+        Ok(())
+    })
+    .expect("types");
 }
 
 #[test]
@@ -91,15 +124,15 @@ fn a_failure_retries_after_the_delay_until_attempts_run_out() {
         let item = link(conn, "https://example.com/a");
         jobs::enqueue(conn, &item, InboxJobType::MetadataScrape, NOW)?;
 
-        let first = jobs::claim_next(conn, NOW)?.expect("due");
+        let first = jobs::claim_next(conn, NOW, ALL)?.expect("due");
         let retried =
             jobs::fail(conn, &first.id, run(&first), "HTTP 503", 5_000, NOW)?.expect("running");
         assert_eq!(retried.status, InboxJobStatus::Pending);
         assert_eq!(retried.next_run_at, NOW + 5_000);
         assert_eq!(retried.last_error.as_deref(), Some("HTTP 503"));
-        assert!(jobs::claim_next(conn, NOW + 4_999)?.is_none());
+        assert!(jobs::claim_next(conn, NOW + 4_999, ALL)?.is_none());
 
-        let second = jobs::claim_next(conn, NOW + 5_000)?.expect("due again");
+        let second = jobs::claim_next(conn, NOW + 5_000, ALL)?.expect("due again");
         assert_eq!(second.attempts, 2);
         let failed = jobs::fail(
             conn,
@@ -112,7 +145,7 @@ fn a_failure_retries_after_the_delay_until_attempts_run_out() {
         .expect("ran");
         assert_eq!(failed.status, InboxJobStatus::Failed);
         assert_eq!(failed.completed_at, Some(NOW + 6_000));
-        assert!(jobs::claim_next(conn, NOW + 60_000)?.is_none());
+        assert!(jobs::claim_next(conn, NOW + 60_000, ALL)?.is_none());
         assert_eq!(
             jobs::list(conn, &[], &[InboxJobStatus::Failed])?.len(),
             1,
@@ -129,7 +162,7 @@ fn a_finish_after_the_job_was_queued_again_changes_nothing() {
     db.call_blocking(|conn| {
         let item = link(conn, "https://example.com/a");
         jobs::enqueue(conn, &item, InboxJobType::MetadataScrape, NOW)?;
-        let running = jobs::claim_next(conn, NOW)?.expect("due");
+        let running = jobs::claim_next(conn, NOW, ALL)?.expect("due");
         jobs::enqueue(conn, &item, InboxJobType::MetadataScrape, NOW + 1)?;
 
         assert_eq!(
@@ -148,7 +181,7 @@ fn a_finish_after_the_job_was_queued_again_changes_nothing() {
         );
         assert_eq!((job.attempts, job.run_id.as_deref()), (0, None));
 
-        let next = jobs::claim_next(conn, NOW + 3)?.expect("the new run");
+        let next = jobs::claim_next(conn, NOW + 3, ALL)?.expect("the new run");
         assert_ne!(next.run_id, running.run_id, "each claim is a new run");
         let done = jobs::finish(conn, &next.id, run(&next), NOW + 4)?.expect("running");
         assert_eq!(done.status, InboxJobStatus::Complete);
@@ -170,7 +203,7 @@ fn resume_requeues_an_interrupted_job_once_and_drops_deleted_captures() {
         states::delete_permanent(conn, &gone, DEVICE, NOW)?;
 
         // A quit mid-transcription (one attempt allowed) still runs it again.
-        let job = jobs::claim_next(conn, NOW)?.expect("due");
+        let job = jobs::claim_next(conn, NOW, ALL)?.expect("due");
         assert_eq!(job.item_id, kept);
         let resumed = jobs::resume(conn, NOW + 1)?;
         assert_eq!(
@@ -181,7 +214,7 @@ fn resume_requeues_an_interrupted_job_once_and_drops_deleted_captures() {
         assert_eq!((job.status, job.attempts), (InboxJobStatus::Pending, 1));
 
         // Interrupted again: it fails rather than loop.
-        jobs::claim_next(conn, NOW + 2)?.expect("due");
+        jobs::claim_next(conn, NOW + 2, ALL)?.expect("due");
         let resumed = jobs::resume(conn, NOW + 3)?;
         assert_eq!((resumed.requeued, resumed.exhausted), (0, 1));
         assert_eq!(
@@ -206,8 +239,8 @@ fn a_row_a_newer_build_wrote_is_neither_listed_nor_claimed() {
         )
         .expect("insert");
         assert!(jobs::list(conn, &[], &[])?.is_empty());
-        assert!(jobs::claim_next(conn, NOW)?.is_none());
-        assert_eq!(jobs::next_due(conn)?, None);
+        assert!(jobs::claim_next(conn, NOW, ALL)?.is_none());
+        assert_eq!(jobs::next_due(conn, ALL)?, None);
         Ok(())
     })
     .expect("newer");
@@ -219,9 +252,9 @@ fn a_finish_from_a_run_superseded_by_a_second_claim_changes_nothing() {
     db.call_blocking(|conn| {
         let item = link(conn, "https://example.com/a");
         jobs::enqueue(conn, &item, InboxJobType::MetadataScrape, NOW)?;
-        let run1 = jobs::claim_next(conn, NOW)?.expect("due");
+        let run1 = jobs::claim_next(conn, NOW, ALL)?.expect("due");
         jobs::enqueue(conn, &item, InboxJobType::MetadataScrape, NOW + 1)?;
-        let run2 = jobs::claim_next(conn, NOW + 2)?.expect("queued again");
+        let run2 = jobs::claim_next(conn, NOW + 2, ALL)?.expect("queued again");
 
         assert_eq!(
             jobs::finish(conn, &run1.id, run(&run1), NOW + 3)?,

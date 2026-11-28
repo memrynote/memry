@@ -4,8 +4,15 @@
 
 pub mod contract;
 pub mod defaults;
+pub mod project_contract;
+pub mod project_notes;
+mod projects;
+pub mod reminder_contract;
+pub mod reminder_service;
+pub mod reminders;
 pub mod service;
 pub mod write_contract;
 mod writes;
 
+pub use projects::{INBOX_ARCHIVE, INBOX_DELETE, PROJECT_NOT_FOUND, PROJECT_REORDER_FAILED};
 pub use writes::{MOVE_MANY_FAILED, REORDER_FAILED, TASK_NOT_FOUND};

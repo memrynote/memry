@@ -5,8 +5,8 @@
 //! `packages/contracts/src/sync-payloads.ts`). The writes are id-based and
 //! target-agnostic — [`dismiss`], [`snooze`], [`update`], [`delete`] — as
 //! desktop's `lib/reminders.ts` is; only creation names its target
-//! ([`create`] for a note, [`create_for_task`] for a task). The reads live in
-//! [`queries`].
+//! ([`create_reminder`] for any of them, [`create`] for a note,
+//! [`create_for_task`] for a task). The reads live in [`queries`].
 //!
 //! **`triggeredAt` is deliberately not written here**, and the chapter says
 //! why: each device shows its own notification, so a synced "already fired"
@@ -23,11 +23,13 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::crypto::sodium::random_bytes;
+use crate::domain::journal::valid_date;
 use crate::storage::repositories::{Change, instants, sync_items};
 use crate::sync::outbox::{self, Durable};
 
 use super::notes::{insert_local, iso, next_clock, object, stamp, tombstone_local};
 
+pub mod fire;
 pub mod journal;
 mod queries;
 
@@ -58,6 +60,7 @@ const NANOID_ALPHABET: &[u8; 64] =
 /// because that is what zod's `.max()` counts.
 const MAX_TITLE_LEN: usize = 200;
 const MAX_NOTE_LEN: usize = 1_000;
+const MAX_HIGHLIGHT_LEN: usize = 5_000;
 
 /// Creates a reminder against a note.
 ///
@@ -104,20 +107,102 @@ pub struct NewTaskReminder<'a> {
     pub note: Option<&'a str>,
 }
 
-/// Creates a reminder against a task and returns its id.
-///
-/// The payload is the whole row desktop pushes (`toOutboundReminderPayload`):
-/// every nullable column present, the highlight and anchor ones as explicit
-/// `null`. `remindAt` is rewritten in `toISOString` form so that text order
-/// is instant order, which desktop's `ORDER BY remind_at` relies on.
+/// Creates a reminder against a task and returns its id ([`create_reminder`]).
 pub fn create_for_task(
     conn: &Connection,
     reminder: &NewTaskReminder<'_>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    if reminder.task_id.is_empty() {
-        return Err(invalid("a task reminder needs a task id".to_owned()));
+    let reminder = NewReminder {
+        id: reminder.id,
+        target: NewTarget::Task(reminder.task_id),
+        remind_at: reminder.remind_at,
+        title: reminder.title,
+        note: reminder.note,
+    };
+    create_reminder(conn, &reminder, device_id, now_ms)
+}
+
+/// What a reminder is set on: the arms of desktop's `CreateReminderSchema`.
+#[derive(Debug, Clone, Copy)]
+pub enum NewTarget<'a> {
+    Note(&'a str),
+    /// A journal day, `YYYY-MM-DD`.
+    Journal(&'a str),
+    /// A passage of a note: 1 to 5000 UTF-16 units at non-negative offsets.
+    Highlight {
+        note_id: &'a str,
+        text: &'a str,
+        start: i64,
+        end: i64,
+    },
+    Task(&'a str),
+    /// An inline date pill of a note.
+    NoteDate {
+        note_id: &'a str,
+        anchor_id: &'a str,
+    },
+}
+
+/// A new reminder on any target (desktop `createReminder`).
+#[derive(Debug, Clone, Copy)]
+pub struct NewReminder<'a> {
+    /// `None` mints desktop's `rem_<nanoid>`.
+    pub id: Option<&'a str>,
+    pub target: NewTarget<'a>,
+    /// An ISO instant strictly after `now_ms`.
+    pub remind_at: &'a str,
+    /// Empty is written as `null`, as desktop's `input.title || null` does.
+    pub title: Option<&'a str>,
+    /// Empty is written as `null`, as desktop's `input.note || null` does.
+    pub note: Option<&'a str>,
+}
+
+/// Creates a reminder and returns its id.
+///
+/// The payload is the whole row desktop pushes (`toOutboundReminderPayload`):
+/// every nullable column present, the ones the target does not use as explicit
+/// `null`. `remindAt` is rewritten in `toISOString` form so that text order
+/// is instant order, which desktop's `ORDER BY remind_at` relies on.
+pub fn create_reminder(
+    conn: &Connection,
+    reminder: &NewReminder<'_>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<String>, StorageError> {
+    let (target_type, target_id) = match reminder.target {
+        NewTarget::Note(id) => ("note", id),
+        NewTarget::Journal(date) => (journal::TARGET_JOURNAL, valid_date(date)?),
+        NewTarget::Highlight { note_id, .. } => ("highlight", note_id),
+        NewTarget::Task(id) => (TARGET_TASK, id),
+        NewTarget::NoteDate { note_id, .. } => ("note_date", note_id),
+    };
+    if target_id.is_empty() {
+        return Err(invalid(format!(
+            "a {target_type} reminder needs a target id"
+        )));
+    }
+    let (mut anchor_id, mut highlight) = (Value::Null, (Value::Null, Value::Null, Value::Null));
+    match reminder.target {
+        NewTarget::Highlight {
+            text, start, end, ..
+        } => {
+            let units = text.encode_utf16().count();
+            if units == 0 || units > MAX_HIGHLIGHT_LEN || start < 0 || end < 0 {
+                return Err(invalid(format!(
+                    "a highlight is 1 to {MAX_HIGHLIGHT_LEN} characters at non-negative offsets"
+                )));
+            }
+            highlight = (json!(text), json!(start), json!(end));
+        }
+        NewTarget::NoteDate { anchor_id: "", .. } => {
+            return Err(invalid(
+                "a note date reminder needs an anchor id".to_owned(),
+            ));
+        }
+        NewTarget::NoteDate { anchor_id: id, .. } => anchor_id = json!(id),
+        NewTarget::Note(_) | NewTarget::Journal(_) | NewTarget::Task(_) => {}
     }
     let remind_at = future_instant(reminder.remind_at, now_ms)?;
     let title = non_empty(reminder.title, "title", MAX_TITLE_LEN)?;
@@ -135,13 +220,13 @@ pub fn create_for_task(
         |tx| {
             let at = iso(now_ms)?;
             let payload = object(json!({
-                "targetType": TARGET_TASK,
-                "targetId": reminder.task_id,
+                "targetType": target_type,
+                "targetId": target_id,
                 "remindAt": remind_at,
-                "anchorId": null,
-                "highlightText": null,
-                "highlightStart": null,
-                "highlightEnd": null,
+                "anchorId": anchor_id,
+                "highlightText": highlight.0,
+                "highlightStart": highlight.1,
+                "highlightEnd": highlight.2,
                 "title": title,
                 "note": note,
                 "status": STATUS_PENDING,
@@ -195,7 +280,8 @@ pub fn update(
 }
 
 /// Deletes a reminder: a tombstone with its `delete` outbox row, which is
-/// what desktop's `deleteReminder` sends.
+/// what desktop's `deleteReminder` sends. This device's fire records go with
+/// it: nothing reads them once the reminder is gone.
 pub fn delete(
     conn: &Connection,
     id: &str,
@@ -204,7 +290,8 @@ pub fn delete(
 ) -> Result<Durable<()>, StorageError> {
     outbox::commit(conn, &outbox::Change::delete(ITEM_TYPE, id), now_ms, |tx| {
         require_live(tx, id)?;
-        tombstone_local(tx, ITEM_TYPE, id, device_id, now_ms)
+        tombstone_local(tx, ITEM_TYPE, id, device_id, now_ms)?;
+        fire::forget(tx, id)
     })
 }
 
@@ -230,7 +317,9 @@ pub fn dismiss(
     )
 }
 
-/// Snoozes a reminder until `until`.
+/// Snoozes a reminder until `until`, an ISO instant, written in `toISOString`
+/// form as `remindAt` is. Desktop's command refuses a time that is not in the
+/// future before it gets here; the iOS API has never refused one.
 pub fn snooze(
     conn: &Connection,
     id: &str,
@@ -238,12 +327,13 @@ pub fn snooze(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
+    let until = normalized(until)?;
     edit(
         conn,
         id,
         vec![
             ("status", Change::set(STATUS_SNOOZED)),
-            ("snoozedUntil", Change::set(until)),
+            ("snoozedUntil", Change::set(until.as_str())),
         ],
         device_id,
         now_ms,
@@ -267,11 +357,17 @@ pub(crate) fn edit(
     })
 }
 
+/// A write names a reminder that is gone: deleted here or on a peer, or never
+/// here at all. Desktop answers `errors:reminder.notFound` for both.
 fn require_live(tx: &Connection, id: &str) -> Result<(), StorageError> {
     match sync_items::load(tx, ITEM_TYPE, id)? {
         Some(row) if row.deleted_at.is_none() => Ok(()),
-        Some(_) => Err(invalid(format!("reminder {id} is deleted"))),
-        None => Err(invalid(format!("no reminder {id}"))),
+        Some(_) => Err(StorageError::NotFound {
+            what: format!("reminder {id} is deleted"),
+        }),
+        None => Err(StorageError::NotFound {
+            what: format!("no reminder {id}"),
+        }),
     }
 }
 
@@ -279,15 +375,20 @@ fn require_live(tx: &Connection, id: &str) -> Result<(), StorageError> {
 /// form. Desktop refuses a reminder time that is not in the future
 /// (`system:error.reminderTimeMustBeFuture`).
 fn future_instant(text: &str, now_ms: i64) -> Result<String, StorageError> {
-    let Some(at_ms) = instants::to_epoch_ms(text) else {
-        return Err(invalid(format!("`{text}` is not an ISO instant")));
-    };
-    if at_ms <= now_ms {
+    let at = normalized(text)?;
+    if instants::to_epoch_ms(&at).unwrap_or(i64::MIN) <= now_ms {
         return Err(invalid(format!(
             "reminder time must be in the future: `{text}`"
         )));
     }
-    iso(at_ms)
+    Ok(at)
+}
+
+/// `text` as an instant in `toISOString` form.
+fn normalized(text: &str) -> Result<String, StorageError> {
+    instants::to_epoch_ms(text)
+        .map(iso)
+        .ok_or_else(|| invalid(format!("`{text}` is not an ISO instant")))?
 }
 
 /// `Some("")` and `None` both write `null`, as desktop's `value || null`.

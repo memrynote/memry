@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { describe, it } from 'node:test'
 
 import {
@@ -9,7 +12,8 @@ import {
   buildLatestMacYml,
   buildLatestYml,
   describeBytes,
-  setupExeName
+  setupExeName,
+  writeBridgeFeeds
 } from './bridge-feeds.mjs'
 import { parseManifest, validateManifest } from '../validate-mac-update-manifest.mjs'
 
@@ -190,4 +194,65 @@ describe('bridge feeds', () => {
       )
     }
   })
+})
+
+describe('writeBridgeFeeds', () => {
+  const ciFiles = [
+    `MemryNote-${v}-arm64.zip`,
+    `MemryNote-${v}-arm64.dmg`,
+    `MemryNote-${v}-x64.zip`,
+    `MemryNote-${v}-x64.dmg`,
+    `MemryNote-${v}-x86_64.AppImage`,
+    `MemryNote-${v}-amd64.deb`
+  ]
+
+  function inTemp(files, fn) {
+    const dir = mkdtempSync(path.join(tmpdir(), 'bridge-feeds-'))
+    try {
+      for (const name of files) writeFileSync(path.join(dir, name), `bytes of ${name}`)
+      return fn(dir)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }
+  const hash = (name) => createHash('sha512').update(`bytes of ${name}`).digest('base64')
+
+  it('writes latest-mac.yml and latest-linux.yml from the staged CI files', () =>
+    inTemp(ciFiles, (dir) => {
+      assert.deepEqual(writeBridgeFeeds(dir, { version: v, releaseDate }), [
+        'latest-mac.yml',
+        'latest-linux.yml'
+      ])
+      const mac = parseManifest(readFileSync(path.join(dir, 'latest-mac.yml'), 'utf8'))
+      assert.deepEqual(
+        mac.files.map((file) => [file.url, file.sha512]),
+        [ciFiles[0], ciFiles[1], ciFiles[2], ciFiles[3]].map((name) => [name, hash(name)])
+      )
+      assert.deepEqual(validateManifest(mac, { requireMinimumSystemVersion: true }).errors, [])
+      const linux = readFileSync(path.join(dir, 'latest-linux.yml'), 'utf8')
+      assert.match(linux, new RegExp(`^path: MemryNote-${v}-x86_64\\.AppImage$`, 'm'))
+      assert.ok(linux.includes(`url: MemryNote-${v}-amd64.deb`))
+      assert.ok(!readdirSync(dir).includes('latest.yml'))
+    }))
+
+  it('adds latest.yml once the setup copy is staged', () =>
+    inTemp([...ciFiles, setupExeName(v)], (dir) => {
+      assert.ok(writeBridgeFeeds(dir, { version: v, releaseDate }).includes('latest.yml'))
+      assert.match(readFileSync(path.join(dir, 'latest.yml'), 'utf8'), /setup\.exe/)
+    }))
+
+  it('fails on a missing file instead of writing a feed without it', () =>
+    inTemp(
+      ciFiles.filter((name) => !name.endsWith('.deb')),
+      (dir) => {
+        assert.throws(
+          () => writeBridgeFeeds(dir, { version: v, releaseDate }),
+          /ENOENT.*amd64\.deb/
+        )
+        assert.deepEqual(
+          readdirSync(dir).filter((name) => name.endsWith('.yml')),
+          []
+        )
+      }
+    ))
 })

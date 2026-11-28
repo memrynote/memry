@@ -6,5 +6,5 @@ import { clearAttachmentState } from './sync-attachment-handlers'
 export function clearInMemoryAuthState(): void {
   clearAuthDeviceState()
   clearOAuthState()
-  clearAttachmentState()
+  void clearAttachmentState()
 }

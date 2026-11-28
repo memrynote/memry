@@ -57,9 +57,8 @@ pub fn duplicate(
     }
     valid_document_id(new_id)?;
     let snapshots = body_snapshots(conn, source_id, device_id)?;
-    let update = body_write::author_appends(conn, new_id, &snapshots, device_id)?;
-
     let tx = nested_tx::begin(conn).map_err(|error| CrdtError::from(failed(error)))?;
+    let update = body_write::author_appends(&tx, new_id, &snapshots, device_id)?;
     let stored = require_payload(&tx, ITEM_TYPE, source_id)?;
     let at = iso(now_ms)?;
     let mut payload = object(json!({

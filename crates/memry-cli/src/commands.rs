@@ -18,11 +18,12 @@ use memry_core::crdt::text_extract::{cross_shell_digest, extract_text};
 use memry_core::crdt::update_log;
 use memry_core::crypto::keys::base64_decode;
 use memry_core::protocol::account::{self, AccountCipher, VaultSummary};
+use memry_core::protocol::http::HttpClient;
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
 use memry_core::sync::body_pull::BodyPull;
-use memry_core::sync::pull::{PullLoop, PullReport};
+use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 
 use rusqlite::OptionalExtension as _;
 
@@ -113,6 +114,21 @@ pub async fn vaults(cli: &Cli) -> Result<(), CliError> {
     Ok(())
 }
 
+/// The record pull of `pull`. It carries this device's clock id, so a
+/// concurrent journal merge that re-queues is ticked for this device and
+/// stored rather than recorded corrupt (chapter 06 §6.12.3).
+fn record_pull(
+    http: Arc<HttpClient>,
+    db: Db,
+    cipher: Arc<dyn RecordCipher>,
+    vault: &str,
+    device_id: &str,
+) -> PullLoop {
+    PullLoop::new(http, db, Declaration::subscribed(), cipher)
+        .with_vault(vault)
+        .with_clock_device(device_id)
+}
+
 /// `pull --vault <id>`: one run of the core's pull loop into this vault's
 /// database.
 pub async fn pull(cli: &Cli, vault: &str) -> Result<(), CliError> {
@@ -123,9 +139,10 @@ pub async fn pull(cli: &Cli, vault: &str) -> Result<(), CliError> {
     let directory = account::device_directory(&http).await?;
     let cipher = Arc::new(AccountCipher::new(vault_key, directory));
 
+    let device_id = cli.device_id()?;
+
     let db = cli.open_vault(vault)?;
-    let report = PullLoop::new(http, db.clone(), Declaration::subscribed(), cipher.clone())
-        .with_vault(vault)
+    let report = record_pull(http, db.clone(), cipher.clone(), vault, &device_id)
         .run(MAX_PULL_PAGES)
         .await?;
 
@@ -421,6 +438,10 @@ pub fn format_hex(bytes: &[u8]) -> String {
     }
     out
 }
+
+#[cfg(test)]
+#[path = "pull_tests.rs"]
+mod pull_tests;
 
 #[cfg(test)]
 mod tests {

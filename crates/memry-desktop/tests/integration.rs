@@ -36,6 +36,8 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_gate_wiring.rs"]
+mod agent_gate_wiring;
 #[path = "agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent_mcp_http.rs"]
@@ -44,6 +46,8 @@ mod agent_mcp_http;
 mod agent_mcp_parts;
 #[path = "agent_store.rs"]
 mod agent_store;
+#[path = "agent_write_gate.rs"]
+mod agent_write_gate;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
 #[path = "ai_features.rs"]
@@ -72,6 +76,8 @@ mod app_edit;
 mod article_constants;
 #[path = "article_dom.rs"]
 mod article_dom;
+#[path = "article_guards.rs"]
+mod article_guards;
 #[path = "article_map.rs"]
 mod article_map;
 #[path = "article_markdown.rs"]
@@ -132,10 +138,14 @@ mod calendar_feeds;
 mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "canvas_assets.rs"]
+mod canvas_assets;
 #[path = "canvas_files.rs"]
 mod canvas_files;
 #[path = "canvas_folders.rs"]
 mod canvas_folders;
+#[path = "canvas_reconcile.rs"]
+mod canvas_reconcile;
 #[path = "canvas_service.rs"]
 mod canvas_service;
 #[path = "canvas_vault_id.rs"]
@@ -167,6 +177,10 @@ mod editor_host;
 mod editor_readonly;
 #[path = "electron_profile_fixture.rs"]
 mod electron_profile_fixture;
+#[path = "electron_vault_prep.rs"]
+mod electron_vault_prep;
+#[path = "electron_yjs_journal.rs"]
+mod electron_yjs_journal;
 #[path = "embedding_file_text.rs"]
 mod embedding_file_text;
 #[path = "embedding_owed.rs"]
@@ -219,20 +233,38 @@ mod import_runner;
 mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
+#[path = "importer_html_fetch.rs"]
+mod importer_html_fetch;
 #[path = "importer_noteplan.rs"]
 mod importer_noteplan;
+#[path = "importer_raindrop.rs"]
+mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
+#[path = "importer_ticktick.rs"]
+mod importer_ticktick;
+#[path = "importer_ticktick_dates.rs"]
+mod importer_ticktick_dates;
+#[path = "importer_todoist.rs"]
+mod importer_todoist;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
+#[path = "importer_untrusted_html.rs"]
+mod importer_untrusted_html;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
+#[path = "inbox_jobs.rs"]
+mod inbox_jobs;
+#[path = "inbox_review.rs"]
+mod inbox_review;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
 mod indexer_facts;
 #[path = "indexer_open_status.rs"]
 mod indexer_open_status;
+#[path = "indexer_reindex_coalesce.rs"]
+mod indexer_reindex_coalesce;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "ios_beta_join.rs"]
@@ -285,6 +317,10 @@ mod lock_service;
 mod lock_set;
 #[path = "logship.rs"]
 mod logship;
+#[path = "metadata_guards.rs"]
+mod metadata_guards;
+#[path = "metadata_vectors.rs"]
+mod metadata_vectors;
 #[path = "move_dir.rs"]
 mod move_dir;
 #[path = "move_journal.rs"]
@@ -317,6 +353,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_aliases_owed.rs"]
+mod notes_aliases_owed;
 #[path = "notes_append_blocks.rs"]
 mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]
@@ -351,6 +389,8 @@ mod notes_moves;
 mod notes_moves_edges;
 #[path = "notes_outside_after_reopen.rs"]
 mod notes_outside_after_reopen;
+#[path = "notes_outside_aliases.rs"]
+mod notes_outside_aliases;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
 #[path = "notes_plain_checklists.rs"]
@@ -389,6 +429,10 @@ mod path_collision;
 mod paths;
 #[path = "portals.rs"]
 mod portals;
+#[path = "project_note_files.rs"]
+mod project_note_files;
+#[path = "project_writes.rs"]
+mod project_writes;
 #[path = "properties_file.rs"]
 mod properties_file;
 #[path = "property_definitions.rs"]
@@ -399,6 +443,10 @@ mod property_definitions_seed;
 mod property_definitions_sync;
 #[path = "property_usage.rs"]
 mod property_usage;
+#[path = "reminder_commands.rs"]
+mod reminder_commands;
+#[path = "reminder_scheduler.rs"]
+mod reminder_scheduler;
 #[path = "sanitize_svg_inert.rs"]
 mod sanitize_svg_inert;
 #[path = "sanitize_svg_untrusted.rs"]
@@ -415,6 +463,8 @@ mod search_reasons;
 mod settings_service;
 #[path = "sticky_drafts.rs"]
 mod sticky_drafts;
+#[path = "sticky_send.rs"]
+mod sticky_send;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
@@ -452,6 +502,8 @@ mod templates_legacy;
 #[cfg(windows)]
 #[path = "trash_held.rs"]
 mod trash_held;
+#[path = "turndown_guards.rs"]
+mod turndown_guards;
 #[path = "typing_barrier.rs"]
 mod typing_barrier;
 #[path = "unsplash.rs"]

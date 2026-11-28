@@ -91,7 +91,7 @@ pub fn with_transient_retry<T>(
     operation()
 }
 
-fn temp_name() -> String {
+pub(super) fn temp_name() -> String {
     let id = uuid::Uuid::new_v4().simple().to_string();
     format!(".{}.tmp", &id[..12])
 }
@@ -137,7 +137,7 @@ fn write_once(
     result
 }
 
-fn open_temp(temp: &Path) -> io::Result<fs::File> {
+pub(super) fn open_temp(temp: &Path) -> io::Result<fs::File> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -150,7 +150,7 @@ fn open_temp(temp: &Path) -> io::Result<fs::File> {
 
 /// Best effort: a write error is the one to report. After a create the temp file was moved,
 /// or is the second name of the new file and has done its job.
-fn remove_temp(temp: &Path, written: bool) {
+pub(super) fn remove_temp(temp: &Path, written: bool) {
     let removed = fs::remove_file(temp);
     // A Windows create moves the temp file, so there is nothing left to remove.
     if written
@@ -167,7 +167,7 @@ fn remove_temp(temp: &Path, written: bool) {
 
 /// The replaced file's permissions, owner, group and extended attributes, put on the temp
 /// file. A failure is logged and does not stop the save: the content matters more than a tag.
-fn carry_over_attributes(target: &Path, temp: &Path) {
+pub(super) fn carry_over_attributes(target: &Path, temp: &Path) {
     let Ok(existing) = fs::metadata(target) else {
         return;
     };
@@ -210,15 +210,24 @@ fn carry_over_attributes(target: &Path, temp: &Path) {
 /// rename of `SetFileInformationByHandle`, which, unlike `MoveFileExW(REPLACE_EXISTING)`
 /// (access denied), replaces a file another process holds open with `FILE_SHARE_DELETE`:
 /// the antivirus-style reader the retry table exists for.
-fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
+pub(super) fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
     fs::rename(temp, target)
 }
 
 #[cfg(windows)]
 fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::{MOVEFILE_WRITE_THROUGH, MoveFileExW};
     use windows::core::PCWSTR;
-    let (from, to) = (wide_verbatim(from)?, wide_verbatim(to)?);
+    // A plain path fails past `MAX_PATH` on a deep vault; `std::fs` adds the prefix itself.
+    let wide = |path: &Path| -> io::Result<Vec<u16>> {
+        Ok(verbatim_path(path)?
+            .as_os_str()
+            .encode_wide()
+            .chain([0])
+            .collect())
+    };
+    let (from, to) = (wide(from)?, wide(to)?);
     // SAFETY: both buffers are NUL-terminated and outlive the call.
     unsafe {
         MoveFileExW(
@@ -230,18 +239,16 @@ fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
     .map_err(crate::shell::file_open::win_io_error)
 }
 
-/// `path` absolute, in the `\\?\` form and NUL-terminated: the form a wide Win32 call takes past
-/// `MAX_PATH` (260 characters). `std::fs` adds the prefix to its own calls; a direct `MoveFileExW`
-/// with a plain path fails on a vault that deep.
+/// `path` absolute in the literal `\\?\` form: `con` joined onto it is that folder, not the console.
 #[cfg(windows)]
-fn wide_verbatim(path: &Path) -> io::Result<Vec<u16>> {
-    use std::os::windows::ffi::OsStrExt;
+pub fn verbatim_path(path: &Path) -> io::Result<PathBuf> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::{Component, Prefix};
     // `GetFullPathNameW`: resolves `.` and `..` and turns `/` into `\`, which the verbatim form
     // takes literally. A path already verbatim comes back as it is.
     let path = std::path::absolute(path)?;
     let full = path.as_os_str().encode_wide();
-    let mut wide: Vec<u16> = match path.components().next() {
+    let wide: Vec<u16> = match path.components().next() {
         Some(Component::Prefix(prefix)) => match prefix.kind() {
             Prefix::Disk(_) => r"\\?\".encode_utf16().chain(full).collect(),
             // `\\server\share\x` is `\\?\UNC\server\share\x`.
@@ -250,8 +257,7 @@ fn wide_verbatim(path: &Path) -> io::Result<Vec<u16>> {
         },
         _ => full.collect(),
     };
-    wide.push(0);
-    Ok(wide)
+    Ok(std::ffi::OsString::from_wide(&wide).into())
 }
 
 /// Renames the file or folder `from` to `to` only while nothing is at `to`: `AlreadyExists`

@@ -10,6 +10,7 @@
 //! | canvases stamped with the local id or none still list           | rows of builds before #5505 |
 //! | a folder rename, move and delete carry synced canvases           | `folder-store.ts:395-741`   |
 //! | a pulled update keeps the stored vault id                        | §13.7.21 rule 4             |
+//! | a peer passes a restamp on to a fresh device                     | §13.7.21 rule 4, #5669      |
 
 use std::fs;
 use std::path::PathBuf;
@@ -102,8 +103,12 @@ fn downloading_device(server: &str) -> Device {
 
 impl Device {
     fn pull(&self, id: &str, payload: Value) {
+        self.pull_item("canvas", id, payload);
+    }
+
+    fn pull_item(&self, item_type: &str, id: &str, payload: Value) {
         let record = InboundRecord {
-            item_type: "canvas".into(),
+            item_type: item_type.into(),
             item_id: id.into(),
             payload_json: payload.to_string(),
             server_cursor: None,
@@ -118,14 +123,18 @@ impl Device {
 
     /// What this device pushes for `id`.
     fn pushed(&self, id: &str) -> Value {
-        let id = id.to_owned();
+        self.pushed_item("canvas", id)
+    }
+
+    fn pushed_item(&self, item_type: &str, id: &str) -> Value {
+        let (item_type, id) = (item_type.to_owned(), id.to_owned());
         let text: String = self
             .db
             .read_blocking(move |conn| {
                 Ok(conn
                     .query_row(
-                        "SELECT payload FROM sync_items WHERE item_type = 'canvas' AND item_id = ?1",
-                        [id],
+                        "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                        [item_type, id],
                         |row| row.get(0),
                     )
                     .unwrap())
@@ -203,17 +212,30 @@ fn a_canvas_made_on_a_downloaded_vault_lists_on_the_first_device() {
 }
 
 #[test]
-fn canvases_stamped_with_the_local_id_or_none_still_list() {
+fn a_bound_vault_lists_every_canvas_whatever_id_it_states() {
     let b = device();
     // Made here before the bind: stamped with the local id, as every build before #5505 did.
     b.create("Before bind");
     b.vault.bind_server_vault(SERVER).unwrap();
     b.pull("Unnamed", canvas("", "Unnamed", None, 1));
+    // A peer's pre-bind id (#5784): a bound data.db only holds this vault's records.
     b.pull(
         "Other vault",
         canvas("another-vault", "Other vault", None, 1),
     );
-    assert_eq!(b.titles(), ["Before bind", "Unnamed"]);
+    assert_eq!(b.titles(), ["Before bind", "Other vault", "Unnamed"]);
+}
+
+#[test]
+fn an_unbound_vault_hides_a_canvas_stating_another_id() {
+    let b = device();
+    b.create("Mine");
+    b.pull("Unnamed", canvas("", "Unnamed", None, 1));
+    b.pull(
+        "Other vault",
+        canvas("another-vault", "Other vault", None, 1),
+    );
+    assert_eq!(b.titles(), ["Mine", "Unnamed"]);
 }
 
 #[test]
@@ -248,4 +270,53 @@ fn a_pulled_update_keeps_the_stored_vault_id() {
     b.pull("Kept", canvas("some-other-vault", "Kept", None, 2));
     assert_eq!(b.stored_vault_id("Kept"), "");
     assert_eq!(b.titles(), ["Kept"]);
+}
+
+/// #5669: device R wrote a canvas and a folder under its local id, peer P pulled them, then R
+/// bound and restamped both. P pulls the restamp, either strictly after what it holds or over a
+/// third device's concurrent edit (a merge that keeps P's content and re-queues it). What P
+/// pushes then states the server id, so a fresh device lists the canvas and Electron the folder
+/// (`folder-store.ts:126`), instead of the restamp being undone through P.
+#[test]
+fn a_peer_passes_a_restamp_on_to_a_fresh_device() {
+    let r = device();
+    let canvas_id = r.create("Plan");
+    let folder_id = r.canvases.create_folder(None, "Work", NOW).unwrap().id;
+    let before = [
+        ("canvas", canvas_id.as_str(), r.pushed(&canvas_id)),
+        (
+            "canvas_folder",
+            folder_id.as_str(),
+            r.pushed_item("canvas_folder", &folder_id),
+        ),
+    ];
+    r.vault.bind_server_vault(SERVER).unwrap();
+    assert_eq!(r.vault.restamp_record_vaults("device-r").unwrap(), 2);
+
+    for concurrent in [false, true] {
+        let p = downloading_device(SERVER);
+        for (item_type, id, payload) in &before {
+            let mut payload = payload.clone();
+            if concurrent {
+                payload["clock"]["device-q"] = json!(1);
+                match *item_type {
+                    "canvas" => payload["scene"] = json!(scene("Q ink")),
+                    _ => payload["icon"] = json!("star"),
+                }
+            }
+            p.pull_item(item_type, id, payload);
+            p.pull_item(item_type, id, r.pushed_item(item_type, id));
+            let pushed = p.pushed_item(item_type, id);
+            assert_eq!(
+                pushed["vaultId"],
+                json!(SERVER),
+                "{item_type}, concurrent {concurrent}"
+            );
+        }
+        assert_eq!(p.titles(), ["Plan"]);
+
+        let f = downloading_device(SERVER);
+        f.pull(&canvas_id, p.pushed(&canvas_id));
+        assert_eq!(f.titles(), ["Plan"], "concurrent {concurrent}");
+    }
 }

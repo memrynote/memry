@@ -266,7 +266,7 @@ function AddAlternativeInput({
   }, [autoFocus, onFocused])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
-    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+    if (event.key === 'Enter') {
       event.preventDefault()
       if (!value.trim()) return
       onSubmit(value)

@@ -126,7 +126,7 @@ impl SubstackExtractor {
             if cx.qs(&selector)?.is_none() {
                 let wrapper = cx.doc.create_element("div");
                 cx.doc.set_attribute(wrapper, INJECTED_ATTR, "");
-                let fragment = cx.doc.parse_fragment(&body_html.to_js_string());
+                let fragment = cx.doc.parse_fragment(&body_html.to_js_string())?;
                 cx.doc.append_child(wrapper, fragment)?;
                 let root = cx.root;
                 let body = cx

@@ -15,6 +15,7 @@ pub mod agent_message;
 pub mod agent_queue;
 pub mod agent_records;
 pub mod app_settings;
+pub mod attachment_refs;
 pub mod attachment_uploads;
 pub mod attachments;
 pub mod body_tags;
@@ -40,6 +41,7 @@ pub mod fold_chunks;
 #[cfg(feature = "markdown")]
 pub mod folder_view;
 pub mod folders;
+pub mod graph;
 // Desktop's note edit only: iOS writes no note file, so it links none of it.
 #[cfg(feature = "markdown")]
 pub mod header_tags;
@@ -53,18 +55,21 @@ pub mod journal_rules;
 pub mod link_reads;
 #[cfg(feature = "vec")]
 pub mod note_embeddings;
+pub mod note_file;
 pub mod note_files;
 pub mod note_list;
 pub mod note_meta;
 pub mod note_positions;
 #[cfg(feature = "markdown")]
 pub mod note_properties;
+pub mod note_pulled_marks;
 pub mod note_snapshots;
 #[cfg(feature = "markdown")]
 pub mod note_stats;
 pub mod note_status;
 pub mod note_tasks;
 pub mod notes;
+pub mod owed_file_aliases;
 pub mod owed_file_body;
 pub mod projects;
 pub mod properties;
@@ -75,7 +80,7 @@ pub mod reads;
 pub mod readwise;
 pub mod readwise_highlights;
 pub mod recently_opened;
-mod recreate;
+pub(crate) mod recreate;
 pub mod recurrence;
 pub mod related_items;
 pub mod reminders;
@@ -116,6 +121,7 @@ pub mod template_admin;
 pub mod template_legacy;
 pub mod template_store;
 pub mod templates;
+pub mod unclocked_seed;
 pub mod unlinked_mentions;
 // Desktop's read-only locks: iOS keeps no vault files to lock.
 #[cfg(feature = "markdown")]

@@ -10,20 +10,30 @@
 //! `apps/desktop/src/main/import/__vectors__/importer-vectors.test.ts` records from the
 //! TypeScript importers and `tests/importer_vectors.rs` replays here.
 
+pub mod apple_journal;
 pub mod assets;
 pub mod bear;
 pub mod context;
 pub mod csv;
+pub mod csv_lex;
+pub mod enex;
+pub mod evernote;
 pub mod google_keep;
+pub mod html;
+pub mod html_md;
 pub mod markdown;
 pub mod messages;
 pub mod noteplan;
 pub mod obsidian_tasks;
+pub mod raindrop;
 pub mod registry;
+pub mod remote;
 pub mod roam;
 pub mod runner;
 pub mod sink;
 pub mod source_paths;
+pub mod ticktick;
+pub mod todoist;
 pub mod zip;
 
 use std::fs::{File, OpenOptions};
@@ -40,7 +50,9 @@ pub use context::{
 pub use messages::{ImportMessage, ImportText};
 pub use registry::Registry;
 pub use sink::{
-    ImportSink, ImportedJournalEntry, ImportedNote, ImportedTask, JournalEntry, SinkError,
+    BookmarkMetadata, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote,
+    ImportedProjectTask, ImportedRepeat, ImportedStatus, ImportedTask, ImportedTickTickTask,
+    JournalEntry, MonthlyRepeat, ProjectStatus, RepeatEnd, RepeatFrequency, SinkError, StatusKind,
 };
 
 /// The largest source file an importer reads into memory. Electron read any size; a larger file
@@ -51,6 +63,55 @@ pub const MAX_SOURCE_BYTES: u64 = 100 * 1024 * 1024;
 /// note at 20,000 characters (at most about 80 KB of JSON), so this holds over 6,500 notes of
 /// maximal length and far more of the usual few KB; Electron held any amount.
 pub const MAX_NOTE_JSON_BYTES: u64 = 512 * 1024 * 1024;
+
+/// The memory one run's plans may take, summed over every picked file, for an importer that
+/// plans every file before its first write (Raindrop, Todoist, TickTick). It holds about 300,000 items of a
+/// typical size; Electron had no bound.
+pub const MAX_PLANNED_BYTES: usize = 512 * 1024 * 1024;
+
+/// What a warning costs a plan besides its text.
+pub(crate) const WARNING_COST: usize = 256;
+
+/// The titles a preview group samples.
+pub(crate) const SAMPLE_MAX: usize = 5;
+
+/// The bytes one run's plans may still take, and the text a file fails with when its plan does not
+/// fit. Raindrop, Todoist and TickTick plan every picked file before the first write, so one
+/// budget spans the run.
+#[derive(Clone, Copy)]
+pub(crate) struct Budget {
+    left: usize,
+    too_many: &'static str,
+}
+
+impl Budget {
+    pub(crate) fn new(left: usize, too_many: &'static str) -> Self {
+        Self { left, too_many }
+    }
+
+    /// Takes `cost`; past what is left it takes nothing and returns the failure text.
+    pub(crate) fn charge(&mut self, cost: usize) -> Result<(), &'static str> {
+        self.left = self.left.checked_sub(cost).ok_or(self.too_many)?;
+        Ok(())
+    }
+}
+
+/// A message with neither a code nor params.
+pub(crate) fn message(text: String) -> ImportMessage {
+    ImportMessage {
+        code: None,
+        message: text,
+        params: None,
+    }
+}
+
+/// One count of a preview group.
+pub(crate) fn count(label_key: &str, value: usize) -> PreviewCount {
+    PreviewCount {
+        label_key: label_key.to_owned(),
+        value,
+    }
+}
 
 /// `ImportInput`: the picked paths and the importer's own options.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -193,20 +254,20 @@ pub(crate) fn open_regular(path: &Path) -> io::Result<(File, u64)> {
 /// becomes U+FFFD), refusing one over [`MAX_SOURCE_BYTES`] before it is read, and one that is
 /// not a regular file ([`open_regular`]).
 pub(crate) fn read_source_text(path: &Path) -> io::Result<String> {
-    let too_large = || {
-        io::Error::other(format!(
-            "File is larger than {} MB",
-            MAX_SOURCE_BYTES / (1024 * 1024)
-        ))
-    };
+    read_text_capped(path, MAX_SOURCE_BYTES)
+}
+
+/// [`read_source_text`] with its own cap, for a source whose files are larger by nature.
+pub(crate) fn read_text_capped(path: &Path, cap: u64) -> io::Result<String> {
+    let too_large = || io::Error::other(format!("File is larger than {} MB", cap / (1024 * 1024)));
     let (file, size) = open_regular(path)?;
-    if size > MAX_SOURCE_BYTES {
+    if size > cap {
         return Err(too_large());
     }
     let mut bytes = Vec::new();
     // A file that grew since the open is still cut off at the cap.
-    file.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > MAX_SOURCE_BYTES {
+    file.take(cap + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > cap {
         return Err(too_large());
     }
     Ok(match String::from_utf8(bytes) {

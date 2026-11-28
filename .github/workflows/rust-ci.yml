@@ -35,6 +35,7 @@ on:
       - 'scripts/check-test-timing*.mjs'
       - 'scripts/fetch-pdfium.mjs'
       - 'scripts/fetch-tesseract-sources.mjs'
+      - 'scripts/check-uniffi-not-gated.mjs'
       - '.github/workflows/rust-ci.yml'
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
@@ -48,12 +49,19 @@ on:
   # Main has no merge queue today. If it gets one, the gate reports there too.
   merge_group:
   workflow_dispatch:
-  # Every 6 hours: the legs the merge queue skips (Apple Silicon, the windows-arm64 e2e specs) on the
-  # head of feat/tauri-v2, the default branch, where schedules fire (#5035). A push the queue passed runs
+    inputs:
+      # Seeds the caches after a cache-key change without waiting for the 03:27 run: dispatch on
+      # feat/tauri-v2 with warm=true runs the warm legs only, as on a SHA a scheduled run passed.
+      warm:
+        description: Run only the cache-warm legs
+        type: boolean
+        default: false
+  # Every 6 hours: the legs the merge queue skips (Apple Silicon, every windows-11-arm leg, the Linux
+  # release perf budgets, the windows-arm64 e2e specs) on the head of feat/tauri-v2, the default branch, where schedules fire (#5035). A push the queue passed runs
   # none of them; a SHA a scheduled run already finished is skipped.
   schedule:
     - cron: '41 */6 * * *'
-    # Daily cache warm: runs the `checks` leg of each OS the merge queue runs, and saves its cargo cache,
+    # Daily cache warm: runs the `seams` leg of each OS the merge queue runs, and saves its cargo cache,
     # so merge groups and PRs restore a warm cache. It is also a normal scheduled run (a post-merge run
     # of the SHA when no earlier scheduled run passed it). The cron string is matched in the concurrency
     # group and in the plan job's WARM; scripts/ci-tier.test.mjs checks that they agree.
@@ -107,6 +115,8 @@ jobs:
       macos: ${{ steps.tier.outputs.macos }}
       linux_arm64: ${{ steps.tier.outputs.rust_linux_arm64 }}
       legs: ${{ steps.matrix.outputs.legs }}
+      archives: ${{ steps.matrix.outputs.archives }}
+      partitions: ${{ steps.matrix.outputs.partitions }}
       warm: ${{ steps.matrix.outputs.warm }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
@@ -132,8 +142,11 @@ jobs:
           post-merge: 'true'
 
       # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq). Post-merge (#5035): the scheduled
-      # run of feat/tauri-v2 runs Apple Silicon only, a push the merge queue passed runs nothing. The
-      # daily cache-warm run (WARM) adds the `checks` leg of each merge-queue OS to either.
+      # run of feat/tauri-v2 runs the legs the queue skips (Apple Silicon, windows-11-arm, the Linux perf
+      # budgets), a push the merge queue passed runs nothing. The daily cache-warm run (WARM) adds the
+      # `seams` leg of each merge-queue OS to either. The nextest partitions (the legs with a
+      # `partition`) go to test-partitions, and each of their OSes to test-archive, which builds the
+      # suite once for them.
       - name: Build the OS matrix
         id: matrix
         env:
@@ -142,14 +155,24 @@ jobs:
           INTEL: ${{ steps.tier.outputs.intel }}
           WINDOWS_LEGS: ${{ steps.tier.outputs.rust_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.rust_macos }}
-          POST_MERGE: ${{ steps.tier.outputs.post_merge }}
-          WARM: ${{ github.event_name == 'schedule' && github.event.schedule == '27 3 * * *' }}
+          POST_MERGE: ${{ github.event_name == 'workflow_dispatch' && inputs.warm && 'covered' || steps.tier.outputs.post_merge }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          WARM: ${{ (github.event_name == 'schedule' && github.event.schedule == '27 3 * * *') || (github.event_name == 'workflow_dispatch' && inputs.warm) }}
         run: |
-          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" --arg warm "$WARM" \
+          all=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" --arg event "$EVENT" --arg base "$BASE" --arg warm "$WARM" \
             -f .github/actions/ci-tier/rust-legs.jq)
-          echo "legs=$legs" >> "$GITHUB_OUTPUT"
-          echo "warm=$WARM" >> "$GITHUB_OUTPUT"
+          legs=$(jq -c 'map(select(.partition | not))' <<<"$all")
+          partitions=$(jq -c 'map(select(.partition))' <<<"$all")
+          archives=$(jq -c 'map(.os) | unique | map({os: .})' <<<"$partitions")
+          {
+            echo "legs=$legs"
+            echo "partitions=$partitions"
+            echo "archives=$archives"
+            echo "warm=$WARM"
+          } >> "$GITHUB_OUTPUT"
           echo "Legs: $legs"
+          echo "Test partitions: $partitions"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
       # would never report. Pushes keep their own `paths`; every other event outputs true. Of
@@ -160,10 +183,10 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
+          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/(report-flaky-tests|check-quarantine)(\.test)?\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/check-uniffi-not-gated\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
-    name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
+    name: Rust ${{ matrix.part }} (${{ matrix.os }})
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.post_merge != 'covered' || needs.plan.outputs.warm == 'true') && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
@@ -188,7 +211,11 @@ jobs:
     # without it took 80 minutes (run 44881363926); with it, #5048 hit the 90-minute limit twice (run
     # 44890333803, attempts 1 and 2), after all 7535 tests passed and in the memry-ml steps at the end.
     # macOS gets 120: the job needs about 95 minutes.
-    timeout-minutes: ${{ startsWith(matrix.os, 'macos') && 120 || ((matrix.os == 'windows-11-arm' || (matrix.os == 'ubuntu-22.04' && matrix.part == 'checks') || (matrix.os == 'windows-2022' && matrix.part == 'checks')) && 90 || 65) }}
+    # The 59-to-62-minute `checks` jobs above are now two parallel jobs, `lint` and `seams`. `seams` keeps
+    # 90 (the cold sync harness and live seam builds, and the model steps on the full tier); `lint` and
+    # `perf` get 65. The macOS `lint` and `seams` legs of a PR into feat/tauri-v2 take the same limits:
+    # their steps took 24 and 20 minutes of the 100-minute `all` job (run 45986308547).
+    timeout-minutes: ${{ (matrix.part == 'all' || matrix.part == 'checks') && 120 || ((matrix.os == 'windows-11-arm' || matrix.part == 'seams') && 90 || 65) }}
     strategy:
       fail-fast: false
       matrix:
@@ -196,11 +223,21 @@ jobs:
         # job that failed. macOS is the scarcest runner pool: no Mac in the merge queue, Apple
         # Silicon on a PR whose diff can break macOS, from `full-ci` up and on a push to feat/tauri-v2,
         # Intel only on main and dispatch.
-        include: ${{ fromJSON(needs.plan.outputs.legs || '[{"os":"ubuntu-22.04","part":"checks"},{"os":"ubuntu-22.04","part":"tests","partition":"1/2"},{"os":"ubuntu-22.04","part":"tests","partition":"2/2"}]') }}
+        include: ${{ fromJSON(needs.plan.outputs.legs || '[{"os":"ubuntu-22.04","part":"lint","lint":true},{"os":"ubuntu-22.04","part":"seams","seams":true}]') }}
     defaults:
       run:
         shell: bash
         working-directory: crates
+    env:
+      # Every `cargo nextest run` of a merge-queue run retries a failed test twice (nextest profile
+      # `merge-queue`): a flake there ejects the PR and costs a full requeue. The sync harness and the
+      # editor host budgets ejected six PRs with no retry. PR runs keep the default profile, with no
+      # retries, so a flake still fails review. A step that names `--profile live` overrides this.
+      NEXTEST_PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
+      # The live OS seams and the release read-pool test run everywhere but a PR into feat/tauri-v2's
+      # Linux and Windows legs: the merge queue runs those on the same change before it lands (RCA #5221
+      # item 11). The queue has no macOS leg, so a PR's macOS leg keeps them.
+      LIVE_SEAMS: ${{ !(github.event_name == 'pull_request' && github.base_ref == 'feat/tauri-v2') || startsWith(matrix.os, 'macos') }}
 
     steps:
       - name: Checkout
@@ -238,11 +275,16 @@ jobs:
       # Before the build, so it fails in seconds: a wall-clock upper bound in a test fails on a
       # loaded runner, not on slow code (two merge-queue ejections on 29 Oct).
       - name: No wall-clock upper bounds in tests
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.lint && runner.os == 'Linux'
         working-directory: .
         run: |
           node --test scripts/check-test-timing.test.mjs
           node scripts/check-test-timing.mjs
+
+      - name: Merge-queue quarantine list
+        if: matrix.lint && runner.os == 'Linux'
+        working-directory: .
+        run: node --test scripts/check-quarantine.test.mjs && node scripts/check-quarantine.mjs
 
       # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
       - name: Free disk space
@@ -253,7 +295,7 @@ jobs:
         if: runner.os == 'Linux'
         uses: ./.github/actions/apt-install
         timeout-minutes: 12
-        with:
+        with: &linux-libraries
           packages: >-
             libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf gnome-keyring libsecret-tools dbus-x11
 
@@ -282,11 +324,21 @@ jobs:
         if: runner.os == 'Windows' && runner.arch == 'X64'
         uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
 
-      # The repo's cache cap is 10 GB and the `checks` entries are 2.5-3.3 GB each, so each OS has one
-      # entry and only its `checks` leg saves it: every other partition restores it and writes nothing.
-      # macOS legs (`all`) restore and never save: their 2.5 GB would not fit the cap beside the rest.
-      # A checks leg saves on push, dispatch, the daily warm run and PRs into main. A tiered PR (base
-      # not main) and a merge-queue run restore what those saved and write nothing.
+      # The repo's cache cap is 50 GB (cache/storage-limit) and an OS's entry is 3-5.5 GB, so each
+      # merge-queue OS has one entry and only its `seams` leg saves it: lint and test-archive restore
+      # it and write nothing. macOS (every part, `seams` included) and windows-11-arm legs restore and never save: theirs would not
+      # fit the cap beside the queue's. Only runs on refs/heads/feat/tauri-v2 save (the daily warm run,
+      # dispatch there, and a push the queue did not cover or that changed a cache-key input such as
+      # Cargo.lock). PRs, merge groups and other refs restore feat/tauri-v2's entry, the default
+      # branch's, and write nothing: per-ref saves of 2.5-3.5 GB filled the cap and evicted it, and the
+      # hit rate fell to 0-25% from 18 Nov.
+      # The Linux `budget` leg keeps an entry of its own, saved the same way: its release build shares
+      # nothing with the debug entry, and rust-cache never saves over an exact key hit, so the debug
+      # entry saved before the calendar budget existed held none of it and every run compiled 457
+      # release crates (17 minutes, run 46058633973).
+      # The windows-2022 `lint` leg keeps one too: clippy checks its dependencies (rmeta), which the
+      # seams entry's build does not hold, so its cargo steps took 25 of its 18 to 29 minutes (run
+      # 46106151332).
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
@@ -298,9 +350,10 @@ jobs:
           workspaces: crates
           # The image in the key: rust-cache keys on job id + OS + arch only, so main's ubuntu-latest
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
-          # No partition in the key: tests and models restore the entry their OS's checks leg saved.
-          key: ${{ matrix.os }}-checks
-          save-if: ${{ matrix.part == 'checks' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          # No part in the key: every leg of an OS restores the entry its seams leg saved, but the
+          # Linux `budget` and windows-2022 `lint` legs, which restore and save their own (see above).
+          key: ${{ matrix.os }}-${{ matrix.budget && 'budget' || (matrix.os == 'windows-2022' && matrix.part == 'lint' && 'lint') || 'checks' }}
+          save-if: ${{ (matrix.part == 'seams' || matrix.part == 'budget' || (matrix.part == 'lint' && matrix.os == 'windows-2022')) && matrix.os != 'windows-11-arm' && !startsWith(matrix.os, 'macos') && github.ref == 'refs/heads/feat/tauri-v2' }}
           # The warm run exists to save: a flaky step must not lose its entry.
           cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
 
@@ -317,8 +370,7 @@ jobs:
 
       # memry-ml links ONNX Runtime statically. macOS x64, Windows and Linux x64 link the archive
       # of build-ort-static.yml (ORT_LIB_LOCATION); macOS arm64 downloads ort-sys's prebuilt one.
-      # The test partitions need it too: on Windows every memry-tauri test links memry-ml
-      # (tests/ml_link.rs).
+      # test-archive needs it too: on Windows every memry-tauri test links memry-ml (tests/ml_link.rs).
       - name: ONNX Runtime static library
         uses: ./.github/actions/ort-static
         with:
@@ -327,39 +379,39 @@ jobs:
       # memry-ml-worker links Tesseract, which its build.rs builds with cmake from these sources
       # (crates/AGENTS.md, PDF worker). Before Clippy: a workspace lint builds the worker's
       # `native` feature, so the cmake build runs once there and the worker steps below reuse it.
-      # The test partitions build no worker.
+      # test-archive builds no worker.
       - name: Tesseract sources
-        if: matrix.part != 'tests'
+        if: matrix.lint || matrix.seams || matrix.models || matrix.perf || matrix.budget
         uses: ./.github/actions/tesseract-sources
         with:
-          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Format
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.lint && runner.os == 'Linux'
         run: cargo fmt --all --check
 
       # macos-15-intel runs tests only: the Apple Silicon runner already lints the same macOS
       # code, and Intel Mac runner slots are the scarcest.
       - name: Clippy
-        if: matrix.part != 'tests' && matrix.part != 'models' && (runner.os != 'Windows' && matrix.os != 'macos-15-intel')
+        if: matrix.lint && (runner.os != 'Windows' && matrix.os != 'macos-15-intel')
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       # `crates/memry-cli/src/session.rs` imports `std::os::unix`, so memry-cli never builds on
       # Windows. The exclusion is recorded in crates/AGENTS.md.
       - name: Clippy (Windows, without memry-cli)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Windows'
+        if: matrix.lint && runner.os == 'Windows'
         run: cargo clippy --workspace --exclude memry-cli --all-targets -- -D warnings
 
       # The e2e build (cargo feature `e2e`) is compiled only by Desktop Tauri CI, which does not
       # lint it; an unused import sat in its test commands unseen (#3933).
       - name: Clippy (memry-tauri, e2e feature)
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os != 'macos-15-intel'
+        if: matrix.lint && matrix.os != 'macos-15-intel'
         run: cargo clippy -p memry-tauri --features e2e --all-targets -- -D warnings
 
       # Type-checks memry-core's ONNX Runtime binding (`semantic`), which host builds leave out.
       # A check never links, so no ONNX Runtime library is needed here.
       - name: Clippy (semantic feature)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.lint && runner.os == 'Linux'
         run: cargo clippy -p memry-core --all-targets --features semantic -- -D warnings
 
       # One nextest run over the three crates, with the markdown feature on for memry-core (memry-desktop
@@ -369,33 +421,34 @@ jobs:
         with:
           tool: nextest
 
-      # The merge queue retries a failed test twice (nextest profile `merge-queue`): a flake there
-      # ejects the PR and costs a full requeue. PR runs do not retry. The flaky-report job posts
-      # every test that passed only on retry to #3967.
+      # A macOS `all` leg builds and runs the suite in this job; the other legs run it from the
+      # archive of test-archive, in test-partitions. NEXTEST_PROFILE (job env) retries in the merge
+      # queue. The flaky-report job posts every test of this step that passed only on retry to #3967.
       - name: Test
-        if: matrix.part != 'checks' && matrix.part != 'models'
-        env:
-          PARTITION: ${{ matrix.partition }}
-          PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
-        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+        if: matrix.tests
+        run: |
+          FILTER=
+          if [ "$NEXTEST_PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
+          cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${FILTER:+-E "$FILTER"}
 
       - name: Upload the JUnit report (merge queue)
-        if: ${{ !cancelled() && matrix.part != 'checks' && matrix.part != 'models' && github.event_name == 'merge_group' }}
+        if: ${{ !cancelled() && (matrix.tests || matrix.seams) && github.event_name == 'merge_group' }}
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: nextest-junit-${{ matrix.os }}-${{ strategy.job-index }}
-          path: crates/target/nextest/merge-queue/junit.xml
+          # A tests leg runs one nextest step; a seams leg keeps one report per step (see Test memry-ml).
+          path: ${{ matrix.tests && 'crates/target/nextest/merge-queue/junit.xml' || format('{0}/nextest-junit/', runner.temp) }}
           if-no-files-found: ignore
           retention-days: 7
 
       - name: Doctests
-        if: matrix.part != 'tests' && matrix.part != 'models'
+        if: matrix.lint
         run: cargo test --doc -p memry-core -p memry-desktop -p memry-tauri --features memry-core/markdown
 
       # iOS links memry-core with no features; every target must still build that way.
       - name: Check memry-core (iOS feature set)
-        if: matrix.part != 'tests' && matrix.part != 'models'
+        if: matrix.lint
         run: cargo check -p memry-core --all-targets
 
       # Electron profile readers against the live OS secret store (#3523). Each test creates its
@@ -410,7 +463,7 @@ jobs:
       # windows-11-arm the lint alone took 8 minutes (BoringSSL builds from scratch there) and the
       # step timed out in the test build, before any test started (run 44756156023).
       - name: Electron profile readers, build (macOS, Windows)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os != 'Linux'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os != 'Linux'
         timeout-minutes: 30
         run: |
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
@@ -419,7 +472,7 @@ jobs:
           cargo nextest run -p memry-desktop --features live-os-secrets --test electron_secrets_live --no-run
 
       - name: Electron profile readers, live OS secrets (macOS, Windows)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os != 'Linux'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os != 'Linux'
         timeout-minutes: 10
         env:
           MEMRY_LIVE_KEYTAR: '1'
@@ -429,7 +482,7 @@ jobs:
       # runner with BoringSSL (run 44796950078) and 4m49s at worst without it, against a 10-minute limit.
       # BoringSSL builds twice in it, once for clippy and once for the test build.
       - name: Electron profile readers, build (Linux)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os == 'Linux'
         timeout-minutes: 20
         run: |
           cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked -- -D warnings
@@ -438,7 +491,7 @@ jobs:
       # Linux: gnome-keyring unlocked under a private session bus, then a second run with no
       # session bus at all, where the reader must answer "missing" and create nothing.
       - name: Electron profile readers, live OS secrets (Linux)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os == 'Linux'
         timeout-minutes: 10
         run: |
           dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_KEYTAR=1 cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test electron_secrets_live'
@@ -474,7 +527,7 @@ jobs:
       # login keychain). Windows: Credential Manager, including the 2560-byte
       # blob limit.
       - name: Unlocked keychain for the keychain seam (macOS)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'macOS'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os == 'macOS'
         run: |
           KC="$RUNNER_TEMP/memry-ci.keychain-db"
           security create-keychain -p ci "$KC"
@@ -484,7 +537,7 @@ jobs:
           security list-keychains -d user -s "$KC"
 
       - name: Keychain seam, live OS secrets (macOS, Windows)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os != 'Linux'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os != 'Linux'
         # A keychain access prompt never answers on a runner: fail fast instead of at the job limit.
         timeout-minutes: 10
         run: |
@@ -498,7 +551,7 @@ jobs:
       # daemon starts after the first call, which the next call must find. The two bus-less runs
       # use a bus config with no service directory, so D-Bus never activates gnome-keyring itself.
       - name: Keychain seam, live OS secrets (Linux)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os == 'Linux'
         timeout-minutes: 10
         run: |
           cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
@@ -546,7 +599,7 @@ jobs:
       # test adds and removes the only usable address. The test binary runs as root under
       # `unshare -n`: the namespace starts with loopback only.
       - name: Reachability seam, live network namespace (Linux)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && runner.os == 'Linux'
         timeout-minutes: 10
         run: |
           cargo test -p memry-desktop --test reachability_live --no-run
@@ -559,12 +612,15 @@ jobs:
       # without the shipping profile's fat LTO and single codegen unit: the test asserts liveness,
       # not speed, and that link took 3 to 7 minutes of every run.
       - name: Test (memry-core, read pool contention, release)
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os != 'macos-15-intel'
+        if: matrix.seams && env.LIVE_SEAMS == 'true' && matrix.os != 'macos-15-intel'
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
         run: cargo test -p memry-core --release --test read_pool_contention
 
+      # The release perf budgets run in the `perf` leg (ubuntu-22.04) only, off the PR and merge-queue
+      # path: on the 6-hourly post-merge schedule, pushes and dispatch. A failed scheduled run opens the
+      # post-merge-ci issue (the report job). On a shared runner they ejected PRs from the queue.
       # The editor host's time budgets (#3531): open, apply_update, sync step 1 and the quit's
       # write-back on a 2 KB, a 12 KB and a 5000-block note, release build as above. Linux only:
       # one runner type keeps the factor meaningful, and the macOS pool is the scarcest. The factor
@@ -573,7 +629,7 @@ jobs:
       # BoringSSL (run 44796950078): as one step with the test, it hit the 10-minute limit and ejected
       # #5048 from the merge queue. The test itself runs in under a minute.
       - name: Editor host budgets (memry-desktop, release), build
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os == 'ubuntu-22.04'
+        if: matrix.perf
         timeout-minutes: 20
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
@@ -581,7 +637,7 @@ jobs:
         run: cargo test -p memry-desktop --release --test editor_perf --no-run
 
       - name: Editor host budgets (memry-desktop, release)
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os == 'ubuntu-22.04'
+        if: matrix.perf
         timeout-minutes: 10
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
@@ -593,7 +649,7 @@ jobs:
       # Step 16 (#3533): a 500-row page of the six desktop-only types applies within 1.2x a page
       # of notes, times the same factor (decision 3533#issuecomment-6833047247).
       - name: Desktop record apply budget (memry-core, release)
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os == 'ubuntu-22.04'
+        if: matrix.perf
         timeout-minutes: 10
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
@@ -602,34 +658,68 @@ jobs:
           MEMRY_PERF_FACTOR: '3'
         run: cargo test -p memry-core --release --features markdown --lib sync::apply::bench -- --ignored --nocapture
 
+      # Step 29b (#3546): the calendar range read of one month (550 items) stays within 50 ms p95
+      # through the command, times the same factor as the budgets above.
+      # The cold release build is a step of its own, outside the run step's hang limit: as one step it
+      # took 12.1 and 13.6 minutes on this leg (runs 44806511703 and 44806862681) of its 15.
+      # Both steps run in the Linux `budget` leg, beside `seams` (rust-legs.jq).
+      - name: Calendar range budget (memry-tauri, release), build
+        if: matrix.budget
+        timeout-minutes: 20
+        env:
+          CARGO_PROFILE_RELEASE_LTO: 'false'
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+          # A release build defaults to MEMRY_ENV=production, whose build.rs needs SYNC_SERVER_URL.
+          MEMRY_ENV: development
+          MEMRY_PERF_ENFORCE: '1'
+          MEMRY_PERF_FACTOR: '3'
+        run: cargo test -p memry-tauri --release --test calendar --no-run
+
+      - name: Calendar range budget (memry-tauri, release)
+        if: matrix.budget
+        timeout-minutes: 15
+        env:
+          CARGO_PROFILE_RELEASE_LTO: 'false'
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+          # A release build defaults to MEMRY_ENV=production, whose build.rs needs SYNC_SERVER_URL.
+          MEMRY_ENV: development
+          MEMRY_PERF_ENFORCE: '1'
+          MEMRY_PERF_FACTOR: '3'
+        run: cargo test -p memry-tauri --release --test calendar calendar_get_range_month_perf -- --ignored --nocapture
+
       # The markdown converter (cargo feature `markdown`) is off by default so iOS links none
       # of it. The workspace clippy above only builds it where memry-desktop turns it on, so
       # the core is linted and tested with the feature explicitly.
       - name: Clippy (memry-core, markdown feature)
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os != 'macos-15-intel'
+        if: matrix.lint && matrix.os != 'macos-15-intel'
         run: cargo clippy -p memry-core --all-targets --features markdown -- -D warnings
 
       # Builds the ONNX Runtime environment, so a target whose library is missing or does not link
       # fails here, on every tier.
+      # Each seams nextest step of a merge-queue run keeps its JUnit report (the profile's one junit.xml
+      # is overwritten by the next run), so the flaky-report job posts a test that passed only on retry.
       - name: Test memry-ml
-        if: matrix.part != 'tests' && matrix.part != 'models'
-        run: cargo nextest run -p memry-ml --no-fail-fast
+        if: matrix.seams
+        run: |
+          cargo nextest run -p memry-ml --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/memry-ml.xml"; }
 
       # The PDF worker and its supervisor, on the pinned pdfium of this target (sha256 checked by
       # the script). Every OS leg, since the priority, kill and library-loading code is per OS.
       - name: Test memry-ml-worker
-        if: matrix.part != 'tests' && matrix.part != 'models'
+        if: matrix.seams
         env:
           MEMRY_PDFIUM_DIR: ${{ runner.temp }}/pdfium
         run: |
           node ../scripts/fetch-pdfium.mjs --out "$MEMRY_PDFIUM_DIR"
           cargo nextest run -p memry-ml-worker --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/memry-ml-worker.xml"; }
 
       # Tesseract, Leptonica and ONNX Runtime are linked into the worker statically, and on Windows
       # so is the VC runtime: the app ships none of their libraries and needs no VC++
       # redistributable.
       - name: memry-ml-worker linked libraries
-        if: matrix.part != 'tests' && matrix.part != 'models' && needs.plan.outputs.full == 'true'
+        if: matrix.seams && needs.plan.outputs.full == 'true'
         run: |
           cargo build -p memry-ml-worker --bin memry-ml-worker
           bin="target/debug/memry-ml-worker"
@@ -656,12 +746,13 @@ jobs:
       # the child, pdfium's text layer and OCR of a scanned image and PDF page (pdfium fetched by
       # the step above).
       - name: Test the file text runner on the worker
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && runner.os == 'Linux'
         env:
           MEMRY_PDFIUM_DIR: ${{ runner.temp }}/pdfium
         run: |
           cargo build -p memry-ml-worker --bins
           cargo nextest run -p memry-desktop --test file_text_worker --run-ignored only --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/file-text-worker.xml"; }
 
       # The model tests run on the full tier only (#3540 K5), in the one job per OS that rust-legs.jq
       # marks `models` (windows-11-arm: a `models` part of its own). The pinned text files (207 MB)
@@ -697,7 +788,7 @@ jobs:
           EOF
 
       - name: Save the text model (memry-ml smoke)
-        if: matrix.models && steps.model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.model-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/models
@@ -754,7 +845,7 @@ jobs:
           EOF
 
       - name: Save the vision encoder (memry-ml golden image)
-        if: matrix.models && steps.vision-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.vision-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -805,7 +896,7 @@ jobs:
           EOF
 
       - name: Save the audio encoder (memry-ml golden audio)
-        if: matrix.models && steps.audio-model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.audio-model-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -878,52 +969,270 @@ jobs:
           fi
 
       - name: Test memry-cli
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
-        run: cargo nextest run -p memry-cli --no-fail-fast
+        if: matrix.seams && runner.os == 'Linux'
+        run: |
+          cargo nextest run -p memry-cli --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/memry-cli.xml"; }
 
       # The Rust core against the real Worker (miniflare, the D1 migrations): two desktop vaults
       # sync through the engine (crates/memry-desktop/tests/sync_harness.rs, cargo feature
       # `harness`, served by tests/sync-harness/scripts/serve.ts). The workspace clippy above
       # builds the file without the feature, so it is linted here.
       - name: Setup pnpm (sync harness)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && runner.os == 'Linux'
         uses: ./.github/actions/setup-pnpm
 
       - name: Setup Node.js (sync harness)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && runner.os == 'Linux'
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
 
       - name: Install the sync harness and the agent MCP client
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && runner.os == 'Linux'
         working-directory: .
         run: pnpm install --frozen-lockfile --filter "@memry/sync-harness..." --filter "@memry/sync-server..." --filter "@memry/agent-mcp-client"
 
       - name: Sync harness (memry-desktop)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.seams && runner.os == 'Linux'
         run: |
           cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness -- -D warnings
           cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/sync-harness.xml"; }
 
       # The official TypeScript MCP client (tests/agent-mcp-client) against the agent MCP server
       # (crates/memry-desktop/tests/agent_mcp_client.rs, ignored where node is not installed).
       - name: Agent MCP client (memry-desktop)
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
-        run: cargo nextest run -p memry-desktop --test agent_mcp_client --run-ignored only --no-fail-fast
+        if: matrix.seams && runner.os == 'Linux'
+        run: |
+          cargo nextest run -p memry-desktop --test agent_mcp_client --run-ignored only --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/agent-mcp-client.xml"; }
 
       - name: Line ceilings
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.lint && runner.os == 'Linux'
         working-directory: .
         run: node scripts/check-line-ceilings.mjs
 
       # A release build has no web inspector (apps/desktop-tauri/AGENTS.md, Dev tools). Tauri
       # compiles one in when any crate turns on the `devtools` feature of tauri or wry.
       - name: No devtools feature in the desktop build
-        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        if: matrix.lint && runner.os == 'Linux'
         run: |
           cargo tree -p memry-tauri -e normal,build,features --target all > "$RUNNER_TEMP/features.txt"
           if grep -E '(tauri|tauri-runtime-wry|wry) feature "devtools"' "$RUNNER_TEMP/features.txt"; then exit 1; fi
+
+      # swift-bindings-fresh builds without `semantic` and the app links a build with it.
+      - name: No UniFFI export behind the semantic feature
+        if: matrix.lint && runner.os == 'Linux'
+        working-directory: .
+        run: node scripts/check-uniffi-not-gated.mjs
+
+  # The nextest suite of the Linux and Windows legs, and of the Apple Silicon leg of a PR into a base
+  # other than main (rust-legs.jq), compiled once per OS. Each test partition used
+  # to build the whole workspace itself, about 12 of a windows-2022 partition's 32 minutes (run
+  # 45763658725), which made that partition the merge queue's critical path. This job builds the
+  # suite into a `cargo nextest archive` (about 1.1 GB on Windows, 5.2 GB on Linux, whose binaries
+  # carry their line tables), and test-partitions runs it with no compile.
+  test-archive:
+    name: Rust tests build (${{ matrix.os }})
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.partitions != '[]' && (needs.plan.outputs.post_merge != 'covered' || needs.plan.outputs.warm == 'true') && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
+    runs-on: ${{ matrix.os }}
+    # windows-11-arm restores no cargo cache and builds BoringSSL from scratch (see lint-and-test).
+    # macos-15 restores an entry of its own (see Cache cargo): cold, its suite build took 21 to 26
+    # minutes (runs 45986308547, 46094183409).
+    timeout-minutes: ${{ matrix.os == 'windows-11-arm' && 90 || 65 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The OSes of the plan job's test partitions. The fallback is the fast tier's, for a plan job
+        # that failed.
+        include: ${{ fromJSON(needs.plan.outputs.archives || '[{"os":"ubuntu-22.04"}]') }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with: *lean-checkout
+
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
+
+      # memry-tauri's tests link the webview libraries.
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with: *linux-libraries
+
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        continue-on-error: true
+        with:
+          toolchain: '1.98.1'
+
+      - name: Setup Rust (retry)
+        if: steps.rust.outcome == 'failure'
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        with:
+          toolchain: '1.98.1'
+
+      - name: Install NASM
+        if: runner.os == 'Windows' && runner.arch == 'X64'
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
+
+      # Restores the entry lint-and-test's `seams` leg of this OS saves, and saves nothing (the cache
+      # cap, see lint-and-test). rust-cache puts the job id in its key, so this job names that job's
+      # id itself. macos-15 has no seams entry (macOS legs never save one): its archive keeps an
+      # entry of its own, saved only on refs/heads/feat/tauri-v2, by the cache-warm run, which builds
+      # the archive of the macOS partitions a PR runs (rust-legs.jq).
+      - name: Cache cargo
+        id: cargo-cache
+        uses: Swatinem/rust-cache@v2
+        timeout-minutes: 8
+        continue-on-error: true
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
+        with:
+          workspaces: crates
+          key: ${{ matrix.os == 'macos-15' && 'macos-15-tests-test-archive' || format('{0}-checks-lint-and-test', matrix.os) }}
+          add-job-id-key: false
+          save-if: ${{ matrix.os == 'macos-15' && github.ref == 'refs/heads/feat/tauri-v2' }}
+          cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
+
+      - name: Drop a partial cargo cache
+        if: steps.cargo-cache.outcome == 'failure'
+        run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
+
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
+
+      # On Windows every memry-tauri test links memry-ml (tests/ml_link.rs).
+      - name: ONNX Runtime static library
+        uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      # The test binaries, the binaries they run (CARGO_BIN_EXE_*) and the build scripts' runtime
+      # outputs, with the markdown feature on for memry-core as in lint-and-test's Test step.
+      - name: Build the nextest archive
+        run: |
+          cargo nextest archive -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --features memry-core/markdown --archive-file "$RUNNER_TEMP/nextest-archive.tar.zst"
+          ls -l "$RUNNER_TEMP/nextest-archive.tar.zst"
+
+      # Already zstd: no second compression. A rerun of this job replaces the archive of the attempt
+      # before it.
+      - name: Upload the nextest archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-archive-${{ matrix.os }}
+          path: ${{ runner.temp }}/nextest-archive.tar.zst
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 3
+
+  # The nextest suite of the Linux and Windows legs in six slices, macos-15's in four (nextest deals the tests of every
+  # binary round-robin; `count:` dealt per binary and put each one-test binary in partition 1), each
+  # run from its OS's archive, with no compile. The checkout is the workspace the tests read their fixtures from, and the archive unpacks
+  # into crates/target, the path the build compiled into CARGO_BIN_EXE_*.
+  test-partitions:
+    name: Rust tests ${{ matrix.partition }} (${{ matrix.os }})
+    needs: [plan, test-archive]
+    # An OS whose archive failed fails at the download; the other OSes still run.
+    if: ${{ !cancelled() && needs.test-archive.result != 'skipped' }}
+    runs-on: ${{ matrix.os }}
+    # A windows-2022 slice runs about 6 minutes, a macos-15 one about 8 (a quarter of the 31-minute
+    # suite run of run 45986308547); nextest kills a hung test after 5
+    # (15 for markdown_depth, crates/.config/nextest.toml).
+    timeout-minutes: ${{ matrix.os == 'windows-11-arm' && 45 || 30 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.partitions || '[{"os":"ubuntu-22.04","part":"tests","partition":"1/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"2/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"3/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"4/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"5/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"6/6","tests":true}]') }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+    env:
+      # Retries in the merge queue, as in lint-and-test.
+      NEXTEST_PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with: *lean-checkout
+
+      # The extracted archive and the target dir fill the runner's disk.
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
+
+      # memry-tauri's test binaries load the webview libraries.
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with: *linux-libraries
+
+      # No build here: memry-desktop's tests/http.rs runs `cargo tree` through the toolchain the
+      # archive was built with (env!("CARGO")).
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        continue-on-error: true
+        with:
+          toolchain: '1.98.1'
+
+      - name: Setup Rust (retry)
+        if: steps.rust.outcome == 'failure'
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        with:
+          toolchain: '1.98.1'
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Download the nextest archive
+        uses: actions/download-artifact@v4
+        with:
+          name: nextest-archive-${{ matrix.os }}
+          path: ${{ runner.temp }}/nextest-archive
+
+      # The merge queue skips the quarantined tests (#5846), and the flaky-report job posts every test
+      # of this step that passed only on retry to #3967.
+      - name: Test
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: |
+          FILTER=
+          if [ "$NEXTEST_PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
+          cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "slice:$PARTITION" ${FILTER:+-E "$FILTER"}
+
+      - name: Upload the JUnit report (merge queue)
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          # `-tests-`: lint-and-test's legs number their reports from the same job index.
+          name: nextest-junit-${{ matrix.os }}-tests-${{ strategy.job-index }}
+          path: crates/target/nextest/merge-queue/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
 
   # memry-ml-worker on Linux arm64, a release target (#4775): the cmake build of Tesseract and
   # Leptonica, the ORT static archive of that triple, pdfium, OCR, the linked libraries and the real
@@ -940,6 +1249,9 @@ jobs:
       run:
         shell: bash
         working-directory: crates
+    env:
+      # Retries in the merge queue, as in lint-and-test.
+      NEXTEST_PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
 
     steps:
       - name: Checkout
@@ -964,7 +1276,7 @@ jobs:
         with:
           toolchain: '1.98.1'
 
-      # Saved like lint-and-test's cache: by the push to feat/tauri-v2, restored by PRs.
+      # Saved like lint-and-test's cache: only on refs/heads/feat/tauri-v2, restored everywhere else.
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
@@ -975,7 +1287,7 @@ jobs:
         with:
           workspaces: crates
           key: ubuntu-22.04-arm-ml-worker
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Drop a partial cargo cache
         if: steps.cargo-cache.outcome == 'failure'
@@ -989,7 +1301,7 @@ jobs:
       - name: Tesseract sources
         uses: ./.github/actions/tesseract-sources
         with:
-          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -1082,6 +1394,9 @@ jobs:
       - name: Entity table is current
         run: pnpm --filter @memry/article-extract entities --check
 
+      - name: Inbox metadata vectors are current
+        run: node scripts/generate-metadata-vectors.mjs --check
+
   swift-bindings-fresh:
     name: Generated Swift bindings are current
     needs: plan
@@ -1114,14 +1429,14 @@ jobs:
           toolchain: '1.98.1'
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
 
-      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
-      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
+      # Saves only on refs/heads/feat/tauri-v2, like lint-and-test's cache. PRs, merge groups and other
+      # refs restore what feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
           key: macos-26
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the
       # patch version moves. Failing loudly with the available list beats a bare
@@ -1165,14 +1480,23 @@ jobs:
             exit 1
           fi
 
-      - name: Cache ONNX Runtime archive
-        uses: actions/cache@v4
+      # Saved only on refs/heads/feat/tauri-v2, like the cargo cache; every other ref restores.
+      - name: Restore the ONNX Runtime archive
+        id: onnxruntime-cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/Library/Caches/memry/onnxruntime
           key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
 
       - name: Build XCFramework
         run: crates/memry-core/build-xcframework.sh
+
+      - name: Save the ONNX Runtime archive
+        if: steps.onnxruntime-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
 
       - name: Upload XCFramework
         uses: actions/upload-artifact@v4
@@ -1252,7 +1576,7 @@ jobs:
   # tolerates failure: logging a flake never ejects a PR.
   flaky-report:
     name: Report flaky tests
-    needs: lint-and-test
+    needs: [lint-and-test, test-partitions]
     if: ${{ !cancelled() && github.event_name == 'merge_group' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -1290,6 +1614,8 @@ jobs:
       [
         plan,
         lint-and-test,
+        test-archive,
+        test-partitions,
         ml-worker-linux-arm64,
         article-extract-oracle-fresh,
         swift-bindings-fresh
@@ -1312,7 +1638,8 @@ jobs:
           DETECT_RESULT: ${{ needs.plan.result }}
           EVENT: ${{ github.event_name }}
           CHANGED: ${{ needs.plan.outputs.paths }}
-          RUST_RESULT: ${{ needs.lint-and-test.result }}
+          # lint-and-test, test-archive and test-partitions: the Rust legs.
+          RUST_RESULTS: ${{ needs.lint-and-test.result }} ${{ needs.test-archive.result }} ${{ needs.test-partitions.result }}
         run: |
           if [ "$MIRROR" = true ]; then
             # A run that has not finished yet reports its own gate later, which supersedes this one.
@@ -1323,15 +1650,16 @@ jobs:
             echo "::error::No passed Rust CI gate of a real run on this commit to report."
             exit 1
           fi
-          echo "needed job results: $RESULTS, Rust CI path changed: $CHANGED, Rust legs: $RUST_RESULT"
+          echo "needed job results: $RESULTS, Rust CI path changed: $CHANGED, Rust legs: $RUST_RESULTS"
           # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
           if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
           case "$CHANGED" in true | false) ;; *) echo "::error::the plan job reported no paths decision"; exit 1 ;; esac
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
           # Tiers skip legs on purpose, and a push the merge queue passed skips the Rust legs. A pull
-          # request that changes a Rust CI path always runs them, so there a skip is no pass (#5613).
-          if [ "$EVENT" = pull_request ] && [ "$CHANGED" = true ] && [ "$RUST_RESULT" != success ]; then
-            echo "::error::A Rust CI path changed but the Rust legs did not pass ($RUST_RESULT)."
+          # request or merge group that changes a Rust CI path always runs them, so there a skip is no
+          # pass (#5613).
+          if { [ "$EVENT" = pull_request ] || [ "$EVENT" = merge_group ]; } && [ "$CHANGED" = true ] && [ "$RUST_RESULTS" != 'success success success' ]; then
+            echo "::error::A Rust CI path changed but the Rust legs did not pass ($RUST_RESULTS)."
             exit 1
           fi
 
@@ -1354,7 +1682,7 @@ jobs:
       - name: Open or update the issue
         run: |
           set -euo pipefail
-          body="Rust CI failed on the scheduled post-merge run of feat/tauri-v2 at ${{ github.sha }}: $RUN_URL. These legs (Rust all on macos-15, the Swift bindings check, the iOS unit tests) do not run in the merge queue (#5035)."
+          body="Rust CI failed on the scheduled post-merge run of feat/tauri-v2 at ${{ github.sha }}: $RUN_URL. These legs (Rust all on macos-15, every windows-11-arm leg, the release perf budgets of Rust perf, the Swift bindings check, the iOS unit tests) do not run in the merge queue (#5035)."
           gh label create post-merge-ci --description "Scheduled post-merge CI failure on feat/tauri-v2" --color D93F0B 2>/dev/null || true
           existing=$(gh issue list --label post-merge-ci --state open --json number --jq '.[0].number // empty')
           if [ -n "$existing" ]; then

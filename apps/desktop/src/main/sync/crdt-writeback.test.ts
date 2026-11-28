@@ -60,6 +60,7 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({
+    holdsDoc: () => true,
     close: mocks.closeDoc,
     getDoc: mocks.getDoc
   })
@@ -154,6 +155,7 @@ import {
   cancelWriteback,
   flushPendingWritebacks,
   hasPendingWriteback,
+  holdFlushUntil,
   getWritebackDebugState,
   getWritebackStateSizes,
   resetWritebackState,
@@ -746,6 +748,27 @@ describe('crdt writeback', () => {
     )
   })
 
+  // A held journal create waits on the projection lane, which a stuck
+  // projection can hold for good: the quit, a vault close and a journal format
+  // change flush through here, and none of them may hang on it.
+  it('flushPendingWritebacks stops waiting for stuck held work and names it in the log', async () => {
+    let settle!: () => void
+    holdFlushUntil(new Promise<void>((resolve) => (settle = resolve)), 'journal create 2026-05-11')
+
+    let flushed = false
+    const flush = flushPendingWritebacks().then(() => (flushed = true))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(flushed).toBe(false)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await flush
+
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ held: ['journal create 2026-05-11'] })
+    )
+    settle()
+  })
+
   it('settleWriteback runs an armed pass at once and leaves an unarmed note alone', async () => {
     await settleWriteback('note-1')
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
@@ -1293,7 +1316,7 @@ describe('crdt-writeback per-vault state reset', () => {
     vi.useRealTimers()
   })
 
-  it('drops app writes, network-update marks and debug state on vault teardown', () => {
+  it('drops app writes, network-update marks, debug state and armed passes on vault teardown', () => {
     // #given — a vault session that populated every module-level per-note map
     recordAppWrite('/vault-a/notes/One.md', 'one')()
     recordNetworkUpdate('note-1')
@@ -1304,10 +1327,10 @@ describe('crdt-writeback per-vault state reset', () => {
     expect(getWritebackDebugState('note-1')).not.toBeNull()
 
     // #when — the vault is closed (CrdtProvider.destroy)
-    cancelPendingWritebacks()
     resetWritebackState()
 
     // #then — nothing from the old vault survives into the next one
+    expect(hasPendingWriteback('note-1')).toBe(false)
     expect(wasRecentNetworkUpdate('note-1')).toBe(false)
     expect(getWritebackDebugState('note-1')).toBeNull()
     expect(getWritebackStateSizes()).toEqual({

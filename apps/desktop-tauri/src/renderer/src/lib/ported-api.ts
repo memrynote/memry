@@ -1,3 +1,4 @@
+import { onAttachmentMaterialized, onAttachmentUploadFailed } from '../services/attachment-events'
 import {
   diagnosticsApi,
   feedbackService,
@@ -5,6 +6,7 @@ import {
   onLocaleChanged,
   telemetryService
 } from '../services/app-services'
+import { onReadwiseStatusChanged, readwiseService } from '../services/readwise-service'
 import {
   onSettingsChanged,
   onSettingsOpenRequested,
@@ -34,6 +36,8 @@ const ported: Record<string, unknown> = {
   feedback: feedbackService,
   diagnostics: diagnosticsApi,
   syncOps: syncService,
+  import: { readwise: readwiseService },
+  onReadwiseStatusChanged,
   onSettingsChanged,
   onSettingsOpenRequested,
   onLocaleChanged,
@@ -42,7 +46,9 @@ const ported: Record<string, unknown> = {
   onClockSkewWarning,
   onInitialSyncProgress,
   onSecurityWarning,
-  onCertificatePinFailed
+  onCertificatePinFailed,
+  onAttachmentMaterialized,
+  onAttachmentUploadFailed
 }
 
 export interface PortedApiHost {
@@ -57,7 +63,7 @@ export interface PortedApiHost {
  * A ported domain that only covers some of its Electron names (settings leaves AI, calendar,
  * voice, terminal and global-shortcut functions to later steps): a name it lacks resolves on
  * the layer below, so the call rejects with `NotPortedError` instead of throwing synchronously
- * on `undefined`.
+ * on `undefined`. Nested domains layer the same way.
  */
 function withFallback(domain: unknown, below: unknown): unknown {
   if (typeof domain !== 'object' || domain === null || below === null || below === undefined) {
@@ -65,10 +71,12 @@ function withFallback(domain: unknown, below: unknown): unknown {
   }
   return new Proxy(domain, {
     get(target, property, receiver) {
-      // oxlint-disable-next-line anti-slop/no-reflect-get -- a layering proxy resolves arbitrary property keys by definition
-      if (property in target) return Reflect.get(target, property, receiver)
       // oxlint-disable-next-line anti-slop/no-reflect-get -- same layering proxy
-      return Reflect.get(Object(below), property)
+      const lower: unknown = Reflect.get(Object(below), property)
+      // A nested domain (`import.readwise`) layers over its own shim the same way.
+      // oxlint-disable-next-line anti-slop/no-reflect-get -- a layering proxy resolves arbitrary property keys by definition
+      if (property in target) return withFallback(Reflect.get(target, property, receiver), lower)
+      return lower
     }
   })
 }

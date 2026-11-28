@@ -2,6 +2,8 @@
 
 #[allow(unused_imports)]
 use super::*;
+use crate::domain::owed_file_aliases;
+use crate::storage::nested_tx;
 
 /// Sets or clears a note's icon, which the payload spells `emoji` (N701).
 ///
@@ -267,6 +269,143 @@ pub fn take_file_aliases(
         set_aliases(conn, id, &next, device_id, now_ms)?;
     }
     Ok(true)
+}
+
+/// What a matched file's `aliases` did to its record ([`take_matched_file_aliases`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MatchedAliases {
+    /// No live note or day has that id.
+    NoNote,
+    /// The record took the file's list ([`take_file_aliases`]), or neither declares a name.
+    Taken,
+    /// The record keeps its own list and the file owes it: the record was modified after the
+    /// file, or the file has no `aliases` key while the record has names. The caller has the
+    /// write-back give the list to the file.
+    RecordNewer,
+}
+
+/// A file first named matched the note or journal day `id`, a record no row named
+/// (`Adopted::Existing`), or a large file's note read its file as a note's for the first time:
+/// it takes the file's aliases ([`take_file_aliases`]) unless its `modifiedAt` is later than the
+/// file's `file_modified_ms`, when the record's list is the newer one and stays. `None` is a
+/// file with no `aliases` key, which says nothing of them whatever the times: the record takes
+/// nothing, and a record with names is owed to the file, so file and record agree.
+///
+/// `RecordNewer` records the debt ([`owed_file_aliases`]) with the file's list. A debt recorded
+/// before (a large file's note that left the class) answers first: a file that still holds the
+/// list it had then keeps the record's names, and any other list is the user's answer, which
+/// clears the debt and is taken as above.
+pub fn take_matched_file_aliases(
+    conn: &Connection,
+    id: &str,
+    aliases: Option<&[String]>,
+    file_modified_ms: i64,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<MatchedAliases, StorageError> {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let matched = match owed_file_aliases::stale(&tx, id)? {
+        Some(stale) if stale.as_deref() == aliases => MatchedAliases::RecordNewer,
+        owed => {
+            if owed.is_some() {
+                owed_file_aliases::clear(&tx, id)?;
+            }
+            matched_in(&tx, id, aliases, file_modified_ms, device_id, now_ms)?
+        }
+    };
+    if matched == MatchedAliases::RecordNewer {
+        owed_file_aliases::record(&tx, id, aliases)?;
+    }
+    tx.commit().map_err(failed)?;
+    Ok(matched)
+}
+
+/// What an outside edit's `aliases` did to its record ([`take_edited_file_aliases`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditedAliases {
+    /// No live note or day has that id.
+    NoNote,
+    /// The record took the file's list ([`take_file_aliases`]).
+    Taken,
+    /// The file still holds the list it had when it came to owe the record's
+    /// ([`owed_file_aliases`]): the record keeps its names, and the write-back still owes them.
+    Owed,
+}
+
+/// An edit outside the app replaced the file of the note or day `id`, which declares `aliases`
+/// (`None` for no `aliases` key): its record takes them whole ([`take_file_aliases`], a missing
+/// key an empty list), unless the file owes the record's names and still holds the list it had
+/// then, an edit of its body alone. A list the edit changed is the user's answer and clears the
+/// debt.
+pub fn take_edited_file_aliases(
+    conn: &Connection,
+    id: &str,
+    aliases: Option<&[String]>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<EditedAliases, StorageError> {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let edited = match owed_file_aliases::stale(&tx, id)? {
+        Some(stale) if stale.as_deref() == aliases => EditedAliases::Owed,
+        owed => {
+            if owed.is_some() {
+                owed_file_aliases::clear(&tx, id)?;
+            }
+            match take_file_aliases(&tx, id, aliases.unwrap_or_default(), device_id, now_ms)? {
+                true => EditedAliases::Taken,
+                false => EditedAliases::NoNote,
+            }
+        }
+    };
+    tx.commit().map_err(failed)?;
+    Ok(edited)
+}
+
+fn matched_in(
+    conn: &Connection,
+    id: &str,
+    aliases: Option<&[String]>,
+    file_modified_ms: i64,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<MatchedAliases, StorageError> {
+    let row = match sync_items::load(conn, ITEM_TYPE, id)? {
+        Some(row) => Some(row),
+        None => sync_items::load(conn, crate::domain::journal::ITEM_TYPE, id)?,
+    };
+    let Some(row) = row.filter(|row| row.deleted_at.is_none()) else {
+        return Ok(MatchedAliases::NoNote);
+    };
+    let payload = row
+        .payload
+        .as_deref()
+        .and_then(|payload| serde_json::from_str::<Value>(payload).ok());
+    let Some(aliases) = aliases else {
+        let named = payload
+            .as_ref()
+            .and_then(|payload| payload.get("aliases"))
+            .and_then(Value::as_array)
+            .is_some_and(|names| !names.is_empty());
+        return Ok(match named {
+            true => MatchedAliases::RecordNewer,
+            false => MatchedAliases::Taken,
+        });
+    };
+    let modified_ms = payload.as_ref().and_then(|payload| {
+        payload
+            .get("modifiedAt")
+            .and_then(Value::as_str)
+            .and_then(instants::to_epoch_ms)
+    });
+    if modified_ms.is_some_and(|modified_ms| modified_ms > file_modified_ms) {
+        return Ok(MatchedAliases::RecordNewer);
+    }
+    Ok(
+        match take_file_aliases(conn, id, aliases, device_id, now_ms)? {
+            true => MatchedAliases::Taken,
+            false => MatchedAliases::NoNote,
+        },
+    )
 }
 
 /// Desktop's per-note width override: the frontmatter key `fullWidth`, which

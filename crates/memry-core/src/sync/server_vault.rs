@@ -64,6 +64,7 @@ pub fn bound(conn: &Connection) -> Result<Option<String>, StorageError> {
 pub struct RecordVault {
     stamp: String,
     local: String,
+    bound: bool,
 }
 
 impl RecordVault {
@@ -71,8 +72,10 @@ impl RecordVault {
     /// the next write. `local` is the vault's own id, which an unbound vault
     /// states and which its server id becomes when it binds first.
     pub fn read(conn: &Connection, local: &str) -> Result<Self, StorageError> {
+        let server = bound(conn)?;
         Ok(Self {
-            stamp: bound(conn)?.unwrap_or_else(|| local.to_owned()),
+            bound: server.is_some(),
+            stamp: server.unwrap_or_else(|| local.to_owned()),
             local: local.to_owned(),
         })
     }
@@ -83,10 +86,70 @@ impl RecordVault {
     }
 
     /// The local id, which records written before the bind, or by a build before #5505, state
-    /// until [`restamp`] runs. A vault lists records of either id.
+    /// until [`restamp`] runs. An unbound vault lists records of either id.
     pub fn local(&self) -> &str {
         &self.local
     }
+
+    /// Whether this vault lists and opens every live record whatever `vaultId` it states.
+    /// Invariant: a bound vault does. Its `data.db` belongs to the one server vault [`bind`]
+    /// accepts, and the server serves a device only the items of the `X-Memry-Vault-Id` vault
+    /// (`sync_items` is keyed by `user_id, vault_id`), so every pulled record is this vault's,
+    /// whichever pre-bind id its writer stated (Electron's own uuid, or a Rust device's local id
+    /// before its [`restamp`]). A filter on `vaultId` would hide those on every fresh device, and
+    /// pushing them again under the server id would race their writer's next edit into a
+    /// conflict copy (#5812). An account's other vaults sync into other `data.db` files, so no
+    /// foreign record is here to hide. A pull therefore never queues a record to fix its id.
+    pub fn lists_every_record(&self) -> bool {
+        self.bound
+    }
+}
+
+/// The `vaultId` a pulled canvas, canvas folder or agent conversation states over a stored one,
+/// the one owner of that choice in a merge of every [`STAMPED`] type: the stored id, as Electron
+/// keeps `existing.vaultId` (§13.7.21 rule 4, §13.7.23 rule 3, §13.7.26 rule 3), unless the
+/// remote states the bound server id, which wins (#5669, #5784).
+/// Invariant: a merge never moves a record off the bound id. A peer that pulled a record before
+/// its writer's [`restamp`] stores the writer's old local id; keeping that over the restamp would
+/// push it again on the peer's next edit, and Electron lists by `vaultId`. A fast-forward over a
+/// remote stating another id keeps the stored one and queues nothing: every bound vault lists the
+/// record whatever it states ([`RecordVault::lists_every_record`]). `None` when neither side states
+/// a string, so the merge leaves the key as the winning payload has it.
+pub(crate) fn merged_vault_id(
+    conn: &Connection,
+    local: &Object,
+    remote: &Object,
+) -> Result<Option<Value>, StorageError> {
+    let stated = |object: &Object| {
+        object
+            .get("vaultId")
+            .filter(|value| value.is_string())
+            .cloned()
+    };
+    if let Some(remote_id) = stated(remote)
+        && bound(conn)?.is_some_and(|server| remote_id.as_str() == Some(server.as_str()))
+    {
+        return Ok(Some(remote_id));
+    }
+    Ok(stated(local))
+}
+
+/// Writes `changes` under `device_id`'s next tick and queues the record, unless it is a
+/// conversation the agent backfill still owes ([`agent_queue::backfill`]).
+fn push_edit(
+    tx: &Connection,
+    item_type: &str,
+    id: &str,
+    stored: &StoredPayload,
+    changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    desktop_records::edit(tx, item_type, id, stored, changes, device_id, now_ms)?;
+    if item_type != agent_conversation::ITEM_TYPE || !agent_queue::backfill_pending(tx)? {
+        outbox::enqueue(tx, &outbox::Change::upsert(item_type, id), now_ms)?;
+    }
+    Ok(())
 }
 
 /// `meta` key set once [`restamp`] ran for the bound vault.
@@ -200,10 +263,7 @@ fn restamp_one(
             Change::Set(json!({ "device": device_id, "base": base })),
         ));
     }
-    desktop_records::edit(tx, item_type, id, &stored, changes, device_id, now_ms)?;
-    if item_type != agent_conversation::ITEM_TYPE || !agent_queue::backfill_pending(tx)? {
-        outbox::enqueue(tx, &outbox::Change::upsert(item_type, id), now_ms)?;
-    }
+    push_edit(tx, item_type, id, &stored, changes, device_id, now_ms)?;
     Ok(true)
 }
 
@@ -229,6 +289,10 @@ pub(crate) fn restamp_superseded(record: &Object, other: &VectorClock) -> bool {
 #[cfg(test)]
 #[path = "server_vault_restamp_tests.rs"]
 mod restamp_tests;
+
+#[cfg(test)]
+#[path = "server_vault_merge_tests.rs"]
+mod merge_tests;
 
 #[cfg(test)]
 mod tests {

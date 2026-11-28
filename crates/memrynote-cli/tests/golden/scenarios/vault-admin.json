@@ -1,0 +1,96 @@
+{
+  "name": "vault-admin",
+  "registry": {
+    "vaults": [
+      {
+        "path": "{vault}",
+        "name": "Vault",
+        "noteCount": 0,
+        "taskCount": 0,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": true
+      }
+    ]
+  },
+  "files": {
+    "vault/.memry/config.json": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"journal\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false,\n  \"theme\": \"kept\"\n}\n",
+    "vault/.memry/activity.jsonl": "{\"v\":1,\"id\":\"e1\",\"at\":\"2026-01-02T03:04:05.678Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\nnot json\n{\"v\":1,\"id\":\"e2\",\"at\":\"2026-01-02T03:04:06.678Z\",\"kind\":\"failed\",\"source\":\"import\",\"path\":\"b.pdf\",\"message\":\"x\"}\n{\"v\":1,\"id\":\"e3\",\"at\":\"2026-01-02T03:04:07.678Z\",\"kind\":\"scan\",\"source\":\"scan\",\"counts\":{\"added\":2,\"skipped\":1}}\n{\"v\":1,\"id\":\"e4\",\"at\":\"2026-01-02T03:04:08.678Z\",\"kind\":\"added\",\"source\":\"sync\",\"path\":\"c.md\"}\n"
+  },
+  "steps": [
+    {
+      "argv": ["vault", "reindex"]
+    },
+    {
+      "argv": ["--json", "vault", "reindex"]
+    },
+    {
+      "argv": ["vault", "set-icon"]
+    },
+    {
+      "argv": ["vault", "set-icon", "icon:Bad-Name"]
+    },
+    {
+      "argv": ["vault", "set-icon", "custom:x"]
+    },
+    {
+      "argv": ["vault", "set-icon", "icon:Star"]
+    },
+    {
+      "argv": ["--json", "vault", "set-icon", "null"]
+    },
+    {
+      "argv": ["vault", "activity"]
+    },
+    {
+      "argv": ["vault", "activity", "bogus"]
+    },
+    {
+      "argv": ["--json", "vault", "activity", "list"]
+    },
+    {
+      "argv": ["--json", "vault", "activity", "list", "--problems"]
+    },
+    {
+      "argv": ["--json", "vault", "activity", "list", "--limit", "1"]
+    },
+    {
+      "argv": ["vault", "activity", "list", "--limit", "2"]
+    },
+    {
+      "argv": ["vault", "activity", "list", "--limit", "0"]
+    },
+    {
+      "argv": ["vault", "activity", "list", "--limit", "1.5"]
+    },
+    {
+      "argv": ["vault", "activity", "list", "--limit", "abc"]
+    },
+    {
+      "argv": ["vault", "activity", "list", "--limit", "1001"]
+    },
+    {
+      "argv": ["vault", "activity", "clear"]
+    },
+    {
+      "argv": ["vault", "activity", "clear", "--yes"]
+    },
+    {
+      "argv": ["--json", "vault", "activity", "list"]
+    },
+    {
+      "argv": ["--json", "vault", "activity", "clear", "--yes"]
+    },
+    {
+      "argv": ["vault", "locks"]
+    },
+    {
+      "argv": ["vault", "locks", "list"]
+    },
+    {
+      "argv": ["--json", "vault", "locks", "list"]
+    },
+    {
+      "argv": ["vault", "locks", "set", "x"]
+    }
+  ]
+}

@@ -46,6 +46,8 @@
 //!   prefix, and each pair's file is moved without replacing anything
 //!   ([`crate::attachments::reconcile_renames`]). A locked or excluded note's files keep their
 //!   names, and a kept file is no write, so it moves nothing.
+//!   A file sync downloaded into that folder before the body linked it elsewhere moves there
+//!   ([`crate::sync::attachments::place_after_write`]).
 //! - **One session.** A pass names the vault session it was started in and writes nothing
 //!   once that session closed.
 //!
@@ -84,7 +86,8 @@
 //!   moved after that row was stamped gets a pass ([`memry_core::domain::note_files::behind_bodies`]).
 //!   A note whose body did not move gets none, even when its document would write other
 //!   bytes (a file the read does not keep whole, seeded as the reference app seeds it): a
-//!   file the app did not change is never rewritten.
+//!   file the app did not change is never rewritten. A note a pull marked whose pass did not
+//!   settle the mark (`place`, `note_pulled_marks`) gets a pass too.
 //!
 //!   A row's stamp has one meaning for every writer: the row accounts for every change to the
 //!   file and to the body made at or before it
@@ -134,16 +137,19 @@
 //!
 //! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says
 //! the document holds it once the consumer fed it. A body write sets the day's `date` in its
-//! frontmatter, in place, and never writes the day's tags (`journal`).
+//! frontmatter, in place, and never writes the day's tags (`journal`). A live day owns its
+//! file: a pass moves a day's file that is off its date's path there (`day_place`, #5786).
 //!
 //! A note or day no row names (a record pulled from another device) gets its first file from
 //! its pass, once its body is here, under a free name and never over a file (`unfiled`). A row
 //! that names a missing file gets none: the removal is the user's.
 
+mod day_place;
 #[cfg(feature = "e2e")]
 mod debug;
 mod deleted;
 pub(crate) mod journal;
+mod owed;
 mod pass;
 mod place;
 mod reconcile;

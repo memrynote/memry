@@ -131,7 +131,7 @@ mod tests {
     use crate::web::extract::dom::Document;
 
     fn anchor(html: &str) -> bool {
-        let doc = Document::parse_html(html);
+        let doc = Document::parse_html(html).unwrap();
         let a = doc.query_selector(doc.root(), "a").unwrap().unwrap();
         is_permalink_anchor(&doc, a)
     }

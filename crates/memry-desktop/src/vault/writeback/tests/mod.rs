@@ -50,9 +50,14 @@ pub(super) struct Fixture {
 
 pub(super) fn fixture() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("vault/.memry/core")).unwrap();
+    fixture_in(dir)
+}
+
+/// The app state of a run over the vault and `data.db` of `dir`.
+fn fixture_in(dir: tempfile::TempDir) -> Fixture {
     let root = dir.path().join("vault");
     let core = root.join(".memry/core");
-    std::fs::create_dir_all(&core).unwrap();
     let store = with_device_key();
     let vault = Arc::new(
         Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap(),
@@ -87,6 +92,14 @@ pub(super) fn fixture() -> Fixture {
 }
 
 impl Fixture {
+    /// Quits and starts a new app run: every piece of state this run held in memory is dropped,
+    /// and a new one opens the same vault and `data.db`.
+    pub(super) fn restart(self) -> Fixture {
+        let dir = self._dir;
+        drop((self.pass, self.writer, self.rows, self.vault));
+        fixture_in(dir)
+    }
+
     pub(super) fn write(&self, rel: &str, text: &str) {
         let path = self.root.join(rel);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -366,6 +379,9 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 
 mod attachments;
 mod body_waits;
+mod day_note;
+mod day_place;
+mod delete_keep;
 mod deleted;
 mod embeds;
 mod failures;

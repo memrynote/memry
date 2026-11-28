@@ -78,7 +78,7 @@ fn every_drizzle_table_has_a_mapping_or_a_skip_reason() {
         }
         if let Some(Importer::Pending(stage)) = m.class.importer() {
             assert!(
-                ["36b", "36c", "36d1", "36d2", "36e", "36f"].contains(&stage),
+                super::pending_area(stage).is_some(),
                 "{}: pending names no stage ({stage})",
                 m.table
             );
@@ -87,16 +87,18 @@ fn every_drizzle_table_has_a_mapping_or_a_skip_reason() {
 }
 
 #[test]
-fn the_ledger_floor_is_the_last_frozen_migration() {
-    for (dir, expected) in [
-        (electron_db::DATA_DIR, ELECTRON_DATA_LAST_MIGRATION),
-        (electron_db::INDEX_DIR, ELECTRON_INDEX_LAST_MIGRATION),
+fn the_ledger_ends_are_frozen_migrations_ending_at_the_last() {
+    for (dir, ends) in [
+        (electron_db::DATA_DIR, ELECTRON_DATA_LEDGER_ENDS),
+        (electron_db::INDEX_DIR, ELECTRON_INDEX_LEDGER_ENDS),
     ] {
-        let last = electron_db::journal(dir)
+        let whens: Vec<i64> = electron_db::journal(dir)
             .into_iter()
             .map(|(_, when)| when)
-            .max();
-        assert_eq!(last, Some(expected), "{dir}");
+            .collect();
+        assert!(ends.iter().all(|end| whens.contains(end)), "{dir}");
+        assert!(ends.is_sorted(), "{dir}");
+        assert_eq!(ends.last(), whens.iter().max(), "{dir}");
     }
 }
 

@@ -77,9 +77,11 @@ struct CoreVaultSearch: VaultSearching {
         await search.semanticModelLoaded()
     }
 
+    /// One queue call per batch, so the queue's other calls (screen reads,
+    /// search, sync state) run between the batches of a long rebuild (#5842).
     func reindex() async throws {
         let search = search
-        _ = try await executor.run { try search.reindex() }
+        while try await executor.run({ try search.reindexStep() }) == nil {}
     }
 
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] {
@@ -145,8 +147,10 @@ final class VaultSearchViewModel {
     /// The trimmed query on screen, run again after each reindex.
     private var query = ""
     /// The last reindex the query on screen has seen. Set when the model is
-    /// made, not when following starts: the sheet loads its recents first, and
-    /// a reindex finishing in between must still re-run the query (#5484).
+    /// made and when a query starts, not when following starts: the sheet loads
+    /// its recents first, and a reindex finishing in between must still re-run
+    /// the query (#5484), while one that finished before the query started must
+    /// not cancel it (#5423).
     private var followed: Int
 
     init(
@@ -206,6 +210,7 @@ final class VaultSearchViewModel {
         guard !query.isEmpty else { return }
         running?.cancel()
         phase = .searching
+        followed = index?.completed ?? followed
         running = start(query, after: .zero, source: source)
     }
 
@@ -226,6 +231,7 @@ final class VaultSearchViewModel {
             Telemetry.shared.track(.searchOpened, surface: .search, action: "opened")
         }
         phase = .searching
+        followed = index?.completed ?? followed
         running = start(trimmed, after: debounce, source: source)
     }
 

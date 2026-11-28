@@ -82,6 +82,7 @@ use rusqlite::{Connection, params};
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
+use crate::domain::inbox::review;
 use crate::domain::notes::failed;
 use crate::domain::settings::{
     self, apply_at, field_clocks_of, read_clock, segments, settings_of, value_at,
@@ -113,7 +114,30 @@ use crate::sync::hardening::requeue;
 /// against the row (§13.2 rule 5). A remote that *is* JSON but whose
 /// `settings` or `fieldClocks` will not read is an `Err`, which the caller
 /// records corrupt **without** overwriting the local payload.
+///
+/// A record that moves the review schedule re-arms this device's review guard
+/// ([`review::rearm_if_rescheduled`]), whichever branch stored it.
 pub(crate) fn apply_remote_merged(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<Inbound, StorageError> {
+    let before = stored_schedule(conn);
+    let inbound = merge_or_store(conn, record, now_ms)?;
+    review::rearm_if_rescheduled(conn, &before, &stored_schedule(conn))?;
+    Ok(inbound)
+}
+
+/// The stored review schedule. A local copy that will not read holds no
+/// schedule this device could act on, so it compares as unset and the record
+/// replacing it re-arms the guard when it carries one.
+fn stored_schedule(conn: &Connection) -> review::Schedule {
+    settings::all(conn)
+        .map(|stored| review::schedule(&stored))
+        .unwrap_or_default()
+}
+
+fn merge_or_store(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,

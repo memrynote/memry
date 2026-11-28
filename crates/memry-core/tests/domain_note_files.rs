@@ -382,9 +382,9 @@ fn an_entry_stored_after_the_row_in_its_millisecond_puts_the_note_behind() {
 }
 
 /// The rows the open reconcile moves to the trash: markdown rows of a tombstoned note or
-/// journal day. A live note, a note this device has no record of (its record may not be
-/// pulled yet) and a file that is not markdown are not among them. A row whose note is owed a
-/// move is marked so.
+/// journal day. A live note, a live day whose id a tombstoned `note` record holds too (#5786),
+/// a note this device has no record of (its record may not be pulled yet) and a file that is
+/// not markdown are not among them. A row whose note is owed a move is marked so.
 #[test]
 fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days() {
     let Fixture { vault, .. } = fixture();
@@ -394,6 +394,7 @@ fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days(
         ("j2024-01-02", "journal/2024-01-02.md"),
         ("live", "live.md"),
         ("live-day", "journal/2024-01-03.md"),
+        ("j2024-01-04", "journal/2024-01-04.md"),
         ("unknown", "unknown.md"),
     ] {
         files.upsert_stat(stat(id, path)).unwrap();
@@ -404,9 +405,11 @@ fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days(
     exec(
         &vault,
         "INSERT INTO notes (id, title, deleted_at) VALUES
-           ('deleted', 'a', 5), ('live', 'b', NULL), ('deleted-image', 'c', 5);
+           ('deleted', 'a', 5), ('live', 'b', NULL), ('deleted-image', 'c', 5),
+           ('j2024-01-04', '2024-01-04', 5);
          INSERT INTO journal_entries (id, date, deleted_at) VALUES
-           ('j2024-01-02', '2024-01-02', 5), ('live-day', '2024-01-03', NULL);",
+           ('j2024-01-02', '2024-01-02', 5), ('live-day', '2024-01-03', NULL),
+           ('j2024-01-04', '2024-01-04', NULL);",
     );
 
     let ids = || -> Vec<(String, bool)> {

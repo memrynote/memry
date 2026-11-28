@@ -47,6 +47,7 @@ use crate::storage::repositories::{
     projectors::ItemContext,
     sync_items::{self, PAYLOAD_STATE_FULL},
 };
+use crate::sync::attachments::release::record_deleted_note;
 use crate::sync::clock::{self, OFFLINE_CLOCK_DEVICE_ID, VectorClock};
 use crate::sync::outbox::{self, Durable};
 use crate::sync::store;
@@ -201,7 +202,8 @@ pub fn move_to_folder(
     Ok(durable)
 }
 
-/// Tombstones a note.
+/// Tombstones a note, and records its attachments for the deleted-asset release
+/// ([`record_deleted_note`], before the row goes).
 pub fn delete(
     conn: &Connection,
     note_id: &str,
@@ -212,7 +214,12 @@ pub fn delete(
         conn,
         &outbox::Change::delete(ITEM_TYPE, note_id),
         now_ms,
-        |tx| tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms),
+        |tx| {
+            // A deleted note wants none of its pictures (#5675).
+            crate::domain::attachment_refs::merge_note_references(tx, note_id, Some(&[]))?;
+            record_deleted_note(tx, note_id, now_ms)?;
+            tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms)
+        },
     )
 }
 
@@ -356,10 +363,10 @@ pub(crate) fn insert_local(
 /// Marks a row deleted and refreshes its projection through the same merge
 /// every other edit uses.
 ///
-/// The tombstone is written **before** the merge so that
-/// [`sync_items::apply_local_edit_in`] reads it back and projects it: the
-/// projection row is a cache of a parse plus the item's own bookkeeping, and
-/// `deleted_at` is the bookkeeping half.
+/// The tombstone is written **before** the merge, and the merge projects it
+/// ([`sync_items::apply_local_edit_setting_deleted_in`]): the projection row
+/// is a cache of a parse plus the item's own bookkeeping, and `deleted_at` is
+/// the bookkeeping half.
 pub(crate) fn tombstone_local(
     tx: &Connection,
     item_type: &str,
@@ -391,7 +398,14 @@ pub(crate) fn tombstone_local(
         "bodyStateVector",
         Change::set(crate::sync::delete_keep::body_state_vector(tx, item_id)?),
     ));
-    let merged = sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
+    let merged = sync_items::apply_local_edit_setting_deleted_in(
+        tx,
+        item_type,
+        item_id,
+        &changes,
+        now_ms,
+        Some(now_ms),
+    )?;
     // #2409: the clock a later re-create of this id must happen after.
     let parsed = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;
     store::record_tombstone_clock(tx, item_type, item_id, &clock_in(parsed.object())?, now_ms)
@@ -558,43 +572,4 @@ fn refuse(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_document_id_follows_the_crdt_route_s_own_grammar() {
-        assert!(valid_document_id("dzxnhc9p3gk3").is_ok());
-        assert!(valid_document_id("j2026-04-16").is_ok());
-        assert!(valid_document_id("").is_err());
-        assert!(valid_document_id("has space").is_err());
-        assert!(valid_document_id("slash/es").is_err());
-        assert!(valid_document_id(&"a".repeat(MAX_DOCUMENT_ID_LEN + 1)).is_err());
-    }
-
-    #[test]
-    fn the_first_local_edit_ticks_this_device_to_one() {
-        let clock = next_clock(&Object::new(), "device-a").expect("a clock");
-        assert_eq!(clock, json!({"device-a": 1}));
-    }
-
-    #[test]
-    fn an_existing_tick_advances_and_every_other_device_is_kept() {
-        let stored = object(json!({"clock": {"device-a": 2, "device-b": 9}}));
-        assert_eq!(
-            next_clock(&stored, "device-a").expect("a clock"),
-            json!({"device-a": 3, "device-b": 9})
-        );
-    }
-
-    #[test]
-    fn a_clock_that_will_not_parse_is_an_error_and_never_an_empty_clock() {
-        let stored = object(json!({"clock": {"device-a": "two"}}));
-        assert!(next_clock(&stored, "device-a").is_err());
-    }
-
-    #[test]
-    fn the_reserved_offline_id_is_refused_before_it_can_reach_a_payload() {
-        assert!(next_clock(&Object::new(), OFFLINE_CLOCK_DEVICE_ID).is_err());
-        assert!(next_clock(&Object::new(), "").is_err());
-    }
-}
+mod tests;

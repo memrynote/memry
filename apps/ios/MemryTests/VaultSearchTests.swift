@@ -38,6 +38,9 @@ struct VaultSearchTests {
         let loadWaits = Mutex(0)
         /// Holds `semanticModelLoaded` until it yields, when set.
         private let loadGate: AsyncStream<Void>?
+        /// Holds every `search` in flight while set, so a test can act on a
+        /// query the user is still waiting for.
+        let searchHeld = Mutex(false)
 
         init(
             hits: [SearchResult] = [], failure: (any Error)? = nil, reindexFailure: (any Error)? = nil,
@@ -59,6 +62,8 @@ struct VaultSearchTests {
             queries.withLock { $0.append(query) }
             filters.withLock { $0.append(filter) }
             changes.changed()
+            await changes.until { !searchHeld.withLock { $0 } }
+            try Task.checkCancellation()
             if let failure { throw failure }
             let pending = modelLoading.withLock { $0 }
             return SearchGroups(
@@ -241,6 +246,40 @@ struct VaultSearchTests {
         await model.settle()
 
         #expect(search.queries.withLock { $0 } == ["dune", "dune"], "the reindex never reached the query")
+    }
+
+    @Test("a reindex the query already saw does not cancel the query in flight")
+    func aReindexBeforeTheQueryLeavesItAlone() async throws {
+        // #5423: a reindex finishing before the query started still counted as
+        // unseen, so following the index cancelled the user's query and re-ran
+        // it as a re-run, which drops its `search_performed`.
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        index.schedule()
+        await index.settle()
+        search.searchHeld.withLock { $0 = true }
+        model.run("dune")
+        await search.changes.until { search.queries.withLock { $0.count } >= 1 }
+
+        let follower = Task { await model.followIndex() }
+        defer { follower.cancel() }
+        // Let the follower take its first look, at the reindex the query saw,
+        // before the next one lands: a re-run for that old reindex would come
+        // now, so the query count stays exact.
+        for _ in 0..<50 { await Task.yield() }
+        #expect(search.queries.withLock { $0.count } == 1, "the follower re-ran a query that saw the reindex")
+        // A reindex the query has not seen re-runs it once.
+        index.schedule()
+        await index.settle()
+        await search.changes.until { search.queries.withLock { $0.count } >= 2 }
+        search.searchHeld.withLock { $0 = false }
+        search.changes.changed()
+        await model.settle()
+
+        #expect(index.completed == 2)
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"], "only the unseen reindex re-ran the query")
+        #expect(model.phase == .results([hit("n1", "Dune")]))
     }
 
     @Test("a sheet dismissed while the model loads runs nothing when the load lands")
