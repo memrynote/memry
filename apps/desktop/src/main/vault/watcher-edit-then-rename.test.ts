@@ -397,6 +397,80 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     80_000
   )
 
+  it.runIf(process.platform === 'darwin')(
+    'an outside write while the app adds a renamed file reaches the note',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      const renamed = path.join(vault.path, 'Docs/pear.md')
+      lostAdds.add(renamed)
+      // chokidar folds the write into its late add of the file: no change.
+      lostChanges.add(renamed)
+      registerRenameSyncCallback((id: string) => {
+        renameSynced(id)
+        fs.writeFileSync(renamed, '# apple\n\nbody edited\n')
+      })
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), renamed)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+      changeHeard.watcher?.emit('add', renamed)
+
+      await settleOn(() => expect(editFedTo('n1')).toBe(true))
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+    },
+    80_000
+  )
+
+  it.runIf(process.platform === 'darwin')(
+    "a renamed file whose add failed is added by the folder's add",
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      const renamed = path.join(vault.path, 'Docs/pear.md')
+      lostAdds.add(renamed)
+      // The app's add from the unlink is already waiting on its first read.
+      changeHeard.watcher?.once('unlink', () =>
+        vi.mocked(getIndexDatabase).mockImplementationOnce(() => {
+          throw new Error('SQLITE_BUSY')
+        })
+      )
+      // The folder reports the file right after that add failed.
+      vi.mocked(trackMainError).mockImplementationOnce(() => {
+        changeHeard.watcher?.emit('add', renamed)
+      })
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), renamed)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(trackMainError).toHaveBeenCalledTimes(1)
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    80_000
+  )
+
+  it.runIf(process.platform === 'darwin')(
+    'a move to another folder under the name of an unread note beside it leaves that note unread',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      seed('n2', 'Docs/pear.md', '# pear\n\nother\n')
+      index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n2')).run()
+      lostChanges.add(path.join(vault.path, 'Docs/pear.md'))
+      fs.mkdirSync(path.join(vault.path, 'Other'))
+      await watch()
+      reportAddAtUnlink('Other/pear.md')
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Other/pear.md'))
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(metadataRows()).toEqual(
+        expect.arrayContaining([
+          { id: 'n1', path: 'Other/pear.md' },
+          { id: 'n2', path: 'Docs/pear.md' }
+        ])
+      )
+      expect(feedExternalEditToCrdt).not.toHaveBeenCalled()
+    },
+    80_000
+  )
+
   it.runIf(fileSystemIgnoresCase())(
     'a case-only rename inside the write-finish wait after an outside edit keeps the note id',
     async () => {
