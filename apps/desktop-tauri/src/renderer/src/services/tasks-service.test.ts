@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createMockApi } from '@tests/setup-dom'
 import {
   tasksService,
   tasksServiceLogger,
@@ -7,104 +6,205 @@ import {
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
-  onTaskCompleted,
-  onTaskMoved,
-  onProjectCreated,
-  onProjectUpdated,
-  onProjectDeleted
+  onProjectUpdated
 } from './tasks-service'
 
+const commands = vi.hoisted(() => ({
+  tasksCreate: vi.fn(),
+  tasksGet: vi.fn(),
+  tasksUpdate: vi.fn(),
+  tasksComplete: vi.fn(),
+  tasksReorder: vi.fn(),
+  tasksConvertToSubtask: vi.fn(),
+  tasksBulkMove: vi.fn(),
+  tasksStatusUpdate: vi.fn(),
+  tasksGetToday: vi.fn(),
+  tasksGetUpcoming: vi.fn(),
+  tasksProjectGet: vi.fn(),
+  tasksProjectListForItem: vi.fn()
+}))
+type Handler = (event: { payload: unknown }) => void
+const handlers = vi.hoisted(() => new Map<string, Handler>())
+const events = vi.hoisted(() => {
+  const event = (name: string) => ({
+    listen: vi.fn((handler: Handler) => {
+      handlers.set(name, handler)
+      return Promise.resolve(() => handlers.delete(name))
+    })
+  })
+  return {
+    taskCreatedEvent: event('taskCreated'),
+    taskUpdatedEvent: event('taskUpdated'),
+    taskDeletedEvent: event('taskDeleted'),
+    taskCompletedEvent: event('taskCompleted'),
+    taskMovedEvent: event('taskMoved'),
+    taskActivityCreatedEvent: event('taskActivityCreated'),
+    projectCreatedEvent: event('projectCreated'),
+    projectUpdatedEvent: event('projectUpdated'),
+    projectDeletedEvent: event('projectDeleted')
+  }
+})
+
+vi.mock('../../../generated/bindings', () => ({ commands, events }))
+
+const view = {
+  id: 'task-1',
+  projectId: 'inbox',
+  statusId: null,
+  parentId: null,
+  title: 'Write',
+  description: null,
+  priority: 2,
+  position: 0,
+  dueDate: '2026-05-10',
+  dueTime: null,
+  durationMinutes: null,
+  startDate: null,
+  isRepeating: false,
+  repeatConfig: null,
+  repeatFrom: null,
+  sourceNoteId: null,
+  completedAt: null,
+  archivedAt: null,
+  createdAt: '2026-05-01T00:00:00.000Z',
+  modifiedAt: '2026-05-01T00:00:00.000Z',
+  tags: [],
+  linkedNoteIds: [],
+  linkedCanvasIds: [],
+  fields: {},
+  hasSubtasks: false,
+  subtaskCount: 0,
+  completedSubtaskCount: 0
+}
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
 describe('tasks-service', () => {
-  let api: ReturnType<typeof createMockApi>
-
   beforeEach(() => {
-    api = createMockApi()
-    ;(window as Window & { api: unknown }).api = api
+    handlers.clear()
+    for (const command of Object.values(commands)) command.mockReset()
   })
 
-  it('exposes task RPC methods directly from window.api.tasks', () => {
-    expect(tasksService.create).toBe(api.tasks.create)
-    expect(tasksService.update).toBe(api.tasks.update)
-    expect(tasksService.list).toBe(api.tasks.list)
-    expect(tasksService.bulkComplete).toBe(api.tasks.bulkComplete)
-    expect(tasksService.getUpcoming).toBe(api.tasks.getUpcoming)
+  it('answers a write in its envelope and passes a rejected command on', async () => {
+    commands.tasksCreate.mockResolvedValue({ success: true, task: view })
+    await expect(tasksService.create({ projectId: 'inbox', title: 'Write' })).resolves.toEqual({
+      success: true,
+      task: view
+    })
+
+    commands.tasksUpdate.mockRejectedValue({ code: 'storage', message: 'disk full' })
+    await expect(tasksService.update({ id: 'task-1', title: 'x' })).rejects.toEqual({
+      code: 'storage',
+      message: 'disk full'
+    })
   })
 
-  it('forwards CRUD and list calls', async () => {
-    api.tasks.create = vi.fn().mockResolvedValue({ success: true, task: { id: 'task-1' } })
-    api.tasks.update = vi.fn().mockResolvedValue({ success: true, task: { id: 'task-1' } })
-    api.tasks.delete = vi.fn().mockResolvedValue({ success: true })
-    api.tasks.list = vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false })
-
-    const createInput = { projectId: 'proj-1', title: 'Task' }
-    const createResult = await tasksService.create(createInput)
-    expect(api.tasks.create).toHaveBeenCalledWith(createInput)
-    expect(createResult.success).toBe(true)
-
-    const updateInput = { id: 'task-1', title: 'Updated' }
-    await tasksService.update(updateInput)
-    expect(api.tasks.update).toHaveBeenCalledWith(updateInput)
-
-    await tasksService.delete('task-1')
-    expect(api.tasks.delete).toHaveBeenCalledWith('task-1')
-
-    await tasksService.list({ projectId: 'proj-1', limit: 10 })
-    expect(api.tasks.list).toHaveBeenCalledWith({ projectId: 'proj-1', limit: 10 })
+  it('names the next occurrence of a repeating completion by id and due date', async () => {
+    commands.tasksComplete.mockResolvedValue({
+      success: true,
+      task: view,
+      nextOccurrence: { ...view, id: 'task-2', dueDate: '2026-05-11' }
+    })
+    const result = await tasksService.complete({ id: 'task-1' })
+    expect(result.nextOccurrence).toEqual({ id: 'task-2', dueDate: '2026-05-11' })
   })
 
-  it('forwards bulk operations and upcoming queries', async () => {
-    api.tasks.bulkComplete = vi.fn().mockResolvedValue({ success: true, count: 2 })
-    api.tasks.bulkDelete = vi.fn().mockResolvedValue({ success: true, count: 1 })
-    api.tasks.bulkMove = vi.fn().mockResolvedValue({ success: true, count: 3 })
-    api.tasks.bulkArchive = vi.fn().mockResolvedValue({ success: true, count: 4 })
-    api.tasks.getUpcoming = vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false })
+  it('sends the positional arguments as the command inputs', async () => {
+    commands.tasksReorder.mockResolvedValue({ success: true })
+    commands.tasksConvertToSubtask.mockResolvedValue({ success: true, task: view })
+    commands.tasksBulkMove.mockResolvedValue({ success: true, count: 2 })
+    commands.tasksStatusUpdate.mockResolvedValue({ success: true })
+    commands.tasksProjectListForItem.mockResolvedValue([])
 
-    await tasksService.bulkComplete(['t1', 't2'])
-    expect(api.tasks.bulkComplete).toHaveBeenCalledWith(['t1', 't2'])
+    await tasksService.reorder(['t1', 't2'], [0, 1])
+    await tasksService.convertToSubtask('t1', 'p1')
+    await expect(tasksService.bulkMove(['t1', 't2'], 'proj-2')).resolves.toEqual({
+      success: true,
+      count: 2
+    })
+    await tasksService.updateStatus('s1', { name: 'Doing' })
+    await tasksService.listForItem('note', 'n1')
 
-    await tasksService.bulkDelete(['t3'])
-    expect(api.tasks.bulkDelete).toHaveBeenCalledWith(['t3'])
-
-    await tasksService.bulkMove(['t4', 't5'], 'proj-2')
-    expect(api.tasks.bulkMove).toHaveBeenCalledWith(['t4', 't5'], 'proj-2')
-
-    await tasksService.bulkArchive(['t6'])
-    expect(api.tasks.bulkArchive).toHaveBeenCalledWith(['t6'])
-
-    await tasksService.getUpcoming(7)
-    expect(api.tasks.getUpcoming).toHaveBeenCalledWith(7)
+    expect(commands.tasksReorder).toHaveBeenCalledWith({ taskIds: ['t1', 't2'], positions: [0, 1] })
+    expect(commands.tasksConvertToSubtask).toHaveBeenCalledWith({ taskId: 't1', parentId: 'p1' })
+    expect(commands.tasksBulkMove).toHaveBeenCalledWith({ ids: ['t1', 't2'], projectId: 'proj-2' })
+    expect(commands.tasksStatusUpdate).toHaveBeenCalledWith({ id: 's1', name: 'Doing' })
+    expect(commands.tasksProjectListForItem).toHaveBeenCalledWith({
+      itemType: 'note',
+      itemId: 'n1'
+    })
   })
 
-  it('logs reorder failures in fire-and-forget flows', async () => {
+  it('answers the dated views in the list envelope, upcoming over 7 days by default', async () => {
+    commands.tasksGetToday.mockResolvedValue([view])
+    commands.tasksGetUpcoming.mockResolvedValue([])
+    await expect(tasksService.getToday()).resolves.toEqual({
+      tasks: [view],
+      total: 1,
+      hasMore: false
+    })
+    await tasksService.getUpcoming()
+    expect(commands.tasksGetUpcoming).toHaveBeenCalledWith(7)
+  })
+
+  it('logs a reorder that fails or is refused in fire-and-forget flows', async () => {
     const error = new Error('reorder failed')
-    api.tasks.reorder = vi.fn().mockRejectedValue(error)
-
-    queueTaskReorder(['t1', 't2'], [0, 1])
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(api.tasks.reorder).toHaveBeenCalledWith(['t1', 't2'], [0, 1])
+    commands.tasksReorder.mockRejectedValueOnce(error)
+    queueTaskReorder(['t1'], [0])
+    await flush()
     expect(tasksServiceLogger.error).toHaveBeenCalledWith('Failed to reorder tasks:', error)
+
+    commands.tasksReorder.mockResolvedValueOnce({ success: false, error: 'not found' })
+    queueTaskReorder(['t1'], [0])
+    await flush()
+    expect(tasksServiceLogger.error).toHaveBeenCalledWith('Failed to reorder tasks:', 'not found')
   })
 
-  it('registers task and project event subscriptions', () => {
-    const unsubscribe = vi.fn()
-    api.onTaskCreated = vi.fn(() => unsubscribe)
-    api.onTaskUpdated = vi.fn(() => unsubscribe)
-    api.onTaskDeleted = vi.fn(() => unsubscribe)
-    api.onTaskCompleted = vi.fn(() => unsubscribe)
-    api.onTaskMoved = vi.fn(() => unsubscribe)
-    api.onProjectCreated = vi.fn(() => unsubscribe)
-    api.onProjectUpdated = vi.fn(() => unsubscribe)
-    api.onProjectDeleted = vi.fn(() => unsubscribe)
+  it('delivers Electron payloads, reading the record back by the event id', async () => {
+    commands.tasksGet.mockResolvedValue(view)
+    commands.tasksProjectGet.mockResolvedValue({ id: 'p1', name: 'P', statuses: [] })
+    const created = vi.fn()
+    const updated = vi.fn()
+    const deleted = vi.fn()
+    const project = vi.fn()
+    onTaskCreated(created)
+    onTaskUpdated(updated)
+    onTaskDeleted(deleted)
+    onProjectUpdated(project)
+    await flush()
 
-    expect(onTaskCreated(vi.fn())).toBe(unsubscribe)
-    expect(onTaskUpdated(vi.fn())).toBe(unsubscribe)
-    expect(onTaskDeleted(vi.fn())).toBe(unsubscribe)
-    expect(onTaskCompleted(vi.fn())).toBe(unsubscribe)
-    expect(onTaskMoved(vi.fn())).toBe(unsubscribe)
-    expect(onProjectCreated(vi.fn())).toBe(unsubscribe)
-    expect(onProjectUpdated(vi.fn())).toBe(unsubscribe)
-    expect(onProjectDeleted(vi.fn())).toBe(unsubscribe)
+    handlers.get('taskCreated')?.({ payload: { id: 'task-1' } })
+    handlers.get('taskUpdated')?.({ payload: { id: 'task-1' } })
+    handlers.get('taskDeleted')?.({ payload: { id: 'task-9' } })
+    handlers.get('projectUpdated')?.({ payload: { id: 'p1' } })
+    await flush()
+
+    expect(commands.tasksGet).toHaveBeenCalledWith('task-1')
+    expect(created).toHaveBeenCalledWith({ task: view })
+    expect(updated).toHaveBeenCalledWith({ id: 'task-1', task: view, changes: {} })
+    expect(deleted).toHaveBeenCalledWith({ id: 'task-9' })
+    expect(project).toHaveBeenCalledWith({
+      id: 'p1',
+      project: { id: 'p1', name: 'P', statuses: [] }
+    })
+  })
+
+  it('skips a task gone before its read-back, and a listener unsubscribed meanwhile', async () => {
+    const updated = vi.fn()
+    const unsubscribe = onTaskUpdated(updated)
+    await flush()
+
+    commands.tasksGet.mockResolvedValueOnce(null)
+    handlers.get('taskUpdated')?.({ payload: { id: 'gone' } })
+    await flush()
+    expect(updated).not.toHaveBeenCalled()
+
+    let answer: (value: unknown) => void = () => undefined
+    commands.tasksGet.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+    handlers.get('taskUpdated')?.({ payload: { id: 'task-1' } })
+    unsubscribe()
+    answer(view)
+    await flush()
+    expect(updated).not.toHaveBeenCalled()
   })
 })
