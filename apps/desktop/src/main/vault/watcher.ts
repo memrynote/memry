@@ -731,9 +731,7 @@ export class VaultWatcher {
     const prior = this.addsInFlight.get(eventPath)
     const add = async (): Promise<void> => {
       const stats = this.statOf(eventPath)
-      if (!renamedFile && (await this.addedFileKeys.unchanged(eventPath, stats, contentHashOf))) {
-        return
-      }
+      if (!renamedFile && (await this.repeatsAdd(eventPath, stats))) return
       // A failed add leaves no key, so chokidar's add of the file retries it.
       this.addedFileKeys.forget(eventPath)
       const added = await this.addFile(eventPath)
@@ -748,8 +746,27 @@ export class VaultWatcher {
     return run
   }
 
+  /**
+   * Whether the event is an add's own, of a file unchanged since the add read
+   * it. The index lost an add whose row is gone, and a re-add restores it.
+   */
+  private async repeatsAdd(filePath: string, stats: Stats | null): Promise<boolean> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath || !(await this.addedFileKeys.unchanged(filePath, stats, contentHashOf))) {
+      return false
+    }
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+    try {
+      return !!getNoteCacheByPath(getIndexDatabase(), relativePath)
+    } catch (error) {
+      // The event runs, and the add or change reports the index's failure.
+      logger.debug(`No index row check for ${filePath}: ${String(error)}`)
+      return false
+    }
+  }
+
   private async handleRawChange(filePath: string, stats: Stats | undefined): Promise<void> {
-    if (await this.addedFileKeys.unchanged(filePath, this.statOf(filePath), contentHashOf)) return
+    if (await this.repeatsAdd(filePath, this.statOf(filePath))) return
     this.addedFileKeys.forget(filePath)
     this.recentIdentities.recordChange(filePath, stats)
     this.debouncedChange?.(filePath)
