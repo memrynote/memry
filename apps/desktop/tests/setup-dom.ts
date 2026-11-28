@@ -16,7 +16,7 @@ import { resetVaultStatusCache } from '@/lib/vault-status-cache'
 // i18n singleton: initialize English so components using useT without an
 // explicit <I18nextProvider> get real translations (not raw keys). Tests that
 // need a specific locale wrap the render in their own <I18nextProvider>.
-// initImmediate: false makes init synchronous.
+// initAsync: false makes init synchronous.
 // ============================================================================
 
 void addI18nextPlugin(IcuFormatter)
@@ -29,7 +29,7 @@ void addI18nextPlugin(IcuFormatter)
     resources: RESOURCES,
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
-    initImmediate: false
+    initAsync: false
   })
 
 vi.mock('electron-log/renderer', () => {

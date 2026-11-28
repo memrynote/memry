@@ -35,7 +35,7 @@ export async function createMainI18n(options: CreateMainI18nOptions): Promise<I1
         escapeValue: false // main process renders no HTML
       },
       appendNamespaceToMissingKey: true,
-      initImmediate: false // synchronous init
+      initAsync: false // synchronous init
     })
   return instance
 }
@@ -60,7 +60,7 @@ export function createEnglishFallbackI18n(): I18nInstance {
     resources: { [FALLBACK_LOCALE]: EN_BUNDLE },
     interpolation: { escapeValue: false },
     appendNamespaceToMissingKey: true,
-    initImmediate: false
+    initAsync: false
   })
   return instance
 }
