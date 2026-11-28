@@ -1,12 +1,25 @@
-//! The canvas commands (the canvas folder ones stay in `registry.rs`), appended to the task
-//! domain's lists by `registry/graph.rs`: `with_canvas_commands!(collect_commands![...])` hands
-//! `collect_commands!` the list with these appended. Kept out of `registry.rs` for its line
-//! ceiling.
+//! The canvas and canvas folder commands and events. `canvas_folders` sits apart from `canvas`
+//! in the chain because its commands reach the bindings earlier.
 
-macro_rules! with_canvas_commands {
-    ($collect:ident![$($commands:tt)*]) => {
-        $collect![
-            $($commands)*
+macro_rules! canvas_folders {
+    (commands $($chain:tt)*) => {
+        chain!(commands [
+            crate::commands::canvas_folders::canvas_folder_create::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_delete::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_list::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_move::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_rename::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_set_icon::<Wry>,
+        ] $($chain)*)
+    };
+    (events $($chain:tt)*) => {
+        chain!(events [] $($chain)*)
+    };
+}
+
+macro_rules! canvas {
+    (commands $($chain:tt)*) => {
+        chain!(commands [
             crate::commands::canvas::canvas_can_upload_asset,
             crate::commands::canvas::canvas_create::<Wry>,
             crate::commands::canvas::canvas_delete::<Wry>,
@@ -23,8 +36,17 @@ macro_rules! with_canvas_commands {
             crate::commands::canvas::canvas_reveal_in_finder,
             crate::commands::canvas::canvas_update::<Wry>,
             crate::commands::canvas::canvas_upload_asset::<Wry>,
-        ]
+        ] $($chain)*)
+    };
+    (events $($chain:tt)*) => {
+        chain!(events [
+            crate::events::CanvasCreatedEvent,
+            crate::events::CanvasDeletedEvent,
+            crate::events::CanvasFolderCreatedEvent,
+            crate::events::CanvasFolderDeletedEvent,
+            crate::events::CanvasFolderUpdatedEvent,
+            crate::events::CanvasTooLargeEvent,
+            crate::events::CanvasUpdatedEvent,
+        ] $($chain)*)
     };
 }
-
-pub(super) use with_canvas_commands;

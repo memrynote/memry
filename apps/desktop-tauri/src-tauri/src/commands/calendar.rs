@@ -29,9 +29,6 @@ use super::error::CommandError;
 use super::notes::open_vault;
 use crate::events::{CalendarChangeEntityType, CalendarChangedEvent, broadcast};
 
-mod registry;
-pub(crate) use registry::{collect_commands_with_calendar, collect_events_with_calendar};
-
 /// `CalendarRangeResponse`.
 #[derive(Debug, Serialize, specta::Type)]
 pub struct CalendarRangeView {
