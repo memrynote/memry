@@ -101,8 +101,9 @@ vi.mock('chokidar', async (importOriginal) => {
     ...actual,
     watch: (...args: Parameters<typeof actual.watch>) => {
       const watcher = actual.watch(...args)
-      const emit = watcher.emit.bind(watcher)
-      watcher.emit = (event, ...emitted) => {
+      // Untyped: the override forwards every event, whatever its arguments.
+      const emit = watcher.emit.bind(watcher) as (event: string, ...args: unknown[]) => boolean
+      watcher.emit = ((event: string, ...emitted: unknown[]) => {
         const details: unknown = emitted[2]
         const asChange =
           event === 'raw' &&
@@ -113,7 +114,7 @@ vi.mock('chokidar', async (importOriginal) => {
           typeof details.watchedPath === 'string' &&
           renamesAsChanges.has(details.watchedPath)
         return asChange ? emit(event, 'change', ...emitted.slice(1)) : emit(event, ...emitted)
-      }
+      }) as typeof watcher.emit
       const emitWithAll = watcher.emitWithAll.bind(watcher)
       watcher.emitWithAll = (event, emitted) => {
         const lost = { add: lostAdds, change: lostChanges }[event as string]

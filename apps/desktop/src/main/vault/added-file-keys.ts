@@ -41,12 +41,7 @@ export class AddedFileKeys {
   /** Whether `filePath` is unchanged since an add read it. */
   unchanged(filePath: string, key: string | null): boolean {
     const entry = this.entries.get(filePath)
-    return (
-      key !== null &&
-      entry !== undefined &&
-      entry.key === key &&
-      Date.now() - entry.recordedAt < ADDED_KEY_TTL_MS
-    )
+    return key !== null && entry?.key === key && Date.now() - entry.recordedAt < ADDED_KEY_TTL_MS
   }
 
   forget(filePath: string): void {

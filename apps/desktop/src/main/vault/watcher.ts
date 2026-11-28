@@ -326,7 +326,7 @@ export class VaultWatcher {
         this.recentIdentities.recordChange(filePath, stats)
         this.debouncedChange?.(filePath)
       })
-      .on('raw', (event, eventPath, details) => this.recordRawEvent(event, eventPath, details))
+      .on('raw', (_event, eventPath, details) => this.recordRawEvent(eventPath, details))
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
@@ -433,7 +433,7 @@ export class VaultWatcher {
    * which adds the file in its new spelling. chokidar's own unlink of the old
    * spelling, if it comes, finds no row.
    */
-  private recordRawEvent(event: string, eventPath: string, details: unknown): void {
+  private recordRawEvent(eventPath: string, details: unknown): void {
     if (!this.isReady || typeof details !== 'object' || details === null) return
     const watchedPath = 'watchedPath' in details ? details.watchedPath : null
     if (typeof watchedPath !== 'string') return
