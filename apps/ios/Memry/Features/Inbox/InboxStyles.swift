@@ -33,7 +33,7 @@ struct InboxTagPillStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Tokens.Typography.supporting.font.weight(.medium))
-            .foregroundStyle(color)
+            .foregroundStyle(Tokens.Palette.label(on: color))
             .padding(.horizontal, Tokens.Space.medium)
             .frame(minHeight: Tokens.Size.pill)
             .background(color.opacity(selected ? Tokens.Palette.chipFillAlpha : 0), in: .capsule)

@@ -276,7 +276,7 @@ enum BlockText {
             // around the tag make room for its padding.
             text.addAttributes(
                 [
-                    .foregroundColor: ink,
+                    .foregroundColor: Tokens.Palette.label(on: ink),
                     .backgroundColor: ink.withAlphaComponent(Tokens.Palette.chipFillAlpha),
                     .font: UIFont.systemFont(ofSize: size * 0.9, weight: .medium),
                     .memryTag: match.tag,
@@ -416,17 +416,29 @@ enum BlockText {
         let ink = UIColor(NoteInline.tagColor(of: run, colors: style.tagColors))
         let shown = "#" + name
         let font = UIFont.systemFont(ofSize: style.font.pointSize * 0.9, weight: .medium)
-        let text = NSAttributedString(string: shown, attributes: [.font: font, .foregroundColor: ink])
-        let textSize = text.size()
+        let label = Tokens.Palette.label(on: ink)
+        let textSize = NSAttributedString(string: shown, attributes: [.font: font]).size()
         let padX: CGFloat = 8
         let padY: CGFloat = 1
         let size = CGSize(width: ceil(textSize.width + padX * 2), height: ceil(textSize.height + padY * 2))
-        let image = UIGraphicsImageRenderer(size: size).image { _ in
-            ink.withAlphaComponent(Tokens.Palette.chipFillAlpha).setFill()
-            UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: min(10, size.height / 2)).fill()
-            text.draw(at: CGPoint(x: padX, y: padY))
+        // The label differs per interface style, so the pill holds one drawing
+        // for each and picks at draw time (`StyledPillAttachment`).
+        let asset = UIImageAsset()
+        for interface in [UIUserInterfaceStyle.light, .dark] {
+            let traits = UITraitCollection(userInterfaceStyle: interface)
+            let text = NSAttributedString(
+                string: shown, attributes: [.font: font, .foregroundColor: label.resolvedColor(with: traits)]
+            )
+            let drawing = UIGraphicsImageRenderer(size: size).image { _ in
+                ink.resolvedColor(with: traits).withAlphaComponent(Tokens.Palette.chipFillAlpha).setFill()
+                let bounds = CGRect(origin: .zero, size: size)
+                UIBezierPath(roundedRect: bounds, cornerRadius: min(10, size.height / 2)).fill()
+                text.draw(at: CGPoint(x: padX, y: padY))
+            }
+            asset.register(drawing, with: traits)
         }
-        let attachment = NSTextAttachment(image: image)
+        let attachment = StyledPillAttachment(data: nil, ofType: nil)
+        attachment.asset = asset
         // Centre the pill on the line's x-height, as desktop's inline box sits.
         let y = (style.font.capHeight - size.height) / 2
         attachment.bounds = CGRect(x: 0, y: y, width: size.width, height: size.height)
@@ -524,5 +536,19 @@ struct NodeAnchor: Sendable, Equatable {
             if !segment.isNode, !segment.text.isEmpty { end = bytes }
         }
         return end
+    }
+}
+
+/// A tag pill that draws the variant for the interface style it is drawn in.
+/// TextKit 1 draws a plain attachment's `image` as given, so a theme change
+/// kept the other style's label; with no `image` it asks this override, under
+/// the text view's current traits.
+private final class StyledPillAttachment: NSTextAttachment {
+    var asset: UIImageAsset?
+
+    override func image(
+        forBounds imageBounds: CGRect, textContainer: NSTextContainer?, characterIndex charIndex: Int
+    ) -> UIImage? {
+        asset?.image(with: .current)
     }
 }

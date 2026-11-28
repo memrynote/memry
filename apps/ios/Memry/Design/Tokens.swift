@@ -51,6 +51,12 @@ struct AdaptiveColor: Sendable, Equatable {
             blue = Double(hex & 0xFF) / 255
         }
 
+        init(red: Double, green: Double, blue: Double) {
+            self.red = red
+            self.green = green
+            self.blue = blue
+        }
+
         /// WCAG 2.1 relative luminance.
         var relativeLuminance: Double {
             func channel(_ value: Double) -> Double {
@@ -514,7 +520,8 @@ enum Tokens {
     /// The tag and property-option palette, ported from
     /// `packages/contracts/src/tag-colors.ts` — the one palette every surface
     /// paints chips from, so a tag orange on desktop is orange here. One hex
-    /// per name, used as the label and at `chipFillAlpha` as the fill.
+    /// per name, used at `chipFillAlpha` as the fill and through `label(on:)`
+    /// as the label.
     /// Task domain colour (desktop `--task-*`, `base.css:1631-1665` light and
     /// `:1903-1935` dark). Domain meaning only: priority, due state,
     /// completion, repeat and quick-add tokens. Every use pairs the colour with
@@ -671,6 +678,99 @@ enum Tokens {
         static let variable = AdaptiveColor(light: 0xE3_62_09, dark: 0xFF_AB_70)
         static let comment = AdaptiveColor(light: 0x6A_73_7D, dark: 0x6A_73_7D)
         static let plain = AdaptiveColor(light: 0x24_29_2E, dark: 0xE1_E4_E8)
+    }
+}
+
+// The label a chip of a tag or option colour draws, desktop's
+// `tagTextOnLight`. Beside `Tokens` rather than inside it so the palette's
+// arithmetic does not crowd the token table.
+extension Tokens.Palette {
+    /// The label on a chip of `hue`. In light, the same hue and saturation
+    /// darkened only as far as it takes to read at AA on the chip's own fill;
+    /// in dark, the hue itself, which already reads. Any colour works, so a
+    /// custom `#rrggbb` gets the same guarantee. Dots, swatches and fills keep
+    /// the hue.
+    static func label(on hue: Color) -> Color { Color(label(on: UIColor(hue))) }
+
+    static func label(on hue: UIColor) -> UIColor {
+        UIColor { traits in
+            let resolved = hue.resolvedColor(with: traits)
+            guard traits.userInterfaceStyle != .dark else { return resolved }
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            let clamp = { (value: CGFloat) in min(max(Double(value), 0), 1) }
+            let ink = lightLabel(AdaptiveColor.RGB(red: clamp(red), green: clamp(green), blue: clamp(blue)))
+            return UIColor(red: ink.red, green: ink.green, blue: ink.blue, alpha: alpha)
+        }
+    }
+
+    /// The darkest light surface a chip sits on. A label that clears AA on
+    /// the fill composited over it clears it on every lighter one.
+    private static let lightChipBase = Tokens.Canvas.surfaceActive.light
+    /// AA is 4.5:1; the margin matches desktop's `LIGHT_LABEL_CONTRAST`.
+    private static let lightLabelContrast = 4.6
+
+    private static func lightLabel(_ hue: AdaptiveColor.RGB) -> AdaptiveColor.RGB {
+        let base = lightChipBase
+        let mix = { (top: Double, under: Double) in top * chipFillAlpha + under * (1 - chipFillAlpha) }
+        let fill = AdaptiveColor.RGB(
+            red: mix(hue.red, base.red), green: mix(hue.green, base.green), blue: mix(hue.blue, base.blue)
+        )
+        guard AdaptiveColor.RGB.contrast(hue, fill) < lightLabelContrast else { return hue }
+        let hsl = HSL(hue)
+        // Contrast rises as lightness falls: the lightest shade that passes.
+        var lower = 0.0
+        var upper = hsl.lightness
+        for _ in 0..<24 {
+            let mid = (lower + upper) / 2
+            if AdaptiveColor.RGB.contrast(hsl.with(lightness: mid), fill) >= lightLabelContrast {
+                lower = mid
+            } else {
+                upper = mid
+            }
+        }
+        return hsl.with(lightness: lower)
+    }
+
+    private struct HSL {
+        let hue: Double
+        let saturation: Double
+        let lightness: Double
+
+        init(_ color: AdaptiveColor.RGB) {
+            let high = max(color.red, color.green, color.blue)
+            let low = min(color.red, color.green, color.blue)
+            lightness = (high + low) / 2
+            guard high > low else {
+                hue = 0
+                saturation = 0
+                return
+            }
+            let delta = high - low
+            saturation = lightness > 0.5 ? delta / (2 - high - low) : delta / (high + low)
+            let sector: Double
+            if high == color.red {
+                sector = (color.green - color.blue) / delta + (color.green < color.blue ? 6 : 0)
+            } else if high == color.green {
+                sector = (color.blue - color.red) / delta + 2
+            } else {
+                sector = (color.red - color.green) / delta + 4
+            }
+            hue = sector / 6
+        }
+
+        func with(lightness value: Double) -> AdaptiveColor.RGB {
+            let upper = value < 0.5 ? value * (1 + saturation) : value + saturation - value * saturation
+            let lower = 2 * value - upper
+            func channel(_ offset: Double) -> Double {
+                let turn = offset < 0 ? offset + 1 : offset > 1 ? offset - 1 : offset
+                if turn < 1 / 6 { return lower + (upper - lower) * 6 * turn }
+                if turn < 1 / 2 { return upper }
+                if turn < 2 / 3 { return lower + (upper - lower) * (2 / 3 - turn) * 6 }
+                return lower
+            }
+            return AdaptiveColor.RGB(red: channel(hue + 1 / 3), green: channel(hue), blue: channel(hue - 1 / 3))
+        }
     }
 }
 
