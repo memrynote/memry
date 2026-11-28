@@ -441,14 +441,19 @@ export class VaultWatcher {
     // one `change`, which names the new file all the same.
     if (eventPath && path.basename(watchedPath) !== eventPath) {
       const target = path.join(path.dirname(watchedPath), eventPath)
-      const caseOnly = isSupportedPath(target) && this.isCaseOnlyRename(watchedPath, target)
       // The event can also fold in a write made just before the rename, which
       // the row's hash trails: the unlink matches the file by its identity
       // (#5549), read at its new name.
-      if (caseOnly || (isSupportedPath(target) && this.renameTargets.record(watchedPath, target))) {
+      if (isSupportedPath(target) && this.isCaseOnlyRename(watchedPath, target)) {
+        // One directory entry holds both spellings: the file is the renamed one.
         this.recordIdentity(target, watchedPath)
+        this.handleFileDelete(watchedPath, { renamedTo: target })
+      } else if (isSupportedPath(target) && this.renameTargets.record(watchedPath, target)) {
+        // A move to another folder names its new name here too, where an
+        // unrelated file can sit: only the file the watcher knew takes the key.
+        const stats = this.statOf(target)
+        if (stats?.isFile()) this.recentIdentities.recordRenamed(watchedPath, stats)
       }
-      if (caseOnly) this.handleFileDelete(watchedPath, { renamedTo: target })
     }
     // A file's own fs.watch names the file; a folder's names the child.
     const filePath =
