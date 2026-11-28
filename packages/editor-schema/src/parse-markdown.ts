@@ -202,7 +202,11 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     const unmasked = unmaskRun(stripped, code, masks.breaks)
     // Every restore is unconditional: a placeholder that survives into a block
     // is written into the vault as literal text.
-    run.text = restoreMasks(unmasked, masks)
+    //
+    // A token left after that was inside a hidden tag, whose source the restore
+    // just brought back (`<x a="<br>">`): it is the spelling the author wrote.
+    const restored = restoreMasks(unmasked, masks)
+    run.text = masks.breaks.length > 0 ? restoreHardBreakSpelling(restored, masks.breaks) : restored
     if (stripped === '' && original !== '') emptied.add(run)
   }
   // A run that held only the artifact would split the marks around it:
