@@ -6,6 +6,11 @@
 //! It also counts the `vault_desktop_write` operations of the agent MCP vectors into
 //! `MEMRY_DESKTOP_WRITE_OPERATIONS`, so the write gate fails the build until it classifies a new
 //! one (`agent::runtime::gate`).
+//!
+//! It bundles the user guide the agent's help tools read (`agent::tools::read_help`): Electron's
+//! `help-docs.ts` glob of `apps/docs/src/guide/*.md` and `apps/docs/src/user-guide/**/*.md`,
+//! without the CLI and agent API reference pages, as `help_pages.json` (`[[page, markdown]]`,
+//! sorted by page).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -52,11 +57,63 @@ fn count_desktop_writes(manifest: &Path) {
     println!("cargo:rustc-env=MEMRY_DESKTOP_WRITE_OPERATIONS={count}");
 }
 
+/// The guide pages `help-docs.ts` leaves out: they answer in code, not in steps a user follows.
+const HELP_EXCLUDED: [&str; 5] = [
+    "user-guide/cli",
+    "user-guide/cli-reference",
+    "user-guide/ai/agent-api-reference",
+    "user-guide/ai/agent-backends",
+    "user-guide/ai/agent-mcp",
+];
+
+fn markdown_files(dir: &Path, recursive: bool, out: &mut Vec<PathBuf>) {
+    let entries = fs::read_dir(dir).unwrap_or_else(|error| panic!("{}: {error}", dir.display()));
+    for entry in entries {
+        let path = entry.expect("docs entry").path();
+        if path.is_dir() {
+            if recursive {
+                markdown_files(&path, true, out);
+            }
+        } else if path.extension().is_some_and(|ext| ext == "md") {
+            out.push(path);
+        }
+    }
+}
+
+fn bundle_help(manifest: &Path, out_dir: &Path) {
+    let docs = manifest.join("../../apps/docs/src");
+    let mut files = Vec::new();
+    for (dir, recursive) in [("guide", false), ("user-guide", true)] {
+        let dir = docs.join(dir);
+        println!("cargo:rerun-if-changed={}", dir.display());
+        markdown_files(&dir, recursive, &mut files);
+    }
+    let mut pages: Vec<(String, String)> = files
+        .iter()
+        .map(|file| {
+            let page = file
+                .strip_prefix(&docs)
+                .expect("under docs")
+                .with_extension("")
+                .components()
+                .map(|part| part.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("/");
+            (page, read(file))
+        })
+        .filter(|(page, _)| !HELP_EXCLUDED.contains(&page.as_str()))
+        .collect();
+    pages.sort();
+    let json = serde_json::to_string(&pages).expect("help pages json");
+    fs::write(out_dir.join("help_pages.json"), json).expect("write help pages");
+}
+
 fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     count_desktop_writes(&manifest);
     let root = manifest.join("../../packages/i18n/src/locales");
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("out dir"));
+    bundle_help(&manifest, &out_dir);
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", root.display());
 

@@ -8,11 +8,10 @@ use std::sync::Arc;
 
 use memry_desktop::account::vault_sync::SyncWiring;
 use memry_desktop::agent::mcp::ToolRegistry;
-use memry_desktop::agent::runtime::{
-    AgentService, HostParts, ToolsNotPorted, VaultAgent, VaultGateHost,
-};
+use memry_desktop::agent::runtime::{AgentService, HostParts, VaultAgent, VaultGateHost};
 use memry_desktop::agent::store::gate::EntitlementGate;
 use memry_desktop::agent::store::{AgentStore, StoreParts};
+use memry_desktop::agent::tools::DesktopToolHost;
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::at_rest_key::AtRestKeys;
 use memry_desktop::session::{OpenVault, Session};
@@ -42,6 +41,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let recovered = wiring.keychain_recovered.clone();
     let session = app.state::<Session>().inner().clone();
     let config = session.registry().config().clone();
+    let tools_session = session.clone();
     let events_app = app.clone();
     let telemetry = services::telemetry(app);
     let build = move |open: &OpenVault| -> Option<VaultAgent> {
@@ -78,7 +78,12 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
                 }
             }),
         });
-        let registry = Arc::new(ToolRegistry::new(Arc::new(ToolsNotPorted)));
+        let tools = DesktopToolHost::new(
+            tools_session.clone(),
+            open.vault_id.clone(),
+            identity.clone(),
+        );
+        let registry = Arc::new(ToolRegistry::new(Arc::new(tools)));
         Some(VaultAgent::new(
             open.vault_id.clone(),
             registry,
