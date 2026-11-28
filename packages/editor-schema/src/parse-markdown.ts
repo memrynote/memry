@@ -390,7 +390,14 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // A link with no label has no text to hold its address, so it travels as a
   // comment's token too. After the pipe escape, which still reads a `[[` that
   // opens in front of one.
-  const fenced = losslessBlocks ? maskEmptyLinks(escapeUnwritableLinks(wikiEscaped)) : wikiEscaped
+  //
+  // A link whose address no markdown writes back stays text, unless the source
+  // is one an earlier build recorded: that build's document holds the link cut
+  // at its first blank, and the source proves against it only when read the
+  // same way.
+  const fenced = losslessBlocks
+    ? maskEmptyLinks(legacy.html ? wikiEscaped : escapeUnwritableLinks(wikiEscaped), legacy)
+    : wikiEscaped
   // `<details>` markup in a quote stays text, before a break masks the two
   // spaces the writer ends its line with.
   const source = losslessBlocks ? escapePrefixedDetailsMarkup(fenced) : fenced

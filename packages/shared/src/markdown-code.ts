@@ -34,19 +34,15 @@ export function blankMarkdownCode(markdown: string): string {
  * spaces of the same length, so a match in the result is a match at the same
  * offset in the source.
  */
-export function maskMarkdownCode(markdown: string): string {
+export function maskMarkdownCode(markdown: string, legacy: LegacyReading = {}): string {
   if (!mayHoldCode(markdown)) return markdown
-  return walkMarkdown(
-    markdown,
-    {},
-    {
-      codeLine: (line) => ' '.repeat(line.length),
-      textOpen: (open) => open,
-      codeSpan: (source) => ' '.repeat(source.length),
-      skippedTicks: (ticks) => ' '.repeat(ticks.length),
-      comment: (source) => source
-    }
-  )
+  return walkMarkdown(markdown, legacy, {
+    codeLine: (line) => ' '.repeat(line.length),
+    textOpen: (open) => open,
+    codeSpan: (source) => ' '.repeat(source.length),
+    skippedTicks: (ticks) => ' '.repeat(ticks.length),
+    comment: (source) => source
+  })
 }
 
 /**

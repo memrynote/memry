@@ -1,4 +1,5 @@
 import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
+import { type LegacyReading, maskMarkdownCode } from '@memry/shared/markdown-code'
 import { maskCodeAcrossLines } from './code-mask'
 
 /**
@@ -78,10 +79,17 @@ export function bracketPartners(text: string): { opens: Map<number, number>; clo
 /**
  * `markdown` with each empty-label link outside code replaced by its token,
  * and the brackets of each one whose address crosses a line escaped.
+ *
+ * `legacy.html` reads it as origin/main did, for a source recorded beside a
+ * document that build made: a code span within one line, an image and an
+ * address read like the rest of the line, and a link whose address crosses a
+ * line left as it was, which the parse then dropped whole. The document that
+ * build made holds none of that link, so only the same reading proves the
+ * source against it.
  */
-export function maskEmptyLinks(markdown: string): string {
+export function maskEmptyLinks(markdown: string, legacy: LegacyReading = {}): string {
   if (!OPENS_EMPTY_LABEL.test(markdown)) return markdown
-  const code = maskCodeAcrossLines(markdown)
+  const code = legacy.html ? maskMarkdownCode(markdown, legacy) : maskCodeAcrossLines(markdown)
   const partners = parenPartners(markdown)
   const { opens, closes } = bracketPartners(markdown)
   /** The `)` that closes the address after the label ending at `labelEnd`. */
@@ -110,13 +118,13 @@ export function maskEmptyLinks(markdown: string): string {
     const image = bang
     bang = false
     // Past the address a label's `]` opens: an address is read as written.
-    if (ch === ']' && closes[at] === 1 && code[at] === ']') {
+    if (!legacy.html && ch === ']' && closes[at] === 1 && code[at] === ']') {
       at = addressEnd(at) ?? at
       continue
     }
     if (ch !== '[' || code[at] !== '[') continue
     if (image) {
-      at = addressEnd(opens.get(at)) ?? at
+      if (!legacy.html) at = addressEnd(opens.get(at)) ?? at
       continue
     }
     link.lastIndex = at
@@ -131,6 +139,7 @@ export function maskEmptyLinks(markdown: string): string {
     const close = partners.get(at + opener[0].length - 1)
     if (close === undefined) continue
     if (close > lineEnd) {
+      if (legacy.html) continue
       // A fence's info string holds no link, whatever its structure.
       if (fenceEnd >= 0 && at >= fenceEnd) continue
       // Both brackets, so the pair stays neutral to an enclosing label's `]`.
