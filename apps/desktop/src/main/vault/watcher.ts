@@ -128,6 +128,13 @@ const MASS_REMOVAL_MIN_SHARE = 0.25
  */
 const DIR_UNLINK_SETTLE_MS = 1000
 
+/** An add that read no bytes of the file. */
+const NOTHING_READ = { readHash: null }
+
+async function contentHashOf(filePath: string): Promise<string | null> {
+  return (await scanMarkdownFile(filePath, 0))?.contentHash ?? null
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -320,12 +327,7 @@ export class VaultWatcher {
     // Set up event handlers
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
-      .on('change', (filePath, stats?: Stats) => {
-        if (this.addedFileKeys.unchanged(filePath, this.statOf(filePath))) return
-        this.addedFileKeys.forget(filePath)
-        this.recentIdentities.recordChange(filePath, stats)
-        this.debouncedChange?.(filePath)
-      })
+      .on('change', (filePath, stats?: Stats) => void this.handleRawChange(filePath, stats))
       .on('raw', (_event, eventPath, details) => this.recordRawEvent(eventPath, details))
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
@@ -729,13 +731,13 @@ export class VaultWatcher {
     const prior = this.addsInFlight.get(eventPath)
     const add = async (): Promise<void> => {
       const stats = this.statOf(eventPath)
-      const takenAt = Date.now()
-      if (!renamedFile && this.addedFileKeys.unchanged(eventPath, stats)) return
+      if (!renamedFile && (await this.addedFileKeys.unchanged(eventPath, stats, contentHashOf))) {
+        return
+      }
       // A failed add leaves no key, so chokidar's add of the file retries it.
       this.addedFileKeys.forget(eventPath)
-      if ((await this.addFile(eventPath)) && stats) {
-        this.addedFileKeys.record(eventPath, stats, takenAt)
-      }
+      const added = await this.addFile(eventPath)
+      if (added && stats) this.addedFileKeys.record(eventPath, stats, added.readHash)
     }
     const run = prior ? prior.then(add, add) : add()
     this.addsInFlight.set(eventPath, run)
@@ -744,6 +746,13 @@ export class VaultWatcher {
     }
     void run.then(settled, settled)
     return run
+  }
+
+  private async handleRawChange(filePath: string, stats: Stats | undefined): Promise<void> {
+    if (await this.addedFileKeys.unchanged(filePath, this.statOf(filePath), contentHashOf)) return
+    this.addedFileKeys.forget(filePath)
+    this.recentIdentities.recordChange(filePath, stats)
+    this.debouncedChange?.(filePath)
   }
 
   private statOf(filePath: string): Stats | null {
@@ -755,9 +764,12 @@ export class VaultWatcher {
     }
   }
 
-  /** Whether the add ran to its end; one that threw is chokidar's to retry. */
-  private async addFile(eventPath: string): Promise<boolean> {
-    if (!this.vaultPath) return false
+  /**
+   * The add's outcome, null if it threw and is chokidar's to retry. `readHash`
+   * is the content hash of the bytes the add read, if it read the file.
+   */
+  private async addFile(eventPath: string): Promise<{ readHash: string | null } | null> {
+    if (!this.vaultPath) return null
     const absolutePath = this.inDiskCase(eventPath)
     let echo = false
 
@@ -765,7 +777,7 @@ export class VaultWatcher {
       // The echo of the app's own write. Other bytes are an edit, however soon
       // after an app write they land (#5605).
       echo = await this.isOwnWrite(absolutePath)
-      if (echo) return true
+      if (echo) return NOTHING_READ
 
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
@@ -778,7 +790,7 @@ export class VaultWatcher {
         isInAttachmentStore(relativePath) ||
         isAppMoveEcho(this.vaultPath, relativePath)
       ) {
-        return true
+        return NOTHING_READ
       }
 
       const db = getIndexDatabase()
@@ -789,7 +801,7 @@ export class VaultWatcher {
         if (fileType === 'markdown') {
           await this.handleMarkdownFileChange(relativePath, existing, db)
         }
-        return true
+        return NOTHING_READ
       }
 
       // The index cache is derived: it is rebuilt, and the projector that fills
@@ -800,7 +812,7 @@ export class VaultWatcher {
       if (claimed !== null && claimed.path !== relativePath) {
         if (isRemoteApplySpelling(claimed, relativePath)) {
           await this.adoptCaseVariantRow(absolutePath, relativePath, fileType, claimed, db)
-          return true
+          return NOTHING_READ
         }
         // A file renamed by case outside the app, or a folder renamed by case
         // whose unlink is already pending: a rename, which the add path below
@@ -809,17 +821,18 @@ export class VaultWatcher {
       }
 
       if (fileType === 'markdown') {
-        await this.handleMarkdownFileAdd(absolutePath, relativePath, db, claimed)
-      } else {
-        await this.handleNonMarkdownFileAdd(
-          absolutePath,
-          relativePath,
-          fileType,
-          db,
-          claimed?.id ?? null
-        )
+        return {
+          readHash: await this.handleMarkdownFileAdd(absolutePath, relativePath, db, claimed)
+        }
       }
-      return true
+      await this.handleNonMarkdownFileAdd(
+        absolutePath,
+        relativePath,
+        fileType,
+        db,
+        claimed?.id ?? null
+      )
+      return NOTHING_READ
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       // A thrown add costs the user a sidebar row and says nothing on screen,
@@ -834,7 +847,7 @@ export class VaultWatcher {
         message: error.message
       })
       this.onError?.(error)
-      return false
+      return null
     } finally {
       // A file moved into a locked folder, a locked note renamed or a locked
       // file recreated from outside comes in writable. The app's own write is
@@ -1000,19 +1013,19 @@ export class VaultWatcher {
     relativePath: string,
     db: ReturnType<typeof getIndexDatabase>,
     claimed: { id: string; createdAt: string } | null
-  ): Promise<void> {
+  ): Promise<string | null> {
     const vaultPath = this.vaultPath
-    if (!vaultPath) return
+    if (!vaultPath) return null
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) {
-      return
+      return null
     }
 
     const renameMatch = await this.matchPendingRename(absolutePath, relativePath, stats)
     if (renameMatch !== null) {
       if (this.renameKeepsJournalDate(db, relativePath, renameMatch)) {
         await this.applyMarkdownRename(db, relativePath, stats, renameMatch)
-        return
+        return renameMatch.contentHash
       }
       // The move changes what the file is: a journal leaving the journal folder
       // (or its date), or a date-named note joining it. Notes and journals are
@@ -1085,6 +1098,7 @@ export class VaultWatcher {
     })
 
     if (claimed === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
+    return null
   }
 
   /**

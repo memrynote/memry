@@ -17,8 +17,10 @@
  * the last write. HFS+ keeps whole seconds, FAT and exFAT two, and so do some
  * network shares: there a same-size edit inside the add's second kept the key,
  * its change was dropped, and the next in-app edit wrote the old body over
- * it. Such a key counts only when it was taken 2 s past the mtime, as git's
- * racy-clean check does.
+ * it. No clock tells such an edit apart, since a share stamps mtimes with
+ * the server's: a whole-second key counts only with the content hash of the
+ * bytes the add read, which the file must still hash to. An add that read no
+ * bytes, a binary's or a new note's, keeps no such key.
  *
  * @module vault/added-file-keys
  */
@@ -29,11 +31,10 @@ import { buildAddedFileIdentityKey } from './rename-tracker'
 /** How long a key lives: past the latest FSEvents delivery seen on a loaded machine. */
 const ADDED_KEY_TTL_MS = 120_000
 
-/** FAT's mtime step, the coarsest a vault disk keeps. */
-const COARSE_MTIME_STEP_MS = 2000
-
 interface Entry {
   key: string
+  /** For a whole-second mtime, the hash of the bytes the add read. */
+  contentHash: string | null
   recordedAt: number
 }
 
@@ -41,11 +42,15 @@ export class AddedFileKeys {
   private entries = new Map<string, Entry>()
   private sweptAt = 0
 
-  /** The add of `filePath`, which found `stats` at `takenAt` as it began, ran to its end. */
-  record(filePath: string, stats: Stats, takenAt: number): void {
+  /**
+   * The add of `filePath`, which found `stats` as it began, ran to its end,
+   * and read bytes with `readHash` if it read the file.
+   */
+  record(filePath: string, stats: Stats, readHash: string | null): void {
     const key = buildAddedFileIdentityKey(stats)
     const wholeSecond = stats.mtimeMs % 1000 === 0
-    if (key === null || (wholeSecond && takenAt - stats.mtimeMs < COARSE_MTIME_STEP_MS)) {
+    const contentHash = wholeSecond ? readHash : null
+    if (key === null || (wholeSecond && contentHash === null)) {
       this.entries.delete(filePath)
       return
     }
@@ -56,14 +61,21 @@ export class AddedFileKeys {
         if (now - entry.recordedAt >= ADDED_KEY_TTL_MS) this.entries.delete(swept)
       }
     }
-    this.entries.set(filePath, { key, recordedAt: now })
+    this.entries.set(filePath, { key, contentHash, recordedAt: now })
   }
 
   /** Whether `filePath`, which has `stats` now, is unchanged since an add read it. */
-  unchanged(filePath: string, stats: Stats | null): boolean {
+  async unchanged(
+    filePath: string,
+    stats: Stats | null,
+    hashOf: (filePath: string) => Promise<string | null>
+  ): Promise<boolean> {
     const entry = this.entries.get(filePath)
     const key = stats && buildAddedFileIdentityKey(stats)
-    return !!key && entry?.key === key && Date.now() - entry.recordedAt < ADDED_KEY_TTL_MS
+    if (!key || entry?.key !== key || Date.now() - entry.recordedAt >= ADDED_KEY_TTL_MS) {
+      return false
+    }
+    return entry.contentHash === null || (await hashOf(filePath)) === entry.contentHash
   }
 
   forget(filePath: string): void {
