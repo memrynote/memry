@@ -38,7 +38,7 @@ async function read(markdown: string): Promise<Block[]> {
 async function written(markdown: string): Promise<string> {
   const doc = new Y.Doc()
   await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-  return yDocToCanonicalMarkdown(doc)
+  return (await yDocToCanonicalMarkdown(doc)) ?? ''
 }
 
 /** Every inline item of every block, a table's cells included. */

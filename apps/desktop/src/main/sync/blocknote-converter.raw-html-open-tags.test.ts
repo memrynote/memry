@@ -23,7 +23,7 @@ async function roundTrip(markdown: string): Promise<{ once: string; twice: strin
     const doc = new Y.Doc()
     const ok = await markdownToYFragment(source, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(ok, 'the markdown reached the document').toBe(true)
-    return yDocToCanonicalMarkdown(doc)
+    return (await yDocToCanonicalMarkdown(doc)) ?? ''
   }
   const once = await write(markdown)
   return { once, twice: await write(once) }

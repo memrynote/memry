@@ -40,8 +40,8 @@ async function runsOf(markdown: string): Promise<Run[]> {
 
 /** The note written, then read and written again. */
 async function settle(markdown: string): Promise<{ once: string; twice: string }> {
-  const once = await yDocToCanonicalMarkdown(await seed(markdown))
-  return { once, twice: await yDocToCanonicalMarkdown(await seed(once)) }
+  const once = (await yDocToCanonicalMarkdown(await seed(markdown))) ?? ''
+  return { once, twice: (await yDocToCanonicalMarkdown(await seed(once))) ?? '' }
 }
 
 describe('a closing span tag that closes no coloured span', () => {

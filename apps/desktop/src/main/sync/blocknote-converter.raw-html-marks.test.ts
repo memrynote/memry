@@ -38,7 +38,7 @@ async function write(runs: Run[]): Promise<string> {
   expect(
     blocksToYFragment([block] as unknown as Block[], doc.getXmlFragment(CRDT_FRAGMENT_NAME))
   ).toBe(true)
-  return yDocToCanonicalMarkdown(doc)
+  return (await yDocToCanonicalMarkdown(doc)) ?? ''
 }
 
 async function read(markdown: string): Promise<{ runs: Run[]; written: string }> {
@@ -47,7 +47,7 @@ async function read(markdown: string): Promise<{ runs: Run[]; written: string }>
   const blocks = (await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))) as Block[]
   return {
     runs: blocks.flatMap((block) => (Array.isArray(block.content) ? (block.content as Run[]) : [])),
-    written: await yDocToCanonicalMarkdown(doc)
+    written: (await yDocToCanonicalMarkdown(doc)) ?? ''
   }
 }
 

@@ -35,7 +35,7 @@ async function read(markdown: string): Promise<Block[]> {
 async function write(blocks: Block[]): Promise<string> {
   const doc = new Y.Doc()
   expect(blocksToYFragment(blocks, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
-  return yDocToCanonicalMarkdown(doc)
+  return (await yDocToCanonicalMarkdown(doc)) ?? ''
 }
 
 const paragraph = (runs: Run[]): Block =>
