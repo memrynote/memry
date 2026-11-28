@@ -17,6 +17,7 @@ import {
   type CrdtPreflightResult
 } from './crdt-preflight'
 import { moveStoreDir } from './crdt-store-move'
+import { completeWithin, SHUTDOWN_CLOSE_VAULT_RESERVE_MS } from '../shutdown-sequence'
 import { trackMainEvent } from '../telemetry/track'
 import { getMainRedactOptions } from '../telemetry/redact-options'
 import { redactText } from '@memry/contracts/redact'
@@ -28,6 +29,37 @@ const log = createLogger('CrdtProvider')
 
 const PERSISTENCE_PROBE_KEY = '__memry_crdt_probe__'
 const PERSISTENCE_PROBE_TIMEOUT_MS = 15_000
+
+/**
+ * How long a session whose probe timed out keeps waiting for its store, from
+ * the open. A slow disk answered after the timeout in the field (a Windows
+ * vault watcher took 22 s on the same launch), and the session ran in memory to
+ * its end. Ten minutes bounds what the session keeps for the store meanwhile:
+ * the last state of each doc it closes (`CrdtProvider.lateStore`).
+ */
+const LATE_STORE_BUDGET_MS = 10 * 60_000
+/** The waits before each new attempt, after an attempt's probe failed in-band. */
+const LATE_STORE_RETRY_DELAYS_MS = [15_000, 60_000, 240_000]
+/** How long closing an attempt's handle may take before the wait gives up. */
+const LATE_STORE_CLOSE_WAIT_MS = SHUTDOWN_CLOSE_VAULT_RESERVE_MS
+
+/**
+ * A store whose probe outlived `PERSISTENCE_PROBE_TIMEOUT_MS` at open. The
+ * preflight passed, so the binding loaded and the store opened in a child; the
+ * probe was only slow. The same handle's round trip keeps running, and no
+ * second handle opens on the directory while it holds the LevelDB lock. A round
+ * trip that fails in-band (the binding reported an error, such as a held lock)
+ * closes its handle and is retried after a backoff, at most three times. One
+ * that never settles (an out-of-band throw, a wedged disk) ends at the budget.
+ */
+export interface LateCrdtStore {
+  /** When the open began (`Date.now()`), for the switch's log. */
+  readonly openedAt: number
+  /** The store once a probe answers; null once the wait gave up or was cancelled. Never rejects. */
+  readonly ready: Promise<CrdtPersistence | null>
+  /** Stops the wait. `ready` then resolves null once the attempt's handle is closed. */
+  cancel(): void
+}
 
 /**
  * classic-level memory knobs, passed through y-leveldb's `levelOptions`.
@@ -236,7 +268,15 @@ function reportPersistenceUnavailable(
  * degrades to in-memory mode, where notes still load from vault markdown and
  * write back to disk and only CRDT history persistence is lost.
  */
-export async function openCrdtPersistence(storagePath: string): Promise<CrdtPersistence | null> {
+export async function openCrdtPersistence(
+  storagePath: string,
+  /**
+   * Takes the store when its probe times out (`LateCrdtStore`), and must
+   * cancel it when the caller is done. Without it the late store is closed.
+   */
+  onLate?: (late: LateCrdtStore) => void
+): Promise<CrdtPersistence | null> {
+  const startedAt = Date.now()
   // Held outside the try so the catch can attribute the failure. The throw
   // below is this function's own, but the catch also covers the binding
   // aborting out-of-band from probePersistence, where there is no verdict.
@@ -274,11 +314,14 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
     if (!preflight.ok) {
       throw new Error(`CRDT store preflight failed: ${preflight.reason ?? 'unknown'}`)
     }
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
-    const persistence = new LeveldbPersistence(storagePath, {
-      levelOptions: CRDT_LEVEL_OPTIONS
-    }) as CrdtPersistence
-    await probePersistence(persistence)
+    const persistence = openLevelStore(storagePath)
+    const roundTrip = probeRoundTrip(persistence)
+    if (!(await probePersistence(roundTrip))) {
+      const late = waitForLateStore(storagePath, persistence, roundTrip, startedAt)
+      if (onLate) onLate(late)
+      else late.cancel()
+      throw new Error(`CRDT persistence probe timed out after ${PERSISTENCE_PROBE_TIMEOUT_MS}ms`)
+    }
     log.debug('CrdtProvider persistence initialized', { storagePath })
     return persistence
   } catch (err) {
@@ -444,20 +487,42 @@ function clearPath(target: string, label: string): boolean {
   }
 }
 
+function openLevelStore(storagePath: string): CrdtPersistence {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
+  return new LeveldbPersistence(storagePath, {
+    levelOptions: CRDT_LEVEL_OPTIONS
+  }) as CrdtPersistence
+}
+
+/** A write/read/clear round trip of a throwaway doc through the store. */
+async function probeRoundTrip(persistence: CrdtPersistence): Promise<void> {
+  const probeDoc = new Y.Doc()
+  probeDoc.getMap('probe').set('ok', true)
+  const update = Y.encodeStateAsUpdate(probeDoc)
+  probeDoc.destroy()
+  // NODE_ENV=test only: holds the round trip, so an e2e can reproduce a store
+  // that answers after the probe timed out. Inert in shipped builds.
+  const delayMs =
+    process.env.NODE_ENV === 'test' ? Number(process.env.MEMRY_TEST_CRDT_PROBE_DELAY_MS) || 0 : 0
+  if (delayMs > 0) await new Promise<void>((resolve) => setTimeout(resolve, delayMs))
+  await persistence.storeUpdate(PERSISTENCE_PROBE_KEY, update)
+  const loaded = await persistence.getYDoc(PERSISTENCE_PROBE_KEY)
+  loaded.destroy()
+  await persistence.clearDocument(PERSISTENCE_PROBE_KEY)
+}
+
 /**
  * Verify the CRDT store's native binding actually works before trusting it.
  * A broken classic-level binding (ABI mismatch) doesn't reject cleanly — it
  * throws out-of-band from an fs callback (surfacing as uncaughtException) or
  * never invokes its callback at all (hanging the promise). Capture both so a
  * bad binary degrades to in-memory mode instead of crashing note editing.
+ *
+ * Resolves false when the round trip outlived the timeout; it keeps running,
+ * and `waitForLateStore` waits for it.
  */
-async function probePersistence(persistence: CrdtPersistence): Promise<void> {
-  const probeDoc = new Y.Doc()
-  probeDoc.getMap('probe').set('ok', true)
-  const update = Y.encodeStateAsUpdate(probeDoc)
-  probeDoc.destroy()
-
-  await new Promise<void>((resolve, reject) => {
+async function probePersistence(roundTrip: Promise<void>): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
     let settled = false
     const settle = (fn: () => void): void => {
       if (settled) return
@@ -467,28 +532,97 @@ async function probePersistence(persistence: CrdtPersistence): Promise<void> {
       fn()
     }
     const onUncaught = (err: Error): void => settle(() => reject(err))
-    const timer = setTimeout(
-      () =>
-        settle(() =>
-          reject(
-            new Error(`CRDT persistence probe timed out after ${PERSISTENCE_PROBE_TIMEOUT_MS}ms`)
-          )
-        ),
-      PERSISTENCE_PROBE_TIMEOUT_MS
-    )
+    const timer = setTimeout(() => settle(() => resolve(false)), PERSISTENCE_PROBE_TIMEOUT_MS)
     process.prependListener('uncaughtException', onUncaught)
 
-    Promise.resolve()
-      .then(async () => {
-        await persistence.storeUpdate(PERSISTENCE_PROBE_KEY, update)
-        const loaded = await persistence.getYDoc(PERSISTENCE_PROBE_KEY)
-        loaded.destroy()
-        await persistence.clearDocument(PERSISTENCE_PROBE_KEY)
-        return undefined
-      })
-      .then(
-        () => settle(resolve),
-        (err: unknown) => settle(() => reject(err instanceof Error ? err : new Error(String(err))))
+    roundTrip.then(
+      () => settle(() => resolve(true)),
+      (err: unknown) => settle(() => reject(err instanceof Error ? err : new Error(String(err))))
+    )
+  })
+}
+
+type AttemptOutcome = 'answered' | 'failed' | 'expired' | 'cancelled'
+const NEVER = new Promise<void>(() => {})
+
+/**
+ * Waits for a store whose probe timed out at open (`LateCrdtStore`). Only this
+ * path retries, because a timeout is the one failure that says the store is
+ * slow rather than broken: the preflight passed. A failed preflight never gets
+ * here (`openCrdtPersistence` throws before the store opens in main).
+ */
+function waitForLateStore(
+  storagePath: string,
+  first: CrdtPersistence,
+  firstRoundTrip: Promise<void>,
+  startedAt: number
+): LateCrdtStore {
+  const cancelled = new AbortController()
+  const deadline = startedAt + LATE_STORE_BUDGET_MS
+  const ready = (async (): Promise<CrdtPersistence | null> => {
+    let persistence = first
+    let roundTrip = firstRoundTrip
+    for (let attempt = 0; ; attempt++) {
+      const outcome = await settleBefore(roundTrip, deadline, cancelled.signal)
+      if (outcome === 'answered') return persistence
+      // Retried only once its handle closed: a second handle would race this
+      // one for the directory's LevelDB lock.
+      const closed = await completeWithin(
+        Promise.resolve()
+          .then(() => persistence.destroy())
+          .catch((err: unknown) => log.warn('Could not close a late CRDT store', { error: err })),
+        LATE_STORE_CLOSE_WAIT_MS
       )
+      const retryAt = Date.now() + (LATE_STORE_RETRY_DELAYS_MS[attempt] ?? Infinity)
+      const retries =
+        outcome === 'failed' &&
+        closed &&
+        retryAt < deadline &&
+        (await settleBefore(NEVER, retryAt, cancelled.signal)) === 'expired'
+      if (!retries) {
+        if (!cancelled.signal.aborted) {
+          log.warn('CRDT store did not answer; the session stays in memory', {
+            storagePath,
+            outcome,
+            attempts: attempt + 1,
+            closed,
+            elapsedMs: Date.now() - startedAt
+          })
+        }
+        return null
+      }
+      persistence = openLevelStore(storagePath)
+      roundTrip = probeRoundTrip(persistence)
+    }
+  })()
+  return { openedAt: startedAt, ready, cancel: () => cancelled.abort() }
+}
+
+/** How `roundTrip` settled before `deadline`, or that the deadline or a cancel came first. */
+function settleBefore(
+  roundTrip: Promise<void>,
+  deadline: number,
+  signal: AbortSignal
+): Promise<AttemptOutcome> {
+  return new Promise<AttemptOutcome>((resolve) => {
+    let done = false
+    const finish = (outcome: AttemptOutcome): void => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
+      resolve(signal.aborted ? 'cancelled' : outcome)
+    }
+    const onAbort = (): void => finish('cancelled')
+    const timer = setTimeout(() => finish('expired'), Math.max(0, deadline - Date.now()))
+    signal.addEventListener('abort', onAbort, { once: true })
+    if (signal.aborted) finish('cancelled')
+    roundTrip.then(
+      () => finish('answered'),
+      (err: unknown) => {
+        if (!done) log.warn('A late CRDT store probe failed', { error: err })
+        finish('failed')
+      }
+    )
   })
 }
