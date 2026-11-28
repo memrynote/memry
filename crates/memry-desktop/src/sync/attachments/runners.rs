@@ -25,7 +25,7 @@ use memry_core::sync::driver::AttachmentDownload;
 use rusqlite::{Connection, OptionalExtension, params};
 use tokio::time::{MissedTickBehavior, interval};
 
-use super::{Inner, Live, lock};
+use super::{Inner, Live, lock, placement};
 
 pub(super) const UPLOAD_EVERY: Duration = Duration::from_secs(5 * 60);
 pub(super) const DOWNLOAD_EVERY: Duration = Duration::from_secs(15 * 60);
@@ -303,9 +303,12 @@ pub(super) async fn eager_download(inner: &Arc<Inner>, live: &Live, wanted: Atta
 }
 
 /// One download through the queue, and its outcome recorded: the file's record on success, a
-/// failure row (404 `missing`, else `transient`) otherwise. A cleared queue records nothing.
+/// failure row (404 `missing`, else `transient`) otherwise. A cleared queue records nothing. A
+/// reference's file is first moved or renamed to what the note's body asks for
+/// ([`placement::settle`]), so the record names where it is.
 async fn download(inner: &Inner, live: &Live, request: DownloadRequest) {
     let (owner, id) = (request.owner_id.clone(), request.attachment_id.clone());
+    let into_dir = matches!(request.target, DownloadTarget::Dir(_));
     let Ok(outcome) = live.queue.enqueue(request).await else {
         return;
     };
@@ -318,10 +321,17 @@ async fn download(inner: &Inner, live: &Live, request: DownloadRequest) {
                 return;
             };
             lock(&live.landed).insert(download_failures::key(&owner, &id));
-            let (owner, id) = (owner.clone(), id.clone());
+            let (owner, id, vault) = (owner.clone(), id.clone(), Arc::clone(&inner.vault));
             inner
                 .db
-                .call(move |conn| record_downloaded(conn, &owner, &rel, &id, now))
+                .call(move |conn| {
+                    let rel = if into_dir {
+                        placement::settle(conn, vault.as_ref(), &owner, rel, now)?
+                    } else {
+                        rel
+                    };
+                    record_downloaded(conn, &owner, &rel, &id, now)
+                })
                 .await
         }
         Err(error) => {

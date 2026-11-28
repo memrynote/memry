@@ -9,6 +9,7 @@
 //! Every runner settles its rows in the database before it moves on, so a stop or a crash
 //! anywhere converges on the next start.
 
+mod placement;
 mod runners;
 pub mod vault_files;
 
