@@ -99,3 +99,73 @@ fn a_balanced_address_stays_a_link() {
         );
     }
 }
+
+fn nodes(content: &[SeedInline]) -> Vec<String> {
+    content
+        .iter()
+        .map(|piece| match piece {
+            SeedInline::Text { text, marks } if marks.code => format!("code {text:?}"),
+            SeedInline::Text { text, .. } => format!("text {text:?}"),
+            SeedInline::HtmlComment { source } => format!("comment {source:?}"),
+            other => format!("{other:?}"),
+        })
+        .collect()
+}
+
+/// A backslash makes a backtick text, so a comment between two of them is a
+/// comment node among the text, as it is on desktop.
+#[test]
+fn a_comment_between_escaped_backticks_is_a_node() {
+    for (source, expected) in [
+        (
+            "\\`%%x%%\\`",
+            vec!["text \"`\"", "comment \"%%x%%\"", "text \"`\""],
+        ),
+        (
+            "a \\`%%x%%\\` b",
+            vec!["text \"a `\"", "comment \"%%x%%\"", "text \"` b\""],
+        ),
+        ("\\\\`%%x%%`", vec!["text \"\\\\\"", "code \"%%x%%\""]),
+    ] {
+        let seeded = plan(source);
+        assert!(seeded.fallbacks.is_empty(), "{source:?}");
+        assert_eq!(nodes(&seeded.blocks[0].content), expected, "{source:?}");
+    }
+}
+
+/// A summary line gets the same comment scan as the text around it.
+#[test]
+fn a_comment_between_escaped_backticks_in_a_summary_line_is_a_node() {
+    let seeded = plan("<details>\n<summary>\\`<!-- c -->\\`</summary>\n\nx\n\n</details>");
+    assert!(seeded.fallbacks.is_empty(), "{:?}", seeded.fallbacks);
+    assert_eq!(
+        nodes(&seeded.blocks[0].content)[2..],
+        [
+            "text \"<summary>`\"",
+            "comment \"<!-- c -->\"",
+            "text \"`</summary>\""
+        ]
+    );
+}
+
+/// A run of backticks with no closer of its length retries from each later
+/// backtick of the run, as the parser does, so a comment the span reaches is
+/// the span's own bytes: `a``x b`c` is `a`, a span `x b`, then `c`.
+#[test]
+fn a_comment_in_a_span_the_run_retries_into_is_code() {
+    for (source, expected) in [
+        (
+            "a``%%x%%b`c",
+            vec!["text \"a`\"", "code \"%%x%%b\"", "text \"c\""],
+        ),
+        (
+            "a``%%x%%b`c`",
+            vec!["text \"a`\"", "code \"%%x%%b\"", "text \"c`\""],
+        ),
+        ("\\``%%x%%`", vec!["text \"`\"", "code \"%%x%%\""]),
+    ] {
+        let seeded = plan(source);
+        assert!(seeded.fallbacks.is_empty(), "{source:?}");
+        assert_eq!(nodes(&seeded.blocks[0].content), expected, "{source:?}");
+    }
+}
