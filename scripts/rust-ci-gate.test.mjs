@@ -365,7 +365,7 @@ describe('Rust CI gate', () => {
       jobs.indexOf('\n  test-archive:\n')
     )
     const legs = readFileSync(join(repo, '.github/actions/ci-tier/rust-legs.jq'), 'utf8')
-    const groups = ['lint', 'seams', 'tests', 'perf', 'models']
+    const groups = ['lint', 'seams', 'budget', 'tests', 'perf', 'models']
     for (const group of groups) assert.match(legs, new RegExp(`\\b${group}: true\\b`), group)
     for (const [, cond] of lintAndTest.matchAll(/^ {8}if: (.*)$/gm)) {
       for (const [, field] of cond.matchAll(/matrix\.([a-z]+)/g))
