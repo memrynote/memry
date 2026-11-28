@@ -149,18 +149,19 @@ From the device list, click **Revoke**. Effects:
 - Future pulls from that device fail with auth errors
 - The local data on that device is untouched (it's still readable until you wipe it)
 
-Revoke when you no longer use a device. **Revoke immediately** if you suspect compromise — and follow up with a [key rotation](/user-guide/sync/recovery-rotation).
+Revoke when you no longer use a device. **Revoke immediately** if you suspect compromise — see [If You Think Your Key Leaked](/user-guide/sync/recovery-rotation#if-you-think-your-key-leaked).
 
-Revoking is not permanent for that machine: signing in again from it registers the same device anew and restores its access. To lock someone out for good, revoke **and** rotate your keys.
+Revoking is not permanent for that machine: signing in again from it registers the same device anew and restores its access. Revoking does not change your vault key, which cannot be replaced, so also keep your email account secure: signing in needs it.
 
 ## Lost Device
 
 You **cannot** revoke from a device you don't have. Use any other linked device:
 
-1. Devices list → **Revoke** the lost device
-2. Recommended: **Rotate keys** to invalidate any sealed key copies that may have been exfiltrated
+- In the Devices list, click **Revoke** on the lost device.
 
-If you have **only** the lost device, restore on a new machine using your **recovery phrase** (see [Recovery Key & Rotation](/user-guide/sync/recovery-rotation)).
+To revoke every device at once, use **Log out everywhere** on [memrynote.com](/user-guide/sync/web-account#profile).
+
+If you have **only** the lost device, restore on a new machine using your **recovery phrase** (see [Recovery Key](/user-guide/sync/recovery-rotation)), then revoke the lost device from there.
 
 ## Renaming Devices
 
@@ -170,9 +171,9 @@ Click a device's name in the list to rename. The name is local convenience — i
 
 An account can have up to 50 active devices. Setting up a 51st is refused until you revoke one: on a device that is signed in, open the Devices list and click **Revoke** on one you no longer use, then start setting up the new device again.
 
-Large numbers of linked devices also increase the time to seal the vault key during rotation. Practically: keep your active devices and revoke the rest.
+Practically: keep your active devices and revoke the rest.
 
 ## See Also
 
 - [How Sync Works](/user-guide/sync/how-sync-works)
-- [Recovery Key & Rotation](/user-guide/sync/recovery-rotation)
+- [Recovery Key](/user-guide/sync/recovery-rotation)

@@ -120,7 +120,7 @@ function unifiedSidebar() {
             { text: 'Daily Review Reminder', link: '/user-guide/inbox/review-reminder' },
             { text: 'Filters & Views', link: '/user-guide/inbox/filters' },
             { text: 'Snooze & Archive', link: '/user-guide/inbox/snooze-archive' },
-            { text: 'Health', link: '/user-guide/inbox/health' },
+            { text: 'Insights', link: '/user-guide/inbox/health' },
             { text: 'Inbox on iPhone', link: '/user-guide/inbox/on-iphone' }
           ]
         },
@@ -191,7 +191,7 @@ function unifiedSidebar() {
             { text: 'Linking Another Device', link: '/user-guide/sync/linking-devices' },
             { text: 'Account on the Web', link: '/user-guide/sync/web-account' },
             { text: 'iPhone: Free Use and Plans', link: '/user-guide/sync/iphone-plans' },
-            { text: 'Recovery Key & Rotation', link: '/user-guide/sync/recovery-rotation' },
+            { text: 'Recovery Key', link: '/user-guide/sync/recovery-rotation' },
             { text: 'Conflict & Health', link: '/user-guide/sync/conflict-health' }
           ]
         },

@@ -75,7 +75,7 @@ server for vault tools, and pluggable inline providers (Ollama / OpenAI / Anthro
 
 ## Sync & Devices
 
-End-to-end encrypted sync, multi-device linking with QR + linking code, recovery phrase, and key rotation.
+End-to-end encrypted sync, multi-device linking with QR + linking code, and recovery phrase.
 
 → [Sync & Devices](/user-guide/sync/how-sync-works)
 

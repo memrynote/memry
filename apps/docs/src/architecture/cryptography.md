@@ -361,20 +361,12 @@ The spec called for `parallelism = 4`. libsodium pins parallelism to `1` and mem
 
 A list of words generated at vault creation. Words are derived from the same vault key entropy and can re-create the wrapping key without the passphrase. Stored only by the user (never in the cloud).
 
-## Key Rotation
+## No Key Rotation
 
-The rotation wizard:
-
-1. Generates a new vault key.
-2. Re-encrypts payloads under the new key (streamed, batched, resumable).
-3. Reseals the new key for every linked device's public key.
-4. Bumps the `crypto_version` so old ciphertexts are auditable.
-
-When to rotate:
-
-- Lost or stolen device that wasn't yet revoked
-- Recovery phrase exposure
-- Major OS or backup compromise
+The vault key cannot be rotated. It derives from the recovery phrase, and no code re-encrypts
+existing data under a new key, so a leaked phrase stays valid for the account. Revoking a device
+or logging out everywhere (`POST /auth/logout-all`) revokes devices and refresh tokens; it changes
+no key. See [Known limitations](/architecture/security-white-paper#known-limitations).
 
 ## What the Server Never Sees
 

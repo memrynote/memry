@@ -1,17 +1,17 @@
 # Filters & Views
 
-Filter the inbox by content type and switch between Inbox / Triage / Archived / Health views.
+Filter the inbox by content type and switch between Inbox / Triage / Archived / Insights views.
 
 <!-- screenshot: inbox with content type filter chips active -->
 
 ## The Four Views
 
-| View         | What it shows                                                                         |
-| ------------ | ------------------------------------------------------------------------------------- |
-| **Inbox**    | Pending items waiting to be triaged                                                   |
-| **Triage**   | A focused, card-based workflow (see [Triage Mode](/user-guide/inbox/triage))          |
-| **Archived** | Items you've already processed                                                        |
-| **Health**   | Failed sync jobs and items needing attention (see [Health](/user-guide/inbox/health)) |
+| View         | What it shows                                                                |
+| ------------ | ---------------------------------------------------------------------------- |
+| **Inbox**    | Pending items waiting to be triaged                                          |
+| **Triage**   | A focused, card-based workflow (see [Triage Mode](/user-guide/inbox/triage)) |
+| **Archived** | Items you've already processed                                               |
+| **Insights** | Capture and filing statistics (see [Insights](/user-guide/inbox/health))     |
 
 Switch from the tabs at the top of the inbox view.
 
@@ -67,4 +67,4 @@ Active filters and view persist across app restarts (if **Restore Session** is o
 
 - [Triage Mode](/user-guide/inbox/triage)
 - [Snooze & Archive](/user-guide/inbox/snooze-archive)
-- [Health](/user-guide/inbox/health)
+- [Insights](/user-guide/inbox/health)

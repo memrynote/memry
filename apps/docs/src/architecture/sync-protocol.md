@@ -1540,7 +1540,7 @@ signed-in account for sync, so another account's vaults never reach this account
 | `GET /auth/key-verifier`                 | down      | Account key verifier for an established session (vault-key mismatch detection)                |
 | `GET /auth/devices`                      | down      | Signing-key directory; includes revoked devices (`revokedAt` set)                             |
 | `POST /devices/*`                        | mixed     | Linking, listing, revoking                                                                    |
-| `POST /keys/*`                           | mixed     | Key sealing during link, rotation                                                             |
+| `POST /keys/*`                           | mixed     | Key sealing during link                                                                       |
 
 A fresh device downloads every attachment, and it used to send one manifest `GET` and one
 `presign-batch` per attachment: 2,128 of a 2,767-request bootstrap (#5329). The desktop download

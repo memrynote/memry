@@ -6,7 +6,7 @@ Defer items so they reappear later, and get nudged at a specific time.
 
 ## Snooze
 
-Snoozing an inbox item, task, or note's reminder hides it until the wake time arrives. Useful for "I'll deal with this on Monday" workflows.
+Snoozing an inbox item or a reminder hides it until the wake time arrives. Useful for "I'll deal with this on Monday" workflows.
 
 ### Snooze Presets
 
@@ -28,11 +28,12 @@ button — never scrolls out of reach.
 
 ### Where Snooze Is Available
 
-| Surface       | Snooze                                                      |
-| ------------- | ----------------------------------------------------------- |
-| Inbox item    | ✓ (item leaves inbox until wake)                            |
-| Task          | ✓ (task hidden in default views; visible in "Snoozed" view) |
-| Note reminder | ✓ (toast deferred)                                          |
+| Surface    | Snooze                                                |
+| ---------- | ----------------------------------------------------- |
+| Inbox item | ✓ (item leaves inbox until wake)                      |
+| Reminder   | ✓ (on a note, task, or journal entry; toast deferred) |
+
+A task has no snooze of its own; set a reminder on it and snooze that.
 
 ### Countdown Display
 
