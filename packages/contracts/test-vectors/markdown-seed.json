@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 218
+    "caseCount": 219
   },
   "cases": [
     {
@@ -1034,9 +1034,9 @@
     },
     {
       "name": "empty-label link across lines: in an address and in a fence info string",
-      "pins": "an address is read as written, so its link is part of the address up to its whitespace; a fence info string holds no link",
+      "pins": "a link whose address is cut at the line break with a parenthesis open in it stays text, and the link inside it with it; a fence info string holds no link",
       "markdown": "[b]([](u\nv))\n\n- a\n    ```[](u\nv)\n    x\n    ```",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\" link={\"href\":\"[](u\"}\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"[](u\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"v)\"\n3 element hardBreak\n3 text \"x\"\n3 element hardBreak\n3 text \"```\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b]([](u\"\n3 element hardBreak\n3 text \"v))\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"[](u\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"v)\"\n3 element hardBreak\n3 text \"x\"\n3 element hardBreak\n3 text \"```\""
     },
     {
       "name": "empty-label link across lines: then a link of one line",
@@ -1295,6 +1295,12 @@
       "pins": "a <!-- comment in the summary line of a <details> block that is no toggle is a comment node among the text of the line, and its bytes in a code span or a link label",
       "markdown": "<details>\n<summary><!-- c --></summary>\n\nx\n\n</details>\n\n<details>\n<summary>a <!-- c --> **b** `<!-- d -->` [e<!-- f -->](u)</summary>\n\ny\n\n</details>",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>\"\n3 element htmlComment source=\"<!-- c -->\"\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>a \"\n3 element htmlComment source=\"<!-- c -->\"\n3 text \" \"\n3 text \"b\" bold={}\n3 text \" \"\n3 text \"<!-- d -->\" code={}\n3 text \" \"\n3 text \"e<!-- f -->\" link={\"href\":\"u\"}\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"y\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
+    },
+    {
+      "name": "an address no markdown writes back as itself",
+      "pins": "a link or an image whose address the parse cuts at a blank with a parenthesis open in it, or holds a line break, stays the text it was; an address with a blank and balanced parentheses is the link",
+      "markdown": "[b]([](u\nv))\n\n![a]([](u\nv))\n\n[b](x(y\nz) w)\n\n![i](x(y z) w)\n\n[b](<1\ny>)\n\n[b](x(y z) w)\n\n`[b](x(y\nz) w)` and `a\n[](u)\nb`",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b]([](u\"\n3 element hardBreak\n3 text \"v))\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"![a]([](u\"\n3 element hardBreak\n3 text \"v))\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b](x(y\"\n3 element hardBreak\n3 text \"z) w)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"![i](x(y z) w)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b](<1\"\n3 element hardBreak\n3 text \"y>)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\" link={\"href\":\"x(y z) w\"}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b](x(y z) w)\" code={}\n3 text \" and \"\n3 text \"a [](u) b\" code={}"
     },
     {
       "name": "mask in a prop: a comment in an address, an alt and a formula",

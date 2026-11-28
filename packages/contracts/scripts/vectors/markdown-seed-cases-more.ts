@@ -278,7 +278,7 @@ export const MARKDOWN_SEED_MORE_CASES: ReadonlyArray<{
   {
     name: 'empty-label link across lines: in an address and in a fence info string',
     markdown: '[b]([](u\nv))\n\n- a\n    ```[](u\nv)\n    x\n    ```',
-    pins: 'an address is read as written, so its link is part of the address up to its whitespace; a fence info string holds no link'
+    pins: 'a link whose address is cut at the line break with a parenthesis open in it stays text, and the link inside it with it; a fence info string holds no link'
   },
   {
     name: 'empty-label link across lines: then a link of one line',

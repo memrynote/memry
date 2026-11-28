@@ -31,7 +31,7 @@ const CASES: Array<[string, string]> = [
   ['an empty-label link in an address, with a title after it', '[b]([](u\nv) "t")'],
   ['an empty-label link in an address, in a line of text', 'a [b]([](u\nv)) c'],
   ['a link address cut inside a parenthesis', '[b](x(y\nz) w)'],
-  ['a link address cut inside a parenthesis, by a tab', '[b](x(y\tz`c`) w)'],
+  ['a link address cut inside a parenthesis, by a tab', '[b](x(y\tz\nw) w)'],
   ['an image address cut inside a parenthesis', '![i](x(y z) w)'],
   ['a link address that has a paren and no blank', '[b](x(y)z)'],
   ['a fence language with backticks and a blank before them', '```  ``` x\nc\n```'],

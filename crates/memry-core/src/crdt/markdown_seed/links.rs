@@ -16,8 +16,43 @@ pub(super) fn link<'t>(
     }
     let paren_end = closers.closing(text_end + 1, '(', ')')?;
     let raw = &text[text_end + 2..paren_end];
-    let href = kept_whole(raw).unwrap_or_else(|| destination(raw));
+    let kept = kept_whole(raw);
+    // An address cut at a blank with a parenthesis open in it is no link
+    // (`is_unwritable`).
+    if kept.is_none() && is_unwritable(&destination(raw)) {
+        return None;
+    }
+    let href = kept.unwrap_or_else(|| destination(raw));
     Some((href, &text[start + 1..text_end], paren_end + 1))
+}
+
+/// Whether no markdown spells `address` and reads it back as itself: one with
+/// a line break in it, or one that leaves a parenthesis open, as desktop's
+/// `hrefParenTokens` counts them (the writer escapes the parenthesis and the
+/// parser keeps the backslash). Such a link or image stays the text it was
+/// (`editor-schema/src/inline/unwritable-links.ts`).
+pub(super) fn is_unwritable(address: &str) -> bool {
+    if address.contains('\n') {
+        return true;
+    }
+    let mut depth = 0_usize;
+    let mut chars = address.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => {
+                if chars.next().is_none() {
+                    return true;
+                }
+            }
+            '(' => depth += 1,
+            ')' => match depth.checked_sub(1) {
+                Some(open) => depth = open,
+                None => return true,
+            },
+            _ => {}
+        }
+    }
+    depth != 0
 }
 
 /// A destination with whitespace is the link's `href` as written, title and

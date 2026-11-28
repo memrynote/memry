@@ -64,7 +64,7 @@ fn an_address_cut_inside_a_parenthesis_is_the_text_it_was() {
         "[b]([](u\nv) \"t\")",
         "a [b]([](u\nv)) c",
         "[b](x(y\nz) w)",
-        "[b](x(y\tz`c`) w)",
+        "[b](x(y\tz\nw) w)",
         "![i](x(y z) w)",
         "![a]([](u\nv))",
     ] {

@@ -4,9 +4,11 @@ import { endsParagraphBefore, opensBlock } from './blocks/block-starts'
 import { escapePrefixedDetailsMarkup } from './blocks/markdown'
 import { spellsRunsWithUnderscores, trimEmphasisEdges } from './inline/emphasis-runs'
 import { maskCellCodeSpans } from './inline/cell-code-spans'
+import { maskCodeAcrossLines } from './inline/code-mask'
 import { maskEmptyLinks } from './inline/empty-links'
 import { maskLinkDestinations } from './inline/link-destinations'
 import { escapeMarkdownText } from './inline/markdown-escapes'
+import { escapeUnwritableLinks } from './inline/unwritable-links'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 import { widenTables } from './table-width'
 
@@ -67,6 +69,19 @@ const cases: Array<[string, () => unknown]> = [
     'a line of empty-label link openers no paren closes',
     () => maskEmptyLinks('[](a '.repeat(50_000))
   ],
+  [
+    'a line of links whose address leaves a parenthesis open',
+    () => escapeUnwritableLinks('[a](x(y\nz) '.repeat(20_000))
+  ],
+  [
+    'a line of links no parenthesis closes',
+    () => escapeUnwritableLinks('[a](x(y z '.repeat(30_000))
+  ],
+  [
+    'lines of backtick runs of every length, none closing another',
+    () => maskCodeAcrossLines(Array.from({ length: 1500 }, (_, i) => '`'.repeat(i + 1)).join('\n'))
+  ],
+  ['lines of single backticks in one paragraph', () => maskCodeAcrossLines('a`\n'.repeat(50_000))],
   [
     'a line of empty-label links in nested parens',
     () => maskEmptyLinks(`${'[](('.repeat(25_000)}${'))'.repeat(25_000)}`)

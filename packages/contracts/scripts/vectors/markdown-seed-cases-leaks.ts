@@ -30,6 +30,12 @@ export const MARKDOWN_SEED_LEAK_CASES: ReadonlyArray<{
     pins: 'a <!-- comment in the summary line of a <details> block that is no toggle is a comment node among the text of the line, and its bytes in a code span or a link label'
   },
   {
+    name: 'an address no markdown writes back as itself',
+    markdown:
+      '[b]([](u\nv))\n\n![a]([](u\nv))\n\n[b](x(y\nz) w)\n\n![i](x(y z) w)\n\n[b](<1\ny>)\n\n[b](x(y z) w)\n\n`[b](x(y\nz) w)` and `a\n[](u)\nb`',
+    pins: 'a link or an image whose address the parse cuts at a blank with a parenthesis open in it, or holds a line break, stays the text it was; an address with a blank and balanced parentheses is the link'
+  },
+  {
     name: 'mask in a prop: a comment in an address, an alt and a formula',
     markdown:
       '[a](https://e.com/%% b %%)\n\n![a %% b %% c](https://e.com/i.png)\n\n$$\nx %% y %% z\n$$',

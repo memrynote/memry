@@ -118,6 +118,12 @@ at a paragraph's start or end or in a run of three or more, is not decided and s
 `crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:23`, `:36`, `:44`, `:136-147`). A code block's `language`is its
 fence's info string,`""`for an untagged fence or an indented run, never BlockNote's`javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
 `crates/memry-core/src/crdt/markdown_seed/blocks.rs:296-322`).
+BlockNote trims it, so ` `  ` x `is the language `` ``` x ``, with or without a backtick in it (desktop's
+code-span mask leaves such a line alone,`packages/editor-schema/src/inline/cell-code-spans.ts:49`, `:172`). No backtick fence can
+hold a language with a backtick, so write-back spells such a block with a tilde fence, longer than any
+run of tildes in the code, and a space before a language that opens with a tilde
+(`packages/shared/src/code-fence-language.ts:24`, `:46`, called from `apps/desktop/src/main/sync/blocknote-converter.ts`and`apps/desktop/src/renderer/src/components/note/content-area/markdown-utils.ts` `serializeBlocks`); a reader
+takes the tilde fence as it takes any other.
 
 **Comments, and what the core follows from the parse rather than from the markdown.**
 
@@ -129,7 +135,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   The core walks the text the same way and masks each `%%` comment to one word, then turns the
   word into a node once the blocks exist, in the block's marks, and back into its bytes inside a
   code span, a link label and a code block, and in a prop
-  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:101`, `:275`;
+  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:101`, `:311`;
   `crates/memry-core/src/crdt/markdown_seed/comment_nodes.rs:84`;
   `packages/editor-schema/src/parse-markdown.ts:220`, `:290`, `:300`). A `%%` that never closes,
   or sits in code, is text. Desktop serializes a comment back as its source, so it decides
@@ -140,16 +146,36 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   and a title included, to a comment's token after the pipe escape, outside code, an image and an
   escape, and only when the whole link is on one line
   (`packages/editor-schema/src/inline/empty-links.ts:82`,
-  `packages/editor-schema/src/parse-markdown.ts:379`). The core reads the link where its parse
+  `packages/editor-schema/src/parse-markdown.ts:380`). The core reads the link where its parse
   finds it and writes the same node. One whose address crosses a line is no node: it stays the
   text it was, a soft break in it included, in every block that holds text. Desktop escapes the
   `[` and `]` of such a link so the parse reads no link there, and leaves it alone inside a
   link's address or an image, where the parse reads the text as written, and on a fence's info
   line (`packages/editor-schema/src/inline/empty-links.ts:133`); the core builds the same text
-  where its inline parse finds the link (`crates/memry-core/src/crdt/markdown_seed/inline.rs:194-198`).
+  where its inline parse finds the link (`crates/memry-core/src/crdt/markdown_seed/inline.rs:201-205`).
+- **A link or an image whose address no markdown writes back as itself is text.** The parse ends an
+  address at its first blank, so `[b](x(y\nz) w)` is a link to `x(y`, `![i](x(y z) w)` an image of
+  it, and `[b]([](u\nv))` a link to `[](u`. Written, `x(y` gains a backslash the parser keeps, so each
+  save changed the address, and an image's address went out bare and was read as no image. An
+  address that leaves a parenthesis open, or holds a line break (`[b](<x\ny>)`), stays the text it was
+  with its `[` and `]` escaped, the link inside it too; a hard break is no line break there. A blank in an
+  address with its parentheses closed is still the link, whole (BBF-109). Desktop escapes the
+  brackets before it masks the empty-label links, reading a code span as BlockNote does, across a
+  line (`packages/editor-schema/src/inline/unwritable-links.ts:45`,
+  `packages/editor-schema/src/inline/code-mask.ts:16`,
+  `packages/editor-schema/src/parse-markdown.ts:380`); the core reads the same text
+  (`crates/memry-core/src/crdt/markdown_seed/links.rs:34`,
+  `crates/memry-core/src/crdt/markdown_seed/inline.rs:187`, `:284`). Seed, write, seed builds the
+  document the first seed built, and the second write the bytes of the first
+  (`apps/desktop/src/main/sync/writeback-fixed-point.test.ts`).
 - **A `<!--` comment is not built.** It keeps the block-level fallback above, and a `<!--`
   comment that spans lines sends every line to it, because desktop reads the lines around it
-  as one word (`crates/memry-core/src/crdt/markdown_seed/comments.rs:252`).
+  as one word (`crates/memry-core/src/crdt/markdown_seed/comments.rs:288`).
+  The one place a `<!--` comment is built is the `<summary>` line of a `<details>` block that is no
+  toggle: desktop has masked it to a word by then, so it is a node among the line's text, and the
+  core turns each closed one outside a code span into the same token before it hides the line's `<`
+  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:258`,
+  `crates/memry-core/src/crdt/markdown_seed/toggles.rs:162`).
 - **A mask's word never reaches a document.** The read path hides a construct behind a word drawn
   once per process (`MEMRYCMT…X`, `MEMRYHBK…;`, a code span's blanks, a `<details>` tag, a spaced
   address, a `((mention:…))` token) and swaps it back in every string a block carries: a run's
@@ -159,7 +185,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   reads with no mask. The core restores the same strings in one pass over the plan
   (`crates/memry-core/src/crdt/markdown_seed/props.rs:22`, `:34`;
   `crates/memry-core/src/crdt/markdown_seed/runs.rs:200`), as desktop does
-  (`packages/editor-schema/src/parse-markdown.ts:128`, `:168`;
+  (`packages/editor-schema/src/parse-markdown.ts:129`, `:169`;
   `packages/editor-schema/src/note-markdown.ts:98`; `packages/shared/src/hard-breaks.ts:298`).
   A word left in a document would be written into the vault as text no other process can decode.
 - **A `((date:…))` or `((mention:…))` token is its node, as desktop's seed makes it (§12.1.1.1,
@@ -202,14 +228,14 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
 - **A code span keeps its blanks on any line with a pipe.** `maskCellCodeSpans` hides each space
   and tab of a code span on every line that holds a `|` and no `[`, `]` or tag, not only a table
   row, so `` ` |`é `` keeps its leading space and `` ` a`b `` does not
-  (`packages/editor-schema/src/inline/cell-code-spans.ts:150-169`,
+  (`packages/editor-schema/src/inline/cell-code-spans.ts:162-181`,
   `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:37`). A code span at the start of a
   block keeps its leading space too: `` ` *a` b `` is the code ` *a`
   (`packages/editor-schema/src/parse-markdown.ts:170`,
   `crates/memry-core/src/crdt/markdown_seed/runs.rs:294`). A code span of nothing but spaces and
   tabs is hidden the same way on any line, a pipe or not, so a block that holds only such a span
   (`` ` ` ``, `` - `  ` ``) keeps it: read back as plain blanks, the block was empty and went
-  with it (`packages/editor-schema/src/inline/cell-code-spans.ts:162`,
+  with it (`packages/editor-schema/src/inline/cell-code-spans.ts:174`,
   `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:44`).
 - **A marker alone on its line is an empty block.** A flush-left heading line of `#` to
   `######` with nothing after it is an empty heading (an indented one gets no placeholder and

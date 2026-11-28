@@ -19,7 +19,7 @@ use super::closers::Closers;
 use super::code_spans::keep_code_whitespace;
 use super::comments::encode;
 use super::hard_breaks::JOIN;
-use super::links::{destination_and_title, link};
+use super::links::{destination_and_title, is_unwritable, link};
 use super::media::{self, Media};
 use super::mentions;
 use super::nesting::{MAX_NESTING, TOO_DEEP};
@@ -178,12 +178,19 @@ fn inline_token(
         nodes.push(Html::Code(code));
         return Ok(Some(end));
     }
-    if text[i] == '!'
-        && at(1) == Some('[')
-        && let Some((found, end)) = image(closers, i)?
-    {
-        nodes.push(Html::Media(found));
-        return Ok(Some(end));
+    if text[i] == '!' && at(1) == Some('[') {
+        match image(closers, i)? {
+            Image::Found(found, end) => {
+                nodes.push(Html::Media(found));
+                return Ok(Some(end));
+            }
+            // Desktop escapes its brackets, so no link opens at the `[` either.
+            Image::Text => {
+                push_text(nodes, "![");
+                return Ok(Some(i + 2));
+            }
+            Image::Absent => {}
+        }
     }
     if text[i] == '['
         && let Some((href, inner, end)) = link(closers, i)
@@ -252,21 +259,33 @@ fn inline_token(
     Ok(None)
 }
 
+/// What `![` opens.
+enum Image {
+    Found(Media, usize),
+    /// An address no markdown writes back as itself ([`is_unwritable`]):
+    /// the text it was.
+    Text,
+    Absent,
+}
+
 /// `parseImage`: `![alt](url "title")`, the alt as written.
-fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, Unsupported> {
+fn image(closers: &mut Closers, start: usize) -> Result<Image, Unsupported> {
     let text = closers.text();
     let Some(alt_end) = closers.closing(start + 1, '[', ']') else {
-        return Ok(None);
+        return Ok(Image::Absent);
     };
     if text.get(alt_end + 1) != Some(&'(') {
-        return Ok(None);
+        return Ok(Image::Absent);
     }
     let Some(paren_end) = closers.closing(alt_end + 1, '(', ')') else {
-        return Ok(None);
+        return Ok(Image::Absent);
     };
     let (url, title) = destination_and_title(&text[alt_end + 2..paren_end]);
+    if is_unwritable(&url) {
+        return Ok(Image::Text);
+    }
     let alt = collect(&text[start + 2..alt_end]);
-    Ok(Some((media::media(url, alt, title)?, paren_end + 1)))
+    Ok(Image::Found(media::media(url, alt, title)?, paren_end + 1))
 }
 
 fn contains_link(nodes: &[Html]) -> bool {

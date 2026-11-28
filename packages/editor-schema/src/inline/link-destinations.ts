@@ -83,7 +83,7 @@ export function withLinkDestination(href: string, address: string): string {
   return (angled || spaced ? `<${address}>` : address) + rest
 }
 
-function keptWhole(raw: string): boolean {
+export function keptWhole(raw: string): boolean {
   return (
     raw === raw.trim() &&
     /\s/.test(raw) &&

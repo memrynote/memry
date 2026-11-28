@@ -1,5 +1,5 @@
 import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
-import { maskMarkdownCode } from '@memry/shared/markdown-code'
+import { maskCodeAcrossLines } from './code-mask'
 
 /**
  * A link with no label, `[](u)`, kept as an `htmlComment` node.
@@ -35,14 +35,14 @@ const OPENS_EMPTY_LABEL = /\[[ \t]*\]\(/
  * string, which a link cannot be in. Block structure is not read here, so a
  * fence in a list item can look like indented code to `maskMarkdownCode`.
  */
-const FENCE_OPENER = /[ \t>*+\-\d.)]*(?:`{3,}|~{3,})/y
+export const FENCE_OPENER = /[ \t>*+\-\d.)]*(?:`{3,}|~{3,})/y
 
 /**
  * Each `(` with the `)` that brings its depth back to zero, as
  * `findClosingParen` finds it, in one pass: a backslash and the character
  * after it are stepped over, and an opener no closer matches has none.
  */
-function parenPartners(text: string): Map<number, number> {
+export function parenPartners(text: string): Map<number, number> {
   const partners = new Map<number, number>()
   const open: number[] = []
   for (let i = 0; i < text.length; i++) {
@@ -59,7 +59,7 @@ function parenPartners(text: string): Map<number, number> {
  * `findClosingBracket` finds it, in one pass: a backslash and the character
  * after it are stepped over, and an opener no closer matches has none.
  */
-function bracketPartners(text: string): { opens: Map<number, number>; closes: Uint8Array } {
+export function bracketPartners(text: string): { opens: Map<number, number>; closes: Uint8Array } {
   const opens = new Map<number, number>()
   const closes = new Uint8Array(text.length)
   const open: number[] = []
@@ -81,7 +81,7 @@ function bracketPartners(text: string): { opens: Map<number, number>; closes: Ui
  */
 export function maskEmptyLinks(markdown: string): string {
   if (!OPENS_EMPTY_LABEL.test(markdown)) return markdown
-  const code = maskMarkdownCode(markdown)
+  const code = maskCodeAcrossLines(markdown)
   const partners = parenPartners(markdown)
   const { opens, closes } = bracketPartners(markdown)
   /** The `)` that closes the address after the label ending at `labelEnd`. */
