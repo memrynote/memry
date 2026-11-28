@@ -1,9 +1,11 @@
-//! Whether the text of a note's body changed since its row was stamped, read from the body log
-//! as it stood at the row's mark ([`crate::domain::note_files::stamped_mark`]).
+//! Whether the text of a note's body, or its root, changed since its row was stamped, read from
+//! the body log as it stood at the row's mark ([`crate::domain::note_files::stamped_mark`]).
 
 use std::sync::Arc;
 
 use rusqlite::Connection;
+use yrs::branch::Branch;
+use yrs::{BranchID, ReadTxn as _, XmlFragment as _};
 
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
@@ -35,6 +37,38 @@ pub fn text_moved_since_stamp(
     Ok(Some(
         text(converter, note_id, &then)? != text(converter, note_id, &plan.blobs())?,
     ))
+}
+
+/// The live roots of `document`'s body, in order: one for a body the editor wrote, more for a
+/// body forked from two seeds.
+pub(super) fn live_roots(document: &Document) -> Result<Vec<BranchID>, CrdtError> {
+    document.read(|txn| {
+        txn.get_xml_fragment(BODY_FRAGMENT)
+            .map_or_else(Vec::new, |fragment| {
+                fragment
+                    .children(txn)
+                    .map(|child| AsRef::<Branch>::as_ref(&child).id())
+                    .collect()
+            })
+    })
+}
+
+/// Whether `roots`, the body's live roots now, are not the ones it held when the note's row was
+/// stamped. True when the log cannot say (no mark of the stamp, or a fold took the entries
+/// before it): a body that cannot show it kept its root is not trusted over the file.
+pub(super) fn roots_moved_since_stamp(
+    conn: &Connection,
+    note_id: &str,
+    roots: &[BranchID],
+) -> Result<bool, CrdtError> {
+    let Some(mark) = note_files::stamped_mark(conn, note_id)? else {
+        return Ok(true);
+    };
+    let plan = update_log::load_plan(conn, note_id)?;
+    let Some(then) = before(&plan, mark) else {
+        return Ok(true);
+    };
+    Ok(live_roots(&*opened(note_id, &then)?)? != roots)
 }
 
 /// The blobs of `plan` stored before `mark`; `None` when a snapshot folded entries at or past it.

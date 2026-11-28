@@ -60,6 +60,7 @@ pub fn read_only_name(reason: ReadOnly) -> &'static str {
         ReadOnly::LargeFile => "large-file",
         ReadOnly::Excluded => "excluded",
         ReadOnly::Database => "database-read-only",
+        ReadOnly::BodyNotPulled => "body-not-pulled",
     }
 }
 
@@ -115,6 +116,9 @@ impl CoreError for EditorHostError {
             }
             Self::Editor(EditorError::DatabaseReadOnly { .. }) => {
                 (FailureKind::Storage, "database_read_only")
+            }
+            Self::Editor(EditorError::BodyNotPulled { .. }) => {
+                (FailureKind::Sync, "body_not_pulled")
             }
             Self::Editor(EditorError::Crdt(error)) => error.kind_and_code(),
         }

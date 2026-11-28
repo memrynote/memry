@@ -236,8 +236,9 @@ fn register_fold(
 
 /// Serves each open vault's documents to the editor windows (`commands::editor`), tells the
 /// windows when a vault's editor goes and when the next one serves, has the vault tier write
-/// the file of each note a window edited, and has it ask the windows for their typing before an
-/// outside edit of their note applies.
+/// the file of each note a window edited, has it ask the windows for their typing before an
+/// outside edit of their note applies, and asks sync for a pass when a note opens waiting for
+/// its server body.
 fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -252,6 +253,7 @@ fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
     let tier = app
         .try_state::<Arc<VaultTier>>()
         .map(|tier| tier.inner().clone());
+    let synced = session.clone();
     let host = EditorHost::new(store.inner().clone(), move |event| match event {
         HostEvent::Reset => broadcast(&notifier, CrdtProviderResetEvent),
         HostEvent::Ready { vault_path } => {
@@ -263,6 +265,16 @@ fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
                 scope = "editor",
                 note_id,
                 "no vault tier: the edit reaches the file on the next open"
+            ),
+        },
+        // A pass's body step pulls the owed bodies. The push request starts one at once, or
+        // after its debounce, and waits out a failure's backoff.
+        HostEvent::BodyOwed { note_id } => match synced.sync_supervisor() {
+            Some(supervisor) => supervisor.request_push(),
+            None => tracing::info!(
+                scope = "editor",
+                note_id,
+                "a note waits for its server body until sync runs"
             ),
         },
     });

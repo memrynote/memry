@@ -76,11 +76,13 @@ pub fn dropped_elements<T: ReadTxn>(txn: &T, fragment: &str) -> usize {
 /// attribute ends up in the document it builds (`ReadFragment::removed` and
 /// `ReadFragment::lost` both zero), so a write that rebuilds the fragment from
 /// that document deletes nothing. A fragment the read refuses (nested too deep,
-/// text at its root) is not.
+/// text at its root) is not, and neither is one with more than one root: the
+/// body is the first root's ([`doc_to_blocks`]), and the editor deletes the rest
+/// (a body seeded from its file beside the server body it was owed).
 pub fn read_is_lossless<T: ReadTxn>(txn: &T, fragment: &str) -> bool {
     txn.get_xml_fragment(fragment).is_none_or(|f| {
         read_fragment(Schema::memry(), txn, &f)
-            .is_ok_and(|read| read.removed == 0 && read.lost == 0)
+            .is_ok_and(|read| read.removed == 0 && read.lost == 0 && read.doc.children().len() <= 1)
     })
 }
 

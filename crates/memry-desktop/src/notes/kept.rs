@@ -321,7 +321,7 @@ impl NotesService {
             BodyRead::NoNote => return Err(NotesError::NotFound(note_id.to_owned())),
             BodyRead::FileAhead => return Err(NotesError::EditKept(Kept::FileAhead)),
             BodyRead::BodyNotPulled => return Err(NotesError::EditKept(Kept::BodyNotPulled)),
-            BodyRead::NotRepresentable(_) | BodyRead::Failed(_) => {
+            BodyRead::NotRepresentable(_) | BodyRead::Forked(_) | BodyRead::Failed(_) => {
                 return Err(NotesError::EditKept(Kept::NotRepresentable));
             }
         };

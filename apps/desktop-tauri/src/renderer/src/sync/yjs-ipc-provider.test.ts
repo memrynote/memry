@@ -607,7 +607,8 @@ describe('YjsIpcProvider read-only', () => {
     ['note_locked', 'locked'],
     ['note_large_file', 'large-file'],
     ['note_excluded', 'excluded'],
-    ['database_read_only', 'database-read-only']
+    ['database_read_only', 'database-read-only'],
+    ['body_not_pulled', 'body-not-pulled']
   ])('turns read-only when the host refuses an edit with %s', async (code, reason) => {
     const { doc, provider } = await connected()
     const heard: unknown[] = []
@@ -622,6 +623,62 @@ describe('YjsIpcProvider read-only', () => {
     expect(provider.readOnly).toBe(reason)
     expect(heard).toEqual([reason])
     expect(host.sent).toHaveLength(1)
+  })
+})
+
+describe('YjsIpcProvider server body wait', () => {
+  it('takes edits once the pulled body reaches a note opened waiting for it', async () => {
+    host.doc = new Y.Doc()
+    host.readOnly = 'body-not-pulled'
+    const { doc, provider } = await connected()
+
+    host.readOnly = null
+    lastChannel().onmessage(otherWindowFrame('from the server', 1))
+    await settle()
+
+    expect(host.opens).toHaveLength(2)
+    expect(provider.readOnly).toBeNull()
+    type(doc, ', typed')
+    await settle()
+    expect(text(host.doc)).toBe('from the server, typed')
+  })
+
+  it('never sends what went into the body while it waited', async () => {
+    host.doc = new Y.Doc()
+    host.readOnly = 'body-not-pulled'
+    const { doc, provider } = await connected()
+    type(doc, 'put in while waiting')
+    await settle()
+
+    host.readOnly = null
+    lastChannel().onmessage(otherWindowFrame('from the server', 1))
+    await settle()
+
+    expect(host.opens).toHaveLength(2)
+    expect(provider.readOnly).toBe('body-not-pulled')
+    expect(host.sent).toEqual([])
+    expect(text(host.doc)).toBe('from the server')
+  })
+
+  it('asks again when the pulled body came while the open was answered', async () => {
+    host.doc = new Y.Doc()
+    host.readOnly = 'body-not-pulled'
+    let answer!: () => void
+    host.openGate = new Promise((resolve) => (answer = resolve))
+    const provider = new YjsIpcProvider({ noteId: NOTE, doc: new Y.Doc() })
+    const connecting = provider.connect()
+    await settle()
+
+    // The host read its answer before the body landed; the body's frame comes first.
+    lastChannel().onmessage(otherWindowFrame('from the server', 1))
+    host.openGate = null
+    answer()
+    await connecting
+    host.readOnly = null
+    await settle()
+
+    expect(host.opens).toHaveLength(2)
+    expect(provider.readOnly).toBeNull()
   })
 })
 

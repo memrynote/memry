@@ -17,8 +17,16 @@ const log = createLogger('YjsIpcProvider')
  * Why the window must not edit the note: the host's `readOnly`, the code of a refused edit, or a
  * purge, after which the host takes no edit of this copy. `database-read-only`: the vault's
  * database is read-only on this device, so no edit of any note can be saved (#4190).
+ * `body-not-pulled`: the note waits for its server body, and typing into its empty body would
+ * start a root beside the one that merges later (#2536); a reopen after the body lands lifts it.
  */
-export type DocReadOnly = 'locked' | 'large-file' | 'excluded' | 'database-read-only' | 'purged'
+export type DocReadOnly =
+  | 'locked'
+  | 'large-file'
+  | 'excluded'
+  | 'database-read-only'
+  | 'body-not-pulled'
+  | 'purged'
 
 /** The header of `crdt_open_doc`'s framed answer (`commands/editor.rs`). */
 interface OpenedHeader {
@@ -160,6 +168,8 @@ export class YjsIpcProvider extends Observable<string> {
   private rebinding: Promise<void> | null = null
   /** A reopen waits behind the open in flight and has not begun: it reads the newest state. */
   private reopenQueued = false
+  /** Update frames applied so far: one that came while an open was in flight may be newer. */
+  private framesApplied = 0
   private readonly canRebind: (readyVaultPath: string | null | undefined) => boolean
   private readonly vaultPath: string | null
   /** Vault of the editor host main last announced ready; cleared on reset. */
@@ -375,8 +385,9 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   /**
-   * Reopens a note the host refused as locked, queued with the rebinds. Lock events that arrive
-   * while a reopen waits join it: its open begins after them all, so it reads their newest state.
+   * Reopens a note the host refused as locked or waiting for its server body, queued with the
+   * rebinds. Events that arrive while a reopen waits join it: its open begins after them all, so
+   * it reads their newest state.
    */
   private scheduleReopen(): void {
     if (this.reopenQueued) return
@@ -386,23 +397,38 @@ export class YjsIpcProvider extends Observable<string> {
       .then(() => this.opening?.catch(() => {}))
       .then(() => {
         this.reopenQueued = false
-        return this.reopenLocked()
+        return this.reopen()
       })
   }
 
   /**
-   * The open answers whether the lock still holds. When it no longer does, the handshake sends
-   * what this doc holds beyond the host's state, as a rebind does. A stale binding is left to
-   * its rebind; a failure is logged and the note stays read-only.
+   * The open answers whether the lock, or the wait for the server body, still holds. When it no
+   * longer does, the handshake sends what this doc holds beyond the host's state, as a rebind
+   * does. A stale binding is left to its rebind; a failure is logged and the note stays
+   * read-only.
    */
-  private async reopenLocked(): Promise<void> {
-    if (this.destroyed || this.purged || this.stale || this.readOnlyReason !== 'locked') return
+  private async reopen(): Promise<void> {
+    const reason = this.readOnlyReason
+    if (this.destroyed || this.purged || this.stale) return
+    if (reason !== 'locked' && reason !== 'body-not-pulled') return
     try {
       const opened = await this.openDoc()
       if (this.destroyed) return
+      // What went into the empty body while it waited (a command, not typing) would start a
+      // root beside the server's: it is never sent, and the note stays read-only until it is
+      // opened again.
+      const unsent = Y.encodeStateAsUpdate(this.doc, opened.stateVector)
+      if (reason === 'body-not-pulled' && unsent.byteLength > EMPTY_UPDATE_BYTES) {
+        log.error('Edits made while the note waited for its server body are not sent', {
+          noteId: this.noteId
+        })
+        this.setReadOnly('body-not-pulled')
+        return
+      }
       await this.finishHandshake(opened.stateVector)
     } catch (err) {
-      log.error('Failed to reopen a note after its lock changed', {
+      log.error('Failed to reopen a read-only note', {
+        reason,
         noteId: this.noteId,
         error: err
       })
@@ -420,6 +446,7 @@ export class YjsIpcProvider extends Observable<string> {
     this.channel = channel
     try {
       this.opened = true
+      const framesBefore = this.framesApplied
       const opening = readBinary(
         'crdt_open_doc',
         this.vaultPath === null
@@ -434,6 +461,10 @@ export class YjsIpcProvider extends Observable<string> {
       const body = framed.body
       // A purge frame that arrived while the open was in flight keeps the copy read-only.
       this.setReadOnly(this.purged ? 'purged' : (header.readOnly ?? null))
+      // The server body may have come on the channel after the host read its answer.
+      if (header.readOnly === 'body-not-pulled' && this.framesApplied !== framesBefore) {
+        this.scheduleReopen()
+      }
       if (this.destroyed) return { needsSeed: false, stateVector: new Uint8Array() }
       Y.applyUpdate(this.doc, body.subarray(0, header.stateLength), 'ipc-provider')
       return { needsSeed: header.needsSeed, stateVector: body.subarray(header.stateLength) }
@@ -482,8 +513,13 @@ export class YjsIpcProvider extends Observable<string> {
       return
     }
     // Every origin, another window's, the server's, a file edit or the app's, applies as
-    // 'remote', so this provider sends none of them back.
-    const apply = (): void => Y.applyUpdate(this.doc, frame.subarray(1), 'remote')
+    // 'remote', so this provider sends none of them back. A note waiting for its server body
+    // asks the host again once something reached its body.
+    const apply = (): void => {
+      Y.applyUpdate(this.doc, frame.subarray(1), 'remote')
+      this.framesApplied += 1
+      if (this.readOnlyReason === 'body-not-pulled') this.scheduleReopen()
+    }
     // The outside edit a hold waits for: typing from now on lands in the blocks it makes, and
     // the editor's own changes in answer to it (a link it makes a chip of) must apply. Its
     // feed tells the editors to keep their selection through it.
@@ -617,6 +653,10 @@ export class YjsIpcProvider extends Observable<string> {
         case 'database_read_only':
           this.outgoing = []
           this.setReadOnly('database-read-only')
+          break
+        case 'body_not_pulled':
+          this.outgoing = []
+          this.setReadOnly('body-not-pulled')
           break
         case 'document_purged':
           this.markPurged()

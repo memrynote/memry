@@ -35,7 +35,8 @@
 //!
 //! **A read-only note takes no window edit.** [`Opened::read_only`] says why: its
 //! file is large-file class as its last read measured it (the app shows it in
-//! the large-file viewer), the vault's database is read-only, or it is locked.
+//! the large-file viewer), the vault's database is read-only, it is locked, or
+//! its server body is owed and has not landed ([`ReadOnly::BodyNotPulled`]).
 //! [`Editor::apply_update`] checks on the writer and refuses before the update is
 //! applied, stored, queued or fanned out.
 //!
@@ -85,7 +86,6 @@ use crate::crdt::{BODY_FRAGMENT, epoch, update_log};
 use crate::crypto::keys;
 use crate::domain::body_write::append_in;
 use crate::domain::notes::journal_day::body_owner;
-use crate::domain::{note_files, vault_locks};
 use crate::markdown::convert::api::Converter;
 use crate::markdown::schema::callout_types::CalloutTypes;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -98,13 +98,16 @@ pub use crate::crdt::body_writes::Origin;
 pub use crate::crdt::compact::Folded;
 pub use compaction::COMPACTION_GROWTH_BYTES;
 pub use listeners::{Listener, ListenerId, Notice};
+pub use read_only::ReadOnly;
 
 use listeners::Listeners;
+use read_only::{body_not_pulled, read_only};
 
 mod catch_up;
 mod compaction;
 mod holders;
 mod listeners;
+mod read_only;
 
 /// What a window receives when it opens a document.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -119,23 +122,6 @@ pub struct Opened {
     pub needs_seed: bool,
     /// Why the window must not edit it, when it must not.
     pub read_only: Option<ReadOnly>,
-}
-
-/// Why a document opens read-only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ReadOnly {
-    /// The note's file is large-file class, as the last read of it measured
-    /// ([`crate::domain::note_files::is_large_file`]): the app shows it in the
-    /// large-file viewer, and its document takes no edit.
-    LargeFile,
-    /// The note, or a folder above its file, is locked ([`crate::domain::vault_locks`]).
-    Locked,
-    /// The note's file is one the app never writes ([`ExcludedPaths`]).
-    Excluded,
-    /// The vault's database opened read-only ([`Health::persistent`] is false): no edit can be
-    /// stored, so none is taken, and the file, which is written from the stored body, stays as
-    /// it is (#4190).
-    Database,
 }
 
 /// A stored edit.
@@ -183,6 +169,10 @@ pub enum EditorError {
     /// refused before anything was applied.
     #[error("This device can't save changes: its database is read-only.")]
     DatabaseReadOnly { note_id: String },
+    /// The note waits for its server body ([`ReadOnly::BodyNotPulled`]): the edit was refused
+    /// before anything was applied.
+    #[error("This note's synced contents have not arrived yet. It is read-only until they do.")]
+    BodyNotPulled { note_id: String },
     /// The window's copy is of a document since purged (a delete applied): it
     /// opens the document again before it edits. Nothing was written.
     #[error("{note_id} was deleted since this window opened it")]
@@ -262,7 +252,12 @@ impl Editor {
                 .ok_or_else(|| unreadable(note_id))?;
             let document = &held.document;
             let opened = (|| {
-                let read_only = read_only(conn, note_id, &self.excluded)?;
+                let read_only = match read_only(conn, note_id, &self.excluded)? {
+                    None if body_not_pulled(conn, note_id, document)? => {
+                        Some(ReadOnly::BodyNotPulled)
+                    }
+                    why => why,
+                };
                 Ok(Opened {
                     state: document.encode_state()?,
                     state_vector: document.state_vector()?,
@@ -292,8 +287,8 @@ impl Editor {
     /// [`Origin::Local`] of `holder`. `None`: the update changed nothing, and
     /// nothing was stored or sent. A note that opens read-only refuses it
     /// ([`EditorError::LargeFile`], [`EditorError::DatabaseReadOnly`], [`EditorError::Locked`],
-    /// [`EditorError::Excluded`]) before anything is written or applied. See the module doc for
-    /// the order.
+    /// [`EditorError::Excluded`], [`EditorError::BodyNotPulled`]) before anything is written or
+    /// applied. See the module doc for the order.
     pub fn apply_update(
         &self,
         note_id: &str,
@@ -320,6 +315,7 @@ impl Editor {
                         ReadOnly::Locked => EditorError::Locked { note_id },
                         ReadOnly::Excluded => EditorError::Excluded { note_id },
                         ReadOnly::Database => EditorError::DatabaseReadOnly { note_id },
+                        ReadOnly::BodyNotPulled => EditorError::BodyNotPulled { note_id },
                     });
                 }
                 let document = resident
@@ -339,6 +335,12 @@ impl Editor {
                 caught = self
                     .catch_up_committed(conn, &document, note_id)
                     .inspect_err(|_| resident.invalidate(note_id))?;
+                // After the catch-up: a pulled body that committed meanwhile lifts the wait.
+                if body_not_pulled(conn, note_id, &document)? {
+                    return Err(EditorError::BodyNotPulled {
+                        note_id: note_id.to_owned(),
+                    });
+                }
                 // Durable origin: the rows below hold these bytes, so the
                 // document's own sink must not report them a second time.
                 let changed = document
@@ -527,31 +529,6 @@ impl Editor {
     fn resident(&self) -> MutexGuard<'_, Resident> {
         self.resident.lock().unwrap_or_else(PoisonError::into_inner)
     }
-}
-
-/// Why `note_id` opens read-only, if it does. Read on the writer, in the
-/// caller's turn: a class or a lock committed while an edit waited for the
-/// writer refuses that edit, as does a pattern set meanwhile.
-fn read_only(
-    conn: &Connection,
-    note_id: &str,
-    excluded: &ExcludedPaths,
-) -> Result<Option<ReadOnly>, StorageError> {
-    if note_files::is_large_file(conn, note_id)? {
-        return Ok(Some(ReadOnly::LargeFile));
-    }
-    if conn.is_readonly(rusqlite::MAIN_DB).map_err(storage_error)? {
-        return Ok(Some(ReadOnly::Database));
-    }
-    if vault_locks::is_note_locked(conn, note_id, None)? {
-        return Ok(Some(ReadOnly::Locked));
-    }
-    if excluded.is_set()
-        && note_files::by_id(conn, note_id)?.is_some_and(|file| excluded.covers(&file.path))
-    {
-        return Ok(Some(ReadOnly::Excluded));
-    }
-    Ok(None)
 }
 
 fn not_found(note_id: &str) -> EditorError {

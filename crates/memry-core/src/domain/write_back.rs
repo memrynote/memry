@@ -10,6 +10,8 @@
 //! - a write would lose content: the read does not keep every element, text run, mark and
 //!   attribute ([`Converter::reads_losslessly`]): a node the schema cannot build, an element
 //!   the read drops, a mark or attribute a newer build wrote;
+//! - the body forked ([`Fork`]): it holds two roots, or another root replaced the one the file
+//!   was written from and left no text, so the write would wipe the file;
 //! - the serializer gave nothing, which includes an author's spelling it could not restore.
 //!
 //! The file-side rules (the row's hash, the bytes on disk) are the shell's. A journal day's
@@ -36,6 +38,20 @@ mod stamp;
 
 pub use stamp::text_moved_since_stamp;
 
+/// How a body forked: a body seeded from the file beside the server body it was owed, merged
+/// into one document. The editor shows one root and deletes the other, and that delete syncs,
+/// so a write of what is left would empty the file or keep part of it. The file is kept, and
+/// nothing heals the body on its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Fork {
+    /// The body holds more than one live root.
+    Roots,
+    /// The body has no text, its file has, and its live root is not the one it held when the
+    /// note's row was last stamped (the file written or read), or the log cannot say which that
+    /// was. A user who clears a note keeps its root, so that write still happens.
+    RootReplaced,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BodyRead {
     /// What the file gets: the body and its `writing` frontmatter.
@@ -49,6 +65,8 @@ pub enum BodyRead {
     /// Writing the body would lose content; the names of the nodes the schema cannot build,
     /// when that is what would go.
     NotRepresentable(Vec<String>),
+    /// The body forked; writing it would wipe or cut the file.
+    Forked(Fork),
     /// The serializer gave nothing.
     Failed(&'static str),
 }
@@ -77,6 +95,10 @@ pub fn body_for_file(
         return Ok(BodyRead::BodyNotPulled);
     }
     let document = reads::document_of(conn, note_id)?;
+    let roots = stamp::live_roots(&document)?;
+    if roots.len() > 1 {
+        return Ok(BodyRead::Forked(Fork::Roots));
+    }
     let read_file_body = || Ok(file_body.map(str::to_owned));
     let options = SerializeOptions {
         note_path: Some(note_path),
@@ -97,7 +119,17 @@ pub fn body_for_file(
     if !converter.reads_losslessly(&document, BODY_FRAGMENT) {
         return Ok(BodyRead::NotRepresentable(body.unrepresentable));
     }
+    if !has_text(&body.markdown)
+        && file_body.is_some_and(has_text)
+        && stamp::roots_moved_since_stamp(conn, note_id, &roots)?
+    {
+        return Ok(BodyRead::Forked(Fork::RootReplaced));
+    }
     Ok(BodyRead::Body(body))
+}
+
+fn has_text(markdown: &str) -> bool {
+    !markdown.trim().is_empty()
 }
 
 /// The note's [`LogMark`] now: taken before its body is compared, it makes a feed that finds

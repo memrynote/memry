@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
-use memry_core::api::editor::{Editor, ListenerId, Notice, Opened, Origin};
+use memry_core::api::editor::{Editor, ListenerId, Notice, Opened, Origin, ReadOnly};
 use memry_core::api::vault::Vault;
 use memry_core::seams::secure_store::SecureStore;
 
@@ -46,6 +46,10 @@ pub enum HostEvent {
     /// A window's edit of `note_id` is stored: its file is written from the body once the note
     /// is quiet (`VaultTier::schedule`, Electron's `scheduleWriteback` for an IPC origin).
     Edited { note_id: String },
+    /// A window opened `note_id` read-only because its server body has not landed
+    /// ([`ReadOnly::BodyNotPulled`]): the shell asks for a sync pass, whose body step pulls the
+    /// owed bodies. Desktop sync has no pull of one note's body.
+    BodyOwed { note_id: String },
 }
 
 /// `crdt:get-health`.
@@ -201,13 +205,19 @@ impl EditorHost {
         let label = subscriber.window_label.clone();
         let channel = Arc::clone(&subscriber.channel);
         let replaced = live.subscribe(note_id, subscriber);
-        live.editor.open(note_id, &label).map_err(|error| {
+        let opened = live.editor.open(note_id, &label).map_err(|error| {
             // A window that had the document open keeps it, as core keeps its hold.
             if !replaced {
                 live.drop_channel(note_id, &channel);
             }
-            error.into()
-        })
+            EditorHostError::from(error)
+        })?;
+        if opened.read_only == Some(ReadOnly::BodyNotPulled) {
+            (self.notify)(HostEvent::BodyOwed {
+                note_id: note_id.to_owned(),
+            });
+        }
+        Ok(opened)
     }
 
     /// A window's edit: stored, queued and sent to the other windows. Refused unless the window

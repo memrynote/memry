@@ -460,6 +460,15 @@ fn log(note_id: &str, outcome: &Outcome, retrying: bool) {
         Outcome::Wrote { .. } | Outcome::Unchanged => {
             tracing::debug!(scope = SCOPE, note_id, outcome = ?outcome);
         }
+        // Nothing heals a forked body on its own: the file stays until someone looks.
+        Outcome::Kept(Keep::Forked(fork)) => {
+            tracing::error!(
+                scope = SCOPE,
+                note_id,
+                fork = ?fork,
+                "the note's body forked, so its file was kept"
+            );
+        }
         Outcome::Kept(keep) => {
             tracing::info!(scope = SCOPE, note_id, keep = ?keep, "the file was kept");
         }

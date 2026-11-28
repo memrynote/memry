@@ -15,6 +15,7 @@ use crate::domain::note_files::{self, NoteFileStat, StampMark};
 use crate::domain::note_snapshots::{self, Reason, Version};
 use crate::domain::owed_file_body;
 use crate::storage::nested_tx;
+use crate::sync::store::RECORD_CURSOR_SCOPE;
 use crate::sync::{body_debt, outbox, store};
 
 /// One Yjs document folded to a single state, with the server sequence it had applied.
@@ -229,6 +230,51 @@ impl ImportWriter {
             body_debt::owe(&tx, doc_id)?;
         }
         tx.commit().map_err(failed)
+    }
+
+    /// Owes a body pull to every live markdown note and journal day of a vault that synced (a
+    /// record cursor is staged) whose record the server holds and whose body the import brought
+    /// no log of: a document the fold skipped, or one Electron's store never held. Unowed, its
+    /// empty body would take its file as a seed, and the server body would merge in beside that
+    /// seed (#2536). A record the server lacks owes nothing: a local-only note, an unclocked one
+    /// (Electron seeds it as a create), one with a queued create. Runs after
+    /// [`Self::put_documents`] and the outbox; answers how many it owed.
+    pub fn put_unfolded_body_debts(&mut self) -> Result<usize, StorageError> {
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
+        let ids: Vec<String> = {
+            let mut stmt = tx
+                .prepare(
+                    "SELECT id FROM (
+                       SELECT id FROM notes WHERE deleted_at IS NULL AND file_type = 'markdown'
+                       UNION SELECT id FROM journal_entries WHERE deleted_at IS NULL
+                     ) AS live
+                     WHERE EXISTS (SELECT 1 FROM sync_cursors
+                                   WHERE scope = ?1 AND cursor IS NOT NULL)
+                       AND EXISTS (SELECT 1 FROM sync_items
+                                   WHERE item_type IN ('note', 'journal') AND item_id = live.id
+                                     AND deleted_at IS NULL AND clock IS NOT NULL)
+                       AND NOT EXISTS (SELECT 1 FROM outbox WHERE item_id = live.id AND op = ?2)
+                       AND NOT EXISTS (SELECT 1 FROM note_files
+                                       WHERE note_id = live.id AND local_only != 0)
+                       AND NOT EXISTS (SELECT 1 FROM yjs_updates
+                                       WHERE doc_id IN (live.id, 'local.' || live.id))
+                       AND NOT EXISTS (SELECT 1 FROM yjs_snapshots
+                                       WHERE doc_id IN (live.id, 'local.' || live.id))
+                     ORDER BY id",
+                )
+                .map_err(failed)?;
+            stmt.query_map(params![RECORD_CURSOR_SCOPE, outbox::OP_CREATE], |row| {
+                row.get(0)
+            })
+            .map_err(failed)?
+            .collect::<Result<_, _>>()
+            .map_err(failed)?
+        };
+        for doc_id in &ids {
+            body_debt::owe(&tx, doc_id)?;
+        }
+        tx.commit().map_err(failed)?;
+        Ok(ids.len())
     }
 
     /// `(note_id, recorded_at_ms)`: each note's file is ahead of its document
