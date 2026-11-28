@@ -136,6 +136,8 @@ mod calendar_feeds;
 mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "canvas_assets.rs"]
+mod canvas_assets;
 #[path = "canvas_files.rs"]
 mod canvas_files;
 #[path = "canvas_folders.rs"]
@@ -455,6 +457,8 @@ mod search_reasons;
 mod settings_service;
 #[path = "sticky_drafts.rs"]
 mod sticky_drafts;
+#[path = "sticky_send.rs"]
+mod sticky_send;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]

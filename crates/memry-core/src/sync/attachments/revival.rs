@@ -23,7 +23,7 @@ use rusqlite::{Connection, params};
 
 use super::holds::{AttachmentChunks, HoldOutcome};
 use super::plan::{ChangePlan, FileRecord, NoteAttachments};
-use super::queue::{VaultFiles, absolute};
+use super::queue::VaultFiles;
 use super::server::AttachmentServer;
 use super::store::{files, upload_queue};
 use super::transfer::now_ms;
@@ -192,8 +192,7 @@ fn reupload(
     let queue = nested_tx::begin(conn).map_err(failed)?;
     let mut queued = 0;
     for file in &plan.reupload {
-        let path = absolute(vault, file);
-        if upload_queue::queue_if_absent(&queue, vault, &refusals, &note.id, &path, now)? {
+        if upload_queue::queue_if_absent(&queue, vault, &refusals, &note.id, file, now)? {
             queued += 1;
         }
     }

@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::{failed, iso};
+use crate::storage::nested_tx;
 use crate::storage::repositories::Change;
 use crate::sync::outbox::{self, Durable};
 
@@ -87,24 +88,24 @@ pub fn unsnooze(
 }
 
 /// The snooze scheduler's pass (`processDueItems`): every due snooze cleared
-/// and pushed. Returns the captures that came back.
+/// and pushed, in one transaction, so a failure or a close mid-pass leaves
+/// every snooze in place for the next pass. Returns the captures that came
+/// back.
 pub fn resurface_due(
     conn: &Connection,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<InboxItem>, StorageError> {
-    let due = queries::due_snoozed(conn, now_ms)?;
-    let mut back = Vec::new();
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let due = queries::due_snoozed(&tx, now_ms)?;
+    let mut back = Vec::with_capacity(due.len());
     for item in due {
-        let written = edit(
-            conn,
-            &item.id,
-            clear(&["snoozedUntil", "snoozeReason"]),
-            device_id,
-            now_ms,
-        )?;
-        back.push(written.acknowledge());
+        let changes = clear(&["snoozedUntil", "snoozeReason"]);
+        edit_in(&tx, &item.id, changes, device_id, now_ms)?;
+        outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, &item.id), now_ms)?;
+        back.push(read_back(&tx, &item.id)?);
     }
+    tx.commit().map_err(failed)?;
     Ok(back)
 }
 

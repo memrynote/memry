@@ -16,7 +16,7 @@ use regex::Regex;
 use rusqlite::Connection;
 
 use super::plan::{ChangePlan, NoteAttachments};
-use super::queue::{VaultFiles, absolute};
+use super::queue::VaultFiles;
 use super::revival::{NoteRow, live_notes, own_folder_files, records_on_disk};
 use super::store::upload_queue::Refusals;
 use super::store::{files, upload_queue};
@@ -219,14 +219,7 @@ fn backfill_note(
     // `queueUnsentFileNotes`: a file note whose bytes never went up.
     if let (false, None, Some(path)) = (note.markdown, &note.attachment_id, &note.path)
         && vault.open(path).is_ok()
-        && upload_queue::queue_if_absent(
-            &transaction,
-            vault,
-            refusals,
-            &note.id,
-            &absolute(vault, path),
-            now,
-        )?
+        && upload_queue::queue_if_absent(&transaction, vault, refusals, &note.id, path, now)?
     {
         queued += 1;
     }
@@ -245,8 +238,7 @@ fn backfill_note(
         files::move_record(&transaction, &note.id, &moved.from, &moved.to, now)?;
     }
     for file in &plan.offer {
-        let path = absolute(vault, file);
-        if upload_queue::queue_if_absent(&transaction, vault, refusals, &note.id, &path, now)? {
+        if upload_queue::queue_if_absent(&transaction, vault, refusals, &note.id, file, now)? {
             queued += 1;
         }
     }

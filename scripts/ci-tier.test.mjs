@@ -185,8 +185,10 @@ function tier({
       .map((line) => line.split('='))
       .map(([key, value]) => [key, value === 'true' ? true : value === 'false' ? false : value])
   )
-  // Not a tier output: rust-legs.jq reads the event from the workflow (`--arg event`).
+  // Not tier outputs: rust-legs.jq reads the event and the base from the workflow (`--arg event`,
+  // `--arg base`, github.base_ref, empty outside pull requests).
   Object.defineProperty(out, 'event', { value: event })
+  Object.defineProperty(out, 'base', { value: event === 'pull_request' ? base : '' })
   return out
 }
 
@@ -725,6 +727,9 @@ function rustLegEntries(out, warm = false) {
       '--arg',
       'event',
       out.event,
+      '--arg',
+      'base',
+      out.base,
       ...(warm ? ['--arg', 'warm', 'true'] : []),
       '-f',
       join(tierDir, 'rust-legs.jq')
@@ -813,6 +818,15 @@ const windowsRust = [
   'windows-2022 tests 5/6',
   'windows-2022 tests 6/6'
 ]
+// Apple Silicon on a PR into any base but main: the suite in four partitions beside lint and seams.
+const macRust = [
+  'macos-15 lint',
+  'macos-15 seams',
+  'macos-15 tests 1/4',
+  'macos-15 tests 2/4',
+  'macos-15 tests 3/4',
+  'macos-15 tests 4/4'
+]
 // Off the PR and merge-queue path: the post-merge schedule, pushes and dispatch.
 const perfRust = ['ubuntu-22.04 perf']
 const armRust = [
@@ -870,7 +884,7 @@ describe('ci matrices', () => {
 
   it('adds the whole Windows and Apple Silicon legs for OS-specific tests', () => {
     const out = pr('+#[cfg(windows)]', '+#[test]')
-    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust, 'macos-15 all'])
+    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust, ...macRust])
     assert.deepEqual(tauriBuilds(out), [
       'macos-arm64 debug',
       'macos-arm64 e2e',
@@ -896,15 +910,41 @@ describe('ci matrices', () => {
     const fullCi = tier({ labels: 'full-ci', files: [shell], patches: {} })
     const push = tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
     // Only the merge queue drops windows-11-arm and the perf budgets; `full-ci` asks for every leg.
-    for (const out of [fullCi, push]) {
+    // The PR splits its Apple Silicon leg; the push keeps it one job.
+    for (const [out, mac] of [
+      [fullCi, macRust],
+      [push, ['macos-15 all']]
+    ]) {
       assert.deepEqual(rustLegs(out), [
         ...linuxRust,
-        'macos-15 all',
+        ...mac,
         ...windowsRust,
         ...armRust,
         ...perfRust
       ])
       assert.deepEqual(tauriBuilds(out), fullTauri)
+    }
+  })
+
+  it('runs the steps of the Apple Silicon `all` job in its split legs, the suite once', () => {
+    const fullCi = tier({ labels: 'full-ci', files: [shell], patches: {} })
+    const push = tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
+    const mac = (out) => rustLegEntries(out).filter((l) => l.os === 'macos-15')
+    const groups = (ls) =>
+      ['lint', 'seams', 'tests', 'models'].filter((g) => ls.some((l) => l[g])).join(' ')
+    const fast = pr('+#[cfg(windows)]', '+#[test]')
+    // The same step groups as the one job: the full tier's (push) with the model steps, the fast
+    // tier's without.
+    assert.equal(groups(mac(push)), 'lint seams tests models')
+    assert.equal(groups(mac(fullCi)), groups(mac(push)))
+    assert.equal(groups(mac(fast)), 'lint seams tests')
+    for (const split of [mac(fullCi), mac(fast)]) {
+      const tests = split.filter((l) => l.tests)
+      assert.deepEqual(
+        tests.map((l) => l.partition),
+        ['1/4', '2/4', '3/4', '4/4']
+      )
+      assert.ok(tests.every((l) => !l.lint && !l.seams && !l.models))
     }
   })
 

@@ -254,6 +254,10 @@ name = "electron_vault_import"
 path = "tests/electron_vault_import.rs"
 
 [[test]]
+name = "electron_first_launch"
+path = "tests/electron_first_launch.rs"
+
+[[test]]
 name = "obsidian_task_local_zone"
 path = "tests/obsidian_task_local_zone.rs"
 

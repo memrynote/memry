@@ -146,7 +146,8 @@ pub fn clear(conn: &Connection, owner_id: &str, disk_path: &str) -> Result<(), S
     .map_err(failed)
 }
 
-/// The `meta` key of the refusals: a JSON object from a queue row's path to
+/// The `meta` key of the refusals: a JSON object from the file's
+/// vault-relative, `/`-separated path (whichever form its queue row holds) to
 /// the file's [`FileStamp`] when the uploader refused it. A missing key reads as
 /// no refusals. Electron keeps the same object in `sync_state`
 /// (`attachmentUploadRefusals`); it is not imported, which costs one more
@@ -197,8 +198,10 @@ impl Refusals {
     /// (`refusedAsItIs`, `attachment-outbox.ts:137-141`): it is empty, or it
     /// was refused before and no write has changed it since.
     fn refuse_as_it_is(&self, vault: &dyn VaultFiles, disk_path: &str) -> bool {
-        stamp_of(vault, disk_path)
-            .is_some_and(|stamp| stamp.size == 0 || self.0.get(disk_path) == Some(&stamp))
+        stamp_of(vault, disk_path).is_some_and(|stamp| {
+            stamp.size == 0
+                || relative(vault, disk_path).and_then(|rel| self.0.get(&rel)) == Some(&stamp)
+        })
     }
 }
 
@@ -273,8 +276,11 @@ pub fn refuse(
     clear(conn, owner_id, disk_path)?;
     let mut refusals = read_refusals(conn)?;
     refusals.retain(|file, stamp| stamp_of(vault, file) == Some(*stamp));
-    if let Some(stamp) = stamp_of(vault, disk_path).filter(FileStamp::fails_the_uploader) {
-        refusals.insert(disk_path.to_owned(), stamp);
+    if let (Some(rel), Some(stamp)) = (
+        relative(vault, disk_path),
+        stamp_of(vault, disk_path).filter(FileStamp::fails_the_uploader),
+    ) {
+        refusals.insert(rel, stamp);
     }
     write_refusals(conn, &refusals)
 }

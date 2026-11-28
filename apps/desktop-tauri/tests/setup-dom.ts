@@ -548,6 +548,7 @@ vi.mock('../src/generated/bindings', () => {
       reminderSnoozedEvent: { listen: async () => () => undefined },
       reminderDueEvent: { listen: async () => () => undefined },
       reminderClickedEvent: { listen: async () => () => undefined },
+      inboxSnoozeDueEvent: event(() => api().onInboxSnoozeDue),
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),

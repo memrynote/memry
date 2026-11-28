@@ -156,26 +156,6 @@ export const commands = {
 	 *  answers `sync_failed`. The answer carries no `source` until the source view lands (#4894).
 	 */
 	calendarRefreshProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_refresh_provider", { input }),
-	/**  `canvas:create`. */
-	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
-	/**  `canvas:delete`: the document goes to the OS trash. */
-	canvasDelete: (id: string) => __TAURI_INVOKE<CanvasDeleteResponse>("canvas_delete", { id }),
-	/**  `canvas:duplicate`: `null` when the original is gone or its document cannot be read. */
-	canvasDuplicate: (id: string) => __TAURI_INVOKE<CanvasSummaryView | null>("canvas_duplicate", { id }),
-	/**  `canvas:get`: `null` for a deleted canvas. */
-	canvasGet: (id: string) => __TAURI_INVOKE<CanvasView | null>("canvas_get", { id }),
-	/**  `canvas:library-list`. */
-	canvasLibraryList: () => __TAURI_INVOKE<CanvasLibraryListResponse>("canvas_library_list"),
-	/**  `canvas:library-save`. */
-	canvasLibrarySave: (input: CanvasLibrarySaveInput) => __TAURI_INVOKE<CanvasLibrarySaveResponse>("canvas_library_save", { input }),
-	/**  `canvas:list`. */
-	canvasList: () => __TAURI_INVOKE<CanvasListResponse>("canvas_list"),
-	/**  `canvas:open-external`: the document in the OS default app. */
-	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
-	/**  `canvas:reveal-in-finder`. */
-	canvasRevealInFinder: (id: string) => __TAURI_INVOKE<null>("canvas_reveal_in_finder", { id }),
-	/**  `canvas:update`. A conflict or a missing canvas fails with Electron's message. */
-	canvasUpdate: (input: CanvasUpdateInput) => __TAURI_INVOKE<CanvasUpdateResponse>("canvas_update", { input }),
 	/**  `canvasFolder:create`: a directory and its record under `parent` (`null` the root). */
 	canvasFolderCreate: (parent: string | null, name: string) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_create", { parent, name }),
 	/**  `canvasFolder:delete`: one [`CanvasDeletedEvent`] per canvas it took, then the folder's. */
@@ -1176,12 +1156,56 @@ export const commands = {
 	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**  The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`). */
 	stickyUnfold: (draftId: string | null) => __TAURI_INVOKE<null>("sticky_unfold", { draftId }),
+	/**  Shows the main window, asks it to open what a send made, and tucks the sticky away. */
+	stickyOpenTarget: (kind: string, targetId: string) => __TAURI_INVOKE<null>("sticky_open_target", { kind, targetId }),
+	/**  Sends the text to a note, a task or today's journal entry, and deletes its draft. */
+	stickySend: (input: StickySendInput) => __TAURI_INVOKE<StickySent>("sticky_send", { input }),
+	/**  Takes a note or task send back within its minute and answers the draft it restores. */
+	stickyUndoSend: (undoToken: string) => __TAURI_INVOKE<StickyDraftView>("sticky_undo_send", { undoToken }),
 	/**  `graph:clear-layout`: forgets the view's layout. */
 	graphClearLayout: (viewKey: string) => __TAURI_INVOKE<null>("graph_clear_layout", { viewKey }),
 	/**  `graph:get-layout`: the layout saved for the view, `null` when none reads. */
 	graphGetLayout: (viewKey: string) => __TAURI_INVOKE<GraphLayoutView | null>("graph_get_layout", { viewKey }),
 	/**  `graph:save-layout`: replaces the view's layout. */
 	graphSaveLayout: (viewKey: string, layout: GraphLayoutView) => __TAURI_INVOKE<null>("graph_save_layout", { viewKey, layout }),
+	/**
+	 *  `canvas:can-upload-asset`: `false` until the attachment upload lands (30f), Electron's answer
+	 *  with no sync. The editor then keeps new images inline in the scene.
+	 */
+	canvasCanUploadAsset: () => __TAURI_INVOKE<CanvasCanUploadAssetResponse>("canvas_can_upload_asset"),
+	/**  `canvas:create`. */
+	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
+	/**  `canvas:delete`: the document goes to the OS trash. */
+	canvasDelete: (id: string) => __TAURI_INVOKE<CanvasDeleteResponse>("canvas_delete", { id }),
+	/**  `canvas:duplicate`: `null` when the original is gone or its document cannot be read. */
+	canvasDuplicate: (id: string) => __TAURI_INVOKE<CanvasSummaryView | null>("canvas_duplicate", { id }),
+	/**  `canvas:get`: `null` for a deleted canvas. */
+	canvasGet: (id: string) => __TAURI_INVOKE<CanvasView | null>("canvas_get", { id }),
+	/**  `canvas:get-asset`. */
+	canvasGetAsset: (canvasId: string, fileId: string) => __TAURI_INVOKE<CanvasGetAssetResponse>("canvas_get_asset", { canvasId, fileId }),
+	/**  `canvas:library-list`. */
+	canvasLibraryList: () => __TAURI_INVOKE<CanvasLibraryListResponse>("canvas_library_list"),
+	/**  `canvas:library-save`. */
+	canvasLibrarySave: (input: CanvasLibrarySaveInput) => __TAURI_INVOKE<CanvasLibrarySaveResponse>("canvas_library_save", { input }),
+	/**  `canvas:list`. */
+	canvasList: () => __TAURI_INVOKE<CanvasListResponse>("canvas_list"),
+	/**  `canvas:list-assets`. */
+	canvasListAssets: (canvasId: string) => __TAURI_INVOKE<CanvasListAssetsResponse>("canvas_list_assets", { canvasId }),
+	/**  `canvas:live-closed`: only the window that owns the canvas releases it. */
+	canvasLiveClosed: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_closed", { canvasId }),
+	/**  `canvas:live-opened`: the calling window now has the canvas in its editor. */
+	canvasLiveOpened: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_opened", { canvasId }),
+	/**  `canvas:open-external`: the document in the OS default app. */
+	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
+	/**  `canvas:reveal-in-finder`. */
+	canvasRevealInFinder: (id: string) => __TAURI_INVOKE<null>("canvas_reveal_in_finder", { id }),
+	/**  `canvas:update`. A conflict or a missing canvas fails with Electron's message. */
+	canvasUpdate: (input: CanvasUpdateInput) => __TAURI_INVOKE<CanvasUpdateResponse>("canvas_update", { input }),
+	/**
+	 *  `canvas:upload-asset`: only bytes this vault already stores (a dedup hit); the upload of new
+	 *  bytes is 30f's.
+	 */
+	canvasUploadAsset: (input: CanvasUploadAssetInput) => __TAURI_INVOKE<UploadedAsset>("canvas_upload_asset", { input }),
 };
 
 /** Events */
@@ -1219,6 +1243,7 @@ export const events = {
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	inboxReviewDueEvent: makeEvent<InboxReviewDueEvent, InboxReviewDueEvent>("inbox-review-due-event"),
 	inboxReviewOpenEvent: makeEvent<InboxReviewOpenEvent, InboxReviewOpenEvent>("inbox-review-open-event"),
+	inboxSnoozeDueEvent: makeEvent<InboxSnoozeDueEvent, InboxSnoozeDueEvent>("inbox-snooze-due-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -1252,6 +1277,7 @@ export const events = {
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
+	stickyOpenTargetRequestedEvent: makeEvent<StickyOpenTargetRequestedEvent, StickyOpenTargetRequestedEvent>("sticky-open-target-requested-event"),
 	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
 	syncClockSkewWarningEvent: makeEvent<SyncClockSkewWarningEvent, SyncClockSkewWarningEvent>("sync-clock-skew-warning-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
@@ -2176,6 +2202,11 @@ export type CalendarUpdateEventInput = {
 	color?: CalendarEventColor | null,
 };
 
+/**  `CanvasCanUploadAssetResponse`. */
+export type CanvasCanUploadAssetResponse = {
+	canUpload: boolean,
+};
+
 /**  `CanvasCreateSchema`. */
 export type CanvasCreateInput = {
 	title?: string | null,
@@ -2240,6 +2271,11 @@ export type CanvasFolderView = {
 	updatedAt: number,
 };
 
+/**  `CanvasGetAssetResponse`. */
+export type CanvasGetAssetResponse = {
+	ref: string | null,
+};
+
 /**  `CanvasLibraryListResponse`. */
 export type CanvasLibraryListResponse = {
 	libraryItems: Value[],
@@ -2255,8 +2291,18 @@ export type CanvasLibrarySaveResponse = {
 	changed: number,
 };
 
+/**  `CanvasListAssetsResponse`. */
+export type CanvasListAssetsResponse = {
+	assets: MemryAssetDescriptor[],
+};
+
 export type CanvasListResponse = {
 	canvases: CanvasSummaryView[],
+};
+
+/**  The `{ ok }` of `canvas:live-opened` and `canvas:live-closed`. */
+export type CanvasLiveAck = {
+	ok: boolean,
 };
 
 /**  `CanvasSummary`. */
@@ -2306,6 +2352,14 @@ export type CanvasUpdateResponse = {
 /**  A canvas was saved, renamed or moved (`canvas:updated`). */
 export type CanvasUpdatedEvent = {
 	canvas: CanvasSummaryView,
+};
+
+/**  `canvas:upload-asset`'s input; the bytes come as Electron's `number[]`. */
+export type CanvasUploadAssetInput = {
+	canvasId: string,
+	fileId: string,
+	mimeType: string,
+	data: number[],
 };
 
 /**
@@ -3201,6 +3255,15 @@ export type InboxReviewTestResult = {
 	supported: boolean,
 };
 
+/**
+ *  Snoozed captures came back (`inbox:snooze-due`): the renderer refreshes the inbox list and
+ *  shows its banner and toast. `count` is the number of `items`, as Electron sends it.
+ */
+export type InboxSnoozeDueEvent = {
+	count: number,
+	items: SnoozeDueItem[],
+};
+
 export type InheritedFieldsView = {
 	from: string,
 	fields: ResolvedFieldView[],
@@ -3597,6 +3660,17 @@ export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
 
 /**  `MatchType`. */
 export type MatchType = "exact" | "prefix" | "fuzzy";
+
+/**  `MemryAssetDescriptor`: one image a canvas shows, as the sidecar carries it. */
+export type MemryAssetDescriptor = {
+	fileId: string,
+	attachmentId: string,
+	contentHash: string,
+	chunkHashes: string[],
+	mimeType: string,
+	sizeBytes: number,
+	filename: string,
+};
 
 /**
  *  A native menu item that the renderer runs as a command was clicked. `command` is the
@@ -5202,6 +5276,28 @@ export type SizeClass = "note" | "large-file";
 
 export type SkippedKind = "code" | "table" | "image" | "callout" | "embed" | "other";
 
+/**
+ *  A capture the snooze pass brought back, as the inbox list shows it (`toListItem` in
+ *  `inbox/snooze.ts`). Dates are ISO 8601 in UTC.
+ */
+export type SnoozeDueItem = {
+	id: string,
+	type: string,
+	title: string,
+	content: string | null,
+	createdAt: string,
+	thumbnailUrl: string | null,
+	sourceUrl: string | null,
+	tags: string[],
+	isStale: boolean,
+	processingStatus: string,
+	duration?: number | null,
+	excerpt?: string | null,
+	pageCount?: number | null,
+	transcription: string | null,
+	transcriptionStatus: string | null,
+};
+
 export type SortOrder = "asc" | "desc";
 
 /**  What the page needs to build its menu. */
@@ -5321,12 +5417,40 @@ export type StickyDraftView = {
  */
 export type StickyDraftsChangedEvent = null;
 
+/**  The sticky asks the main window to open what a send made (`sticky:open-target-requested`). */
+export type StickyOpenTargetRequestedEvent = {
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+};
+
 /**  `StickySaveDraftInput`: no id creates a draft. */
 export type StickySaveDraftInput = {
 	id: string | null,
 	/**  At most 100000 characters. */
 	content: string,
 	kind: string,
+};
+
+/**  `StickySendSchema`. */
+export type StickySendInput = {
+	/**  The draft the text came from; deleted once the send lands. */
+	draftId: string | null,
+	/**  1 to 100000 characters. */
+	content: string,
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+};
+
+/**  The success arm of `StickySendResult`. */
+export type StickySent = {
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+	title: string,
+	/**  None for a journal send, which has no undo. */
+	undoToken: string | null,
 };
 
 /**  `StickyShortcutResult` of `@memry/contracts/settings-schemas`. */
@@ -6181,6 +6305,13 @@ export type UpdateSyncedSettingResult = {
 export type UpdaterStateChangedEvent = AppUpdateState;
 
 export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
+
+/**  `CanvasUploadAssetResponse`. */
+export type UploadedAsset = {
+	ref: string,
+	descriptor: MemryAssetDescriptor,
+	deduped: boolean,
+};
 
 /**  `kind: 'url'` of `CalendarProviderConnectionSchema`. */
 export type UrlConnectionInput = {
