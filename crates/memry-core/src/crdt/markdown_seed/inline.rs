@@ -193,9 +193,11 @@ fn inline_token(
         // a comment's token, a node once the blocks exist, as desktop's
         // `maskEmptyLinks` does (`editor-schema/src/inline/empty-links.ts`).
         if inner.iter().all(|c| matches!(c, ' ' | '\t')) {
-            if text[i..end].contains(&'\n') {
-                // Desktop reads the address as it stands on one line only.
-                return Err(Unsupported("empty-label link across lines"));
+            // One whose address crosses a line is text, as desktop reads it with its
+            // brackets escaped.
+            if text[i..end].iter().any(|c| matches!(*c, '\n' | JOIN)) {
+                push_text(nodes, "[");
+                return Ok(Some(i + 1));
             }
             push_text(nodes, &encode(&mentions::restore(&collect(&text[i..end]))));
             return Ok(Some(end));

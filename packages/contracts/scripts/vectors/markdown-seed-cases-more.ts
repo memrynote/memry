@@ -254,5 +254,35 @@ export const MARKDOWN_SEED_MORE_CASES: ReadonlyArray<{
     name: 'empty-label link: in a code span and after an escape',
     markdown: '`[](u)` \\[](v)',
     pins: 'a code span keeps the link as code, and an escaped bracket makes no link: both stay text'
+  },
+  {
+    name: 'empty-label link across lines: in a line of text',
+    markdown: 'a [](u\nv) b',
+    pins: 'one paragraph of text with a soft break, brackets and address as written: a link whose address crosses a line is no node'
+  },
+  {
+    name: 'empty-label link across lines: alone, a blank label and a title',
+    markdown: '[](u\nv)\n\n[ ](u\nv "t")',
+    pins: 'each paragraph keeps its source as text; the block is not dropped for holding only the link'
+  },
+  {
+    name: 'empty-label link across lines: in a quote and a bullet item',
+    markdown: '> [](u\n> v)\n\n- [](u\nv)',
+    pins: 'the quote and the item keep the link as text'
+  },
+  {
+    name: 'empty-label link across lines: inside link text',
+    markdown: '[a [](u\nv) b](w)\n\n[[](u\nv)](w)',
+    pins: 'the brackets of the text stay neutral to the label they sit in: one link whose label is the text, brackets included'
+  },
+  {
+    name: 'empty-label link across lines: in an address and in a fence info string',
+    markdown: '[b]([](u\nv))\n\n- a\n    ```[](u\nv)\n    x\n    ```',
+    pins: 'an address is read as written, so its link is part of the address up to its whitespace; a fence info string holds no link'
+  },
+  {
+    name: 'empty-label link across lines: then a link of one line',
+    markdown: '[](u\nv)\n\n[](w)',
+    pins: 'the second paragraph is still an htmlComment node: a link that stays text leaves the next one alone'
   }
 ]

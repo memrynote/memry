@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 449,
+    "exportedCaseCount": 453,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 459,
+    "caseCount": 463,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2910,6 +2910,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "613dfbd57708aaf4cfa9218b6e46e88b8ea8e0a961c9721b5bfd50cf581b23ba"
+    },
+    {
+      "name": "empty-label link across lines",
+      "markdown": "[](u\nv)",
+      "canonical": "[\\](u\nv)",
+      "pending": null,
+      "sha256": "eac2d697f73fb2d6977e9e2210e58f6fd91199fe606efcb45a8506c0203bbeea"
+    },
+    {
+      "name": "empty-label link across lines, with a title",
+      "markdown": "[](u\nv \"t\")",
+      "canonical": "[\\](u\nv \"t\")",
+      "pending": null,
+      "sha256": "a46ffcd8c90bac1cfa5af1f9fdd4efa2d15c2b9a4bfc26d7da2f445a94296b0e"
+    },
+    {
+      "name": "empty-label link across lines, in a line of text",
+      "markdown": "a [](u\nv) b",
+      "canonical": "a [\\](u\nv) b",
+      "pending": null,
+      "sha256": "39077ceabf903ecf20ab07b6343addce82de09e6ba7e2959280a8b840f8f1eec"
+    },
+    {
+      "name": "empty-label link across lines, in a quote",
+      "markdown": "> [](u\n> v)",
+      "canonical": "> [\\](u\n> v)",
+      "pending": null,
+      "sha256": "777ee195f7cb267d904303b837b1c6a96f9fc05a1052e8f2c5344d50566feb10"
     },
     {
       "name": "code span of one space alone",
