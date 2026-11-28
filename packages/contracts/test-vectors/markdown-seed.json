@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 211
+    "caseCount": 215
   },
   "cases": [
     {
@@ -1277,6 +1277,30 @@
       "pins": "the angle bracket in a token payload opens no tag, and the tag after the token is text",
       "markdown": "a ((mention:https%3A%2F%2Fexample.com%2F<kbd>x)) b <kbd>y</kbd>",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a \"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/<kbd>x\"\n3 text \" b <kbd>y</kbd>\""
+    },
+    {
+      "name": "mask in a prop: a comment in a fence info string",
+      "pins": "the language is the info string as written, comment included, in a fence at the top level and in one under a list item",
+      "markdown": "```%% c %%`\nx\n```\n\n- a\n    ```js %% c %%\n    x\n    ```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"%% c %%`\"\n3 text \"x\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"js %% c %%\"\n5 text \"  x\""
+    },
+    {
+      "name": "mask in a prop: a comment in an address, an alt and a formula",
+      "pins": "the link address, the image name and the math source hold the comment as written",
+      "markdown": "[a](https://e.com/%% b %%)\n\n![a %% b %% c](https://e.com/i.png)\n\n$$\nx %% y %% z\n$$",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" link={\"href\":\"https://e.com/%% b %%\"}\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"a %% b %% c\" showPreview=true textAlignment=\"left\" url=\"https://e.com/i.png\"\n1 element blockContainer\n2 element mathBlock latex=\"x %% y %% z\""
+    },
+    {
+      "name": "mask in a prop: an address across a hard break",
+      "pins": "the address is what the parser reads up to its first whitespace: the hard break is no part of it",
+      "markdown": "[a](u  \nv)\n\n> [b](w\\\nx)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" link={\"href\":\"u\"}\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"b\" link={\"href\":\"w\"}"
+    },
+    {
+      "name": "mask in a prop: details markup in a formula and a spaced address in a summary",
+      "pins": "the formula holds the tag as written; the summary link keeps its spaced address whole, with no placeholder in it",
+      "markdown": "$$\n<details>\n$$\n\n<details>\n<summary>[a](<1 v>)</summary>\n\nx\n\n</details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"<details>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>\"\n3 text \"a\" link={\"href\":\"<1 v>\"}\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
     }
   ]
 }

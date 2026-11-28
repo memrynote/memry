@@ -18,12 +18,12 @@
 use std::borrow::Cow;
 use std::sync::LazyLock;
 
+use super::SeedBlock;
 use super::handled::{Nesting, is_handled, names_handled_tag};
 use super::html_tag::{Closers, Line, is_blank, opens_construct, read_construct};
 use super::markers::FenceTracker;
 use super::mask_word::mask_word;
 use super::mentions;
-use super::{SeedBlock, SeedInline, SeedKind};
 
 /// The characters `tryBackslashEscape` takes after a backslash.
 const ESCAPABLE: &str = "\\`*_{}[]()#+-.!~|>";
@@ -266,64 +266,18 @@ fn restore_in(text: &mut String, sources: &[String]) -> bool {
     }
 }
 
-fn restore_inline(content: &mut [SeedInline], sources: &[String]) {
-    for piece in content {
-        match piece {
-            SeedInline::Text { text, marks } => {
-                // A hidden tag holds the placeholders of the `((…))` tokens it
-                // held, which a run puts back after it, as desktop's
-                // `repairRuns` does; an address or a name does not.
-                if restore_in(text, sources) {
-                    *text = mentions::restore(text);
-                }
-                if let Some(link) = &mut marks.link {
-                    restore_in(link, sources);
-                }
-            }
-            SeedInline::HardBreak { marks } => {
-                if let Some(link) = &mut marks.link {
-                    restore_in(link, sources);
-                }
-            }
-            SeedInline::HtmlComment { source } => {
-                restore_in(source, sources);
-            }
-            SeedInline::InlineImage { src, alt, .. } => {
-                restore_in(src, sources);
-                restore_in(alt, sources);
-            }
-            // Made by the promotion, which runs after every chunk.
-            SeedInline::Token(_) => {}
-        }
-    }
-}
-
-/// [`restore`] over every string a parsed block holds: its runs and their
-/// links, a table's cells, a code block's language, an image's address and
-/// name, and its children.
+/// [`restore`] over every string a parsed block holds ([`super::props`]).
 pub(super) fn restore_blocks(blocks: &mut [SeedBlock], sources: &[String]) {
     if sources.is_empty() {
         return;
     }
-    for block in blocks {
-        match &mut block.kind {
-            SeedKind::CodeBlock { language } => {
-                restore_in(language, sources);
-            }
-            SeedKind::Image { url, name, .. } | SeedKind::Video { url, name } => {
-                restore_in(url, sources);
-                restore_in(name, sources);
-            }
-            SeedKind::Table { rows } => {
-                for cell in rows.iter_mut().flat_map(|row| row.cells.iter_mut()) {
-                    restore_inline(&mut cell.content, sources);
-                }
-            }
-            _ => {}
+    super::props::each_string(blocks, true, &mut |value| {
+        // A hidden tag holds the placeholders of the `((…))` tokens it held,
+        // which a string puts back after it, as desktop's `repairRuns` does.
+        if restore_in(value, sources) {
+            *value = mentions::restore(value);
         }
-        restore_inline(&mut block.content, sources);
-        restore_blocks(&mut block.children, sources);
-    }
+    });
 }
 
 #[cfg(test)]

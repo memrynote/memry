@@ -84,6 +84,7 @@ mod media;
 mod mentions;
 mod nesting;
 mod prepare;
+mod props;
 mod raw_html;
 mod roundtrip;
 mod run_writer;
@@ -330,7 +331,7 @@ pub fn plan(markdown: &str) -> SeedPlan {
             fallbacks: vec![SeedFallback { reason, lines }],
         };
     }
-    restore_details_markup(&mut out);
+    props::restore_masks(&mut out);
     mentions::promote(&mut out);
     for fallback in &mut fallbacks {
         for line in &mut fallback.lines {
@@ -402,30 +403,6 @@ fn parse_masked(
         }
     }
     Ok(())
-}
-
-/// `restoreDetailsMarkup`, over every text run.
-fn restore_details_markup(blocks: &mut [SeedBlock]) {
-    for block in blocks {
-        let cells = match &mut block.kind {
-            SeedKind::Table { rows } => rows
-                .iter_mut()
-                .flat_map(|row| row.cells.iter_mut())
-                .map(|cell| &mut cell.content)
-                .collect(),
-            _ => Vec::new(),
-        };
-        for content in cells.into_iter().chain([&mut block.content]) {
-            for piece in content {
-                if let SeedInline::Text { text, .. } = piece
-                    && text.contains(toggles::details_lt_token())
-                {
-                    *text = text.replace(toggles::details_lt_token(), "<");
-                }
-            }
-        }
-        restore_details_markup(&mut block.children);
-    }
 }
 
 /// Seeds an **empty** body with the document `markdown` makes, in one write

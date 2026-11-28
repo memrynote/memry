@@ -17,7 +17,6 @@ use crate::domain::journal_rules::js_trim;
 
 use super::closers::Closers;
 use super::code_spans::keep_code_whitespace;
-use super::comment_nodes::has_token;
 use super::comments::encode;
 use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
@@ -202,13 +201,6 @@ fn inline_token(
             push_text(nodes, &encode(&mentions::restore(&collect(&text[i..end]))));
             return Ok(Some(end));
         }
-        if has_token(&href) {
-            return Err(Unsupported("comment in a link address"));
-        }
-        if mentions::holds_placeholder(&href) {
-            // Desktop leaves its masked word in the address.
-            return Err(Unsupported("mention or date token in a link address"));
-        }
         let children = parse_inline(inner, closers.depth() + 1)?;
         if contains_link(&children) {
             return Err(Unsupported("nested link"));
@@ -274,13 +266,6 @@ fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, 
     };
     let (url, title) = destination_and_title(&text[alt_end + 2..paren_end]);
     let alt = collect(&text[start + 2..alt_end]);
-    if has_token(&alt) || has_token(&url) {
-        // Desktop leaves its masked word in an image's props.
-        return Err(Unsupported("comment in an image"));
-    }
-    if mentions::holds_placeholder(&alt) || mentions::holds_placeholder(&url) {
-        return Err(Unsupported("mention or date token in an image"));
-    }
     Ok(Some((media::media(url, alt, title)?, paren_end + 1)))
 }
 

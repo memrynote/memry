@@ -1,6 +1,7 @@
 import { markdownToHTML } from '@blocknote/core'
 import { escapeWikiLinkPipesInTableRows, fenceIndentedCodeBlocks } from '@memry/shared/empty-lines'
 import {
+  dropHardBreakTokens,
   maskHardBreaks,
   restoreHardBreakSpelling,
   unmaskHardBreaks
@@ -123,6 +124,27 @@ interface Masks {
 }
 
 /**
+ * Every mask but the hard break's, undone in one string: a run's text, a link's
+ * address, a prop. Each is unconditional, because a placeholder that survives
+ * into a block is written into the vault as literal text.
+ */
+function restoreMasks(value: string, masks: Masks): string {
+  // The reverse of the order they were applied in: a hidden tag holds the
+  // placeholders of the masks that ran before it, a spaced address was cut
+  // from text whose `<details>` markup was already hidden, so it holds that
+  // token, and each comes back before the mask it holds the placeholder of.
+  return restoreDetailsMarkup(
+    restoreLinkDestinations(
+      restoreInlineTokens(
+        restoreRawHtml(restoreCellCodeSpans(value, masks.codeChars), masks.html),
+        masks.tokens
+      ),
+      masks.destinations
+    )
+  )
+}
+
+/**
  * Nothing was masked, so nothing is touched: a run that merely looks like it
  * carries a token is then the author's own bytes.
  */
@@ -149,18 +171,13 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     const linkContent = (run as StyledRun)?.type === 'link' ? (run as StyledRun).content : null
     const link = run as StyledRun | undefined
     if (link?.href) {
-      link.href = restoreLinkDestinations(
-        restoreCellCodeSpans(restoreRawHtml(link.href, masks.html), masks.codeChars),
-        masks.destinations
-      )
+      // A break is no part of an address, so its token is dropped, not spelled.
+      const address = masks.breaks.length > 0 ? dropHardBreakTokens(link.href) : link.href
+      link.href = restoreMasks(address, masks)
     }
     // An inline node's props: an image in a table cell keeps its address and
-    // alt here, and a masked pipe can sit in either.
-    if (run) {
-      restoreStringProps(run, (value) =>
-        restoreCellCodeSpans(restoreRawHtml(value, masks.html), masks.codeChars)
-      )
-    }
+    // alt here, and any mask can sit in either.
+    if (run) restoreStringProps(run, (value) => restoreMasks(value, masks))
     // A leading space in link text is the author's: CommonMark keeps it.
     if (Array.isArray(linkContent)) repairRuns(linkContent, code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
@@ -183,18 +200,8 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     // literal, so two trailing spaces mean two trailing spaces there.
     const unmasked = unmaskRun(stripped, code, masks.breaks)
     // Every restore is unconditional: a placeholder that survives into a block
-    // is written into the vault as literal text. Raw HTML comes first: a hidden
-    // tag holds the placeholders of the masks that ran before it.
-    run.text = restoreLinkDestinations(
-      restoreCellCodeSpans(
-        restoreInlineTokens(
-          restoreDetailsMarkup(restoreRawHtml(unmasked, masks.html)),
-          masks.tokens
-        ),
-        masks.codeChars
-      ),
-      masks.destinations
-    )
+    // is written into the vault as literal text.
+    run.text = restoreMasks(unmasked, masks)
     if (stripped === '' && original !== '') emptied.add(run)
   }
   // A run that held only the artifact would split the marks around it:
@@ -279,11 +286,9 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
     const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
     // An image's alt text is a prop, not a run: it gets the author's spelling back.
     restoreStringProps(block, (value) => {
-      const html = restoreRawHtml(value, masks.html)
-      return restoreCellCodeSpans(
-        masks.breaks.length > 0 ? restoreHardBreakSpelling(html, masks.breaks) : html,
-        masks.codeChars
-      )
+      // The breaks ran first, so a hidden tag or a spaced address holds theirs.
+      const restored = restoreMasks(value, masks)
+      return masks.breaks.length > 0 ? restoreHardBreakSpelling(restored, masks.breaks) : restored
     })
     if (Array.isArray(block.content)) {
       repairRuns(block.content, code, masks)

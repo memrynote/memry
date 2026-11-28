@@ -14,7 +14,7 @@ use super::comment_nodes::{has_token, source_lines};
 use super::comments::encode;
 use super::media::{marker_line, unreadable_file_marker, with_marker_images};
 use super::prepare::fence_line;
-use super::{SeedBlock, SeedFallback, SeedKind, Unsupported};
+use super::{SeedBlock, SeedFallback, Unsupported};
 
 pub(super) fn parse_content(
     text: &str,
@@ -145,10 +145,6 @@ fn claim_at(
         return Ok(Some(claim));
     }
     if let Some(claim) = math_at(lines, index, at_block_start) {
-        // Desktop keeps the masked word in the formula, a random one.
-        if matches!(&claim.0.kind, SeedKind::Math { latex } if has_token(latex)) {
-            return Err((Unsupported("comment in a math block"), claim.1));
-        }
         return Ok(Some(claim));
     }
     if at_block_start && let Some(claim) = quote_at(lines, index).map_err(|e| (e, run_end()))? {

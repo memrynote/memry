@@ -92,14 +92,8 @@ pub(super) fn parse_chunk(
     // of the masks that ran before it.
     raw_html::restore_blocks(&mut out[first_block..], &html);
     drop_empty_block_placeholders(&mut out[first_block..]);
-    // A token placeholder left in a prop is desktop's masked word.
-    let leaks_token =
-        !tokens.is_empty() && mentions::holds_placeholder(&format!("{:?}", &out[first_block..]));
-    let leak = if leaks_placeholder(&out[first_block..]) {
-        Some("empty item or heading inside a paragraph")
-    } else {
-        leaks_token.then_some("mention or date token in a prop")
-    };
+    let leak = leaks_placeholder(&out[first_block..])
+        .then_some("empty item or heading inside a paragraph");
     if let Some(reason) = leak {
         out.truncate(first_block);
         fallbacks.truncate(first_fallback);

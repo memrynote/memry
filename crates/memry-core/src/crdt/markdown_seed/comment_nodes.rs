@@ -103,11 +103,27 @@ fn nodes_in(content: Vec<SeedInline>, literal: bool) -> Vec<SeedInline> {
         };
         if !has_token(&text) {
             out.push(SeedInline::Text { text, marks });
-        } else if literal || marks.code || marks.link.is_some() {
+        } else if literal {
             out.push(SeedInline::Text {
                 text: decode(&text),
                 marks,
             });
+        } else if marks.code || marks.link.is_some() {
+            // A comment's newline is one more break once the blocks are built
+            // (`inlineContentToNodes`, as in `runs::expand`).
+            for (index, piece) in decode(&text).split('\n').enumerate() {
+                if index > 0 {
+                    out.push(SeedInline::HardBreak {
+                        marks: marks.clone(),
+                    });
+                }
+                if !piece.is_empty() {
+                    out.push(SeedInline::Text {
+                        text: piece.to_owned(),
+                        marks: marks.clone(),
+                    });
+                }
+            }
         } else {
             for part in split(&text) {
                 out.push(match part {

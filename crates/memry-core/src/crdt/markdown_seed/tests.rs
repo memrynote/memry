@@ -65,31 +65,28 @@ fn a_tag_the_editor_handles_keeps_its_lines_as_literal_paragraphs() {
 }
 
 #[test]
-fn a_comment_desktop_would_leave_its_word_in_stays_literal_and_whole() {
-    for (markdown, lines) in [
-        ("$$\nx %% y %% z\n$$", vec!["$$", "x %% y %% z", "$$"]),
-        (
-            "![a %% b %% c](https://e.com/i.png)",
-            vec!["![a %% b %% c](https://e.com/i.png)"],
-        ),
-        (
-            "[a](https://e.com/%% b %%)",
-            vec!["[a](https://e.com/%% b %%)"],
-        ),
-    ] {
-        let plan = plan(markdown);
-        assert_eq!(plan.fallbacks.len(), 1, "{markdown}");
-        assert_eq!(plan.fallbacks[0].lines, lines, "{markdown}");
-        assert!(
-            !plan.blocks.iter().any(|block| {
-                block
-                    .content
-                    .iter()
-                    .any(|piece| matches!(piece, SeedInline::HtmlComment { .. }))
-            }),
-            "{markdown}"
-        );
-    }
+fn a_comment_in_a_prop_is_the_bytes_it_was() {
+    let math = plan("$$\nx %% y %% z\n$$");
+    assert!(math.fallbacks.is_empty());
+    assert_eq!(
+        math.blocks[0].kind,
+        SeedKind::Math {
+            latex: "x %% y %% z".to_owned()
+        }
+    );
+    let image = plan("![a %% b %% c](https://e.com/i.png)");
+    assert!(image.fallbacks.is_empty());
+    assert!(matches!(
+        &image.blocks[0].kind,
+        SeedKind::Image { name, .. } if name == "a %% b %% c"
+    ));
+    let link = plan("[a](https://e.com/%% b %%)");
+    assert!(link.fallbacks.is_empty());
+    assert!(matches!(
+        &link.blocks[0].content[0],
+        SeedInline::Text { marks, .. }
+            if marks.link.as_deref() == Some("https://e.com/%% b %%")
+    ));
 }
 
 #[test]

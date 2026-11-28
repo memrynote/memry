@@ -387,6 +387,17 @@ export function restoreHardBreakSpelling(text: string, breaks: string[]): string
   return text.replace(HARD_BREAK_TOKEN, (_whole, index: string) => breaks[Number(index)] ?? '')
 }
 
+/**
+ * `text` with every token deleted, for a string no break is part of: a link's
+ * address. The parser reads an address up to its first whitespace, so
+ * `[a](u  \nv)` is the address `u`, and the token that stood for those two
+ * spaces is not part of it.
+ */
+export function dropHardBreakTokens(text: string): string {
+  if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
+  return text.replace(HARD_BREAK_TOKEN, '')
+}
+
 /** True when the text still carries a token, so callers can skip the walk. */
 export function hasHardBreakToken(text: string): boolean {
   return text.includes(HARD_BREAK_TOKEN_PREFIX)

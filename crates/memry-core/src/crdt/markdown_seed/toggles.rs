@@ -12,7 +12,8 @@ use super::mask_word::mask_word;
 use super::prepare::fence_line;
 
 /// The `<` of a `<details>` markup line no toggle claimed, while it crosses
-/// the parser (`DETAILS_LT_TOKEN`), with the process's mask word. Restored in every text run.
+/// the parser (`DETAILS_LT_TOKEN`), with the process's mask word. Restored in
+/// every string of the blocks ([`super::props::restore_masks`]).
 pub(super) fn details_lt_token() -> &'static str {
     static TOKEN: LazyLock<String> = LazyLock::new(|| format!("MEMRYDLT{};", mask_word()));
     &TOKEN

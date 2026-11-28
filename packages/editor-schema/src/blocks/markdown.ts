@@ -761,6 +761,11 @@ export function escapePrefixedDetailsMarkup(markdown: string): string {
     .join('\n')
 }
 
+/** True when `text` holds a `<` that `escapeDetailsMarkup` hid. */
+export function hasDetailsMarkupToken(text: string): boolean {
+  return text.includes(DETAILS_LT_TOKEN)
+}
+
 /**
  * Put back every `<` that `escapeDetailsMarkup` hid, for one inline text run.
  *
@@ -769,7 +774,7 @@ export function escapePrefixedDetailsMarkup(markdown: string): string {
  * runs over every parsed run rather than only the ones expected to carry one.
  */
 export function restoreDetailsMarkup(text: string): string {
-  return text.includes(DETAILS_LT_TOKEN) ? text.split(DETAILS_LT_TOKEN).join('<') : text
+  return hasDetailsMarkupToken(text) ? text.split(DETAILS_LT_TOKEN).join('<') : text
 }
 
 /**
