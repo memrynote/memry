@@ -62,14 +62,17 @@ extension EditorSession {
     }
 
     /// The page holding the caret, across the screen. `nil` with no caret,
-    /// or no page around it.
+    /// or no page around it. Inside its safe area: the page runs on under
+    /// the sidebar and the list, which float over its edge.
     private func pageColumn() -> ClosedRange<CGFloat>? {
         guard let textView = field?.textView, textView.isFirstResponder, let screen = textView.window?.screen
         else { return nil }
         var ancestor = textView.superview
         while let view = ancestor, !Self.scrollsVertically(view) { ancestor = view.superview }
         guard let page = ancestor else { return nil }
-        let frame = page.convert(page.bounds, to: screen.coordinateSpace)
+        let insets = page.safeAreaInsets
+        let visible = page.bounds.inset(by: UIEdgeInsets(top: 0, left: insets.left, bottom: 0, right: insets.right))
+        let frame = page.convert(visible, to: screen.coordinateSpace)
         return frame.minX ... frame.maxX
     }
 
