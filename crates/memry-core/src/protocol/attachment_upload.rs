@@ -179,6 +179,9 @@ pub struct UploadStatus {
 /// with one PUT url per chunk and the bytes go direct to R2. It takes the
 /// manifest entries rather than the frames, so a streamed upload can initiate
 /// without holding every frame (#3535).
+///
+/// `retry` is the caller's: a note attach tries once and leaves the rest to
+/// the sync pass, so an offline phone inserts the picture at once (#5510).
 pub async fn initiate(
     client: &HttpClient,
     vault_id: &str,
@@ -186,6 +189,7 @@ pub async fn initiate(
     filename: &str,
     plaintext_len: u64,
     chunks: &[AttachmentChunkRef],
+    retry: RetryPolicy,
 ) -> Result<UploadSession, AttachmentError> {
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -227,7 +231,7 @@ pub async fn initiate(
                         .map(|chunk| chunk.encrypted_hash.clone())
                         .collect(),
                 })
-                .retry(RetryPolicy::polled()),
+                .retry(retry),
         )
         .await?;
 

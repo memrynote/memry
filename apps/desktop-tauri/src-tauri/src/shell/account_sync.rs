@@ -13,6 +13,7 @@ use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::session::Session;
 use memry_desktop::shell::power::PowerEvent;
 use memry_desktop::sync::signals::SessionEndReason;
+use memry_desktop::vault::consumer::VaultTier;
 use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::RecvError;
@@ -58,6 +59,17 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             let _ = recovered.send(());
         });
 
+    // One owner of the open vault's at-rest key, shared by sync and the agent (#3545 D3). Its
+    // close hook is registered before sync's and the agent's, so it runs after both let go.
+    let store = app.state::<Arc<DeviceIdentityStore>>().inner().clone();
+    let at_rest_keys = account.at_rest_keys();
+    let closing = Arc::clone(&at_rest_keys);
+    session.on_close(
+        "at-rest-key",
+        Arc::new(move |open| closing.close(&open.vault)),
+    );
+    app.manage(at_rest_keys);
+
     let billing = billing::manage(app, runtime.clone(), account.clone(), session.clone());
     let bindings = Arc::new(OpenVaultBinding::default());
     let binding_app = app.clone();
@@ -68,7 +80,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         runtime,
         account,
         registry: session.registry().clone(),
-        store: app.state::<Arc<DeviceIdentityStore>>().inner().clone(),
+        store,
         reachability,
         power: Some(power),
         keychain_recovered,
@@ -82,6 +94,10 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             broadcast(&binding_app, SyncVaultBindingChangedEvent(state.into()));
         }),
         on_vault_list_changed: Arc::new(move || broadcast(&list_app, VaultListChangedEvent)),
+        // Managed by the vault boot, a stage before this one.
+        tier: app
+            .try_state::<Arc<VaultTier>>()
+            .map(|tier| tier.inner().clone()),
         on_gate: Arc::new(move |gate| billing.attach_gate(gate)),
     });
     app.manage(bindings);

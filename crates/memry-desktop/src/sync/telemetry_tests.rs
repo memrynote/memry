@@ -235,11 +235,13 @@ async fn the_supervisor_reports_failures_and_conflicts_only_with_consent() {
             item_type: "task".into(),
             item_id: "t1".into(),
             outcome: AppliedOutcome::Updated,
+            title_before: None,
             conflicts: vec![FieldConflict {
                 field: "title".into(),
                 losing: json!("a"),
                 winning: json!("b"),
                 merged_clock: json!({}),
+                local_lost: true,
             }],
         }]);
         let names: Vec<(String, Option<String>)> = service

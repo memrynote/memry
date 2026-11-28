@@ -19,7 +19,8 @@ import { runInNewContext } from 'node:vm'
 const repo = new URL('..', import.meta.url).pathname
 const tierDir = join(repo, '.github/actions/ci-tier')
 const tierScript = join(tierDir, 'tier.sh')
-const changedScript = join(repo, '.github/actions/paths-changed/changed.sh')
+const pathsAction = join(repo, '.github/actions/paths-changed')
+const listFilter = readFileSync(join(pathsAction, 'action.yml'), 'utf8').match(/--jq '([^']+)'/)[1]
 const postMergeScript = join(tierDir, 'post-merge.sh')
 
 // A large PR lists thousands of files (the API stops at 3000); a match early in the list must still
@@ -28,6 +29,28 @@ function largeDiff(first, total = 2999) {
   const files = [first]
   for (let i = 1; i < total; i++) files.push(`apps/docs/src/generated/page-${i}.md`)
   return files
+}
+
+// Runs paths-changed on `files`: paths, or `{ filename, previous_filename }` for a rename. They go
+// through the files API's entry shape and the action's own jq filter, as the action lists them.
+function pathsChanged(files, include, exclude = '^$') {
+  const page = files.map((file) =>
+    typeof file === 'string'
+      ? { filename: file, status: 'modified' }
+      : { status: 'renamed', ...file }
+  )
+  const listed = spawnSync('jq', ['-c', listFilter], {
+    input: JSON.stringify(page),
+    encoding: 'utf8'
+  })
+  assert.equal(listed.status, 0, listed.stderr)
+  const result = spawnSync('bash', [join(pathsAction, 'changed.sh')], {
+    input: listed.stdout,
+    env: { PATH: process.env.PATH, INCLUDE: include, EXCLUDE: exclude },
+    encoding: 'utf8'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  return result.stdout.trim()
 }
 
 const scratch = mkdtempSync(join(tmpdir(), 'ci-tier-'))
@@ -155,13 +178,18 @@ function tier({
   assert.equal(result.status, 0, result.stderr)
   // stdout is $GITHUB_OUTPUT: anything but `key=value` lines fails the step.
   for (const line of result.stdout.trim().split('\n')) assert.match(line, /^[a-z0-9_]+=[a-z]+$/)
-  return Object.fromEntries(
+  const out = Object.fromEntries(
     result.stdout
       .trim()
       .split('\n')
       .map((line) => line.split('='))
       .map(([key, value]) => [key, value === 'true' ? true : value === 'false' ? false : value])
   )
+  // Not tier outputs: rust-legs.jq reads the event and the base from the workflow (`--arg event`,
+  // `--arg base`, github.base_ref, empty outside pull requests).
+  Object.defineProperty(out, 'event', { value: event })
+  Object.defineProperty(out, 'base', { value: event === 'pull_request' ? base : '' })
+  return out
 }
 
 // The OS legs a fast-tier PR adds, beyond Linux.
@@ -673,7 +701,7 @@ describe('ci tier on the repo itself', () => {
 })
 
 // The matrices the workflows build from the tier outputs (rust-legs.jq, tauri-builds.jq).
-function rustLegEntries(out) {
+function rustLegEntries(out, warm = false) {
   const result = spawnSync(
     'jq',
     [
@@ -696,6 +724,13 @@ function rustLegEntries(out) {
       '--arg',
       'mac',
       out.rust_macos,
+      '--arg',
+      'event',
+      out.event,
+      '--arg',
+      'base',
+      out.base,
+      ...(warm ? ['--arg', 'warm', 'true'] : []),
       '-f',
       join(tierDir, 'rust-legs.jq')
     ],
@@ -706,14 +741,14 @@ function rustLegEntries(out) {
 }
 
 const legName = (l) => `${l.os} ${l.part}${l.partition ? ` ${l.partition}` : ''}`
-const rustLegs = (out) => rustLegEntries(out).map(legName)
+const rustLegs = (out, warm = false) => rustLegEntries(out, warm).map(legName)
 // The jobs that run the ML model steps (`models: true`).
 const modelLegs = (out) =>
   rustLegEntries(out)
     .filter((l) => l.models)
     .map(legName)
 
-function tauriBuilds(out, queue = false) {
+function tauriMatrix(out, queue = false) {
   const result = spawnSync(
     'jq',
     [
@@ -745,20 +780,70 @@ function tauriBuilds(out, queue = false) {
     { encoding: 'utf8' }
   )
   assert.equal(result.status, 0, result.stderr)
-  return JSON.parse(result.stdout).include.map(
-    (b) => `${b.platform} ${b.variant}${b.shard ? ` ${b.shard}` : ''}`
-  )
+  return result.stdout
 }
 
-const linuxRust = ['ubuntu-22.04 checks', 'ubuntu-22.04 tests 1/2', 'ubuntu-22.04 tests 2/2']
-const windowsRust = ['windows-2022 checks', 'windows-2022 tests 1/2', 'windows-2022 tests 2/2']
+const tauriBuilds = (out, queue = false) =>
+  JSON.parse(tauriMatrix(out, queue)).include.map(
+    (b) => `${b.platform} ${b.variant}${b.shard ? ` ${b.shard}` : ''}`
+  )
+
+// Desktop Tauri CI's build, e2e_build and e2e matrices (tauri-split.jq).
+function tauriSplit(matrix) {
+  const result = spawnSync('jq', ['-c', '-f', join(tierDir, 'tauri-split.jq')], {
+    input: matrix,
+    encoding: 'utf8'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  return JSON.parse(result.stdout)
+}
+
+const linuxRust = [
+  'ubuntu-22.04 lint',
+  'ubuntu-22.04 seams',
+  'ubuntu-22.04 budget',
+  'ubuntu-22.04 tests 1/6',
+  'ubuntu-22.04 tests 2/6',
+  'ubuntu-22.04 tests 3/6',
+  'ubuntu-22.04 tests 4/6',
+  'ubuntu-22.04 tests 5/6',
+  'ubuntu-22.04 tests 6/6'
+]
+const windowsRust = [
+  'windows-2022 lint',
+  'windows-2022 seams',
+  'windows-2022 tests 1/6',
+  'windows-2022 tests 2/6',
+  'windows-2022 tests 3/6',
+  'windows-2022 tests 4/6',
+  'windows-2022 tests 5/6',
+  'windows-2022 tests 6/6'
+]
+// Apple Silicon on a PR into any base but main: the suite in four partitions beside lint and seams.
+const macRust = [
+  'macos-15 lint',
+  'macos-15 seams',
+  'macos-15 tests 1/4',
+  'macos-15 tests 2/4',
+  'macos-15 tests 3/4',
+  'macos-15 tests 4/4'
+]
+// Off the PR and merge-queue path: the post-merge schedule, pushes and dispatch.
+const perfRust = ['ubuntu-22.04 perf']
 const armRust = [
-  'windows-11-arm checks',
-  'windows-11-arm tests 1/2',
-  'windows-11-arm tests 2/2',
+  'windows-11-arm lint',
+  'windows-11-arm seams',
+  'windows-11-arm tests 1/6',
+  'windows-11-arm tests 2/6',
+  'windows-11-arm tests 3/6',
+  'windows-11-arm tests 4/6',
+  'windows-11-arm tests 5/6',
+  'windows-11-arm tests 6/6',
   'windows-11-arm models'
 ]
-const linuxTauri = ['linux-x64 debug', 'linux-x64 e2e 1', 'linux-x64 e2e 2']
+// linux-x64 and windows-x64 run their e2e specs in four shards of one build (tauri-builds.jq).
+const e2eShards = (platform) => [1, 2, 3, 4].map((shard) => `${platform} e2e ${shard}`)
+const linuxTauri = ['linux-x64 debug', ...e2eShards('linux-x64')]
 
 describe('ci matrices', () => {
   const shell = 'crates/memry-desktop/src/shell/paths.rs'
@@ -767,18 +852,14 @@ describe('ci matrices', () => {
   it('runs the model steps in one job per OS on the full tier, in their own job on windows-11-arm', () => {
     const out = tier({ event: 'push', ref: 'refs/heads/main', base: '', listed: false, files: [] })
     assert.deepEqual(modelLegs(out), [
-      'ubuntu-22.04 checks',
+      'ubuntu-22.04 seams',
       'macos-15 all',
       'macos-15-intel all',
-      'windows-2022 checks',
+      'windows-2022 seams',
       'windows-11-arm models'
     ])
     const queue = tier({ event: 'merge_group', base: '', files: [shell] })
-    assert.deepEqual(modelLegs(queue), [
-      'ubuntu-22.04 checks',
-      'windows-2022 checks',
-      'windows-11-arm models'
-    ])
+    assert.deepEqual(modelLegs(queue), ['ubuntu-22.04 seams', 'windows-2022 seams'])
   })
 
   it('runs no model steps on the fast tier', () => {
@@ -793,19 +874,23 @@ describe('ci matrices', () => {
 
   it('adds the Windows and Apple Silicon checks and debug builds for an OS cfg', () => {
     const out = pr('+#[cfg(windows)]')
-    assert.deepEqual(rustLegs(out), [...linuxRust, 'windows-2022 checks', 'macos-15 checks'])
+    assert.deepEqual(rustLegs(out), [
+      ...linuxRust,
+      'windows-2022 lint',
+      'windows-2022 seams',
+      'macos-15 checks'
+    ])
     assert.deepEqual(tauriBuilds(out), ['macos-arm64 debug', 'windows-x64 debug', ...linuxTauri])
   })
 
   it('adds the whole Windows and Apple Silicon legs for OS-specific tests', () => {
     const out = pr('+#[cfg(windows)]', '+#[test]')
-    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust, 'macos-15 all'])
+    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust, ...macRust])
     assert.deepEqual(tauriBuilds(out), [
       'macos-arm64 debug',
       'macos-arm64 e2e',
       'windows-x64 debug',
-      'windows-x64 e2e 1',
-      'windows-x64 e2e 2',
+      ...e2eShards('windows-x64'),
       ...linuxTauri
     ])
   })
@@ -814,8 +899,7 @@ describe('ci matrices', () => {
     'macos-arm64 debug',
     'macos-arm64 e2e',
     'windows-x64 debug',
-    'windows-x64 e2e 1',
-    'windows-x64 e2e 2',
+    ...e2eShards('windows-x64'),
     'windows-arm64 debug',
     'windows-arm64 e2e',
     ...linuxTauri,
@@ -824,22 +908,66 @@ describe('ci matrices', () => {
   ]
 
   it('builds everything but Intel for a full-ci PR and a push to feat/tauri-v2', () => {
-    for (const out of [
-      tier({ labels: 'full-ci', files: [shell], patches: {} }),
-      tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
+    const fullCi = tier({ labels: 'full-ci', files: [shell], patches: {} })
+    const push = tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
+    // Only the merge queue drops windows-11-arm and the perf budgets; `full-ci` asks for every leg.
+    // The PR splits its Apple Silicon leg; the push keeps it one job.
+    for (const [out, mac] of [
+      [fullCi, macRust],
+      [push, ['macos-15 all']]
     ]) {
-      assert.deepEqual(rustLegs(out), [...linuxRust, 'macos-15 all', ...windowsRust, ...armRust])
+      assert.deepEqual(rustLegs(out), [
+        ...linuxRust,
+        ...mac,
+        ...windowsRust,
+        ...armRust,
+        ...perfRust
+      ])
       assert.deepEqual(tauriBuilds(out), fullTauri)
     }
   })
 
-  it('builds no Mac and no windows-arm64 e2e in the merge queue', () => {
+  it('runs the steps of the Apple Silicon `all` job in its split legs, the suite once', () => {
+    const fullCi = tier({ labels: 'full-ci', files: [shell], patches: {} })
+    const push = tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
+    const mac = (out) => rustLegEntries(out).filter((l) => l.os === 'macos-15')
+    const groups = (ls) =>
+      ['lint', 'seams', 'tests', 'models'].filter((g) => ls.some((l) => l[g])).join(' ')
+    const fast = pr('+#[cfg(windows)]', '+#[test]')
+    // The same step groups as the one job: the full tier's (push) with the model steps, the fast
+    // tier's without.
+    assert.equal(groups(mac(push)), 'lint seams tests models')
+    assert.equal(groups(mac(fullCi)), groups(mac(push)))
+    assert.equal(groups(mac(fast)), 'lint seams tests')
+    for (const split of [mac(fullCi), mac(fast)]) {
+      const tests = split.filter((l) => l.tests)
+      assert.deepEqual(
+        tests.map((l) => l.partition),
+        ['1/4', '2/4', '3/4', '4/4']
+      )
+      assert.ok(tests.every((l) => !l.lint && !l.seams && !l.models))
+    }
+  })
+
+  // No schedule covers main, so a PR into main (the final feat/tauri-v2 one included) runs them.
+  it('runs the windows-11-arm Rust legs and the perf budgets on a PR into main', () => {
+    const out = tier({ base: 'main', files: [shell], patches: {} })
+    assert.deepEqual(rustLegs(out), [
+      ...linuxRust,
+      'macos-15 all',
+      'macos-15-intel all',
+      ...windowsRust,
+      ...armRust,
+      ...perfRust
+    ])
+  })
+
+  it('builds no Mac, no windows-11-arm Rust leg and no windows-arm64 e2e in the merge queue', () => {
     const out = tier({ event: 'merge_group', base: '', files: [shell] })
-    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust, ...armRust])
+    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust])
     assert.deepEqual(tauriBuilds(out, true), [
       'windows-x64 debug',
-      'windows-x64 e2e 1',
-      'windows-x64 e2e 2',
+      ...e2eShards('windows-x64'),
       'windows-arm64 debug',
       ...linuxTauri,
       'linux-arm64 debug',
@@ -854,7 +982,8 @@ describe('ci matrices', () => {
       'macos-15 all',
       'macos-15-intel all',
       ...windowsRust,
-      ...armRust
+      ...armRust,
+      ...perfRust
     ])
     assert.deepEqual(tauriBuilds(out), [
       ...fullTauri.slice(0, 2),
@@ -897,12 +1026,7 @@ describe('ci tier and the workflow path gates agree', () => {
   // The TS side of the Tauri app is Desktop Tauri CI's: no Rust job reads it (#5035).
   it('leaves the renderer side of the Tauri app to Desktop Tauri CI', () => {
     const pattern = (k) => text[k].match(/include: '([^']+)'/)[1]
-    const changed = (files, k) =>
-      spawnSync('bash', [changedScript], {
-        input: files.join('\n'),
-        env: { PATH: process.env.PATH, INCLUDE: pattern(k), EXCLUDE: '^$' },
-        encoding: 'utf8'
-      }).stdout.trim()
+    const changed = (files, k) => pathsChanged(files, pattern(k))
     const rustSide = [
       'apps/desktop-tauri/src-tauri/src/main.rs',
       'apps/desktop-tauri/src-tauri/tauri.conf.json',
@@ -957,24 +1081,26 @@ describe('ci tier and the workflow path gates agree', () => {
 })
 
 describe('paths-changed', () => {
-  function changed(files, include, exclude = '^$') {
-    const result = spawnSync('bash', [changedScript], {
-      input: files.join('\n'),
-      env: { PATH: process.env.PATH, INCLUDE: include, EXCLUDE: exclude },
-      encoding: 'utf8'
-    })
-    assert.equal(result.status, 0, result.stderr)
-    return result.stdout.trim()
-  }
-
   it('reports a change only for an included, non-excluded file', () => {
-    assert.equal(changed(['apps/sync-server/src/index.ts'], '^apps/sync-server/'), 'true')
-    assert.equal(changed(['apps/docs/x.md'], '^apps/sync-server/'), 'false')
-    assert.equal(changed(['apps/docs/x.md'], '.', '^apps/(docs|landing)/'), 'false')
+    assert.equal(pathsChanged(['apps/sync-server/src/index.ts'], '^apps/sync-server/'), 'true')
+    assert.equal(pathsChanged(['apps/docs/x.md'], '^apps/sync-server/'), 'false')
+    assert.equal(pathsChanged(['apps/docs/x.md'], '.', '^apps/(docs|landing)/'), 'false')
   })
 
   it('sees an included file in a PR with thousands of files', () => {
-    assert.equal(changed(largeDiff('crates/memry-core/src/lib.rs'), '^crates/'), 'true')
+    assert.equal(pathsChanged(largeDiff('crates/memry-core/src/lib.rs'), '^crates/'), 'true')
+  })
+
+  it('counts both paths of a rename', () => {
+    const moved = { filename: 'docs/old-lib.rs', previous_filename: 'crates/memry-core/src/lib.rs' }
+    assert.equal(pathsChanged([moved], '^crates/'), 'true')
+    const docsOnly = { ...moved, previous_filename: 'apps/docs/old-lib.rs' }
+    assert.equal(pathsChanged([docsOnly], '^crates/'), 'false')
+  })
+
+  it('reports a change for a list of 3000 files, where the API stops', () => {
+    assert.equal(pathsChanged(largeDiff('apps/docs/x.md', 3000), '^crates/'), 'true')
+    assert.equal(pathsChanged(largeDiff('apps/docs/x.md'), '^crates/'), 'false')
   })
 })
 
@@ -1037,8 +1163,8 @@ describe('ci tier after a merge into feat/tauri-v2', () => {
     assert.equal(out.swift, true)
     assert.equal(out.intel, false)
     assert.equal(out.rust_linux_arm64, false)
-    assert.deepEqual(rustLegs(out), ['macos-15 all'])
-    assert.deepEqual(modelLegs(out), ['macos-15 all'])
+    assert.deepEqual(rustLegs(out), ['macos-15 all', ...armRust, ...perfRust])
+    assert.deepEqual(modelLegs(out), ['macos-15 all', 'windows-11-arm models'])
     assert.deepEqual(tauriBuilds(out), [
       'macos-arm64 debug',
       'macos-arm64 e2e',
@@ -1336,4 +1462,127 @@ describe('ci concurrency of the feat/tauri-v2 push runs', () => {
       ...others
     })
   })
+})
+
+// The daily cache-warm run of rust-ci.yml adds the `seams` leg of each OS the merge queue runs (and the
+// Linux `budget` leg, which saves its own entry), with the
+// steps the queue gives it: the entry it saves is the one the queue's checks legs restore, and a leg
+// with fewer steps would save an entry that lacks what the queue builds (an exact hit saves nothing).
+describe('ci tier cache-warm legs', () => {
+  const scheduled = (scheduleTested) =>
+    tier({
+      event: 'schedule',
+      ref: 'refs/heads/feat/tauri-v2',
+      base: '',
+      files: [],
+      listed: false,
+      scheduleTested
+    })
+  const queue = tier({ event: 'merge_group', base: '', files: ['crates/memry-core/src/lib.rs'] })
+  const warmed = ['ubuntu-22.04 seams', 'ubuntu-22.04 budget', 'windows-2022 seams']
+
+  it('runs the warm legs on a scheduled SHA that already passed, and beside the macOS leg otherwise', () => {
+    const covered = scheduled(true)
+    assert.equal(covered.post_merge, 'covered')
+    assert.deepEqual(rustLegs(covered, true), warmed)
+    assert.deepEqual(rustLegs(scheduled(false), true), [
+      'macos-15 all',
+      ...armRust,
+      ...perfRust,
+      ...warmed
+    ])
+  })
+
+  it('gives each warm leg exactly the queue leg it warms', () => {
+    const queueChecks = rustLegEntries(queue).filter(
+      (leg) => leg.part === 'seams' || leg.part === 'budget'
+    )
+    assert.deepEqual(rustLegEntries(scheduled(true), true), queueChecks)
+  })
+
+  it('adds nothing to a run that is not the warm run', () => {
+    assert.deepEqual(rustLegs(scheduled(true)), [])
+    assert.deepEqual(rustLegs(scheduled(false)), ['macos-15 all', ...armRust, ...perfRust])
+  })
+
+  it('names a cron that rust-ci.yml schedules', () => {
+    const text = readFileSync(join(repo, '.github/workflows/rust-ci.yml'), 'utf8')
+    const crons = [...text.matchAll(/- cron: '([^']+)'/g)].map((m) => m[1])
+    const named = [...text.matchAll(/github\.event\.schedule == '([^']+)'/g)].map((m) => m[1])
+    assert.ok(named.length >= 2, 'the plan job and the concurrency group both name the warm cron')
+    assert.equal(new Set(named).size, 1)
+    assert.ok(crons.includes(named[0]), `${named[0]} is not in ${crons}`)
+    assert.ok(crons.length >= 2, 'the warm cron is not the 6-hourly one')
+  })
+})
+
+describe('tauri e2e split', () => {
+  const shell = 'crates/memry-desktop/src/shell/paths.rs'
+  const key = (b) => `${b.platform} ${b.variant}`
+  const tiers = {
+    'full-ci PR': [tier({ labels: 'full-ci', files: [shell], patches: {} })],
+    'merge queue': [tier({ event: 'merge_group', base: '', files: [shell] }), true],
+    'main push': [
+      tier({ event: 'push', ref: 'refs/heads/main', base: '', listed: false, files: [] })
+    ]
+  }
+
+  for (const [name, [out, queue]] of Object.entries(tiers)) {
+    it(`puts every leg of a ${name} in build or e2e_build once, and runs each shard once`, () => {
+      const matrix = tauriMatrix(out, queue)
+      const split = tauriSplit(matrix)
+      const byName = (a, b) => a.localeCompare(b)
+      const planned = [...new Set(JSON.parse(matrix).include.map(key))].toSorted(byName)
+      const built = [...split.build.include, ...split.e2e_build.include].map(key).toSorted(byName)
+      assert.deepEqual(built, planned)
+      assert.ok(split.build.include.every((b) => b.shard === undefined && b.shards === undefined))
+      assert.ok(split.e2e_build.include.length > 0)
+      assert.equal(split.e2e_any, true)
+      for (const b of split.e2e_build.include) {
+        assert.equal(b.shard, undefined)
+        const shards = split.e2e.include.filter((e) => e.platform === b.platform)
+        assert.deepEqual(
+          shards.map((e) => e.shard),
+          Array.from({ length: b.shards }, (_, i) => i + 1)
+        )
+        assert.ok(shards.every((e) => e.shards === b.shards && e.variant === 'e2e'))
+      }
+    })
+  }
+
+  it('builds a one-shard platform once and runs its one shard', () => {
+    const e2e = { platform: 'p', os: 'o', variant: 'e2e', shards: 1, shard: 1 }
+    const split = tauriSplit(
+      JSON.stringify({ include: [{ platform: 'p', variant: 'debug' }, e2e] })
+    )
+    assert.deepEqual(split.build.include, [{ platform: 'p', variant: 'debug' }])
+    assert.deepEqual(split.e2e_build.include, [
+      { platform: 'p', os: 'o', variant: 'e2e', shards: 1 }
+    ])
+    assert.deepEqual(split.e2e.include, [e2e])
+  })
+
+  it('has no e2e leg when nothing is sharded', () => {
+    const split = tauriSplit(JSON.stringify({ include: [{ platform: 'p', variant: 'e2e' }] }))
+    assert.deepEqual(split.e2e_build.include, [])
+    assert.deepEqual(split.e2e.include, [])
+    assert.equal(split.e2e_any, false)
+  })
+
+  // The gate's rule for e2e-build and its e2e shards (e2e-gate.sh).
+  const gate = (build, specs) =>
+    spawnSync('bash', [join(tierDir, 'e2e-gate.sh'), build, specs], { encoding: 'utf8' }).status
+  for (const [build, specs, status] of [
+    ['skipped', 'skipped', 0],
+    ['success', 'success', 0],
+    ['success', 'skipped', 1],
+    ['success', 'cancelled', 1],
+    ['success', 'failure', 1],
+    ['failure', 'skipped', 1],
+    ['cancelled', 'skipped', 1]
+  ]) {
+    it(`gate: e2e-build ${build}, e2e ${specs} ${status ? 'fails' : 'passes'}`, () => {
+      assert.equal(gate(build, specs), status)
+    })
+  }
 })

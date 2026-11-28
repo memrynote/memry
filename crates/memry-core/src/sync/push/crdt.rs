@@ -22,6 +22,7 @@ use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::protocol::crdt_envelope::MAX_UPDATE_PAYLOAD_CHARS;
 use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::RetryPolicy;
+use crate::storage::nested_tx;
 use crate::sync::admission::CrdtAdmission;
 use crate::sync::crypto_batch::off_runtime;
 use crate::sync::hardening::body_state::{self, PushEvent};
@@ -217,7 +218,7 @@ impl PushCoordinator {
         let doc = doc_id.to_owned();
         self.db
             .call(move |conn| {
-                let tx = conn.transaction().map_err(storage_failed)?;
+                let tx = nested_tx::begin(conn).map_err(storage_failed)?;
                 outbox::ack(&tx, &sent)?;
                 if stored {
                     body_state::record(&tx, &doc, PushEvent::Confirmed, now_ms())?;
@@ -270,7 +271,7 @@ impl PushCoordinator {
                 report.crdt_updates += ids.len();
                 self.db
                     .call(move |conn| {
-                        let tx = conn.transaction().map_err(storage_failed)?;
+                        let tx = nested_tx::begin(conn).map_err(storage_failed)?;
                         outbox::ack(&tx, &ids)?;
                         body_state::record(&tx, &doc, PushEvent::Snapshot, now)?;
                         tx.commit().map_err(storage_failed)
@@ -289,7 +290,7 @@ impl PushCoordinator {
         report.rejected += ids.len();
         self.db
             .call(move |conn| {
-                let tx = conn.transaction().map_err(storage_failed)?;
+                let tx = nested_tx::begin(conn).map_err(storage_failed)?;
                 outbox::defer(&tx, &ids, &reason, Some(at))?;
                 body_state::record(&tx, &doc, PushEvent::Failed, now)?;
                 tx.commit().map_err(storage_failed)
@@ -312,7 +313,7 @@ impl PushCoordinator {
         let (doc, reason) = (doc_id.to_owned(), reason.to_owned());
         self.db
             .call(move |conn| {
-                let tx = conn.transaction().map_err(storage_failed)?;
+                let tx = nested_tx::begin(conn).map_err(storage_failed)?;
                 outbox::retire_in(&tx, &[id], &reason)?;
                 body_state::record(&tx, &doc, PushEvent::Rejected, now_ms())?;
                 tx.commit().map_err(storage_failed)

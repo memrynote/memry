@@ -1232,6 +1232,10 @@
     "loadingAria": "Carregando dispositivos",
     "none": "Nenhum dispositivo vinculado ainda",
     "linkNew": "Vincular novo dispositivo",
+    "linkNeedsPlan": {
+      "title": "Vincular exige um plano de sincronização",
+      "description": "Um dispositivo vinculado só vê suas notas quando a sincronização está ativada. Sem um plano, entre nele com sua frase de recuperação e ele manterá seu próprio cofre."
+    },
     "thisDevice": "Este dispositivo",
     "lastSeen": "Visto pela última vez há {time}",
     "linked": "Vinculado há {time}",
@@ -1398,6 +1402,7 @@
       "selectModel": "Selecione um modelo",
       "apiKey": "Chave de API",
       "apiKeyDescription": "Armazenada localmente, enviada apenas ao provedor",
+      "apiKeyKeychainDescription": "Armazenada no chaveiro do sistema, enviada apenas ao provedor",
       "apiKeyPlaceholder": "Digite a chave de API de {provider}",
       "ollamaUrl": "URL do Ollama",
       "ollamaUrlDescription": "Endereço do servidor local",
@@ -2435,7 +2440,8 @@
         "vault-binding": "As chaves deste dispositivo foram restauradas, mas este cofre ainda não está configurado para sincronizar com sua conta. Escolha como sincronizá-lo no menu de sincronização.",
         "vault-foreign": "As chaves deste dispositivo foram restauradas, mas este cofre pertence a outra conta. Ele permanece local neste dispositivo.",
         "entitlement": "As chaves deste dispositivo foram restauradas, mas a sincronização exige um plano Sync ativo.",
-        "unavailable": "As chaves deste dispositivo foram restauradas, mas a sincronização não pôde começar. Ela tentará novamente; reinicie o Memry se não funcionar."
+        "unavailable": "As chaves deste dispositivo foram restauradas, mas a sincronização não pôde começar. Ela tentará novamente; reinicie o Memry se não funcionar.",
+        "unavailable-restart": "As chaves deste dispositivo foram restauradas, mas a sincronização não pôde começar. Reinicie o Memry; se a sincronização ainda não começar, saia e entre novamente."
       }
     },
     "pagesSettingsAiInlineSection": {

@@ -20,6 +20,7 @@ import { compare } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+import { encodeBodyStateVector, staysOnDevice } from './content-sync-base'
 
 const log = createLogger('PendingDeletes')
 
@@ -41,15 +42,15 @@ export interface PendingDelete {
  *
  * Same shape and same rules as `NoteSyncService.buildDeletePayload`: no
  * user-visible text, the clock bumped under the real device id (peers order the
- * delete by it), and skipped entirely for a local-only row or one the server has
- * never seen.
+ * delete by it), and skipped entirely for a row that stays on this device or one
+ * the server has never seen.
  */
 export function buildContentDeletePayload(db: DataDb, itemId: string): string | null {
   const local = getNoteMetadataById(db, itemId)
   if (!local) return null
   // The "never leaves this device" switch — mirrors `shouldSkip` on the online
   // path, which a deferred delete would otherwise bypass.
-  if (local.localOnly) return null
+  if (staysOnDevice(local)) return null
   // No clock means the server has never seen this note, so there is no peer
   // holding it and nothing to tombstone.
   if (!local.clock) return null
@@ -111,6 +112,69 @@ export function listPendingDeletes(db: DrizzleDb): PendingDelete[] {
   )
 }
 
+const CONTENT_TYPES = new Set<SyncItemType>(['note', 'journal'])
+
+/** The payload as an object, or null when it does not parse as one. */
+function payloadObject(payload: string): object | null {
+  try {
+    const parsed: unknown = JSON.parse(payload)
+    return typeof parsed === 'object' && parsed !== null ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const carriesBodyVector = (payload: string): boolean =>
+  'bodyStateVector' in (payloadObject(payload) ?? {})
+
+/**
+ * Pending note and journal deletes with no `bodyStateVector`: one the CLI
+ * queued (#5661), which cannot read the doc, or one a build before #5681
+ * deferred. Sent as they are, a peer may delete text this device never held
+ * with no kept copy: their `deletedAt` is the push time (chapter 05 §5.8).
+ */
+export function listUncoveredContentDeletes(db: DrizzleDb): PendingDelete[] {
+  return listPendingDeletes(db).filter(
+    (item) => CONTENT_TYPES.has(item.type) && !carriesBodyVector(item.payload)
+  )
+}
+
+/**
+ * Puts `stateVector`, from the doc this device holds for `itemId`, into each of
+ * the id's pending note or journal deletes that has no `bodyStateVector`
+ * (chapter 05 §5.8, #3037), and returns the id's pending deletes. Runs with the
+ * doc loaded, before it is purged: the vector is what the delete covered, and
+ * the row is replayed long after the doc is gone. With no doc to read, the
+ * delete still goes, without a vector.
+ */
+export function coverPendingContentDeletes(
+  db: DrizzleDb,
+  itemId: string,
+  stateVector: Uint8Array | null
+): PendingDelete[] {
+  const vector = encodeBodyStateVector(stateVector)
+  return listPendingDeletes(db)
+    .filter((item) => item.itemId === itemId && CONTENT_TYPES.has(item.type))
+    .map((item) => {
+      const body = payloadObject(item.payload)
+      if (body && 'bodyStateVector' in body) return item
+      if (!vector || !body) {
+        log.warn('A note delete goes out with no body vector', {
+          type: item.type,
+          itemId,
+          reason: body ? 'this device holds no doc for it' : 'its payload does not parse'
+        })
+        return item
+      }
+      const payload = JSON.stringify({ ...body, bodyStateVector: vector })
+      db.update(syncPendingDeletes)
+        .set({ payload })
+        .where(and(eq(syncPendingDeletes.type, item.type), eq(syncPendingDeletes.itemId, itemId)))
+        .run()
+      return { ...item, payload }
+    })
+}
+
 /**
  * Notes and journals share one tombstone family: the classification is derived
  * from the row, so a note deleted as `note` can be served back as `journal`.
@@ -132,9 +196,9 @@ const liveNote = (db: DrizzleDb, itemId: string): boolean =>
 /**
  * This device knows the note or journal is deleted: it has no row, or it
  * recorded a tombstone (#2409) that the row's clock does not follow. A row
- * minted past the tombstone is a re-create and stays live. The server keeps
- * a deleted note's CRDT state and accepts bodies for it, so offering one of
- * these as a create puts the deleted body back on every device.
+ * minted past the tombstone is a re-create and stays live. The server accepts
+ * updates for a deleted note (it refuses only snapshots, #5367), so offering
+ * one of these as a create puts the deleted body back on every device.
  */
 export function isNoteKnownDeleted(db: DrizzleDb, noteId: string): boolean {
   const row = db

@@ -14,21 +14,37 @@
 //! - `canvas` is resolved document-level: a local edit ticks the document clock
 //!   and only that. The inbound rule is [`merge`].
 //!
-//! Every write is one transaction with its outbox row, through
-//! [`outbox::commit`].
+//! The writes live in [`store`]: each is one transaction with its outbox row,
+//! and a scene over [`CANVAS_SCENE_SYNC_CAP_BYTES`] saves without one. The
+//! `canvases` table (migration `0037`) indexes every field but the scene, which
+//! stays in the payload; [`edges`] indexes what each scene points at, and
+//! [`folder_paths`] and [`scene_refs`] are the pure rules both build on.
+//! [`set_scene_expecting`] is [`update`] guarded by the scene the caller read
+//! (#4820): a `Stale` refusal writes and queues nothing.
 
+pub mod edges;
+/// Desktop writes the files, and links the JavaScript JSON helpers this uses.
+#[cfg(feature = "markdown")]
+pub mod file_format;
+pub mod folder_paths;
+pub mod folders;
 pub mod merge;
+mod scene_assets;
+pub mod scene_refs;
+mod store;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, params};
 use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
-use crate::storage::repositories::schema::Object;
-use crate::storage::repositories::{Change, StoredPayload, sync_items};
-use crate::sync::outbox::{self, Durable};
+use crate::storage::nested_tx;
 
-use super::notes::{insert_local, next_clock, object, require_payload};
-use super::saved_filters::mint_id;
+pub use store::{
+    CanvasCopy, CanvasEdit, Saved, SyncHold, Updated, create, delete, duplicate, get, list, new_id,
+    sync_hold, update,
+};
+
+use super::notes::failed;
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "canvas";
@@ -38,28 +54,48 @@ pub const ITEM_TYPE: &str = "canvas";
 pub const EMPTY_SCENE: &str =
     r#"{"type":"excalidraw","version":2,"source":"memry","elements":[],"appState":{},"files":{}}"#;
 
+/// Largest scene a canvas push may carry, in UTF-8 bytes
+/// (`CANVAS_SCENE_SYNC_CAP_BYTES`, `apps/desktop/src/main/canvas/sync-bridge.ts:35`).
+/// The payload embeds the scene as an escaped JSON string and the envelope
+/// check multiplies by 1.37, so this keeps a capped scene under the 5 MB item
+/// limit. A bigger scene saves locally and is held back from sync.
+pub const CANVAS_SCENE_SYNC_CAP_BYTES: usize = 3_000_000;
+
 /// Desktop's sidecar inside the `.excalidraw` file. Never part of a scene.
 const FILE_META_KEY: &str = "memry";
 
-/// One live canvas.
+/// One live canvas: its `canvases` row and the scene from its payload.
+/// Instants are epoch milliseconds.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Canvas {
     pub id: String,
     pub title: Option<String>,
+    /// Forward-slashed, relative to `canvases/`; `None` is the root.
+    pub folder: Option<String>,
+    pub icon: Option<String>,
     /// The note whose whiteboard block embeds this canvas, or `None` for a
     /// free-standing one.
     pub owner_note_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
     /// Excalidraw JSON, as stored. Empty when the payload carries no scene.
     pub scene: String,
 }
 
 /// What a new canvas carries.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct NewCanvas<'a> {
+    /// The id to create it under; `None` mints one. Desktop names the
+    /// `.excalidraw` file, which carries the id, before the record exists.
+    pub id: Option<&'a str>,
     pub title: Option<&'a str>,
     pub owner_note_id: Option<&'a str>,
     /// `None` or blank is an empty board.
     pub scene: Option<&'a str>,
+    /// Where it is filed, already the on-disk spelling; refused past the depth
+    /// cap ([`folder_paths::normalize_folder`]).
+    pub folder: Option<&'a str>,
+    pub icon: Option<&'a str>,
 }
 
 /// Desktop's `JSON.stringify(canonicalize(JSON.parse(scene), null))`: the head
@@ -100,110 +136,80 @@ pub fn canonical_scene(scene: &str) -> Result<String, StorageError> {
     Ok(Value::Object(canonical).to_string())
 }
 
-/// One live canvas by id.
-pub fn get(conn: &Connection, canvas_id: &str) -> Result<Option<Canvas>, StorageError> {
-    let Some(row) = sync_items::load(conn, ITEM_TYPE, canvas_id)? else {
-        return Ok(None);
-    };
-    let Some(raw) = row.payload.filter(|_| row.deleted_at.is_none()) else {
-        return Ok(None);
-    };
-    let stored = StoredPayload::parse(&raw).map_err(|error| StorageError::Failed {
-        what: format!("canvas {canvas_id}: {error}"),
-    })?;
-    Ok(Some(read(canvas_id, stored.object())))
+/// What [`set_scene_expecting`] did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneWrite {
+    /// The stored scene was the expected one; the new scene replaced it.
+    Written(Canvas),
+    /// The stored scene had changed since the caller read it, so nothing was
+    /// written. Carries the canvas as stored, for the caller to re-apply its
+    /// edit to.
+    Stale(Canvas),
 }
 
-/// Creates a canvas and queues it for push.
-pub fn create(
-    conn: &Connection,
-    canvas: &NewCanvas<'_>,
-    vault_id: &str,
-    device_id: &str,
-    now_ms: i64,
-) -> Result<Durable<Canvas>, StorageError> {
-    if canvas.owner_note_id == Some("") {
-        return Err(StorageError::Invalid {
-            what: "a canvas owner is a note id, not an empty string".to_owned(),
-        });
-    }
-    let scene = canonical_scene(canvas.scene.unwrap_or(""))?;
-    let id = mint_id();
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
-        now_ms,
-        |tx| {
-            let payload = object(json!({
-                "id": id,
-                "vaultId": vault_id,
-                "title": canvas.title,
-                "scene": scene,
-                "folder": null,
-                "icon": null,
-                "ownerNoteId": canvas.owner_note_id,
-                "clock": next_clock(&Object::new(), device_id)?,
-                "deletedAt": null,
-            }));
-            insert_local(tx, ITEM_TYPE, &id, payload, now_ms)?;
-            read_back(tx, &id)
-        },
-    )
-}
-
-/// Replaces a canvas's scene and ticks its clock.
-pub fn set_scene(
+/// A scene [`update`] guarded by the scene the caller read (#4820): a pull can
+/// land between a shell's read and its write, and an unguarded write built on
+/// the old read would erase that pull's edit under a dominating clock.
+/// `expected` is compared to the stored text exactly, in the write's own
+/// transaction. The write is [`update`]'s, sync cap included.
+pub fn set_scene_expecting(
     conn: &Connection,
     canvas_id: &str,
     scene: &str,
+    expected: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<Canvas>, StorageError> {
-    let scene = canonical_scene(scene)?;
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, canvas_id),
-        now_ms,
-        |tx| {
-            let stored = live_payload(tx, canvas_id)?;
-            let changes = [
-                ("scene", Change::set(scene)),
-                (
-                    "clock",
-                    Change::Set(next_clock(stored.object(), device_id)?),
-                ),
-            ];
-            sync_items::apply_local_edit_in(tx, ITEM_TYPE, canvas_id, &changes, now_ms)?;
-            read_back(tx, canvas_id)
-        },
-    )
-}
-
-fn read(canvas_id: &str, payload: &Object) -> Canvas {
-    let text = |key: &str| payload.get(key).and_then(Value::as_str).map(str::to_owned);
-    Canvas {
-        id: canvas_id.to_owned(),
-        title: text("title"),
-        owner_note_id: text("ownerNoteId"),
-        scene: text("scene").unwrap_or_default(),
+) -> Result<SceneWrite, StorageError> {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let current = get(&tx, canvas_id)?.ok_or_else(|| StorageError::NotFound {
+        what: format!("no canvas {canvas_id}"),
+    })?;
+    if current.scene != expected {
+        return Ok(SceneWrite::Stale(current));
     }
-}
-
-fn live_payload(tx: &Connection, canvas_id: &str) -> Result<StoredPayload, StorageError> {
-    let row = sync_items::load(tx, ITEM_TYPE, canvas_id)?;
-    if row.as_ref().is_none_or(|row| row.deleted_at.is_some()) {
-        return Err(StorageError::NotFound {
-            what: format!("no canvas {canvas_id}"),
+    let edit = CanvasEdit {
+        scene: Some(scene),
+        ..CanvasEdit::default()
+    };
+    let Updated::Saved(saved) = update(&tx, canvas_id, &edit, device_id, now_ms)? else {
+        return Err(StorageError::Failed {
+            what: format!("canvas {canvas_id} reported a conflict it was not asked to check"),
         });
+    };
+    tx.commit().map_err(failed)?;
+    Ok(SceneWrite::Written(saved.canvas))
+}
+
+/// Every live canvas whose `ownerNoteId` is `owner_note_id`, the note's own
+/// whiteboard and any "(conflict copy)" a pull made of it ([`merge`] gives the
+/// copy the same owner), ordered by id.
+pub fn list_owned_by(conn: &Connection, owner_note_id: &str) -> Result<Vec<Canvas>, StorageError> {
+    // `json_valid` first: `json_extract` over malformed text is an error, and
+    // one corrupt row must not hide every other canvas.
+    let mut statement = conn
+        .prepare(
+            "SELECT item_id FROM sync_items
+              WHERE item_type = ?1 AND deleted_at IS NULL
+                AND CASE WHEN json_valid(payload)
+                         THEN json_extract(payload, '$.ownerNoteId') END = ?2
+              ORDER BY item_id",
+        )
+        .map_err(failed)?;
+    let ids = statement
+        .query_map(params![ITEM_TYPE, owner_note_id], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    let mut canvases = Vec::new();
+    for id in ids {
+        canvases.extend(get(conn, &id)?);
     }
-    require_payload(tx, ITEM_TYPE, canvas_id)
+    Ok(canvases)
 }
 
-fn read_back(tx: &Connection, canvas_id: &str) -> Result<Canvas, StorageError> {
-    get(tx, canvas_id)?.ok_or_else(|| StorageError::Failed {
-        what: format!("canvas {canvas_id} did not read back"),
-    })
-}
-
+#[cfg(test)]
+mod cas_tests;
 #[cfg(test)]
 mod tests;

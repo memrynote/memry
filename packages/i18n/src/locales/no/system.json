@@ -17,6 +17,7 @@
       "filterAll": "Alle filer"
     },
     "exportCancelled": "Eksporten ble avbrutt",
+    "exportVaultChanged": "Et annet hvelv ble åpnet mens du valgte hvor du skulle lagre. Eksporter notatet på nytt.",
     "dataDbRecovery": {
       "title": "Reparer vaultens database",
       "message": "Memrys database for denne vaulten er skadet.",

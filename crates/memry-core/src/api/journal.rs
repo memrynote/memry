@@ -13,12 +13,13 @@
 
 use std::sync::Arc;
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::api::errors::{AuthError, PropertyWriteError, StorageError};
 use crate::api::journal_records::{
-    JournalDayRecord, JournalEditResult, JournalHeatmapEntry, JournalMonthRecord, JournalReminder,
-    JournalSettingsRecord, JournalStreakRecord, JournalTemplateStrings, JournalYearRecord,
+    JournalDayRecord, JournalEditResult, JournalHeatmapEntry, JournalMonthDayRecord,
+    JournalMonthRecord, JournalReminder, JournalSettingsRecord, JournalStreakRecord,
+    JournalTemplateStrings, JournalYearRecord,
 };
 use crate::crdt::body_edit::BlockEdit;
 use crate::crdt::errors::CrdtError;
@@ -29,6 +30,7 @@ use crate::domain::journal_ops::{body, day_values, metadata, reads, seed, settin
 use crate::domain::journal_rules::{self, JournalTemplateFormatted};
 use crate::domain::note_meta::{self, WikiTargetMatch};
 use crate::domain::note_tasks;
+use crate::domain::properties;
 use crate::domain::reminders::{self, ReminderUpdate};
 use crate::domain::tasks;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -96,6 +98,21 @@ impl Journal {
             .read_blocking(move |conn| Ok(reads::month(conn, year, month, &today)))
             .map_err(CrdtError::from)?
             .map(Into::into)
+    }
+
+    /// The day in every other year with a live entry, later years included,
+    /// newest first, flagged against `today` (desktop's
+    /// `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+    /// without one, and back.
+    pub fn same_day_entries(
+        &self,
+        date: String,
+        today: String,
+    ) -> Result<Vec<JournalMonthDayRecord>, CrdtError> {
+        self.db
+            .call_blocking(move |conn| Ok(reads::same_day_entries(conn, &date, &today)))
+            .map_err(CrdtError::from)?
+            .map(|days| days.into_iter().map(Into::into).collect())
     }
 
     /// Twelve month cards, totals and the streak.
@@ -442,6 +459,14 @@ impl Journal {
     pub fn stamp(&self, date: &str) -> Result<Option<reads::DayStamp>, StorageError> {
         let date = date.to_owned();
         self.db.read_blocking(move |conn| reads::stamp(conn, &date))
+    }
+
+    /// The property values the day `id`'s record holds, a pulled one included before the day's
+    /// file has it (#5509); empty without a record.
+    pub fn day_properties(&self, id: &str) -> Result<Map<String, Value>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| properties::values(conn, journal::ITEM_TYPE, &id))
     }
 
     /// [`reads::calendar_days`]: the live days in `from..=to`, oldest first.

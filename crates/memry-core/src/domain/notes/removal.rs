@@ -15,6 +15,7 @@ use crate::crdt::errors::CrdtError;
 use crate::domain::{journal, note_files, note_positions, owed_file_body};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
+use crate::storage::nested_tx;
 use crate::sync::attachments::release::record_deleted_note;
 use crate::sync::{body_debt, outbox};
 
@@ -30,7 +31,7 @@ pub fn removed(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Removed, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let removed = delete_in(&tx, note_id, (device_id, now_ms), true)?;
     if removed == Removed::Undecided {
         return Ok(removed);
@@ -83,7 +84,7 @@ pub fn crossed(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Removed, CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     owe_in(&tx, note_id, to.from_path, now_ms)?;
     let live = live_place(&tx, note_id)?.is_some() || live_day(&tx, note_id)?;
     if live && put_off(&tx, converter, embeds, to, device_id)? {

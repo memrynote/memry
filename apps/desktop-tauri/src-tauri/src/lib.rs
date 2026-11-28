@@ -1,5 +1,9 @@
 //! MemryNote desktop shell. `run()` owns the boot sequence; domain steps register startup work
-//! with `startup::register` and commands in `registry.rs`.
+//! with `startup::register` in their own `register_stages`, chained here, and commands in
+//! `registry/<area>.rs`.
+
+// `registry::areas!` expands two macro levels per area (`registry.rs`), past the default 128.
+#![recursion_limit = "256"]
 
 pub mod autostart;
 pub mod badge;
@@ -20,6 +24,7 @@ pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
+pub mod reminders;
 pub mod shell;
 pub mod shortcuts;
 pub mod shutdown;
@@ -76,29 +81,32 @@ fn register_stages() {
     startup::register(Stage::Logging, "init logging", init_logging);
     guards::register_stages();
     shell::services::register_stages();
-    startup::register(
-        Stage::Protocols,
-        "loopback server",
-        shell::loopback::start_server,
-    );
+    shell::loopback::register_stages();
     commands::unsplash::register_stages();
     commands::attachment_sources::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
-    startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
+    shell::drop_stage::register_stages();
+    commands::notes_import::register_stages();
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
+    shell::inbox_review::register_stages();
+    shell::readwise::register_stages();
+    // After account sync: the agent's close hook must run before the at-rest key's.
+    shell::agent::register_stages();
     shutdown::register_stages();
     ml_worker::register_stages();
     commands::voice::register_stages();
     tray::register_stages();
     windows::close::register_stages();
     deep_link::register_stages();
+    shell::capture::register_stages();
     notifications::register_stages();
     shortcuts::register_stages();
     windows::sticky::register_stages();
     spell::register_stages();
     updater::register_stages();
     commands::ocr_languages::register_stages();
+    windows::pdf_print::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
     // After the window exists: Windows subclasses its handle.
     power::register_stages();

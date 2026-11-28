@@ -6,10 +6,11 @@
       "capabilities": [
         "main",
         "sticky",
+        "sticky-tab",
         {
           "identifier": "e2e",
-          "windows": ["main", "e2e-*", "sticky"],
-          "permissions": ["wdio:default", "wdio-webdriver:default"]
+          "windows": ["main", "e2e-*", "startup-error", "sticky", "sticky-tab"],
+          "permissions": ["wdio:default", "wdio-webdriver:default", "e2e-all"]
         },
         {
           "identifier": "e2e-secondary",
@@ -18,7 +19,8 @@
           "permissions": [
             "core:default",
             "core:window:allow-start-dragging",
-            "core:window:allow-toggle-maximize"
+            "core:window:allow-toggle-maximize",
+            "app-all"
           ]
         }
       ]

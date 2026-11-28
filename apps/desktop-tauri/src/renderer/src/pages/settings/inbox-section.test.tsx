@@ -26,13 +26,17 @@ vi.mock('sonner', () => ({
 }))
 
 const sendTestInboxReviewNotification = vi.fn().mockResolvedValue({ supported: true })
+vi.mock('@/services/settings-service', () => ({
+  settingsService: {
+    sendTestInboxReviewNotification: () => sendTestInboxReviewNotification()
+  }
+}))
 
 describe('InboxSettings section', () => {
   beforeEach(() => {
     toastSuccess.mockClear()
     toastError.mockClear()
     sendTestInboxReviewNotification.mockClear().mockResolvedValue({ supported: true })
-    window.api = { settings: { sendTestInboxReviewNotification } } as never
   })
 
   it('renders the review-reminder controls', () => {

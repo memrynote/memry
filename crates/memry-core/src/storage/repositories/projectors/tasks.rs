@@ -139,8 +139,11 @@ pub fn project_task(
     item: ItemContext<'_>,
     view: &Object,
 ) -> Result<(), StorageError> {
-    conn.execute(
-        "INSERT INTO tasks (
+    // Cached: preparing an insert into `tasks` also compiles the `task_links`
+    // triggers (migration 0038), which costs more than the write itself.
+    let mut statement = conn
+        .prepare_cached(
+            "INSERT INTO tasks (
              id, title, description, project_id, status_id, parent_id, priority,
              position, due_date, due_time, start_date, repeat_config, repeat_from,
              source_note_id, completed_at, archived_at, tags, linked_note_ids,
@@ -173,7 +176,10 @@ pub fn project_task(
              field_clocks = excluded.field_clocks,
              synced_at = excluded.synced_at,
              deleted_at = excluded.deleted_at",
-        params![
+        )
+        .map_err(failed)?;
+    statement
+        .execute(params![
             item.item_id,
             text_or_default(view, "title", ""),
             text(view, "description"),
@@ -201,9 +207,8 @@ pub fn project_task(
             field_clocks_text(view),
             item.synced_at,
             item.deleted_at,
-        ],
-    )
-    .map_err(failed)?;
+        ])
+        .map_err(failed)?;
     Ok(())
 }
 

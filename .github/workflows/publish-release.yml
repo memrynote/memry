@@ -1,11 +1,10 @@
 name: Publish Desktop Release
 
-# Build-only. Every platform is built and the asset set is validated here, then
-# staged as workflow artifacts. Nothing reaches the release: the Windows Velopack
-# packages are Authenticode-signed with a hardware-backed Certum key that only
-# exists on the maintainer's Mac, so the local `pnpm release` downloads these
-# artifacts, signs Windows, uploads, and publishes. See
-# apps/docs/src/contribute/releasing.md.
+# Build-only, for the Tauri app (apps/desktop-tauri). macOS and Linux are built, signed, packed and
+# checked here; Windows is built and checked as unsigned payload zips. Nothing reaches the release:
+# the Windows Velopack packages are Authenticode-signed with a hardware-backed Certum key that only
+# exists on the maintainer's Mac, so the local `pnpm release` downloads these artifacts, packs and
+# signs Windows, writes latest.yml, uploads, and publishes. See apps/docs/src/contribute/releasing.md.
 
 on:
   workflow_dispatch:
@@ -14,11 +13,10 @@ on:
         description: Draft release tag to build. Leave empty to use the newest draft.
         required: false
 
+# The build jobs run crates.io build scripts and third-party actions, so they get a read-only token
+# and no checkout keeps it. Their `gh release download` reads published releases only.
 permissions:
-  # Write rather than read even though no step here writes: GITHUB_TOKEN can only
-  # see a draft release with push access, and setup-release reads the draft to
-  # validate it.
-  contents: write
+  contents: read
 
 concurrency:
   group: publish-desktop-release
@@ -30,16 +28,23 @@ env:
   NODE_OPTIONS: --max-old-space-size=4096
   RELEASE_TIME_ZONE: Europe/Istanbul
   TURBO_TELEMETRY_DISABLED: 1
-  # Native modules are rebuilt once in the staged copy by build-packaged-app.js.
-  # Skip the throwaway rebuild that pnpm's deps-status preflight triggers via the
-  # desktop `postinstall` before each build step.
-  SKIP_ELECTRON_REBUILD: 1
+  CARGO_TERM_COLOR: always
+  # A production build: `build_env.rs` then requires the sync and calendar values and refuses an
+  # update feed override.
+  MEMRY_ENV: production
+  VPK_VERSION: 1.2.161
+  MACOSX_DEPLOYMENT_TARGET: '13.0'
+  RUST_TOOLCHAIN: '1.98.1'
 
 jobs:
   setup-release:
     name: Validate draft and resolve version
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Write rather than read even though no step here writes: GITHUB_TOKEN can only see a draft
+    # release with push access, and this job reads the draft to validate it.
+    permissions:
+      contents: write
     outputs:
       app_version: ${{ steps.version.outputs.app_version }}
       commit_sha: ${{ github.sha }}
@@ -53,7 +58,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
 
       - name: Validate draft release
         id: draft
@@ -113,515 +123,608 @@ jobs:
       - name: Resolve publish-day version
         id: version
         env:
+          DRAFT_TAG: ${{ steps.draft.outputs.draft_tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release list --limit 100 --json tagName > "$RUNNER_TEMP/releases.json"
+          gh release list --limit 100 --json tagName,isDraft,createdAt > "$RUNNER_TEMP/releases.json"
           node scripts/resolve-release-version.mjs \
             --releases-file "$RUNNER_TEMP/releases.json" \
-            --ignore-tag "${{ steps.draft.outputs.draft_tag }}"
+            --ignore-tag "$DRAFT_TAG"
+
+      # Fails before any build: the sync URL must be the production https host. `build_env.rs`
+      # refuses a production build without the required values at compile time.
+      - name: Check the production sync URL
+        env:
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        run: node scripts/release/assert-production-config.mjs pre
+
+      # The inputs every build job reads: the version overlay for `tauri build --config`, the
+      # humanized notes of the draft for `vpk --releaseNotes`, and each pack target's `--delta`
+      # against the previous published release.
+      - name: Collect release inputs
+        env:
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+          DRAFT_TAG: ${{ steps.draft.outputs.draft_tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          inputs="$RUNNER_TEMP/release-inputs"
+          mkdir -p "$inputs"
+          node scripts/release/version-config.mjs "$APP_VERSION" "$inputs/version.conf.json"
+          previous="$(node scripts/release/release-inputs.mjs previous "$RUNNER_TEMP/releases.json" --exclude-tag "$DRAFT_TAG")"
+          if [ -n "$previous" ]; then
+            gh release view "$previous" --json assets --jq '[.assets[].name]' > "$RUNNER_TEMP/previous-assets.json"
+          else
+            echo '[]' > "$RUNNER_TEMP/previous-assets.json"
+          fi
+          gh release view "$DRAFT_TAG" --json body --jq .body > "$RUNNER_TEMP/draft-body.md"
+          node scripts/release/release-inputs.mjs write "$inputs" --tag "$TAG" --draft-tag "$DRAFT_TAG" \
+            --body "$RUNNER_TEMP/draft-body.md" --previous-tag "$previous" \
+            --previous-assets "$RUNNER_TEMP/previous-assets.json"
+          ls -la "$inputs"
+
+      - name: Upload release inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-inputs-${{ steps.version.outputs.app_version }}
+          path: ${{ runner.temp }}/release-inputs
+          if-no-files-found: error
 
   build-macos:
     name: Build macOS ${{ matrix.arch }}
     needs: setup-release
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 120
+    runs-on: ${{ matrix.os }}
+    # The bundle build alone takes about 60 min on macos-15, then two notarizations.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: x64
-            runner: macos-15-intel
-            builder_arch_flag: --x64
-          - arch: arm64
-            runner: macos-15
-            builder_arch_flag: --arm64
+          - target: osx-arm64
+            os: macos-15
+            triple: aarch64-apple-darwin
+            arch: arm64
+            lipo: arm64
+          - target: osx-x64
+            os: macos-15-intel
+            triple: x86_64-apple-darwin
+            arch: x64
+            lipo: x86_64
+    env:
+      VERSION: ${{ needs.setup-release.outputs.app_version }}
+      # Squirrel.Mac installs an update only when it satisfies the running app's designated
+      # requirement; every Electron install runs a build signed like this release's.
+      ELECTRON_DR_TAG: v2026-10-15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.triple }}
 
       - name: Install dependencies
-        shell: bash
-        env:
-          SKIP_ELECTRON_REBUILD: 1
-        # Retry to survive transient registry/CDN network flakes during a cold
-        # pnpm store download (e.g. ETIMEDOUT on npmjs, ENOTFOUND github.com in
-        # electron postinstall) that would otherwise kill the whole release.
         run: |
-          attempts=3
-          for attempt in $(seq 1 "$attempts"); do
-            echo "::group::pnpm install (attempt $attempt/$attempts)"
-            if pnpm install --frozen-lockfile; then
-              echo "::endgroup::"
-              exit 0
-            fi
-            echo "::endgroup::"
-            if [ "$attempt" -lt "$attempts" ]; then
-              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
-              sleep 20
-            fi
+          for attempt in 1 2 3; do
+            pnpm install --frozen-lockfile --ignore-scripts && exit 0
+            echo "::warning::pnpm install failed (attempt $attempt/3)"
+            sleep 20
           done
-          echo "::error::pnpm install failed after $attempts attempts"
           exit 1
 
-      - name: Apply release app version
-        env:
-          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install vpk
         run: |
-          set -euo pipefail
-          node <<'NODE'
-          const { readFileSync, writeFileSync } = require('node:fs')
+          dotnet tool update -g vpk --version "$VPK_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
 
-          const packagePath = 'apps/desktop/package.json'
-          const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
-          packageJson.version = process.env.APP_VERSION
-          writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
-          NODE
+      # The memry-ml-worker sidecar links ONNX Runtime and Tesseract statically.
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+          repository: memrynote/memry
 
-      - name: Create runtime environment
+      - uses: ./.github/actions/tesseract-sources
+        with:
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-inputs-${{ env.VERSION }}
+          path: ${{ runner.temp }}/release-inputs
+
+      - name: Build the sidecars and fetch pdfium
+        run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
+
+      - name: Build bundle (unsigned)
         env:
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
           GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
           GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
-          MEMRY_UNSPLASH_ACCESS_KEY: ${{ secrets.MEMRY_UNSPLASH_ACCESS_KEY }}
           ONENOTE_CLIENT_ID: ${{ secrets.ONENOTE_CLIENT_ID }}
-          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.MEMRY_UNSPLASH_ACCESS_KEY }}
+        # tauri.release.conf.json's externalBin replaces the macOS one, so the macOS release config
+        # lists the EventKit helper again (build.rs builds it; payload-manifest.json requires it).
         run: |
-          set -euo pipefail
-          if [ -z "${SYNC_SERVER_URL:-}" ]; then
-            echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
-            exit 1
-          fi
-          if [ -z "${GOOGLE_CALENDAR_CLIENT_ID:-}" ]; then
-            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
-            exit 1
-          fi
-          if [ -z "${GOOGLE_CALENDAR_CLIENT_SECRET:-}" ]; then
-            echo "::error::Set GOOGLE_CALENDAR_CLIENT_SECRET as a repository secret before publishing."
-            exit 1
-          fi
-          {
-            printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
-            printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
-            printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
-            printf 'ONENOTE_CLIENT_ID=%s\n' "$ONENOTE_CLIENT_ID"
-            printf 'MEMRY_UNSPLASH_ACCESS_KEY=%s\n' "$MEMRY_UNSPLASH_ACCESS_KEY"
-          } > apps/desktop/.env.production
+          pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app \
+            --config src-tauri/tauri.release.conf.json --config src-tauri/tauri.release.macos.conf.json \
+            --config "$RUNNER_TEMP/release-inputs/version.conf.json"
 
-      - name: Build signed macOS artifacts
+      - name: Import signing identity
         env:
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_IDENTITY_AUTO_DISCOVERY: true
-          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for name in MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!name:-}" ] || { echo "::error::Missing required release secret: $name"; exit 1; }
+          done
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          export KC_UNLOCK; KC_UNLOCK="$(uuidgen)"
+          security create-keychain -p "$KC_UNLOCK" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$KC_UNLOCK" "$keychain"
+          printf '%s' "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_UNLOCK" "$keychain"
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          identity="$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)"
+          test -n "$identity"
+          xcrun notarytool store-credentials memry-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --keychain "$keychain"
+          { echo "KEYCHAIN=$keychain"; echo "IDENTITY=$identity"; } >> "$GITHUB_ENV"
+
+      - name: Sign nested code and the bundle
+        run: |
+          set -euo pipefail
+          app="$(ls -d crates/target/${{ matrix.triple }}/release/bundle/macos/*.app)"
+          # Tauri bundles every [[bin]] of the package; export-bindings is a dev tool (assert-payload
+          # fails on any executable the manifest does not list).
+          rm -f "$app/Contents/MacOS/export-bindings"
+          scripts/release/sign-macos-bundle.sh "$app" "$IDENTITY" apps/desktop-tauri/src-tauri/entitlements.mac.plist "$KEYCHAIN"
+          mkdir -p pack && rm -rf pack/MemryNote.app && cp -R "$app" pack/MemryNote.app
+
+      - name: Check the payload
+        run: node scripts/release/assert-payload.mjs pack/MemryNote.app macos
+
+      - name: The payload carries the production config and the release version
+        env:
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
+          node scripts/release/assert-production-config.mjs post pack/MemryNote.app
+          plist=pack/MemryNote.app/Contents/Info.plist
+          # Info.plist and the binary read the same config.version; x64 codegen drops the binary's literal, so no byte grep.
+          [ "$(plutil -extract CFBundleShortVersionString raw "$plist")" = "$VERSION" ] || { echo "::error::Info.plist does not carry $VERSION"; exit 1; }
 
-          release_requirements=(
-            'CSC_LINK|MACOS_CERTIFICATE_P12'
-            'CSC_KEY_PASSWORD|MACOS_CERTIFICATE_PASSWORD'
-            'APPLE_ID|APPLE_ID'
-            'APPLE_APP_SPECIFIC_PASSWORD|APPLE_APP_SPECIFIC_PASSWORD'
-            'APPLE_TEAM_ID|APPLE_TEAM_ID'
-          )
-
-          for requirement in "${release_requirements[@]}"; do
-            env_name="${requirement%%|*}"
-            required_name="${requirement#*|}"
-            if [ -z "${!env_name:-}" ]; then
-              echo "::error::Missing required release secret: $required_name"
-              exit 1
-            fi
+      - name: The worker and pdfium are signed with the hardened runtime, the app's Team ID and no entitlements
+        run: |
+          set -euo pipefail
+          contents=pack/MemryNote.app/Contents
+          team="$(codesign -dv "$contents/MacOS/MemryNote" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+          [[ "$team" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error::the main binary has no Team ID"; exit 1; }
+          # The control: the main binary keeps the app's entitlements, so the check below can see keys.
+          codesign -d --entitlements - --xml "$contents/MacOS/MemryNote" | grep -q '<key>' || { echo "::error::the main binary has no entitlements"; exit 1; }
+          for file in "$contents/MacOS/memry-ml-worker" "$contents/Resources/pdfium/libpdfium.dylib"; do
+            codesign -dv --verbose=2 "$file" 2>&1 | tee "$RUNNER_TEMP/codesign.txt"
+            grep -qxF "TeamIdentifier=$team" "$RUNNER_TEMP/codesign.txt" || { echo "::error::$file is not signed by the app's team"; exit 1; }
+            grep -qE '^CodeDirectory .*flags=.*runtime' "$RUNNER_TEMP/codesign.txt" || { echo "::error::$file lacks the hardened runtime"; exit 1; }
+            entitlements="$(codesign -d --entitlements - --xml "$file")"
+            if [[ "$entitlements" == *'<key>'* ]]; then echo "::error::$file has entitlements: $entitlements"; exit 1; fi
           done
 
-          pnpm --filter @memry/desktop build:release
-          node apps/desktop/scripts/build-packaged-app.js \
-            --config config/electron-builder.staged-local-mac.yml \
-            --mac \
-            ${{ matrix.builder_arch_flag }} \
-            --publish never
+      - name: The bundled worker opens a PDF with the bundled pdfium
+        run: node scripts/release/smoke-worker.mjs pack/MemryNote.app macos crates/memry-ml-worker/tests/fixtures/two-pages.pdf
 
-      - name: Check packaged runtime dependencies
-        run: node apps/desktop/scripts/check-packaged-runtime-deps.js
+      - name: Delta plan
+        id: delta
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/release-inputs/delta.json"
+          echo "mode=$(jq -r '.delta["${{ matrix.target }}"]' "$plan")" >> "$GITHUB_OUTPUT"
+          echo "previous=$(jq -r '.previousTag' "$plan")" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch previous full package
+        if: steps.delta.outputs.mode != 'None'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIOUS_TAG: ${{ steps.delta.outputs.previous }}
+        run: gh release download "$PREVIOUS_TAG" -p '*${{ matrix.target }}-full.nupkg' -D out
+
+      - name: Pack, sign, notarize
+        env:
+          DELTA: ${{ steps.delta.outputs.mode }}
+        run: |
+          mkdir -p out
+          # vpk only accepts a .entitlements extension.
+          cp apps/desktop-tauri/src-tauri/entitlements.mac.plist "$RUNNER_TEMP/MemryNote.entitlements"
+          # Notarization is Accepted before `stapler staple` runs. Staple fetches the ticket from
+          # api.apple-cloudkit.com, and a dropped connection there (Error 68, NSURLErrorDomain
+          # -1005) fails the whole pack although the build is fine. vpk does not retry, so pack
+          # again: notarizing the same bytes is idempotent.
+          for attempt in 1 2 3; do
+            if node scripts/release/vpk-pack.mjs ${{ matrix.target }} --version "$VERSION" \
+              --pack-dir pack/MemryNote.app --output-dir out --delta "$DELTA" \
+              --release-notes "$RUNNER_TEMP/release-inputs/release-notes.md" \
+              --identity "$IDENTITY" --entitlements "$RUNNER_TEMP/MemryNote.entitlements" \
+              --notary-profile memry-notary --keychain "$KEYCHAIN"; then
+              exit 0
+            fi
+            echo "::warning::vpk pack attempt $attempt failed"
+            sleep 20
+          done
+          exit 1
+
+      - name: Check the packed bundle
+        run: |
+          set -euo pipefail
+          rm -rf inspect && mkdir inspect
+          ditto -x -k out/MemryNote-${{ matrix.target }}-Portable.zip inspect
+          app=inspect/MemryNote.app
+          codesign -d --entitlements - "$app"
+          worker_entitlements="$(codesign -d --entitlements - --xml "$app/Contents/MacOS/memry-ml-worker")"
+          if [[ "$worker_entitlements" == *'<key>'* ]]; then echo "::error::the packed worker has entitlements"; exit 1; fi
+          plutil -p "$app/Contents/Info.plist"
+          [ "$(lipo -archs "$app/Contents/MacOS/MemryNote")" = "${{ matrix.lipo }}" ] || { echo "::error::the main binary is not ${{ matrix.lipo }}"; exit 1; }
+          spctl -a -vv "$app" 2>&1 | tee "$RUNNER_TEMP/spctl.txt"
+          grep -F 'Notarized Developer ID' "$RUNNER_TEMP/spctl.txt"
+          xcrun stapler validate "$app"
+
+      - name: Designated requirement of the Electron release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/electron" && mkdir -p "$RUNNER_TEMP/electron"
+          gh release download "$ELECTRON_DR_TAG" --repo memrynote/memry -p "MemryNote-*-${{ matrix.arch }}.zip" -D "$RUNNER_TEMP/electron"
+          ditto -x -k "$RUNNER_TEMP"/electron/MemryNote-*-${{ matrix.arch }}.zip "$RUNNER_TEMP/electron"
+          scripts/release/check-mac-designated-requirement.sh "$RUNNER_TEMP/electron/MemryNote.app" inspect/MemryNote.app
+
+      - name: Build, notarize and staple the dmg
+        run: |
+          set -euo pipefail
+          mkdir -p dmg
+          cd dmg
+          ../scripts/release/make-dmg.sh ../inspect/MemryNote.app ${{ matrix.arch }} "$VERSION" "$IDENTITY" "$KEYCHAIN"
 
       - name: Stage macOS assets
         id: assets
         run: |
           set -euo pipefail
-          asset_dir="$RUNNER_TEMP/release-assets-macos"
-          rm -rf "$asset_dir"
-          mkdir -p "$asset_dir"
-
-          find apps/desktop/dist -maxdepth 1 -type f \
-            \( -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name 'latest-mac.yml' \) \
-            -exec cp {} "$asset_dir" \;
-
-          # Each arch build emits its own latest-mac.yml. Rename per-arch so both
-          # survive the merge-multiple artifact download; they are merged into a
-          # single latest-mac.yml at publish time so x64 and arm64 both auto-update.
-          if [ -f "$asset_dir/latest-mac.yml" ]; then
-            mv "$asset_dir/latest-mac.yml" "$asset_dir/latest-mac-${{ matrix.arch }}.yml"
-          fi
-
+          asset_dir="$RUNNER_TEMP/release-assets"
+          rm -rf "$asset_dir" && mkdir -p "$asset_dir"
+          # This release's packages and indexes only: out/ also holds the previous full package a
+          # delta was built from, vpk's assets.<channel>.json and its log.
+          cp out/MemryNote-"$VERSION"-*.nupkg out/releases.${{ matrix.target }}.json out/RELEASES-${{ matrix.target }} "$asset_dir"/
+          # electron-updater and Squirrel.Mac read the zip under Electron's name.
+          cp out/MemryNote-${{ matrix.target }}-Portable.zip "$asset_dir/MemryNote-$VERSION-${{ matrix.arch }}.zip"
+          cp "dmg/MemryNote-$VERSION-${{ matrix.arch }}.dmg" "$asset_dir"/
           ls -la "$asset_dir"
-
-          if [ "${{ matrix.arch }}" = "arm64" ]; then
-            if ! ls "$asset_dir"/*-arm64.dmg >/dev/null 2>&1; then
-              echo "::error::No macOS arm64 DMG artifact was produced."
-              exit 1
-            fi
-          else
-            if ! find "$asset_dir" -maxdepth 1 -type f -name '*.dmg' ! -name '*arm64*' | grep -q .; then
-              echo "::error::No macOS x64 DMG artifact was produced."
-              exit 1
-            fi
-          fi
-
-          if ! ls "$asset_dir"/*.zip >/dev/null 2>&1; then
-            echo "::error::No macOS ZIP artifact was produced."
-            exit 1
-          fi
-
-          if [ ! -f "$asset_dir/latest-mac-${{ matrix.arch }}.yml" ]; then
-            echo "::error::latest-mac-${{ matrix.arch }}.yml was not produced."
-            exit 1
-          fi
-
           echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
 
       - name: Upload macOS workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: memry-release-macos-${{ matrix.arch }}-${{ needs.setup-release.outputs.app_version }}
+          name: memry-release-${{ matrix.target }}-${{ env.VERSION }}
           path: ${{ steps.assets.outputs.asset_dir }}/*
           if-no-files-found: error
 
   build-windows:
-    name: Build Windows x64
+    name: Build Windows payload ${{ matrix.target }}
     needs: setup-release
-    # Pinned: windows-latest now ships VS 2026, which node-gyp 11.5.0 cannot
-    # detect ("Could not find any Visual Studio installation"), so the native
-    # electron-rebuild fails. windows-2022 ships VS 2022, which node-gyp finds.
-    runs-on: windows-2022
-    timeout-minutes: 90
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: win-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
+          - { target: win-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
+    defaults:
+      run:
+        # bash runs with -eo pipefail, so a failed command stops the step (pwsh does not stop on a
+        # native command's exit code).
+        shell: bash
+    env:
+      VERSION: ${{ needs.setup-release.outputs.app_version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.triple }}
 
       - name: Install dependencies
-        shell: bash
-        env:
-          SKIP_ELECTRON_REBUILD: 1
-        # Retry to survive transient registry/CDN network flakes during a cold
-        # pnpm store download (e.g. ETIMEDOUT on npmjs, ENOTFOUND github.com in
-        # electron postinstall) that would otherwise kill the whole release.
         run: |
-          attempts=3
-          for attempt in $(seq 1 "$attempts"); do
-            echo "::group::pnpm install (attempt $attempt/$attempts)"
-            if pnpm install --frozen-lockfile; then
-              echo "::endgroup::"
-              exit 0
-            fi
-            echo "::endgroup::"
-            if [ "$attempt" -lt "$attempts" ]; then
-              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
-              sleep 20
-            fi
+          for attempt in 1 2 3; do
+            pnpm install --frozen-lockfile --ignore-scripts && exit 0
+            echo "::warning::pnpm install failed (attempt $attempt/3)"
+            sleep 20
           done
-          echo "::error::pnpm install failed after $attempts attempts"
           exit 1
 
-      - name: Apply release app version
-        env:
-          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const { readFileSync, writeFileSync } = require('node:fs')
+      # btls-sys assembles BoringSSL with NASM on Windows x64 (same pin as rust-ci.yml).
+      - name: Install NASM
+        if: runner.os == 'Windows' && runner.arch == 'X64'
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
 
-          const packagePath = 'apps/desktop/package.json'
-          const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
-          packageJson.version = process.env.APP_VERSION
-          writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
-          NODE
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+          repository: memrynote/memry
 
-      - name: Create runtime environment
+      - uses: ./.github/actions/tesseract-sources
+        with:
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-inputs-${{ env.VERSION }}
+          path: ${{ runner.temp }}/release-inputs
+
+      - name: Build the sidecars and fetch pdfium
+        run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
+
+      - name: Build
         env:
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
           GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
           GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
-          MEMRY_UNSPLASH_ACCESS_KEY: ${{ secrets.MEMRY_UNSPLASH_ACCESS_KEY }}
           ONENOTE_CLIENT_ID: ${{ secrets.ONENOTE_CLIENT_ID }}
-          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
-        shell: bash
+          UNSPLASH_ACCESS_KEY: ${{ secrets.MEMRY_UNSPLASH_ACCESS_KEY }}
         run: |
-          set -euo pipefail
-          if [ -z "${SYNC_SERVER_URL:-}" ]; then
-            echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
-            exit 1
-          fi
-          if [ -z "${GOOGLE_CALENDAR_CLIENT_ID:-}" ]; then
-            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing"
-            exit 1
-          fi
-          if [ -z "${GOOGLE_CALENDAR_CLIENT_SECRET:-}" ]; then
-            echo "::error::Set GOOGLE_CALENDAR_CLIENT_SECRET as a repository secret before publishing"
-            exit 1
-          fi
-          {
-            printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
-            printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
-            printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
-            # Unguarded on purpose: OneNote import is optional, so an unset
-            # secret hides the importer instead of failing the release.
-            printf 'ONENOTE_CLIENT_ID=%s\n' "$ONENOTE_CLIENT_ID"
-            printf 'MEMRY_UNSPLASH_ACCESS_KEY=%s\n' "$MEMRY_UNSPLASH_ACCESS_KEY"
-          } > apps/desktop/.env.production
+          pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }} \
+            --config src-tauri/tauri.release.conf.json --config "$RUNNER_TEMP/release-inputs/version.conf.json"
 
-      # The runtime env is staged + shipped as resources/app-config, a filename
-      # with no .env token (see scripts/build-packaged-app.js, the
-      # electron-builder configs, and apps/desktop/src/main/index.ts). app-config
-      # is declared once in config/electron-builder.yml; the EBUSY that killed
-      # earlier Windows releases was electron-builder copying it twice (a
-      # duplicate extraResources entry survived the extends-merge), not Defender.
-      - name: Build Windows artifacts
+      - name: Stage pack dir
+        run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
+
+      - name: Check the exe needs no VC++ redistributable
+        run: node scripts/release/pe-imports.mjs pack/Memrynote.exe
+
+      - name: Check the payload
+        run: node scripts/release/assert-payload.mjs pack windows
+
+      - name: The payload carries the production config
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        run: node scripts/release/assert-production-config.mjs post pack
+
+      - name: Memrynote.exe carries the release version
         shell: pwsh
         run: |
-          pnpm --filter @memry/desktop build:release
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # tauri-build writes config.version verbatim as the ProductVersion string (no 4-part padding).
+          $product = (Get-Item pack/Memrynote.exe).VersionInfo.ProductVersion
+          if ($product -cne $env:VERSION) { Write-Output "::error::Memrynote.exe ProductVersion is '$product', not $env:VERSION"; exit 1 }
 
-      # 2026.705.1 shipped a classic-level binary whose napi calls failed at
-      # runtime — every CRDT persistence op crashed or hung, and nothing in the
-      # pipeline load-tested the Windows package. Verify native modules load
-      # and actually work under the packaged executable before staging assets.
-      - name: Check packaged runtime dependencies
-        shell: bash
-        run: node apps/desktop/scripts/check-packaged-runtime-deps.js apps/desktop/dist/win-unpacked
+      - name: The bundled worker opens a PDF with the bundled pdfium
+        run: node scripts/release/smoke-worker.mjs pack windows crates/memry-ml-worker/tests/fixtures/two-pages.pdf
 
-      - name: Stage Windows assets
-        id: assets
+      - name: Zip pack dir
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $assetDir = Join-Path $env:RUNNER_TEMP 'release-assets-windows'
-          Remove-Item $assetDir -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path $assetDir | Out-Null
+          Compress-Archive -Path pack/* -DestinationPath "MemryNote-$env:VERSION-${{ matrix.target }}-payload.zip"
 
-          Get-ChildItem apps/desktop/dist -File |
-            Where-Object { $_.Name -like '*.exe' -or $_.Name -like '*-win.zip' -or $_.Name -like '*.blockmap' -or $_.Name -eq 'latest.yml' } |
-            Copy-Item -Destination $assetDir
-
-          Get-ChildItem $assetDir | Format-Table Name, Length
-
-          if (-not (Get-ChildItem $assetDir -Filter '*.exe')) {
-            throw 'No Windows installer artifact was produced.'
-          }
-
-          # The local Velopack pack step takes this ZIP as its input; it is the
-          # same content as dist/win-unpacked. A silent absence must not reach
-          # the Mac, where it would surface as an unexplained packing failure.
-          if (-not (Get-ChildItem $assetDir -Filter '*-win.zip')) {
-            throw 'No Windows ZIP artifact was produced.'
-          }
-
-          if (-not (Test-Path (Join-Path $assetDir 'latest.yml'))) {
-            throw 'latest.yml was not produced.'
-          }
-
-          "asset_dir=$assetDir" >> $env:GITHUB_OUTPUT
-
-      - name: Upload Windows workflow artifact
+      # Not a release asset: `pnpm release` packs and signs it on the Mac. Not named
+      # memry-release-*, so stage-release does not sweep it into the asset set.
+      - name: Upload Windows payload
         uses: actions/upload-artifact@v4
         with:
-          name: memry-release-windows-${{ needs.setup-release.outputs.app_version }}
-          path: ${{ steps.assets.outputs.asset_dir }}/*
+          name: memry-windows-payload-${{ matrix.target }}-${{ env.VERSION }}
+          path: MemryNote-${{ env.VERSION }}-${{ matrix.target }}-payload.zip
           if-no-files-found: error
 
   build-linux:
     name: Build Linux x64
     needs: setup-release
-    # Native binaries must run on the oldest supported distribution.
+    # The binaries must run on the oldest supported distribution (glibc 2.35).
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
-      CC: clang-15
-      CXX: clang++-15
-      CXXFLAGS: -std=c++20
+      VERSION: ${{ needs.setup-release.outputs.app_version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
-      - name: Install system dependencies
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+
+      - name: Install system libraries
         run: |
           # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
           # ("no longer signed") and break apt-get update. We don't need them.
           sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
           sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev clang-15 binutils
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev squashfs-tools libfuse2 binutils
 
       - name: Install dependencies
-        shell: bash
-        env:
-          SKIP_ELECTRON_REBUILD: 1
-        # Retry to survive transient registry/CDN network flakes during a cold
-        # pnpm store download (e.g. ETIMEDOUT on npmjs, ENOTFOUND github.com in
-        # electron postinstall) that would otherwise kill the whole release.
         run: |
-          attempts=3
-          for attempt in $(seq 1 "$attempts"); do
-            echo "::group::pnpm install (attempt $attempt/$attempts)"
-            if pnpm install --frozen-lockfile; then
-              echo "::endgroup::"
-              exit 0
-            fi
-            echo "::endgroup::"
-            if [ "$attempt" -lt "$attempts" ]; then
-              echo "::warning::pnpm install failed (attempt $attempt/$attempts); retrying in 20s"
-              sleep 20
-            fi
+          for attempt in 1 2 3; do
+            pnpm install --frozen-lockfile --ignore-scripts && exit 0
+            echo "::warning::pnpm install failed (attempt $attempt/3)"
+            sleep 20
           done
-          echo "::error::pnpm install failed after $attempts attempts"
           exit 1
 
-      - name: Apply release app version
-        env:
-          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install vpk
         run: |
-          set -euo pipefail
-          node <<'NODE'
-          const { readFileSync, writeFileSync } = require('node:fs')
+          dotnet tool update -g vpk --version "$VPK_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
 
-          const packagePath = 'apps/desktop/package.json'
-          const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
-          packageJson.version = process.env.APP_VERSION
-          writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
-          NODE
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+          repository: memrynote/memry
 
-      - name: Create runtime environment
+      - uses: ./.github/actions/tesseract-sources
+        with:
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-inputs-${{ env.VERSION }}
+          path: ${{ runner.temp }}/release-inputs
+
+      - name: Build the sidecars and fetch pdfium
+        run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target x86_64-unknown-linux-gnu
+
+      - name: Build AppImage and deb
         env:
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
           GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
           GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
-          MEMRY_UNSPLASH_ACCESS_KEY: ${{ secrets.MEMRY_UNSPLASH_ACCESS_KEY }}
           ONENOTE_CLIENT_ID: ${{ secrets.ONENOTE_CLIENT_ID }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.MEMRY_UNSPLASH_ACCESS_KEY }}
+        run: |
+          pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage,deb \
+            --config src-tauri/tauri.release.conf.json --config "$RUNNER_TEMP/release-inputs/version.conf.json"
+
+      - name: Extract AppDir
+        run: |
+          set -euo pipefail
+          appimage="$(ls crates/target/release/bundle/appimage/*.AppImage)"
+          chmod +x "$appimage"
+          rm -rf squashfs-root MemryNote.AppDir
+          "$appimage" --appimage-extract >/dev/null
+          mv squashfs-root MemryNote.AppDir
+          # Tauri bundles every [[bin]] of the package; export-bindings is a dev tool.
+          rm -f MemryNote.AppDir/usr/bin/export-bindings
+          find MemryNote.AppDir -name '*.desktop' -exec grep -H '^Categories=' {} +
+
+      - name: Repack the deb as Electron's package
+        id: deb
+        run: |
+          set -euo pipefail
+          asset_dir="$RUNNER_TEMP/release-assets"
+          rm -rf "$asset_dir" && mkdir -p "$asset_dir"
+          deb="$asset_dir/MemryNote-$VERSION-amd64.deb"
+          scripts/release/repack-deb.sh "$(ls crates/target/release/bundle/deb/*.deb)" "$deb"
+          [ "$(dpkg-deb -f "$deb" Version)" = "$VERSION" ] || { echo "::error::the deb is not version $VERSION"; exit 1; }
+          rm -rf deb-root && dpkg-deb -x "$deb" deb-root
+          echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
+          echo "deb=$deb" >> "$GITHUB_OUTPUT"
+
+      - name: Check the payloads
+        env:
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${SYNC_SERVER_URL:-}" ]; then
-            echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
-            exit 1
-          fi
-          if [ -z "${GOOGLE_CALENDAR_CLIENT_ID:-}" ]; then
-            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
-            exit 1
-          fi
-          if [ -z "${GOOGLE_CALENDAR_CLIENT_SECRET:-}" ]; then
-            echo "::error::Set GOOGLE_CALENDAR_CLIENT_SECRET as a repository secret before publishing."
-            exit 1
-          fi
-          {
-            printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
-            printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
-            printf 'GOOGLE_CALENDAR_CLIENT_SECRET=%s\n' "$GOOGLE_CALENDAR_CLIENT_SECRET"
-            # Unguarded on purpose: OneNote import is optional, so an unset
-            # secret hides the importer instead of failing the release.
-            printf 'ONENOTE_CLIENT_ID=%s\n' "$ONENOTE_CLIENT_ID"
-            printf 'MEMRY_UNSPLASH_ACCESS_KEY=%s\n' "$MEMRY_UNSPLASH_ACCESS_KEY"
-          } > apps/desktop/.env.production
+          for root in MemryNote.AppDir deb-root; do
+            echo "::group::$root"
+            node scripts/release/assert-payload.mjs "$root" linux
+            node scripts/release/assert-production-config.mjs post "$root"
+            scripts/release/check-glibc.sh "$root"
+            # The deb Version check pins config.version; both roots come from one tauri build (linuxdeploy rewrites the AppImage binary's RPATH, so no cmp).
+            echo "::endgroup::"
+          done
 
-      - name: Build Linux artifacts
+      - name: The bundled worker opens a PDF with the bundled pdfium
+        run: node scripts/release/smoke-worker.mjs MemryNote.AppDir linux crates/memry-ml-worker/tests/fixtures/two-pages.pdf
+
+      - name: Install the deb on a clean Ubuntu 22.04
+        env:
+          DEB: ${{ steps.deb.outputs.deb }}
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$(dirname "$DEB"):/assets:ro" -e DEB_NAME="$(basename "$DEB")" ubuntu:22.04 sh -euc '
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "/assets/$DEB_NAME" >/dev/null
+            dpkg -s memrynote | grep -E "^(Status|Version):"
+            test -x /usr/bin/memrynote
+            test -x /usr/bin/memry-ml-worker
+            test ! -e /usr/bin/export-bindings
+            if ldd /usr/bin/memrynote /usr/bin/memry-ml-worker | grep -F "not found"; then exit 1; fi
+          '
+
+      - name: Delta plan
+        id: delta
+        run: |
+          set -euo pipefail
+          plan="$RUNNER_TEMP/release-inputs/delta.json"
+          echo "mode=$(jq -r '.delta["linux-x64"]' "$plan")" >> "$GITHUB_OUTPUT"
+          echo "previous=$(jq -r '.previousTag' "$plan")" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch previous full package
+        if: steps.delta.outputs.mode != 'None'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
-        run: |
-          set -euo pipefail
-          pnpm --filter @memry/desktop build:release
-          node apps/desktop/scripts/build-packaged-app.js --linux --x64 --publish never
+          PREVIOUS_TAG: ${{ steps.delta.outputs.previous }}
+        run: gh release download "$PREVIOUS_TAG" -p '*linux-full.nupkg' -D out
 
-      - name: Check packaged runtime on Ubuntu 22.04
-        run: node apps/desktop/scripts/check-packaged-runtime-deps.js apps/desktop/dist/linux-unpacked
+      - name: Pack
+        env:
+          DELTA: ${{ steps.delta.outputs.mode }}
+        run: |
+          mkdir -p out
+          node scripts/release/vpk-pack.mjs linux-x64 --version "$VERSION" \
+            --pack-dir MemryNote.AppDir --output-dir out --delta "$DELTA" \
+            --release-notes "$RUNNER_TEMP/release-inputs/release-notes.md"
 
       - name: Stage Linux assets
-        id: assets
+        env:
+          ASSET_DIR: ${{ steps.deb.outputs.asset_dir }}
         run: |
           set -euo pipefail
-          asset_dir="$RUNNER_TEMP/release-assets-linux"
-          rm -rf "$asset_dir"
-          mkdir -p "$asset_dir"
-
-          find apps/desktop/dist -maxdepth 1 -type f \
-            \( -name '*.AppImage' -o -name '*.deb' -o -name '*.blockmap' -o -name 'latest-linux.yml' \) \
-            -exec cp {} "$asset_dir" \;
-
-          ls -la "$asset_dir"
-
-          if ! ls "$asset_dir"/*.AppImage >/dev/null 2>&1; then
-            echo "::error::No Linux AppImage artifact was produced."
-            exit 1
-          fi
-
-          if ! ls "$asset_dir"/*.deb >/dev/null 2>&1; then
-            echo "::error::No Linux deb artifact was produced."
-            exit 1
-          fi
-
-          echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
+          # This release's packages and indexes only (see Stage macOS assets).
+          cp out/MemryNote-"$VERSION"-*.nupkg out/releases.linux.json out/RELEASES-linux "$ASSET_DIR"/
+          # Only the versioned AppImage is a release asset.
+          cp out/MemryNote.AppImage "$ASSET_DIR/MemryNote-$VERSION-x86_64.AppImage"
+          ls -la "$ASSET_DIR"
 
       - name: Upload Linux workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: memry-release-linux-${{ needs.setup-release.outputs.app_version }}
-          path: ${{ steps.assets.outputs.asset_dir }}/*
+          name: memry-release-linux-x64-${{ env.VERSION }}
+          path: ${{ steps.deb.outputs.asset_dir }}/*
           if-no-files-found: error
 
   stage-release:
@@ -633,85 +736,42 @@ jobs:
       - build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
       - name: Download release assets
         uses: actions/download-artifact@v4
         with:
-          pattern: memry-release-*-${{ needs.setup-release.outputs.app_version }}
+          pattern: memry-release-*-${{ env.APP_VERSION }}
           path: ${{ runner.temp }}/release-assets
           merge-multiple: true
 
-      - name: Merge macOS update manifests
-        env:
-          ASSET_DIR: ${{ runner.temp }}/release-assets
-        run: |
-          set -euo pipefail
-          work="$RUNNER_TEMP/yml-merge"
-          rm -rf "$work"
-          mkdir -p "$work"
-          cd "$work"
-          npm init -y >/dev/null 2>&1
-          npm install js-yaml@4 >/dev/null 2>&1
-          node <<'NODE'
-          const fs = require('node:fs')
-          const path = require('node:path')
-          const yaml = require('js-yaml')
+      # Kept apart from the release assets: the payloads are not uploaded, `pnpm release` packs them.
+      - name: Download Windows payloads
+        uses: actions/download-artifact@v4
+        with:
+          pattern: memry-windows-payload-*-${{ env.APP_VERSION }}
+          path: ${{ runner.temp }}/windows-payloads
+          merge-multiple: true
 
-          const dir = process.env.ASSET_DIR
-          const armPath = path.join(dir, 'latest-mac-arm64.yml')
-          const x64Path = path.join(dir, 'latest-mac-x64.yml')
+      # latest-mac.yml and latest-linux.yml hash the exact bytes that get uploaded. latest.yml
+      # needs the signed Windows Setup, so `pnpm release` writes it.
+      - name: Write the bridge feeds
+        run: node scripts/release/bridge-feeds.mjs "$RUNNER_TEMP/release-assets" --version "$APP_VERSION"
 
-          for (const file of [armPath, x64Path]) {
-            if (!fs.existsSync(file)) {
-              throw new Error(`Missing per-arch manifest: ${path.basename(file)}`)
-            }
-          }
-
-          const arm = yaml.load(fs.readFileSync(armPath, 'utf8'))
-          const x64 = yaml.load(fs.readFileSync(x64Path, 'utf8'))
-
-          if (arm.version !== x64.version) {
-            throw new Error(`Manifest version mismatch: arm64=${arm.version} x64=${x64.version}`)
-          }
-
-          // electron-updater's MacUpdater picks the .zip whose url's includes('arm64')
-          // matches the host arch, so both arch entries must be present in files[].
-          const filesByUrl = new Map()
-          for (const entry of [...(arm.files || []), ...(x64.files || [])]) {
-            filesByUrl.set(entry.url, entry)
-          }
-
-          const merged = {
-            version: arm.version,
-            files: [...filesByUrl.values()],
-            path: arm.path,
-            sha512: arm.sha512,
-            releaseDate: arm.releaseDate || x64.releaseDate
-          }
-
-          fs.writeFileSync(
-            path.join(dir, 'latest-mac.yml'),
-            yaml.dump(merged, { lineWidth: -1, noRefs: true })
-          )
-          fs.rmSync(armPath)
-          fs.rmSync(x64Path)
-
-          console.log('Merged latest-mac.yml entries:')
-          for (const entry of merged.files) {
-            console.log(`  - ${entry.url}`)
-          }
-          NODE
-
-      # This job has no checkout of its own; fetch the repo so the standalone
-      # validator script is available (assets live in RUNNER_TEMP, untouched).
-      - name: Check out repo for manifest validation
-        uses: actions/checkout@v6
-
-      - name: Validate merged macOS update manifest
-        env:
-          ASSET_DIR: ${{ runner.temp }}/release-assets
-        run: node scripts/validate-mac-update-manifest.mjs "$ASSET_DIR/latest-mac.yml"
+      - name: Validate the macOS update manifest
+        run: node scripts/validate-mac-update-manifest.mjs "$RUNNER_TEMP/release-assets/latest-mac.yml" --require-minimum-system-version
 
       - name: Verify release asset set
         id: assets
@@ -719,45 +779,12 @@ jobs:
           set -euo pipefail
           asset_dir="$RUNNER_TEMP/release-assets"
           ls -la "$asset_dir"
-
-          require_glob() {
-            local pattern="$1"
-            local message="$2"
-            if ! compgen -G "$asset_dir/$pattern" >/dev/null; then
-              echo "::error::$message"
-              exit 1
-            fi
-          }
-
-          require_file() {
-            local file="$1"
-            local message="$2"
-            if [ ! -f "$asset_dir/$file" ]; then
-              echo "::error::$message"
-              exit 1
-            fi
-          }
-
-          if ! compgen -G "$asset_dir/*-x64.dmg" >/dev/null &&
-            ! find "$asset_dir" -maxdepth 1 -type f -name '*.dmg' ! -name '*arm64*' | grep -q .; then
-            echo "::error::Missing macOS x64 DMG."
-            exit 1
-          fi
-          require_glob '*-arm64.dmg' 'Missing macOS arm64 DMG.'
-          require_glob '*.zip' 'Missing macOS ZIP.'
-          require_file 'latest-mac.yml' 'Missing latest-mac.yml.'
-          require_glob '*.exe' 'Missing Windows installer.'
-          require_glob '*-win.zip' 'Missing Windows ZIP.'
-          require_file 'latest.yml' 'Missing Windows latest.yml.'
-          require_glob '*.AppImage' 'Missing Linux AppImage.'
-          require_glob '*.deb' 'Missing Linux deb.'
-
+          node scripts/release/required-assets.mjs "$asset_dir" --version "$APP_VERSION" --set ci --list
           echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
 
       - name: Write release metadata
         id: metadata
         env:
-          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
           COMMIT_SHA: ${{ needs.setup-release.outputs.commit_sha }}
           DRAFT_TAG: ${{ needs.setup-release.outputs.draft_tag }}
           RELEASE_ID: ${{ needs.setup-release.outputs.release_id }}
@@ -774,7 +801,15 @@ jobs:
           # which draft to finish, and a quote or newline in a release name must
           # not produce JSON the Mac side cannot parse.
           node <<'NODE'
-          const { writeFileSync } = require('node:fs')
+          const { createHash } = require('node:crypto')
+          const { readFileSync, writeFileSync } = require('node:fs')
+
+          // `pnpm release` checks each payload zip against this hash before `vpk pack`.
+          const windowsPayloads = ['win-x64', 'win-arm64'].map((target) => {
+            const name = `MemryNote-${process.env.APP_VERSION}-${target}-payload.zip`
+            const bytes = readFileSync(`${process.env.RUNNER_TEMP}/windows-payloads/${name}`)
+            return { target, name, sha256: createHash('sha256').update(bytes).digest('hex') }
+          })
 
           const metadata = {
             appVersion: process.env.APP_VERSION,
@@ -793,7 +828,7 @@ jobs:
 
           writeFileSync(
             `${process.env.RUNNER_TEMP}/release-metadata/release-metadata.json`,
-            `${JSON.stringify(metadata, null, 2)}\n`
+            `${JSON.stringify({ ...metadata, windowsPayloads }, null, 2)}\n`
           )
           NODE
 
@@ -803,7 +838,7 @@ jobs:
       - name: Upload staged release assets
         uses: actions/upload-artifact@v4
         with:
-          name: memry-release-${{ needs.setup-release.outputs.app_version }}
+          name: memry-release-${{ env.APP_VERSION }}
           path: ${{ steps.assets.outputs.asset_dir }}/*
           if-no-files-found: error
 
@@ -814,13 +849,12 @@ jobs:
       - name: Upload release metadata
         uses: actions/upload-artifact@v4
         with:
-          name: release-metadata-${{ needs.setup-release.outputs.app_version }}
+          name: release-metadata-${{ env.APP_VERSION }}
           path: ${{ steps.metadata.outputs.metadata_dir }}
           if-no-files-found: error
 
       - name: Report staged build
         env:
-          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
           DRAFT_TAG: ${{ needs.setup-release.outputs.draft_tag }}
         run: |
           set -euo pipefail

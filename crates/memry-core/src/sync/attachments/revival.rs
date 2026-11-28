@@ -8,7 +8,7 @@
 //! local file of each gone one, and drops the gone ids from the references.
 //!
 //! Electron keeps revived notes in memory and loses them on a restart. Here
-//! they are rows of `attachment_revived_notes` (data migration 0044), and a
+//! they are rows of `attachment_revived_notes` (data migration 0045), and a
 //! row goes only once its check settled, so a check cut off anywhere runs
 //! again. The writes follow one order, each step committed before the next:
 //! record moves, then the queue rows, then the dropped references, then the
@@ -23,13 +23,13 @@ use rusqlite::{Connection, params};
 
 use super::holds::{AttachmentChunks, HoldOutcome};
 use super::plan::{ChangePlan, FileRecord, NoteAttachments};
-use super::queue::{VaultFiles, absolute};
+use super::queue::VaultFiles;
 use super::server::AttachmentServer;
 use super::store::{files, upload_queue};
 use super::transfer::now_ms;
 use crate::api::errors::StorageError;
 use crate::domain::notes::{read_attachment_references, remove_attachment_reference};
-use crate::storage::Db;
+use crate::storage::{Db, nested_tx};
 
 /// This device's edit beat a pulled delete of `note_id` (the
 /// `ApplyObserver::note_revived` entry point). Idempotent.
@@ -180,15 +180,21 @@ fn reupload(
         ..NoteAttachments::default()
     });
     // Moves first, committed on their own: the reupload names the new paths.
-    let moves = conn.unchecked_transaction().map_err(failed)?;
+    let moves = nested_tx::begin(conn).map_err(failed)?;
     for moved in &plan.move_records {
         files::move_record(&moves, &note.id, &moved.from, &moved.to, now)?;
     }
     moves.commit().map_err(failed)?;
 
-    let queue = conn.unchecked_transaction().map_err(failed)?;
+    // A file the uploader refused, unwritten since, would be refused again
+    // (#5711, `note-attachment-revival.ts:99-100`).
+    let refusals = upload_queue::refusals(conn)?;
+    let queue = nested_tx::begin(conn).map_err(failed)?;
+    let mut queued = 0;
     for file in &plan.reupload {
-        upload_queue::enqueue(&queue, &note.id, &absolute(vault, file), now)?;
+        if upload_queue::queue_if_absent(&queue, vault, &refusals, &note.id, file, now)? {
+            queued += 1;
+        }
     }
     queue.commit().map_err(failed)?;
     // Each drop commits with its note outbox row; a crash before the last one
@@ -204,7 +210,7 @@ fn reupload(
             plan.drop_gone.len()
         );
     }
-    Ok((plan.reupload.len(), plan.drop_gone.len()))
+    Ok((queued, plan.drop_gone.len()))
 }
 
 /// One live note as the backfill sees it.

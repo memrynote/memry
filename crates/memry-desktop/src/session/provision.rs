@@ -52,11 +52,13 @@ impl Session {
             open.vault.bind_server_vault(server_vault_id)?;
             return Ok(());
         }
-        self.ensure_not_held(folder)?;
         let created = first_missing(folder);
+        // A new folder is made before the held check: a held vault's folder exists, so it is
+        // refused as taken at once and a download moves on to the next name.
         let made = if new_folder {
-            create_new_dir(folder)
+            create_new_dir(folder).and_then(|()| self.ensure_not_held(folder))
         } else {
+            self.ensure_not_held(folder)?;
             std::fs::create_dir_all(folder).map_err(|e| not_created(folder, &e))
         };
         let provisioned = made.and_then(|()| self.provision_in(folder, server_vault_id));
@@ -70,7 +72,7 @@ impl Session {
     }
 
     fn provision_in(&self, folder: &Path, server_vault_id: &str) -> Result<(), SessionError> {
-        let core = super::open::prepare_core_dir(folder)?;
+        let core = super::open::prepare_core_dir(folder, self.vault_migrator().as_ref())?;
         let vault = Vault::open_with(
             core.to_string_lossy().into_owned(),
             OpenOptions {
@@ -269,6 +271,46 @@ mod tests {
             std::fs::read_to_string(taken.join("theirs.txt")).unwrap(),
             "not a vault"
         );
+    }
+
+    /// A closed vault still held by an overrunning thread keeps its folder: a download refuses
+    /// it as taken, so it moves on to the next name instead of waiting for the thread and failing.
+    #[test]
+    fn a_new_vault_refuses_a_held_folder_as_taken() {
+        let f = fixture();
+        let taken = f.vault("work");
+        f.session.open(&taken, OpenSource::Select).expect("open");
+        let _held = f.session.current().expect("open").vault;
+        f.session.close();
+
+        let error = f
+            .session
+            .provision_new_dormant(&taken, "server-vault-uuid")
+            .unwrap_err();
+
+        assert!(matches!(error, SessionError::FolderExists(_)), "{error:?}");
+    }
+
+    /// The folder of a held vault was deleted: the name is free on disk but its databases are
+    /// still held, so the new folder is refused and removed again. Unix only: Windows cannot
+    /// delete a folder whose databases are open.
+    #[cfg(unix)]
+    #[test]
+    fn a_new_vault_in_a_held_path_whose_folder_is_gone_is_refused_and_removed() {
+        let f = fixture_with(Duration::from_millis(100));
+        let path = f.vault("work");
+        f.session.open(&path, OpenSource::Select).expect("open");
+        let _held = f.session.current().expect("open").vault;
+        f.session.close();
+        std::fs::remove_dir_all(&path).unwrap();
+
+        let error = f
+            .session
+            .provision_new_dormant(&path, "server-vault-uuid")
+            .unwrap_err();
+
+        assert!(matches!(error, SessionError::Held(_)), "{error:?}");
+        assert!(!path.exists());
     }
 
     #[test]

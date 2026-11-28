@@ -12,14 +12,13 @@ if [ -z "${MEMRY_SIGN_PIN:-}" ]; then
   exit 1
 fi
 
-# Microsoft's WebView2 bootstrapper keeps Microsoft's signature, which the pack step checked
-# (scripts/release/webview2-bootstrapper.mjs); --replace would put ours in its place.
-case "$(basename "$file")" in
-MicrosoftEdgeWebview2Setup.exe)
-  echo "skip Microsoft-signed: $file"
+# Files in release/third-party-signed.json, such as Microsoft's WebView2 bootstrapper, keep their
+# vendor's signature, which `pnpm release` verifies; --replace would put ours in its place.
+if node -e 'process.exit(require(require("path").resolve(process.argv[1])).some((e) => e.name === process.argv[2]) ? 0 : 1)' \
+  "$(dirname "$0")/release/third-party-signed.json" "$(basename "$file")"; then
+  echo "skip third-party-signed: $file"
   exit 0
-  ;;
-esac
+fi
 
 case "$(file -b "$file")" in
 PE32*) ;;

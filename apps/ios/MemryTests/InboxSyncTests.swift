@@ -16,6 +16,7 @@ private final class GatedFiller: VaultFilling, @unchecked Sendable {
     private let redriveGate = Mutex<CheckedContinuation<Void, Never>?>(nil)
     let holdFirstPass: Bool
     let holdRedrive: Bool
+    let changes = Changes()
 
     init(holdFirstPass: Bool = false, holdRedrive: Bool = false) {
         self.holdFirstPass = holdFirstPass
@@ -26,23 +27,36 @@ private final class GatedFiller: VaultFilling, @unchecked Sendable {
     var passHeld: Bool { passGate.withLock { $0 != nil } }
     var redriveHeld: Bool { redriveGate.withLock { $0 != nil } }
 
-    func releasePass() { passGate.withLock { $0?.resume(); $0 = nil } }
-    func releaseRedrive() { redriveGate.withLock { $0?.resume(); $0 = nil } }
+    func releasePass() {
+        passGate.withLock { $0?.resume(); $0 = nil }
+        changes.changed()
+    }
+    func releaseRedrive() {
+        redriveGate.withLock { $0?.resume(); $0 = nil }
+        changes.changed()
+    }
 
     func syncNow() async throws -> SyncPassSummary {
         let first = started.withLock { count in
             count += 1
             return count == 1
         }
+        changes.changed()
         if first, holdFirstPass {
-            await withCheckedContinuation { continuation in passGate.withLock { $0 = continuation } }
+            await withCheckedContinuation { continuation in
+                passGate.withLock { $0 = continuation }
+                changes.changed()
+            }
         }
         return SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)
     }
 
     func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary {
         if holdRedrive {
-            await withCheckedContinuation { continuation in redriveGate.withLock { $0 = continuation } }
+            await withCheckedContinuation { continuation in
+                redriveGate.withLock { $0 = continuation }
+                changes.changed()
+            }
         }
         return AttachmentRedriveSummary(downloaded: 0, deferred: 0, failed: 0, remaining: 0)
     }
@@ -59,7 +73,7 @@ private final class GatedFiller: VaultFilling, @unchecked Sendable {
 }
 
 @MainActor
-@Suite("Inbox sync scheduling", .serialized)
+@Suite("Inbox sync scheduling", .serialized, .timeLimit(.minutes(1)))
 struct InboxSyncTests {
     /// The wiring `VaultInboxScope` makes: the inbox asks the tasks store.
     private func inbox(sharing tasks: TasksStore) throws -> InboxTestVault {
@@ -73,7 +87,7 @@ struct InboxSyncTests {
         let tasks = try TasksTestVault(filler: filler)
         let scratch = try inbox(sharing: tasks.store)
         let running = Task { await tasks.store.sync() }
-        try await wait { filler.passHeld }
+        await filler.changes.until { filler.passHeld }
 
         _ = await scratch.store.capture("[agent] SHIP-4155 mid-pass")
         // Past the 400 ms debounce, so the ask reached the running pass.
@@ -82,7 +96,7 @@ struct InboxSyncTests {
         filler.releasePass()
         await running.value
 
-        try await wait { filler.passes >= 2 }
+        await filler.changes.until { filler.passes >= 2 }
         #expect(filler.passes == 2)
     }
 
@@ -91,14 +105,14 @@ struct InboxSyncTests {
         let tasks = try TasksTestVault(filler: filler)
         let scratch = try inbox(sharing: tasks.store)
         let running = Task { await tasks.store.sync() }
-        try await wait { filler.passHeld }
+        await filler.changes.until { filler.passHeld }
 
         await scratch.store.sync()
         #expect(filler.passHeld, "the spinner ended before the pass did")
 
         filler.releasePass()
         await running.value
-        try await wait { filler.passes >= 2 }
+        await filler.changes.until { filler.passes >= 2 }
         #expect(filler.passes == 2, "the pull still got a pass of its own")
     }
 
@@ -117,14 +131,20 @@ struct InboxSyncTests {
 }
 
 @MainActor
-@Suite("Tasks store attachment redrive", .serialized)
+@Suite("Tasks store attachment redrive", .serialized, .timeLimit(.minutes(1)))
 struct TasksRedriveOutsidePassTests {
-    @Test func a_slow_redrive_does_not_hold_the_next_pass() async throws {
+    /// #5852: the pass's re-read runs on the shared core executor, which a
+    /// full parallel Unit run keeps busy for seconds, so the redrive is awaited
+    /// rather than given a deadline. The bound is the time limit.
+    @Test(.timeLimit(.minutes(1)))
+    func a_slow_redrive_does_not_hold_the_next_pass() async throws {
         let filler = GatedFiller(holdRedrive: true)
         let tasks = try TasksTestVault(filler: filler)
 
         let first = Task { await tasks.store.sync() }
-        try await wait { filler.redriveHeld }
+        // The pass ends before the redrive starts, behind a core read on the
+        // shared executor, which a parallel run keeps busy for seconds.
+        await filler.changes.until { filler.redriveHeld }
         #expect(filler.redriveHeld)
         #expect(!tasks.store.isSyncing, "the pass is still open while attachments download")
 

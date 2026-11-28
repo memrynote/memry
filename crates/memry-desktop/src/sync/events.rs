@@ -3,6 +3,8 @@
 
 use std::sync::Arc;
 
+use memry_core::sync::driver::progress::InitialSyncSink;
+pub use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncProgress};
 use memry_core::sync::driver::{
     AppliedOutcome, AppliedRecord, ApplyObserver, CorruptItem, SecurityWarning,
 };
@@ -12,13 +14,14 @@ use super::error_category::SyncErrorCategory;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncEvent {
-    /// A pulled record changed this vault, told after its page committed. A skipped record
-    /// changed nothing and is not told (`pull-coordinator.ts:964-969`).
-    Pulled {
-        item_type: String,
-        item_id: String,
-        operation: ItemOperation,
-    },
+    /// The records one committed page changed in this vault, told once per page, each record
+    /// once with its last operation. A skipped record changed nothing and is not told
+    /// (`pull-coordinator.ts:964-969`), and notes and journals are not told here.
+    Pulled(Vec<PulledItem>),
+    /// These tasks' activity logs grew in a committed page, by a pulled peer row or a
+    /// `superseded` row this device wrote, each told after its row committed
+    /// (`task-activity-handler.ts:76`, `task-handler.ts`).
+    TaskActivityCreated(Vec<String>),
     /// A pass pushed rows and left the outbox empty (`push-coordinator.ts:518-535`).
     QueueCleared { item_count: u32, duration_ms: i64 },
     /// The local clock is off from the server's by more than five minutes and sync paused, in
@@ -54,6 +57,16 @@ pub enum SyncEvent {
         /// says `sync.fileTooLarge`; `None` gets the generic message.
         category: Option<SyncErrorCategory>,
     },
+    /// The first sync of this vault on this device moved on (`full-sync-runner.ts:447,536`).
+    InitialSyncProgress(InitialSyncProgress),
+}
+
+/// One record a page applied.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PulledItem {
+    pub item_type: String,
+    pub item_id: String,
+    pub operation: ItemOperation,
 }
 
 /// What a pulled record did to the local row.
@@ -63,6 +76,10 @@ pub enum ItemOperation {
     Update,
     Delete,
 }
+
+/// Notes and journals reach the renderer from the vault tier (`shell/note_events.rs`,
+/// `journal_events.rs`), which writes their files; the sync feed does not tell them.
+const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
 pub type OnSyncEvent = Arc<dyn Fn(&SyncEvent) + Send + Sync>;
 
@@ -78,6 +95,15 @@ impl SyncEvent {
     }
 }
 
+/// Tells the shell the first sync's progress.
+pub(super) struct ProgressEvents(pub(super) OnSyncEvent);
+
+impl InitialSyncSink for ProgressEvents {
+    fn progress(&self, progress: InitialSyncProgress) {
+        (self.0)(&SyncEvent::InitialSyncProgress(progress));
+    }
+}
+
 /// Tells the shell what each committed page applied, each row it held corrupt or recovered,
 /// and each quarantine it counted.
 pub(super) struct EventObserver(pub(super) OnSyncEvent);
@@ -88,6 +114,7 @@ impl ApplyObserver for EventObserver {
     }
 
     fn records_applied(&self, batch: &[AppliedRecord]) {
+        let mut items: Vec<PulledItem> = Vec::new();
         for record in batch {
             let operation = match record.outcome {
                 AppliedOutcome::Created => ItemOperation::Create,
@@ -95,12 +122,28 @@ impl ApplyObserver for EventObserver {
                 AppliedOutcome::Deleted => ItemOperation::Delete,
                 AppliedOutcome::Skipped => continue,
             };
-            (self.0)(&SyncEvent::Pulled {
-                item_type: record.item_type.clone(),
-                item_id: record.item_id.clone(),
-                operation,
-            });
+            if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
+                continue;
+            }
+            match items
+                .iter_mut()
+                .find(|item| item.item_type == record.item_type && item.item_id == record.item_id)
+            {
+                Some(item) => item.operation = operation,
+                None => items.push(PulledItem {
+                    item_type: record.item_type.clone(),
+                    item_id: record.item_id.clone(),
+                    operation,
+                }),
+            }
         }
+        if !items.is_empty() {
+            (self.0)(&SyncEvent::Pulled(items));
+        }
+    }
+
+    fn task_activity_created(&self, task_ids: &[String]) {
+        (self.0)(&SyncEvent::TaskActivityCreated(task_ids.to_vec()));
     }
 
     fn security_warning(&self, warning: &SecurityWarning) {

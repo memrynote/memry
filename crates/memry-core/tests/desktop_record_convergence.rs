@@ -13,6 +13,7 @@
 //! wins on both.
 
 use crate::desktop_relay::{Device, NOW, Relay, failed};
+use memry_core::domain::agent_queue::Queue;
 
 use memry_core::domain::agent_conversation::{
     self, Conversation, ConversationPatch, NewConversation,
@@ -41,7 +42,7 @@ fn patch(device: &Device, id: &str, patch: ConversationPatch<'static>, at: i64) 
     device
         .db()
         .call_blocking(move |conn| {
-            agent_conversation::update_fields(conn, &key, &id, &patch, who, at)
+            agent_conversation::update_fields(conn, &key, &id, &patch, Queue::Outbox, who, at)
                 .map(drop)
                 .map_err(failed)
         })
@@ -66,7 +67,7 @@ async fn concurrent_edits_to_a_conversations_title_and_pin_merge_per_field() {
                 backend: "local",
                 backend_model: None,
             };
-            agent_conversation::create(conn, &key, &new, "a", NOW).map_err(failed)
+            agent_conversation::create(conn, &key, &new, Queue::Outbox, "a", NOW).map_err(failed)
         })
         .expect("create");
     relay.sync(&a).await;
@@ -110,7 +111,7 @@ async fn a_message_appended_on_one_device_reads_back_on_the_other() {
                 tool_call_id: None,
                 status: "completed",
             };
-            agent_message::append(conn, &key, &new, "a", NOW).map_err(failed)
+            agent_message::append(conn, &key, &new, Queue::Outbox, "a", NOW).map_err(failed)
         })
         .expect("append");
     relay.sync(&a).await;

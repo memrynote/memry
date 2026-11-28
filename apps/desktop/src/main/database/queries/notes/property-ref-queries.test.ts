@@ -98,17 +98,29 @@ describe('property refs', () => {
 
   it('is populated through setNoteProperties', () => {
     insertTestNote(db, 'nte_source')
-    setNoteProperties(db, 'nte_source', { father: ['memry://note/nte_dad'] }, productionGetType)
+    setNoteProperties(
+      db,
+      'nte_source',
+      { father: ['memry://note/nte_dad'] },
+      productionGetType,
+      'file'
+    )
     expect(getPropertyRefsForNote(db, 'nte_source')).toHaveLength(1)
   })
 
   it('clears refs through setNoteProperties when properties become empty', () => {
     insertTestNote(db, 'nte_source')
 
-    setNoteProperties(db, 'nte_source', { father: ['memry://note/nte_dad'] }, productionGetType)
+    setNoteProperties(
+      db,
+      'nte_source',
+      { father: ['memry://note/nte_dad'] },
+      productionGetType,
+      'file'
+    )
     expect(getPropertyRefsForNote(db, 'nte_source')).toHaveLength(1)
 
-    setNoteProperties(db, 'nte_source', {}, productionGetType)
+    setNoteProperties(db, 'nte_source', {}, productionGetType, 'file')
     expect(getPropertyRefsForNote(db, 'nte_source')).toHaveLength(0)
   })
 
@@ -163,14 +175,20 @@ describe('relation property added through the UI', () => {
 
   it('survives the add → pick → reopen → edit-another-property sequence', () => {
     // 1. Add the property. Default value is the empty array.
-    setNoteProperties(db, 'nte_source', { father: [] }, productionGetType)
+    setNoteProperties(db, 'nte_source', { father: [] }, productionGetType, 'file')
 
     // The empty array pins the definition row to `text` — nothing can infer
     // `relation` from `[]`. This is the state the fix has to survive, not avoid.
     expect(getPropertyDefinition(db, 'father')?.type).toBe('text')
 
     // 2. Pick a target.
-    setNoteProperties(db, 'nte_source', { father: ['memry://note/nte_dad'] }, productionGetType)
+    setNoteProperties(
+      db,
+      'nte_source',
+      { father: ['memry://note/nte_dad'] },
+      productionGetType,
+      'file'
+    )
 
     // 3. Reopen the note: this is what `properties:get` hands the renderer.
     const afterReopen = getNoteProperties(db, 'nte_source')
@@ -184,7 +202,7 @@ describe('relation property added through the UI', () => {
     //    written straight to YAML here and its refs deleted.
     const rebuilt = { ...getNotePropertiesAsRecord(db, 'nte_source'), status: 'Done' }
     expect(rebuilt.father).toEqual(['memry://note/nte_dad'])
-    setNoteProperties(db, 'nte_source', rebuilt, productionGetType)
+    setNoteProperties(db, 'nte_source', rebuilt, productionGetType, 'file')
 
     const afterEdit = getNoteProperties(db, 'nte_source')
     expect(afterEdit.find((p) => p.name === 'father')?.type).toBe('relation')
@@ -204,7 +222,13 @@ describe('relation property added through the UI', () => {
     ensurePropertyDefinition(db, 'father', 'text')
     expect(getPropertyDefinition(db, 'father')?.type).toBe('text')
 
-    setNoteProperties(db, 'nte_source', { father: ['memry://note/nte_dad'] }, productionGetType)
+    setNoteProperties(
+      db,
+      'nte_source',
+      { father: ['memry://note/nte_dad'] },
+      productionGetType,
+      'file'
+    )
 
     expect(getNoteProperties(db, 'nte_source')[0].type).toBe('relation')
     expect(getPropertyRefsForNote(db, 'nte_source')).toHaveLength(1)

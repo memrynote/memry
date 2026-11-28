@@ -76,7 +76,15 @@ impl NoteIdentity for Creates {
             .vault
             .notes_writer(self.store.clone())
             .map_err(|error| IdentityError::Other(error.to_string()))?;
-        Ok(Adoption::Created(writer.create(file.path.into(), None)?))
+        // Named as the shipped identity names a found file (`notes::identity::file::place`):
+        // the folder it is in, and its name without `.md`.
+        let (folder, name) = match file.path.rsplit_once('/') {
+            Some((folder, name)) => (Some(folder.to_owned()), name),
+            None => (None, file.path),
+        };
+        let title = name.strip_suffix(".md").filter(|stem| !stem.is_empty());
+        let title = title.unwrap_or(name).to_owned();
+        Ok(Adoption::Created(writer.create(title, folder)?))
     }
 
     fn on_removed(&self, _: &IdentityCtx<'_>, _: &str, _: &str) -> Result<Removal, IdentityError> {

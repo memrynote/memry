@@ -18,6 +18,7 @@ pub mod flush;
 pub mod frame_nav;
 pub mod gpu_guard;
 pub mod heartbeat;
+pub mod inbox_review;
 pub mod install_layout;
 pub mod local_scheme;
 pub mod loopback;

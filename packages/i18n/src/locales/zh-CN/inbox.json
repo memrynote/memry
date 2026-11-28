@@ -579,7 +579,10 @@
       "journalOff": "日记功能已在设置中关闭。",
       "sendFailed": "无法发送便签。",
       "undoExpired": "已无法撤销。",
-      "undoFailed": "无法撤销发送。"
+      "undoFailed": "无法撤销发送。",
+      "journalBusy": "今天的日记仍在保存。请稍后再试。",
+      "folderExcluded": "Sticky 文件夹已被排除。请在设置中将其从排除的文件夹中移除，才能发送笔记。",
+      "projectMissing": "此任务的项目不存在。请在设置中选择默认项目，或将其作为笔记发送。"
     },
     "inputLabel": "便签文本",
     "dismissError": "关闭"

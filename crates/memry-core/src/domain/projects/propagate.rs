@@ -100,6 +100,39 @@ pub fn without_name(names: Vec<String>, name: &str) -> Vec<String> {
         .collect()
 }
 
+/// `withProjectName`: `name` joins the list unless it is there (case folded).
+pub fn with_name(mut names: Vec<String>, name: &str) -> Vec<String> {
+    if !names
+        .iter()
+        .any(|seen| seen.to_lowercase() == name.to_lowercase())
+    {
+        names.push(name.to_owned());
+    }
+    names
+}
+
+/// What one project write does to a linked markdown note's `project` names, for a shell
+/// that writes them itself.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NameEdit {
+    /// A link (`linkProjectItem`).
+    Add(String),
+    /// An unlink or a delete (`unlinkProjectItem`, `propagateProjectDelete`).
+    Remove(String),
+    /// A rename (`propagateProjectRename`).
+    Rename { from: String, to: String },
+}
+
+impl NameEdit {
+    pub fn apply(&self, names: Vec<String>) -> Vec<String> {
+        match self {
+            NameEdit::Add(name) => with_name(names, name),
+            NameEdit::Remove(name) => without_name(names, name),
+            NameEdit::Rename { from, to } => renamed(names, from, to),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;

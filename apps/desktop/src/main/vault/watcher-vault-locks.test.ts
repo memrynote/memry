@@ -1,7 +1,7 @@
 /**
- * The watcher drops its own write-back's change event for a few seconds
- * (`isWritebackIgnored`). An outside edit to a locked file that lands inside
- * that window must still get the locked text back (#2606).
+ * The watcher drops the echo of the app's own write (`fileHoldsAppWrite`). An
+ * outside edit to a locked file made right after an app write is no echo and
+ * must still get the locked text back (#2606).
  *
  * @module vault/watcher-vault-locks.test
  */
@@ -17,10 +17,8 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
-import type * as CrdtWritebackModule from '../sync/crdt-writeback'
 
 const mocks = vi.hoisted(() => ({
-  isWritebackIgnored: vi.fn(() => true),
   restoreLockedNoteFile: vi.fn(async () => true),
   vaultPath: ''
 }))
@@ -41,12 +39,12 @@ vi.mock('../notes/runtime-effects', () => ({
   unlinkTasksFromDeletedNote: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn()
 }))
-vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
-  ...(await importOriginal<typeof CrdtWritebackModule>()),
-  isWritebackIgnored: mocks.isWritebackIgnored
-}))
 vi.mock('../vault-locks/service', () => ({ restoreLockedNoteFile: mocks.restoreLockedNoteFile }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
+vi.mock('./note-sync', async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>()
+  return { ...real, listCaseTwinPaths: vi.fn(real.listCaseTwinPaths as never) }
+})
 vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: () => ({ path: mocks.vaultPath }),
@@ -62,9 +60,11 @@ vi.mock('./index', () => ({
 import { getDatabase, getIndexDatabase } from '../database'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
+import { recordAppWrite, resetAppWrites } from './app-writes'
+import { listCaseTwinPaths } from './note-sync'
 import { VaultWatcher } from './watcher'
 
-describe('watcher ignore window and read-only locks (#2606)', () => {
+describe('watcher, app writes and read-only locks (#2606)', () => {
   let vault: ReturnType<typeof createTestVault>
   let data: TestDatabaseResult
   let index: TestDatabaseResult
@@ -75,11 +75,13 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
   }
 
   const watcherFor = (): {
+    onError?: (error: Error) => void
     handleFileAdd(p: string): Promise<void>
     handleFileChange(p: string): Promise<void>
   } => {
     const watcher = new VaultWatcher() as unknown as {
       vaultPath: string
+      onError?: (error: Error) => void
       handleFileAdd(p: string): Promise<void>
       handleFileChange(p: string): Promise<void>
     }
@@ -89,7 +91,6 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.isWritebackIgnored.mockReturnValue(true)
     vault = createTestVault('watcher-locks')
     mocks.vaultPath = vault.path
     data = createTestDataDb()
@@ -123,36 +124,45 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
 
   afterEach(() => {
     installVaultLockSource({ dataDb: () => null, notePathOf: () => null, noteIdAtPath: () => null })
+    resetAppWrites()
     data.close()
     index.close()
     vault.cleanup()
   })
 
-  it('checks a locked file edited from outside inside the write-back window', async () => {
+  function appWrites(file: string, bytes: string): void {
+    const landed = recordAppWrite(file, bytes)
+    fs.writeFileSync(file, bytes)
+    landed()
+  }
+
+  it('restores a locked file edited from outside right after an app write', async () => {
     const file = path.join(vault.path, paths['note-locked'])
+    appWrites(file, 'locked text\n')
     fs.writeFileSync(file, 'outside edit\n')
 
     await watcherFor().handleFileChange(file)
 
-    expect(mocks.isWritebackIgnored).toHaveBeenCalledWith(file)
     expect(mocks.restoreLockedNoteFile).toHaveBeenCalledWith('note-locked', 'outside edit\n')
-  })
-
-  it('still drops the write-back of an unlocked file without a lock check', async () => {
-    const file = path.join(vault.path, paths['note-free'])
-    fs.writeFileSync(file, 'remote text\n')
-
-    await watcherFor().handleFileChange(file)
-
-    expect(mocks.restoreLockedNoteFile).not.toHaveBeenCalled()
   })
 
   const isWritable = (file: string): boolean => (fs.statSync(file).mode & 0o200) !== 0
 
+  for (const handler of ['handleFileAdd', 'handleFileChange'] as const) {
+    it(`${handler} leaves the echo of a locked note's own write alone`, async () => {
+      const file = path.join(vault.path, paths['note-locked'])
+      appWrites(file, 'locked text\n')
+
+      await watcherFor()[handler](file)
+
+      expect(mocks.restoreLockedNoteFile).not.toHaveBeenCalled()
+      expect(isWritable(file)).toBe(true)
+    })
+  }
+
   it.skipIf(process.platform === 'win32')(
     'a file moved into a locked folder from outside becomes read-only',
     async () => {
-      mocks.isWritebackIgnored.mockReturnValue(false)
       const moved = path.join(vault.path, 'sealed/moved-in.pdf')
       fs.writeFileSync(moved, 'pdf bytes')
 
@@ -165,7 +175,6 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
   it.skipIf(process.platform === 'win32')(
     'a locked file deleted and recreated outside the app is read-only again',
     async () => {
-      mocks.isWritebackIgnored.mockReturnValue(false)
       const scan = path.join(vault.path, paths['note-scan'])
       fs.rmSync(scan)
       fs.writeFileSync(scan, 'recreated')
@@ -179,10 +188,33 @@ describe('watcher ignore window and read-only locks (#2606)', () => {
     }
   )
 
+  // REVIEW-5632 (2): the echo check ran before the handlers' try, so its
+  // failure rejected an add nobody awaits and skipped the lock guard.
+  for (const handler of ['handleFileAdd', 'handleFileChange'] as const) {
+    it.skipIf(process.platform === 'win32')(
+      `a failed echo check in ${handler} reaches onError, and the locked file stays read-only`,
+      async () => {
+        const scan = path.join(vault.path, paths['note-scan'])
+        fs.writeFileSync(scan, 'replaced')
+        const failure = new Error('data db gone')
+        vi.mocked(listCaseTwinPaths).mockImplementationOnce(() => {
+          throw failure
+        })
+        const watcher = watcherFor()
+        const onError = vi.fn()
+        watcher.onError = onError
+
+        await expect(watcher[handler](scan)).resolves.toBeUndefined()
+
+        expect(onError).toHaveBeenCalledWith(failure)
+        expect(isWritable(scan)).toBe(false)
+      }
+    )
+  }
+
   it.skipIf(process.platform === 'win32')(
     'a locked note renamed outside the app is read-only at its new name',
     async () => {
-      mocks.isWritebackIgnored.mockReturnValue(false)
       const renamed = path.join(vault.path, 'notes/renamed.md')
       fs.renameSync(path.join(vault.path, paths['note-locked']), renamed)
       fs.chmodSync(renamed, 0o644)
