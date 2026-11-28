@@ -415,62 +415,138 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     80_000
   )
 
-  for (const [newName, runs] of [
-    ['pear.md', process.platform === 'darwin'],
-    ['Apple.md', process.platform === 'darwin' && fileSystemIgnoresCase()]
-  ] as const) {
-    it.runIf(runs)(
-      `an edit and a rename to ${newName} the file's own watcher reports as one change keep the note id`,
-      async () => {
-        seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
-        await watch()
-        const [oldPath, renamed] = ['Docs/apple.md', `Docs/${newName}`].map((relativePath) =>
-          path.join(vault.path, relativePath)
-        )
-        lostAdds.add(renamed)
-        // Inside chokidar's write-finish wait: no change.
-        lostChanges.add(oldPath)
-        renamesAsChanges.add(oldPath)
-        fs.writeFileSync(oldPath, '# apple\n\nbody edited\n')
+  // kqueue on a loaded machine can fold a write and the rename right after it
+  // into one change that names the new file. The file's identity at its last
+  // heard change shows the file there is the renamed one.
+  it.runIf(process.platform === 'darwin')(
+    "an edit and a rename the file's own watcher reports as one change, after a heard edit, keep the note id",
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      const [oldPath, renamed] = ['Docs/apple.md', 'Docs/pear.md'].map((relativePath) =>
+        path.join(vault.path, relativePath)
+      )
+      lostAdds.add(renamed)
+      renamesAsChanges.add(oldPath)
+      await editThen('Docs/apple.md', '# apple\n\nbody edited\n', () => {
+        fs.writeFileSync(oldPath, '# apple\n\nbody edited twice\n')
         fs.renameSync(oldPath, renamed)
-        await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+      })
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
 
-        await settleOn(() => expect(editFedTo('n1')).toBe(true))
-        expect(metadataRows()).toEqual([{ id: 'n1', path: `Docs/${newName}` }])
-        expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
-      },
-      80_000
-    )
-  }
+      await settleOn(() =>
+        expect(
+          vi
+            .mocked(feedExternalEditToCrdt)
+            .mock.calls.some(([id, body]) => id === 'n1' && body.includes('edited twice'))
+        ).toBe(true)
+      )
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    80_000
+  )
+
+  // A case-only rename leaves one directory entry, so the file at the new
+  // spelling is the renamed one.
+  it.runIf(process.platform === 'darwin' && fileSystemIgnoresCase())(
+    "an edit and a case-only rename the file's own watcher reports as one change keep the note id",
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      const [oldPath, renamed] = ['Docs/apple.md', 'Docs/Apple.md'].map((relativePath) =>
+        path.join(vault.path, relativePath)
+      )
+      lostAdds.add(renamed)
+      // Inside chokidar's write-finish wait: no change.
+      lostChanges.add(oldPath)
+      renamesAsChanges.add(oldPath)
+      fs.writeFileSync(oldPath, '# apple\n\nbody edited\n')
+      fs.renameSync(oldPath, renamed)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      await settleOn(() => expect(editFedTo('n1')).toBe(true))
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    80_000
+  )
+
+  // A move to another folder under a new name names the new name in the old
+  // folder, where an unrelated file of that name can sit unindexed.
+  it.runIf(process.platform === 'darwin')(
+    'a move beside an unindexed file of its new name keeps the note id at the moved file',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      fs.mkdirSync(path.join(vault.path, 'Other'))
+      await watch()
+      const [unindexed, moved] = ['Docs/pear.md', 'Other/pear.md'].map((relativePath) =>
+        path.join(vault.path, relativePath)
+      )
+      lostAdds.add(unindexed)
+      lostAdds.add(moved)
+      fs.writeFileSync(unindexed, '# pear\n\nother\n')
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), moved)
+      await vi.waitFor(
+        () =>
+          expect(
+            index.db
+              .select()
+              .from(noteCache)
+              .all()
+              .map((row) => row.path)
+          ).toContain('Docs/pear.md'),
+        { timeout: SETTLE_TIMEOUT_MS, interval: 5 }
+      )
+      // The folder's add of the moved file, after the unlink's add of the
+      // unindexed file and inside the rename window.
+      changeHeard.watcher?.emit('add', moved)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(metadataRows()).toContainEqual({ id: 'n1', path: 'Other/pear.md' })
+      expect(metadataRows().find((row) => row.path === 'Docs/pear.md')?.id).toEqual(
+        expect.not.stringMatching(/^n1$/)
+      )
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    80_000
+  )
+
+  // HFS+ keeps whole seconds of mtime, FAT and exFAT two, and so do some
+  // network shares, whose server clock can run seconds behind this one: a
+  // same-size edit inside the second the add read keeps the file's size and
+  // mtime.
+  it.each([0, 3000])(
+    'a same-size edit inside the mtime second of its add, %i ms behind, reaches the note',
+    async (serverBehindMs) => {
+      fs.mkdirSync(path.join(vault.path, 'Docs'))
+      await watch()
+      const file = path.join(vault.path, 'Docs/n.md')
+      lostAdds.add(file)
+      lostChanges.add(file)
+      const second = new Date(Math.floor((Date.now() - serverBehindMs) / 1000) * 1000)
+      const write = (body: string) => {
+        fs.writeFileSync(file, body)
+        fs.utimesSync(file, second, second)
+      }
+      write('# n\n\n[ ] task\n')
+      changeHeard.watcher?.emit('add', file)
+      await settleOn(() => expect(metadataRows().map((row) => row.path)).toContain('Docs/n.md'))
+
+      write('# n\n\n[x] task\n')
+      changeHeard.watcher?.emit('change', file)
+
+      await settleOn(() =>
+        expect(
+          vi.mocked(feedExternalEditToCrdt).mock.calls.some(([, body]) => body.includes('[x] task'))
+        ).toBe(true)
+      )
+    },
+    80_000
+  )
 
   // macOS can deliver one write's FSEvents in two batches, which chokidar
   // reports as the file's add and then a change.
-  // HFS+ keeps whole seconds of mtime, FAT and exFAT two: a same-size edit
-  // inside the second the add read keeps the file's size and mtime.
-  it('a same-size edit inside the mtime second of its add reaches the note', async () => {
-    fs.mkdirSync(path.join(vault.path, 'Docs'))
-    await watch()
-    const file = path.join(vault.path, 'Docs/n.md')
-    lostAdds.add(file)
-    lostChanges.add(file)
-    const second = new Date(Math.floor(Date.now() / 1000) * 1000)
-    const write = (body: string) => {
-      fs.writeFileSync(file, body)
-      fs.utimesSync(file, second, second)
-    }
-    write('# n\n\n[ ] task\n')
-    changeHeard.watcher?.emit('add', file)
-    await settleOn(() => expect(metadataRows().map((row) => row.path)).toContain('Docs/n.md'))
-
-    write('# n\n\n[x] task\n')
-    changeHeard.watcher?.emit('change', file)
-
-    await settleOn(() =>
-      expect(
-        vi.mocked(feedExternalEditToCrdt).mock.calls.some(([, body]) => body.includes('[x] task'))
-      ).toBe(true)
-    )
-  }, 80_000)
 
   it('a change of a file unchanged since its add pushes nothing', async () => {
     fs.mkdirSync(path.join(vault.path, 'Pictures'))
