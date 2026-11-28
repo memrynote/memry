@@ -128,7 +128,7 @@ You can also run a check from the menu bar without opening Settings: **memrynote
 ### Language & Region
 
 - **Language** — UI locale dropdown, 32 languages
-- **Clock Format** — 12-hour or 24-hour
+- **Clock Format** — 12-hour or 24-hour. Every time the app shows follows it, including reminder and snooze presets ("Tomorrow at 09:00"), task due times, calendar events, and version history.
 - **Date Format** — how calendar dates display throughout the app (`MM/DD/YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`, or `DD.MM.YYYY`). This preference is per device and isn't synced.
 
 On a brand-new install the app picks its starting language from your operating system, mapping

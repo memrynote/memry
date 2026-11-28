@@ -37,6 +37,8 @@ Three ways to create:
 - **Duplicate** — a built-in's **Duplicate & Edit** button, or any custom row's <kbd>⋯</kbd> → **Duplicate**
 - **From an existing note**, with [Save as Template](#saving-a-note-as-a-template)
 
+Each template needs its own name. Creating or renaming a template to a name another template already uses, built-ins included, is refused with an inline error. The check ignores case and extra spaces, so `Daily` and `daily` count as the same name. A duplicate gets the next free name, such as `Meeting Notes 2`. Templates that already share a name, or that arrive with one from another device through sync, are kept and stay editable.
+
 ## Template Editor
 
 A template is written on the same surface as a note. The tab holds a title, tags, properties, and the full editor body — the title is the template's name, and everything else behaves exactly as it does on a note page. The icon next to the title opens the emoji/icon picker.
