@@ -440,7 +440,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       fs.renameSync(path.join(vault.path, 'Docs/apple.md'), renamed)
       await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
 
-      expect(trackMainError).toHaveBeenCalledTimes(1)
+      expect(trackMainError).toHaveBeenCalledWith('vault', 'file_add', expect.any(Error))
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
