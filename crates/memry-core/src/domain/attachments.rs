@@ -474,7 +474,10 @@ pub fn cached_bytes(conn: &Connection) -> Result<i64, StorageError> {
 /// Includes evicted rows: a note still showing them is a note that wants them.
 /// A live binary note's own `attachmentId` (§14.7.3) counts too, with or
 /// without a row yet: it is the note's whole content (#5668).
-pub fn missing_downloads(conn: &Connection) -> Result<Vec<String>, StorageError> {
+///
+/// Leaves out one whose last download failed until its next attempt is due
+/// at `now`, and one with none left ([`super::attachment_download_failures`]).
+pub fn missing_downloads(conn: &Connection, now: i64) -> Result<Vec<String>, StorageError> {
     conn.prepare(
         "SELECT wanted.attachment_id FROM ( \
            SELECT attachment_id FROM attachments \
@@ -483,11 +486,13 @@ pub fn missing_downloads(conn: &Connection) -> Result<Vec<String>, StorageError>
            SELECT attachment_id FROM notes \
            WHERE deleted_at IS NULL AND attachment_id IS NOT NULL AND attachment_id != '' \
          ) wanted LEFT JOIN attachments cached USING (attachment_id) \
+         LEFT JOIN attachment_download_failures failure USING (attachment_id) \
          WHERE cached.local_path IS NULL \
+           AND (failure.attachment_id IS NULL OR failure.next_attempt_at <= ?1) \
          ORDER BY cached.remote_size IS NULL, cached.remote_size ASC, wanted.attachment_id ASC",
     )
     .map_err(failed)?
-    .query_map([], |row| row.get::<_, String>(0))
+    .query_map([now], |row| row.get::<_, String>(0))
     .map_err(failed)?
     .collect::<Result<Vec<_>, _>>()
     .map_err(failed)

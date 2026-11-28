@@ -269,7 +269,7 @@ fn download_script(file: &File) -> Vec<Scripted> {
 fn missing(vault: &Vault) -> Vec<String> {
     vault
         .db_handle()
-        .call_blocking(|conn| attachments::missing_downloads(conn))
+        .call_blocking(|conn| attachments::missing_downloads(conn, 0))
         .expect("read")
 }
 

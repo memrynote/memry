@@ -291,8 +291,9 @@ fn list_item(lines: &[&str], i: &mut usize) -> Option<TokenKind> {
                 ahead += 1;
             }
             if ahead < lines.len() && belongs(lines[ahead]) {
-                sub_lines.push("");
-                *i += 1;
+                // The whole blank run belongs, so it is looked past once.
+                sub_lines.extend(std::iter::repeat_n("", ahead - *i));
+                *i = ahead;
                 continue;
             }
             break;

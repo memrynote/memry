@@ -12,9 +12,11 @@ vi.mock('./http-client', () => ({
   postToServer: (...args: unknown[]) => mockPostToServer(...args),
   SyncServerError: class SyncServerError extends Error {
     statusCode: number
-    constructor(msg: string, statusCode: number) {
+    serverError?: string
+    constructor(msg: string, statusCode: number, serverError?: string) {
       super(msg)
       this.statusCode = statusCode
+      this.serverError = serverError
       this.name = 'SyncServerError'
     }
   }
@@ -331,6 +333,27 @@ describe('token-manager', () => {
       await getValidAccessToken()
       await getValidAccessToken()
       expect(mockPostToServer).toHaveBeenCalledTimes(3)
+    })
+
+    it('goes terminal at once when the refresh token itself expired', async () => {
+      // #given a refresh token past its own exp
+      const { win } = givenDeadRefreshToken()
+      const { SyncServerError } = await import('./http-client')
+      mockPostToServer.mockRejectedValue(
+        new SyncServerError('Refresh token has expired', 401, 'AUTH_TOKEN_EXPIRED')
+      )
+
+      // #when
+      await getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(301_000)
+      await getValidAccessToken()
+
+      // #then one request, and the session ended on it
+      expect(mockPostToServer).toHaveBeenCalledTimes(1)
+      expect(hasSessionEnded()).toBe(true)
+      expect(win.webContents.send).toHaveBeenCalledWith('auth:session-expired', {
+        reason: 'refresh_rejected'
+      })
     })
 
     it('reports the session ended once, on the terminal rejection only (#5342)', async () => {

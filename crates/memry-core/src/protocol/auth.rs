@@ -414,10 +414,15 @@ impl TokenManager {
         (until > now).then(|| (until - now).as_millis() as u64)
     }
 
-    /// Records a 401 and arms the next window.
-    fn reject(&self) -> AuthError {
+    /// Records a 401 and arms the next window. The window gives a transient
+    /// 401 room to clear, and `AUTH_TOKEN_EXPIRED` is never transient: the
+    /// refresh token's own `exp` passed, so it latches permanently at once.
+    fn reject(&self, code: &str) -> AuthError {
         let mut latch = self.latch.lock().unwrap_or_else(|e| e.into_inner());
         latch.count += 1;
+        if code == "AUTH_TOKEN_EXPIRED" {
+            latch.count = REFRESH_REJECT_TERMINAL_ATTEMPTS;
+        }
         if latch.count >= REFRESH_REJECT_TERMINAL_ATTEMPTS {
             latch.blocked_until = None;
             return AuthError::SessionExpired;
@@ -472,7 +477,7 @@ impl TokenManager {
                 // Never retried inline (chapter 02 §2.9): apart from a retry
                 // after a lost answer, a reused refresh token revokes every
                 // token this device holds.
-                Err(ApiError::Unauthorized { .. }) => return Err(self.reject()),
+                Err(ApiError::Unauthorized { code, .. }) => return Err(self.reject(&code)),
                 Err(error) => {
                     if attempt >= REFRESH_MAX_RETRIES {
                         return Err(AuthError::Api { source: error });

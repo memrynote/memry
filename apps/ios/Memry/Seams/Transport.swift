@@ -64,6 +64,7 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
     private let socketRouter: SocketRouter
     private let emitter: CoreEventEmitter
     private let exchangeHold: ExchangeHold
+    private let socketLog: Log
 
     /// - Parameters:
     ///   - emitter: the shell's event hub, never the hub itself and never the
@@ -74,15 +75,19 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
     ///   - spillDirectory: where an oversized body is streamed. The file is
     ///     unlinked as soon as it is mapped, so nothing survives the call.
     ///   - exchangeHold: keeps the app running while an exchange is in flight.
+    ///   - socketLog: where the realtime socket's lines go. A test captures
+    ///     them to read which failures reach telemetry.
     init(
         emitter: CoreEventEmitter,
         configuration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
         spillThresholdBytes: Int = URLSessionTransport.defaultSpillThresholdBytes,
         spillDirectory: URL = FileManager.default.temporaryDirectory,
-        exchangeHold: ExchangeHold = .none
+        exchangeHold: ExchangeHold = .none,
+        socketLog: Log = .transport
     ) {
         self.emitter = emitter
         self.exchangeHold = exchangeHold
+        self.socketLog = socketLog
         collector = HTTPResponseCollector(
             spillThresholdBytes: spillThresholdBytes,
             spillDirectory: spillDirectory
@@ -162,7 +167,7 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
         // query parameter and never a subprotocol. The headers arrive built by
         // the core; nothing is added here.
         let task = socketSession.webSocketTask(with: urlRequest)
-        let connection = WebSocketConnection(task: task, listener: listener, emitter: emitter)
+        let connection = WebSocketConnection(task: task, listener: listener, emitter: emitter, log: socketLog)
         socketRouter.register(connection, for: task.taskIdentifier)
         // Resumed after registration, so the open callback cannot arrive before
         // the router knows who it belongs to. No listener call happens on this

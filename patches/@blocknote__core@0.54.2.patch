@@ -1,0 +1,1065 @@
+diff --git a/dist/src-Buuo5l7X.js b/dist/src-Buuo5l7X.js
+index 309919e68432af485f441267281c270312c64bd2..559c5deb2ec38c81e3e35003b03fe70de5e1474f 100644
+--- a/dist/src-Buuo5l7X.js
++++ b/dist/src-Buuo5l7X.js
+@@ -792,22 +792,42 @@ function On(e, t) {
+ var kn = /^<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/, An = /^<!--[\s\S]*?-->/, jn = /^<!\[CDATA\[[\s\S]*?\]\]>/, Mn = /^<\?[\s\S]*?\?>/, Nn = /^<![A-Za-z][\s\S]*?>/;
+ function Pn(e, t) {
+ 	if (e[t] !== "<") return null;
+-	let n = e.substring(t);
+-	for (let e of [
+-		An,
+-		jn,
+-		Mn,
+-		Nn,
+-		kn
+-	]) {
+-		let r = n.match(e);
+-		if (r) return {
+-			html: r[0],
+-			end: t + r[0].length
+-		};
+-	}
+-	return null;
++	let n = memryInlineHtmlEnd(e, t);
++	if (n >= 0) return {
++		html: e.substring(t, n),
++		end: n
++	};
++	let r = e.substring(t).match(kn);
++	return r ? {
++		html: r[0],
++		end: t + r[0].length
++	} : null;
+ }
++
++// Memry: a `<!--`, `<![CDATA[`, `<?` or `<!x` with no end read to the end of the text from every
++// opener. Whether a closer exists at or after a position does not depend on the opener, so the
++// first miss is kept (per text and closer) and a later opener stops at it.
++function memryIndexOfCloser(text, closer, from) {
++  const cache = memryInlineCache(text);
++  const miss = cache.noCloser.get(closer);
++  if (miss !== undefined && from >= miss) return -1;
++  const at = text.indexOf(closer, from);
++  if (at < 0) cache.noCloser.set(closer, from);
++  return at;
++}
++function memryClosedAt(text, closer, from) {
++  const at = memryIndexOfCloser(text, closer, from);
++  return at < 0 ? -1 : at + closer.length;
++}
++function memryInlineHtmlEnd(text, i) {
++  let end = -1;
++  if (text.startsWith("<!--", i)) end = memryClosedAt(text, "-->", i + 4);
++  if (end < 0 && text.startsWith("<![CDATA[", i)) end = memryClosedAt(text, "]]>", i + 9);
++  if (end < 0 && text.startsWith("<?", i)) end = memryClosedAt(text, "?>", i + 2);
++  if (end < 0 && /^<![A-Za-z]/.test(text.substr(i, 3))) end = memryClosedAt(text, ">", i + 3);
++  return end;
++}
++
+ var Fn = /* @__PURE__ */ new Set("\\`![~*_\n<"), In = [
+ 	bn,
+ 	xn,
+@@ -821,28 +841,32 @@ var Fn = /* @__PURE__ */ new Set("\\`![~*_\n<"), In = [
+ 	On
+ ];
+ function Y(e) {
+-	let t = "", n = 0;
++	if (!memryInsideInline) return memryParseOutermostInline(e);
++	let t = [], n = 0;
+ 	for (; n < e.length;) {
+ 		if (e[n] === "\n" && n >= 2 && e[n - 1] === " " && e[n - 2] === " ") {
+-			t = t.replace(/ +$/, ""), t += "<br>\n", n++;
++			memryTrimEnd(t), t.push("<br>\n"), n++;
+ 			continue;
+ 		}
+ 		let r = !1;
+ 		if (Fn.has(e[n])) for (let i of In) {
+ 			let a = i(e, n);
+ 			if (a) {
+-				t += a.html, n = a.end, r = !0;
++				t.push(a.html), n = a.end, r = !0;
+ 				break;
+ 			}
+ 		}
+ 		if (!r) {
+ 			let r = n;
+ 			for (n++; n < e.length && !Fn.has(e[n]);) n++;
+-			t += q(e.substring(r, n));
++			t.push(q(e.substring(r, n)));
+ 		}
+ 	}
+-	return t;
++	return t.join("");
+ }
++// Memry: a nested Y call (a link's text) skips this frame, so links nest as deep as before.
++function memryParseOutermostInline(e) { memryInsideInline = true; try { return Y(e); } finally { memryInsideInline = false; memryInlineCaches.clear(); } }
++
+ function Ln(e, t) {
+ 	let n = 0, r = t;
+ 	for (; r < e.length && e[r] === "`";) n++, r++;
+@@ -892,28 +916,8 @@ function zn(e, t) {
+ 		end: a + 1
+ 	};
+ }
+-function Bn(e, t) {
+-	let n = 0;
+-	for (let r = t; r < e.length; r++) {
+-		if (e[r] === "\\" && r + 1 < e.length) {
+-			r++;
+-			continue;
+-		}
+-		if (e[r] === "[" && n++, e[r] === "]" && (n--, n === 0)) return r;
+-	}
+-	return -1;
+-}
+-function Vn(e, t) {
+-	let n = 0;
+-	for (let r = t; r < e.length; r++) {
+-		if (e[r] === "\\" && r + 1 < e.length) {
+-			r++;
+-			continue;
+-		}
+-		if (e[r] === "(" && n++, e[r] === ")" && (n--, n === 0)) return r;
+-	}
+-	return -1;
+-}
++function Bn(e, t) { return memryClosing(e, t, "[", "]"); }
++function Vn(e, t) { return memryClosing(e, t, "(", ")"); }
+ function Hn(e) {
+ 	e = e.trim();
+ 	let t, n;
+@@ -944,38 +948,7 @@ function Hn(e) {
+ 		title: r
+ 	};
+ }
+-function X(e, t, n, r, i) {
+-	let a = n.length, o = t + a;
+-	if (o >= e.length || e[o] === " " || e[o] === "	") return null;
+-	let s = o;
+-	for (; s < e.length;) {
+-		if (e[s] === "\\" && s + 1 < e.length) {
+-			s += 2;
+-			continue;
+-		}
+-		if (e.substring(s, s + a) === n) {
+-			if (e[s - 1] === " " || e[s - 1] === "	") {
+-				s++;
+-				continue;
+-			}
+-			if (a === 1 && (s > 0 && e[s - 1] === n[0] && !(s >= 2 && e[s - 2] === "\\") || s + a < e.length && e[s + a] === n[0])) {
+-				s++;
+-				continue;
+-			}
+-			let t = e.substring(o, s);
+-			if (t.length === 0) {
+-				s++;
+-				continue;
+-			}
+-			return {
+-				html: r + Y(t) + i,
+-				end: s + a
+-			};
+-		}
+-		s++;
+-	}
+-	return null;
+-}
++function X(e, t, n, r, i) { let a = n.length, o = t + a; if (o >= e.length || e[o] === " " || e[o] === "\t") return null; let s = memryFindCloser(e, o, n); return s === -1 ? null : { html: r + Y(e.substring(o, s)) + i, end: s + a }; }
+ var Un = /* @__PURE__ */ new Set(/* @__PURE__ */ "address.article.aside.audio.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.section.source.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul".split("."));
+ function Wn(e) {
+ 	if (/^ {0,3}<(!--|\?|![A-Za-z]|!\[CDATA\[)/.test(e)) return !0;
+@@ -990,7 +963,7 @@ function Gn(e) {
+ 			i = !0, r++;
+ 			continue;
+ 		}
+-		let a = e.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
++		let a = e.match(/^ {0,3}(`{3,}(?!`)|~{3,}(?!~))(.*)$/);
+ 		if (a) {
+ 			let e = a[1], o = e[0], s = e.length, c = a[2].trim(), l = [];
+ 			for (r++; r < t.length;) {
+@@ -1007,7 +980,7 @@ function Gn(e) {
+ 			}), i = !1;
+ 			continue;
+ 		}
+-		let o = e.match(/^(#{1,6})\s+(.+?)(?:\s+#+\s*|\s*)$/);
++		let o = memryMatchHeading(e);
+ 		if (o) {
+ 			n.push({
+ 				type: "heading",
+@@ -1051,7 +1024,7 @@ function Gn(e) {
+ 			for (; r < t.length && /^\s{0,3}>/.test(t[r]);) e.push(t[r].replace(/^\s{0,3}>\s?/, "")), r++;
+ 			for (; r < t.length;) {
+ 				let n = t[r];
+-				if (n.trim() === "" || /^\s{0,3}>/.test(n) || /^(#{1,6})\s/.test(n) || /^(`{3,}|~{3,})/.test(n) || /^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(n) || /^\s*([-*+]|\d+[.)])\s+/.test(n) || /^\s*\|(.+\|)+\s*$/.test(n)) break;
++				if (n.trim() === "" || /^\s{0,3}>/.test(n) || /^(#{1,6})\s/.test(n) || /^(`{3,}|~{3,})/.test(n) || /^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(n) || /^\s*([-*+]|\d+[.)])\s+/.test(n) || /^\s*\|.+\|\s*$/.test(n)) break;
+ 				e.push(n), r++;
+ 			}
+ 			n.push({
+@@ -1060,7 +1033,7 @@ function Gn(e) {
+ 			}), i = !1;
+ 			continue;
+ 		}
+-		let c = e.match(/^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\] )?(.*)$/);
++		let c = e.match(/^(\s*)([-*+]|\d+[.)])(\s+)(?!\s)(\[[ xX]\] )?(.*)$/);
+ 		if (c) {
+ 			let e = c[1].length, a = c[2], o = c[3], s = c[4], l = c[5], u, d, f;
+ 			s ? (u = "task", f = s.trim() !== "[ ]") : /^\d+[.)]$/.test(a) ? (u = "ordered", d = parseInt(a, 10)) : u = "bullet";
+@@ -1070,12 +1043,12 @@ function Gn(e) {
+ 				return !!(t >= p || t >= m && e.match(/^\s*([-*+]|\d+[.)])\s+/));
+ 			};
+ 			r++;
+-			let g = [];
++			let g = [], memryNext = 0;
+ 			for (; r < t.length;) {
+ 				let e = t[r];
+ 				if (e.trim() === "") {
+-					let e = r + 1;
+-					for (; e < t.length && t[e].trim() === "";) e++;
++					if (memryNext <= r) for (memryNext = r + 1; memryNext < t.length && t[memryNext].trim() === "";) memryNext++;
++					let e = memryNext;
+ 					if (e < t.length && h(t[e])) {
+ 						g.push(""), r++;
+ 						continue;
+@@ -1085,7 +1058,7 @@ function Gn(e) {
+ 				if (!h(e)) break;
+ 				e.match(/^\s*/)[0].length >= p ? g.push(e.substring(p)) : g.push(e.substring(m)), r++;
+ 			}
+-			let _ = g.join("\n").replace(/^\n+|\n+$/g, "");
++			let _ = g.join("\n").replace(/^\n+|(?<!\n)\n+$/g, "");
+ 			n.push({
+ 				type: "listItem",
+ 				listType: u,
+@@ -1109,12 +1082,12 @@ function Gn(e) {
+ 		let l = [e];
+ 		for (r++; r < t.length;) {
+ 			let e = t[r];
+-			if (e.trim() === "" || /^(#{1,6})\s/.test(e) || /^(`{3,}|~{3,})/.test(e) || /^\s{0,3}>/.test(e) || /^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e) || /^\s*([-*+]|\d+[.)])\s+/.test(e) || /^\s*\|(.+\|)+\s*$/.test(e) || Wn(e) || r + 1 < t.length && /^[=-]+\s*$/.test(t[r + 1]) && e.trim().length > 0) break;
++			if (e.trim() === "" || /^(#{1,6})\s/.test(e) || /^(`{3,}|~{3,})/.test(e) || /^\s{0,3}>/.test(e) || /^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e) || /^\s*([-*+]|\d+[.)])\s+/.test(e) || /^\s*\|.+\|\s*$/.test(e) || Wn(e) || r + 1 < t.length && /^[=-]+\s*$/.test(t[r + 1]) && e.trim().length > 0) break;
+ 			l.push(e), r++;
+ 		}
+ 		n.push({
+ 			type: "paragraph",
+-			content: l.map((e) => e.replace(/^ {1,3}/, "")).join("\n").replace(/[ \t]+$/, "")
++			content: l.map((e) => e.replace(/^ {1,3}/, "")).join("\n").replace(/(?<![ \t])[ \t]+$/, "")
+ 		}), i = !1;
+ 	}
+ 	return n;
+@@ -1122,7 +1095,7 @@ function Gn(e) {
+ function Kn(e, t) {
+ 	if (t + 1 >= e.length) return null;
+ 	let n = e[t], r = e[t + 1];
+-	if (!r.includes("|") || !/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(r) || !n.includes("|")) return null;
++	if (!r.includes("|") || !/^\s*(?:\|\s*)?:?-+:?\s*(?:\|\s*:?-+:?\s*)*(?:\|\s*)?$/.test(r) || !n.includes("|")) return null;
+ 	let i = qn(n), a = Jn(r), o = [], s = t + 2;
+ 	for (; s < e.length;) {
+ 		let t = e[s];
+@@ -1416,7 +1389,7 @@ var ur = (e) => k.create({
+ 			return r === null || r === "Files" && (lr(n, e), !0);
+ 		} } } })];
+ 	}
+-}), dr = /(^|\n) {0,3}#{1,6} {1,8}[^\n]{1,64}\r?\n\r?\n\s{0,32}\S/, fr = /(_|__|\*|\*\*|~~|==|\+\+)(?!\s)(?:[^\s](?:.{0,62}[^\s])?|\S)(?=\1)/, pr = /\[[^\]]{1,128}\]\(https?:\/\/\S{1,999}\)/, mr = /(?:\s|^)`(?!\s)(?:[^\s`](?:[^`]{0,46}[^\s`])?|[^\s`])`([^\w]|$)/, hr = /(?:^|\n)\s{0,5}-\s{1}[^\n]+\n\s{0,15}-\s/, gr = /(?:^|\n)\s{0,5}\d+\.\s{1}[^\n]+\n\s{0,15}\d+\.\s/, _r = /\n{2} {0,3}-{2,48}\n{2}/, vr = /(?:\n|^)(```|~~~|\$\$)(?!`|~)[^\s]{0,64} {0,64}[^\n]{0,64}\n[\s\S]{0,9999}?\s*\1 {0,64}(?:\n+|$)/, yr = /(?:\n|^)(?!\s)\w[^\n]{0,64}\r?\n(-|=)\1{0,64}\n\n\s{0,64}(\w|$)/, br = /(?:^|(\r?\n\r?\n))( {0,3}>[^\n]{1,333}\n){1,999}($|(\r?\n))/, xr = /^\s*\|(.+\|)+\s*$/m, Sr = /^\s*\|(\s*[-:]+[-:]\s*\|)+\s*$/m, Cr = /^\s*\|(.+\|)+\s*$/m, wr = (e) => dr.test(e) || fr.test(e) || pr.test(e) || mr.test(e) || hr.test(e) || gr.test(e) || _r.test(e) || vr.test(e) || yr.test(e) || br.test(e) || xr.test(e) || Sr.test(e) || Cr.test(e);
++}), dr = /(^|\n) {0,3}#{1,6} {1,8}[^\n]{1,64}\r?\n\r?\n\s{0,32}\S/, fr = /(_|__|\*|\*\*|~~|==|\+\+)(?!\s)(?:[^\s](?:.{0,62}[^\s])?|\S)(?=\1)/, pr = /\[[^\]]{1,128}\]\(https?:\/\/\S{1,999}\)/, mr = /(?:\s|^)`(?!\s)(?:[^\s`](?:[^`]{0,46}[^\s`])?|[^\s`])`([^\w]|$)/, hr = /(?:^|\n)\s{0,5}-\s{1}[^\n]+\n\s{0,15}-\s/, gr = /(?:^|\n)\s{0,5}\d+\.\s{1}[^\n]+\n\s{0,15}\d+\.\s/, _r = /\n{2} {0,3}-{2,48}\n{2}/, vr = /(?:\n|^)(```|~~~|\$\$)(?!`|~)[^\s]{0,64} {0,64}[^\n]{0,64}\n[\s\S]{0,9999}?\s*\1 {0,64}(?:\n+|$)/, yr = /(?:\n|^)(?!\s)\w[^\n]{0,64}\r?\n(-|=)\1{0,64}\n\n\s{0,64}(\w|$)/, br = /(?:^|(\r?\n\r?\n))( {0,3}>[^\n]{1,333}\n){1,999}($|(\r?\n))/, xr = /^\s*\|.+\|\s*$/m, Sr = /^\s*\|(\s*[-:]+[-:]\s*\|)+\s*$/m, Cr = /^\s*\|.+\|\s*$/m, wr = (e) => dr.test(e) || fr.test(e) || pr.test(e) || mr.test(e) || hr.test(e) || gr.test(e) || _r.test(e) || vr.test(e) || yr.test(e) || br.test(e) || xr.test(e) || Sr.test(e) || Cr.test(e);
+ //#endregion
+ //#region src/api/clipboard/fromClipboard/handleVSCodePaste.ts
+ function Tr(e, t) {
+@@ -3314,4 +3287,132 @@ function Yi(e, ...t) {
+ //#endregion
+ export { mt as A, V as C, bt as D, xt as E, yt as O, Mt as S, z as T, Ft as _, Gi as a, H as b, kr as c, K as d, $t as f, U as g, en as h, qi as i, vt as k, tr as l, nn as m, Ji as n, Wi as o, tn as p, Ki as r, Oi as s, Yi as t, er as u, It as v, B as w, Lt as x, Pt as y };
+ 
+-//# sourceMappingURL=src-Buuo5l7X.js.map
+\ No newline at end of file
++//# sourceMappingURL=src-Buuo5l7X.js.map
++
++// Memry: `/^(#{1,6})\s+(.+?)(?:\s+#+\s*|\s*)$/` took cubic time on a long line of blanks; same match, linear.
++function memryMatchHeading(line) {
++  const blank = /\s/;
++  const lineEnd = /[\n\r\u2028\u2029]/;
++  const length = line.length;
++  let level = 0;
++  while (level < 6 && line[level] === "#") level++;
++  if (level === 0 || level >= length || !blank.test(line[level])) return null;
++  let blanksEnd = level;
++  while (blanksEnd < length && blank.test(line[blanksEnd])) blanksEnd++;
++  let trailing = length;
++  while (trailing > 0 && blank.test(line[trailing - 1])) trailing--;
++  let hashes = trailing;
++  while (hashes > 0 && line[hashes - 1] === "#") hashes--;
++  let before = hashes;
++  while (before > 0 && blank.test(line[before - 1])) before--;
++  const closing = hashes < trailing && before < hashes;
++  let lineEndAt = length;
++  for (let at = blanksEnd; at < length; at++) {
++    if (lineEnd.test(line[at])) {
++      lineEndAt = at;
++      break;
++    }
++  }
++  for (let start = blanksEnd; start > level; start--) {
++    if (lineEnd.test(line[start] ?? "")) lineEndAt = start;
++    const least = start + 1;
++    if (least > length) continue;
++    const end = closing && least <= hashes - 1 ? Math.max(least, before) : Math.max(least, trailing);
++    if (lineEndAt >= end) return [line, line.slice(0, level), line.slice(start, end)];
++  }
++  return null;
++}
++
++// Memry: the inline parser read to the end of the text for every opener that never closes, and
++// copied everything written so far for every hard break. What follows keeps each answer once.
++// The caches hold the texts one outermost parseInline call reads, and are dropped when it returns.
++var memryInlineCaches = new Map();
++var memryInsideInline = false;
++function memryInlineCache(text) {
++  let cache = memryInlineCaches.get(text);
++  if (!cache) {
++    cache = { dead: new Map(), partners: new Map(), noCloser: new Map() };
++    memryInlineCaches.set(text, cache);
++  }
++  return cache;
++}
++// The first position at or after `afterOpen` where `delimiter` closes an emphasis, or -1. Whether a
++// position closes does not depend on the opener, except that it cannot close right at `afterOpen`
++// (an empty emphasis), so a walk that finds none marks every position it visited, and a later
++// opener stops at the first of them.
++function memryFindCloser(text, afterOpen, delimiter) {
++  const cache = memryInlineCache(text);
++  let dead = cache.dead.get(delimiter);
++  const length = delimiter.length;
++  const closes = (at) =>
++    text.startsWith(delimiter, at) &&
++    text[at - 1] !== " " &&
++    text[at - 1] !== "\t" &&
++    !(
++      length === 1 &&
++      ((at > 0 && text[at - 1] === delimiter[0] && !(at >= 2 && text[at - 2] === "\\")) ||
++        (at + length < text.length && text[at + length] === delimiter[0]))
++    );
++  let end = text.length;
++  let at = afterOpen;
++  while (at < text.length) {
++    if (dead !== undefined && dead[at] === 1) {
++      end = at;
++      break;
++    }
++    if (text[at] === "\\" && at + 1 < text.length) {
++      at += 2;
++      continue;
++    }
++    if (closes(at) && at !== afterOpen) return at;
++    at++;
++  }
++  if (dead === undefined) {
++    dead = new Uint8Array(text.length);
++    cache.dead.set(delimiter, dead);
++  }
++  for (at = afterOpen; at < end; ) {
++    if (!(at === afterOpen && closes(at))) dead[at] = 1;
++    at += text[at] === "\\" && at + 1 < text.length ? 2 : 1;
++  }
++  return -1;
++}
++// The `close` that balances the `open` at `openPos` (which is always an `open`), or -1. One pass from
++// the first opener asked about pairs every opener after it with a stack, and a scan from any of them
++// reads the same characters to the same answer.
++function memryClosing(text, openPos, open, close) {
++  const cache = memryInlineCache(text);
++  let partners = cache.partners.get(open);
++  if (partners === undefined) {
++    partners = new Int32Array(text.length).fill(-2);
++    cache.partners.set(open, partners);
++  }
++  if (partners[openPos] === -2) {
++    const stack = [];
++    for (let at = openPos; at < text.length; at++) {
++      const char = text[at];
++      if (char === "\\" && at + 1 < text.length) {
++        at++;
++      } else if (char === open) {
++        partners[at] = -1;
++        stack.push(at);
++      } else if (char === close && stack.length > 0) {
++        partners[stack.pop()] = at;
++      }
++    }
++  }
++  return partners[openPos];
++}
++function memryTrimEnd(parts) {
++  while (parts.length > 0) {
++    const last = parts[parts.length - 1];
++    let end = last.length;
++    while (end > 0 && last.charCodeAt(end - 1) === 32) end--;
++    if (end === last.length && end > 0) return;
++    if (end > 0) {
++      parts[parts.length - 1] = last.slice(0, end);
++      return;
++    }
++    parts.pop();
++  }
++}
+\ No newline at end of file
+diff --git a/dist/src-C54Ok9E0.cjs b/dist/src-C54Ok9E0.cjs
+index e28831093ae6a558ced66dafbc1b8f6f7614765a..e08229e07d0a4238c0deadefa07cae449d8e99fb 100644
+--- a/dist/src-C54Ok9E0.cjs
++++ b/dist/src-C54Ok9E0.cjs
+@@ -4,20 +4,176 @@ const e=require("./blocks-CTB_5Vyj.cjs"),t=require("./BlockNoteExtension-BJCLnwr
+ `?{html:`<br>
+ `,end:t+2}:"\\`*_{}[]()#+-.!~|>".includes(n)?{html:k(n),end:t+2}:null}function tt(e,t){return e[t]==="`"?gt(e,t):null}function nt(e,t){return e[t]!==`!`||e[t+1]!==`[`?null:_t(e,t)}function rt(e,t){return e[t]===`[`?vt(e,t):null}function it(e,t){return e[t]!==`~`||e[t+1]!==`~`?null:I(e,t,`~~`,`<del>`,`</del>`)}function at(e,t){return e[t]===`*`&&e[t+1]===`*`&&e[t+2]===`*`||e[t]===`_`&&e[t+1]===`_`&&e[t+2]===`_`&&!j(e,t,3)?I(e,t,e.substring(t,t+3),`<strong><em>`,`</em></strong>`):null}function ot(e,t){return e[t]===`*`&&e[t+1]===`*`||e[t]===`_`&&e[t+1]===`_`&&!j(e,t,2)?I(e,t,e.substring(t,t+2),`<strong>`,`</strong>`):null}function st(e,t){return e[t]===`*`||e[t]===`_`&&!j(e,t,1)?I(e,t,e[t],`<em>`,`</em>`):null}function ct(e,t){return e[t]===`
+ `?{html:`<br>
+-`,end:t+1}:null}var lt=/^<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/,ut=/^<!--[\s\S]*?-->/,dt=/^<!\[CDATA\[[\s\S]*?\]\]>/,ft=/^<\?[\s\S]*?\?>/,pt=/^<![A-Za-z][\s\S]*?>/;function mt(e,t){if(e[t]!==`<`)return null;let n=e.substring(t);for(let e of[ut,dt,ft,pt,lt]){let r=n.match(e);if(r)return{html:r[0],end:t+r[0].length}}return null}var M=new Set(`\\\`![~*_
+-<`),ht=[et,tt,nt,rt,it,at,ot,st,mt,ct];function N(e){let t=``,n=0;for(;n<e.length;){if(e[n]===`
+-`&&n>=2&&e[n-1]===` `&&e[n-2]===` `){t=t.replace(/ +$/,``),t+=`<br>
+-`,n++;continue}let r=!1;if(M.has(e[n]))for(let i of ht){let a=i(e,n);if(a){t+=a.html,n=a.end,r=!0;break}}if(!r){let r=n;for(n++;n<e.length&&!M.has(e[n]);)n++;t+=k(e.substring(r,n))}}return t}function gt(e,t){let n=0,r=t;for(;r<e.length&&e[r]==="`";)n++,r++;let i=r;for(;i<e.length;)if(e[i]==="`"){let t=0,a=i;for(;i<e.length&&e[i]==="`";)t++,i++;if(t===n){let t=e.substring(r,a);return t=t.replace(/\n/g,` `),t.length>=2&&t[0]===` `&&t[t.length-1]===` `&&/[^ ]/.test(t)&&(t=t.substring(1,t.length-1)),{html:`<code>${k(t)}</code>`,end:i}}}else i++;return null}function _t(t,n){let r=P(t,n+1);if(r===-1)return null;let i=n+2;if(t[r+1]!==`(`)return null;let a=r+2,o=F(t,a-1);if(o===-1)return null;let s=t.substring(i,r),{url:c,title:l}=yt(t.substring(a,o));if(e.bn(c)){let e=s||l;return{html:`<video src="${k(c)}"${e?` data-name="${k(e)}"`:``} data-url="${k(c)}" controls></video>`,end:o+1}}let u=l===void 0?``:` title="${k(l)}"`;return{html:`<img src="${k(c)}" alt="${k(s)}"${u}>`,end:o+1}}function vt(e,t){let n=t+1,r=P(e,t);if(r===-1||e[r+1]!==`(`)return null;let i=r+2,a=F(e,r+1);if(a===-1)return null;let o=e.substring(n,r),{url:s,title:c}=yt(e.substring(i,a)),l=c===void 0?``:` title="${k(c)}"`;return{html:`<a href="${k(s)}"${l}>${N(o)}</a>`,end:a+1}}function P(e,t){let n=0;for(let r=t;r<e.length;r++){if(e[r]===`\\`&&r+1<e.length){r++;continue}if(e[r]===`[`&&n++,e[r]===`]`&&(n--,n===0))return r}return-1}function F(e,t){let n=0;for(let r=t;r<e.length;r++){if(e[r]===`\\`&&r+1<e.length){r++;continue}if(e[r]===`(`&&n++,e[r]===`)`&&(n--,n===0))return r}return-1}function yt(e){e=e.trim();let t,n;if(e.startsWith(`<`)){let r=e.indexOf(`>`);r===-1?(t=e.substring(1),n=``):(t=e.substring(1,r),n=e.substring(r+1).trim())}else{let r=e.length;for(let t=0;t<e.length;t++){if(e[t]===`\\`&&t+1<e.length){t++;continue}if(e[t]===` `||e[t]===`	`||e[t]===`
+-`){r=t;break}}t=e.substring(0,r),n=e.substring(r).trim()}let r;if(n.length>0){let e=n.match(/^"([^"]*)"$|^'([^']*)'$|^\(([^)]*)\)$/);e&&(r=e[1]??e[2]??e[3])}return{url:t,title:r}}function I(e,t,n,r,i){let a=n.length,o=t+a;if(o>=e.length||e[o]===` `||e[o]===`	`)return null;let s=o;for(;s<e.length;){if(e[s]===`\\`&&s+1<e.length){s+=2;continue}if(e.substring(s,s+a)===n){if(e[s-1]===` `||e[s-1]===`	`){s++;continue}if(a===1&&(s>0&&e[s-1]===n[0]&&!(s>=2&&e[s-2]===`\\`)||s+a<e.length&&e[s+a]===n[0])){s++;continue}let t=e.substring(o,s);if(t.length===0){s++;continue}return{html:r+N(t)+i,end:s+a}}s++}return null}var bt=new Set(`address.article.aside.audio.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.section.source.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`));function L(e){if(/^ {0,3}<(!--|\?|![A-Za-z]|!\[CDATA\[)/.test(e))return!0;let t=e.match(/^ {0,3}<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s|\/?>|$)/);return t?bt.has(t[1].toLowerCase()):!1}function R(e){let t=e.split(`
+-`),n=[],r=0,i=!0;for(;r<t.length;){let e=t[r];if(e.trim()===``){i=!0,r++;continue}let a=e.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);if(a){let e=a[1],o=e[0],s=e.length,c=a[2].trim(),l=[];for(r++;r<t.length;){if(t[r].match(RegExp(`^ {0,3}${o}{${s},}\\s*$`))){r++;break}l.push(t[r]),r++}n.push({type:`codeBlock`,language:c||``,code:l.join(`
+-`)}),i=!1;continue}let o=e.match(/^(#{1,6})\s+(.+?)(?:\s+#+\s*|\s*)$/);if(o){n.push({type:`heading`,level:o[1].length,content:o[2]}),i=!1,r++;continue}if(/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e)){let t=n[n.length-1];if(!i&&e.trim().match(/^-+$/)&&t&&t.type===`paragraph`){let e=t;n[n.length-1]={type:`heading`,level:2,content:e.content},i=!1,r++;continue}n.push({type:`hr`}),i=!1,r++;continue}if(r+1<t.length){let a=t[r+1];if(/^={1,}\s*$/.test(a)&&e.trim().length>0){n.push({type:`heading`,level:1,content:e.trim()}),i=!1,r+=2;continue}}let s=xt(t,r);if(s){n.push(s.token),r=s.nextLine,i=!1;continue}if(/^\s{0,3}>/.test(e)){let e=[];for(;r<t.length&&/^\s{0,3}>/.test(t[r]);)e.push(t[r].replace(/^\s{0,3}>\s?/,``)),r++;for(;r<t.length;){let n=t[r];if(n.trim()===``||/^\s{0,3}>/.test(n)||/^(#{1,6})\s/.test(n)||/^(`{3,}|~{3,})/.test(n)||/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(n)||/^\s*([-*+]|\d+[.)])\s+/.test(n)||/^\s*\|(.+\|)+\s*$/.test(n))break;e.push(n),r++}n.push({type:`blockquote`,content:e.join(`
+-`)}),i=!1;continue}let c=e.match(/^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\] )?(.*)$/);if(c){let e=c[1].length,a=c[2],o=c[3],s=c[4],l=c[5],u,d,f;s?(u=`task`,f=s.trim()!==`[ ]`):/^\d+[.)]$/.test(a)?(u=`ordered`,d=parseInt(a,10)):u=`bullet`;let p=e+a.length+o.length+(s?s.length:0),m=e+1,h=e=>{if(e.trim()===``)return!0;let t=e.match(/^\s*/)[0].length;return!!(t>=p||t>=m&&e.match(/^\s*([-*+]|\d+[.)])\s+/))};r++;let g=[];for(;r<t.length;){let e=t[r];if(e.trim()===``){let e=r+1;for(;e<t.length&&t[e].trim()===``;)e++;if(e<t.length&&h(t[e])){g.push(``),r++;continue}break}if(!h(e))break;e.match(/^\s*/)[0].length>=p?g.push(e.substring(p)):g.push(e.substring(m)),r++}let _=g.join(`
+-`).replace(/^\n+|\n+$/g,``);n.push({type:`listItem`,listType:u,indent:e,content:l.trim(),start:d,checked:f,childContent:_||void 0}),i=!1;continue}if(L(e)){let e=[];for(;r<t.length&&t[r].trim()!==``;)e.push(t[r]),r++;n.push({type:`rawHtml`,content:e.join(`
+-`)}),i=!1;continue}let l=[e];for(r++;r<t.length;){let e=t[r];if(e.trim()===``||/^(#{1,6})\s/.test(e)||/^(`{3,}|~{3,})/.test(e)||/^\s{0,3}>/.test(e)||/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e)||/^\s*([-*+]|\d+[.)])\s+/.test(e)||/^\s*\|(.+\|)+\s*$/.test(e)||L(e)||r+1<t.length&&/^[=-]+\s*$/.test(t[r+1])&&e.trim().length>0)break;l.push(e),r++}n.push({type:`paragraph`,content:l.map(e=>e.replace(/^ {1,3}/,``)).join(`
+-`).replace(/[ \t]+$/,``)}),i=!1}return n}function xt(e,t){if(t+1>=e.length)return null;let n=e[t],r=e[t+1];if(!r.includes(`|`)||!/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(r)||!n.includes(`|`))return null;let i=z(n),a=St(r),o=[],s=t+2;for(;s<e.length;){let t=e[s];if(!t.includes(`|`))break;o.push(z(t)),s++}return{token:{type:`table`,headers:i,rows:o,alignments:a},nextLine:s}}function z(e){let t=e.trim(),n=t.startsWith(`|`)?t.substring(1):t,r=n.endsWith(`|`)?n.substring(0,n.length-1):n,i=[],a=``;for(let e=0;e<r.length;e++)r[e]===`\\`&&e+1<r.length&&r[e+1]===`|`?(a+=`|`,e++):r[e]===`|`?(i.push(a.trim()),a=``):a+=r[e];return i.push(a.trim()),i}function St(e){return z(e).map(e=>{let t=e.trim(),n=t.startsWith(`:`),r=t.endsWith(`:`);return n&&r?`center`:r?`right`:n?`left`:null})}function B(e){let t=``,n=0;for(;n<e.length;){let r=e[n];switch(r.type){case`heading`:{let e=r;t+=`<h${e.level}>${N(e.content)}</h${e.level}>`,n++;break}case`paragraph`:t+=`<p>${N(r.content)}</p>`,n++;break;case`codeBlock`:{let e=r,i=e.language?` data-language="${k(e.language)}"`:``;t+=`<pre><code${i}>${k(e.code)}</code></pre>`,n++;break}case`blockquote`:{let e=B(R(r.content));t+=`<blockquote>${e}</blockquote>`,n++;break}case`hr`:t+=`<hr>`,n++;break;case`listItem`:{let r=Ct(e,n);t+=r.html,n=r.nextIndex;break}case`table`:t+=Tt(r),n++;break;case`rawHtml`:t+=r.content,n++;break;default:n++}}return t}function Ct(e,t){let n=``,r=t,i=null;for(;r<e.length&&e[r].type===`listItem`;){let t=e[r],a=wt(t.listType);if(i!==null&&i!==a&&(n+=`</${i===`ordered`?`ol`:`ul`}>`,i=null),i===null){if(a===`ordered`){let e=t.start!==void 0&&t.start!==1?` start="${t.start}"`:``;n+=`<ol${e}>`}else n+=`<ul>`;i=a}if(t.listType===`task`){let e=t.checked?` checked`:``;n+=`<li><input type="checkbox" disabled${e}><p>${N(t.content)}</p>`}else n+=`<li><p>${N(t.content)}</p>`;if(t.childContent){let e=R(t.childContent);n+=B(e)}n+=`</li>`,r++}return i!==null&&(n+=`</${i===`ordered`?`ol`:`ul`}>`),{html:n,nextIndex:r}}function wt(e){return e===`ordered`?`ordered`:`bullet`}function Tt(e){let t=`<table>`,n=e.headers.every(e=>e.trim()===``),r=e.headers.length;if(!n){t+=`<thead><tr>`;for(let n=0;n<r;n++){let r=e.alignments[n],i=r?` align="${r}"`:``;t+=`<th${i}>${N(e.headers[n])}</th>`}t+=`</tr></thead>`}if(e.rows.length>0){t+=`<tbody>`;for(let n of e.rows){t+=`<tr>`;for(let i=0;i<r;i++){let r=i<n.length?n[i]:``,a=e.alignments[i],o=a?` align="${a}"`:``;t+=`<td${o}>${N(r)}</td>`}t+=`</tr>`}t+=`</tbody>`}return t+=`</table>`,t}function Et(e){return B(R(e))}function V(e){return Et(e)}function Dt(e,t){return O(V(e),t)}var Ot=class{editor;constructor(e){this.editor=e}blocksToHTMLLossy(e=this.editor.document){return n.F(this.editor.pmSchema,this.editor).exportBlocks(e,{})}blocksToFullHTML(e=this.editor.document){return he(this.editor.pmSchema,this.editor).serializeBlocks(e,{})}tryParseHTMLToBlocks(e){return O(e,this.editor.pmSchema)}blocksToMarkdownLossy(e=this.editor.document){return n.b(e,this.editor.pmSchema,this.editor,{})}tryParseMarkdownToBlocks(e){return Dt(e,this.editor.pmSchema)}pasteHTML(e,t=!1){let n=e;if(!t){let t=this.tryParseHTMLToBlocks(e);n=this.blocksToFullHTML(t)}n&&this.editor.prosemirrorView?.pasteHTML(n)}pasteText(e){return this.editor.prosemirrorView?.pasteText(e)}pasteMarkdown(e){let t=V(e);return this.pasteHTML(t)}};function kt(t){let{bnBlock:n}=e.nr(t),r=t.doc.resolve(n.beforePos),i=r.nodeBefore,a=t.doc.resolve(n.afterPos).nodeAfter,o;return r.depth>1&&(o=r.node(),o.type.isInGroup(`bnBlock`)||(o=r.node(r.depth-1))),{block:e.wn(n.node,t.doc),prevBlock:i===null?void 0:e.wn(i,t.doc),nextBlock:a===null?void 0:e.wn(a,t.doc),parentBlock:o===void 0?void 0:e.wn(o,t.doc)}}function H(t,n,r=`start`){let i=typeof n==`string`?n:n.id,a=e.jn(t.doc),o=e.On(a),s=e.Nt(i,t.doc);if(!s)throw Error(`Block with ID ${i} not found`);let l=e.$n(s),u=o.blockSchema[l.blockNoteType].content;if(l.isBlockContainer){let n=l.blockContent;if(u===`none`){t.setSelection(c.NodeSelection.create(t.doc,n.beforePos));return}if(u===`inline`||u===`plain`)r===`start`?t.setSelection(c.TextSelection.create(t.doc,n.beforePos+1)):t.setSelection(c.TextSelection.create(t.doc,n.afterPos-1));else if(u===`table`)r===`start`?t.setSelection(c.TextSelection.create(t.doc,n.beforePos+4)):t.setSelection(c.TextSelection.create(t.doc,n.afterPos-4));else throw new e.Hn(u)}else{let n=r===`start`?l.childContainer.node.firstChild:l.childContainer.node.lastChild;H(t,e.ar(n,t.doc),r)}}var U=[`vscode-editor-data`,`blocknote/html`,`text/markdown`,`text/html`,`text/plain`,`Files`];function At(e,t){if(!e.startsWith(`.`)||!t.startsWith(`.`))throw Error(`The strings provided are not valid file extensions.`);return e===t}function jt(e,t){let n=e.split(`/`),r=t.split(`/`);if(n.length!==2)throw Error(`The string ${e} is not a valid MIME type.`);if(r.length!==2)throw Error(`The string ${t} is not a valid MIME type.`);return n[1]===`*`||r[1]===`*`?n[0]===r[0]:(n[0]===`*`||r[0]===`*`||n[0]===r[0])&&n[1]===r[1]}function Mt(e,t,n,r=`after`){let i;return i=Array.isArray(t.content)&&t.content.length===0?e.updateBlock(t,n).id:e.insertBlocks([n],t,r)[0].id,i}async function Nt(t,n){if(!n.uploadFile){console.warn(`Attempted ot insert file, but uploadFile is not set in the BlockNote editor options`);return}let r=`dataTransfer`in t?t.dataTransfer:t.clipboardData;if(r===null)return;let i=null;for(let e of U)if(r.types.includes(e)){i=e;break}if(i!==`Files`)return;let a=r.items;if(a){t.preventDefault();for(let r=0;r<a.length;r++){let i=`file`;for(let e of Object.values(n.schema.blockSpecs))for(let t of e.implementation.meta?.fileBlockAccept||[]){let n=t.startsWith(`.`),o=a[r].getAsFile();if(o&&(!n&&o.type&&jt(a[r].type,t)||n&&At(`.`+o.name.split(`.`).pop(),t))){i=e.config.type;break}}let o=a[r].getAsFile();if(o){let r={type:i,props:{name:o.name}},a;if(t.type===`paste`){let e=n.getTextCursorPosition().block;a=Mt(n,e,r)}else if(t.type===`drop`){let i={left:t.clientX,top:t.clientY},o=n.prosemirrorView.posAtCoords(i);if(!o)return;a=n.transact(t=>{let a=e.er(t,o.pos),s=e.ar(a.bnBlock.node,t.doc),c=(n.domElement?.querySelector(`[data-id="${s}"]`))?.getBoundingClientRect(),l=n.getBlock(s);if(l)return Mt(n,l,r,c&&(c.top+c.bottom)/2>i.top?`before`:`after`)})}else return;if(!a)return;let s=await n.uploadFile(o,a),c=typeof s==`string`?{props:{url:s}}:{...s};n.updateBlock(a,c)}}}}var Pt=e=>s.Extension.create({name:`dropFile`,addProseMirrorPlugins(){return[new c.Plugin({props:{handleDOMEvents:{drop(t,n){if(!e.isEditable)return;let r=null;for(let e of U)if(n.dataTransfer.types.includes(e)){r=e;break}return r===null||r===`Files`&&(Nt(n,e),!0)}}}})]}}),Ft=/(^|\n) {0,3}#{1,6} {1,8}[^\n]{1,64}\r?\n\r?\n\s{0,32}\S/,It=/(_|__|\*|\*\*|~~|==|\+\+)(?!\s)(?:[^\s](?:.{0,62}[^\s])?|\S)(?=\1)/,Lt=/\[[^\]]{1,128}\]\(https?:\/\/\S{1,999}\)/,Rt=/(?:\s|^)`(?!\s)(?:[^\s`](?:[^`]{0,46}[^\s`])?|[^\s`])`([^\w]|$)/,zt=/(?:^|\n)\s{0,5}-\s{1}[^\n]+\n\s{0,15}-\s/,Bt=/(?:^|\n)\s{0,5}\d+\.\s{1}[^\n]+\n\s{0,15}\d+\.\s/,Vt=/\n{2} {0,3}-{2,48}\n{2}/,Ht=/(?:\n|^)(```|~~~|\$\$)(?!`|~)[^\s]{0,64} {0,64}[^\n]{0,64}\n[\s\S]{0,9999}?\s*\1 {0,64}(?:\n+|$)/,Ut=/(?:\n|^)(?!\s)\w[^\n]{0,64}\r?\n(-|=)\1{0,64}\n\n\s{0,64}(\w|$)/,Wt=/(?:^|(\r?\n\r?\n))( {0,3}>[^\n]{1,333}\n){1,999}($|(\r?\n))/,Gt=/^\s*\|(.+\|)+\s*$/m,Kt=/^\s*\|(\s*[-:]+[-:]\s*\|)+\s*$/m,qt=/^\s*\|(.+\|)+\s*$/m,Jt=e=>Ft.test(e)||It.test(e)||Lt.test(e)||Rt.test(e)||zt.test(e)||Bt.test(e)||Vt.test(e)||Ht.test(e)||Ut.test(e)||Wt.test(e)||Gt.test(e)||Kt.test(e)||qt.test(e);function Yt(e,t){let{schema:n}=t.state;if(!e.clipboardData)return!1;let r=e.clipboardData.getData(`text/plain`);if(!r||!n.nodes.codeBlock)return!1;let i=e.clipboardData.getData(`vscode-editor-data`),a=(i?JSON.parse(i):void 0)?.mode;return a?(t.pasteHTML(`<pre><code class="language-${a}">${r.replace(/\r\n?/g,`
++`,end:t+1}:null}var lt=/^<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/,ut=/^<!--[\s\S]*?-->/,dt=/^<!\[CDATA\[[\s\S]*?\]\]>/,ft=/^<\?[\s\S]*?\?>/,pt=/^<![A-Za-z][\s\S]*?>/;function mt(e,t){if(e[t]!==`<`)return null;let n=memryInlineHtmlEnd(e,t);if(n>=0)return{html:e.substring(t,n),end:n};let r=e.substring(t).match(lt);return r?{html:r[0],end:t+r[0].length}:null}
++
++// Memry: a `<!--`, `<![CDATA[`, `<?` or `<!x` with no end read to the end of the text from every
++// opener. Whether a closer exists at or after a position does not depend on the opener, so the
++// first miss is kept (per text and closer) and a later opener stops at it.
++function memryIndexOfCloser(text, closer, from) {
++  const cache = memryInlineCache(text);
++  const miss = cache.noCloser.get(closer);
++  if (miss !== undefined && from >= miss) return -1;
++  const at = text.indexOf(closer, from);
++  if (at < 0) cache.noCloser.set(closer, from);
++  return at;
++}
++function memryClosedAt(text, closer, from) {
++  const at = memryIndexOfCloser(text, closer, from);
++  return at < 0 ? -1 : at + closer.length;
++}
++function memryInlineHtmlEnd(text, i) {
++  let end = -1;
++  if (text.startsWith("<!--", i)) end = memryClosedAt(text, "-->", i + 4);
++  if (end < 0 && text.startsWith("<![CDATA[", i)) end = memryClosedAt(text, "]]>", i + 9);
++  if (end < 0 && text.startsWith("<?", i)) end = memryClosedAt(text, "?>", i + 2);
++  if (end < 0 && /^<![A-Za-z]/.test(text.substr(i, 3))) end = memryClosedAt(text, ">", i + 3);
++  return end;
++}
++var M=new Set(`\\\`![~*_
++<`),ht=[et,tt,nt,rt,it,at,ot,st,mt,ct];function N(e){if(!memryInsideInline)return memryParseOutermostInline(e);let t = [], n = 0;for(;n<e.length;){if(e[n]===`
++`&&n>=2&&e[n-1]===` `&&e[n-2]===` `){memryTrimEnd(t), t.push(`<br>
++`), n++;continue}let r=!1;if(M.has(e[n]))for(let i of ht){let a=i(e,n);if(a){t.push(a.html),n=a.end,r=!0;break}}if(!r){let r=n;for(n++;n<e.length&&!M.has(e[n]);)n++;t.push(k(e.substring(r,n)))}}return t.join("");}
++// Memry: a nested N call (a link's text) skips this frame, so links nest as deep as before.
++function memryParseOutermostInline(e) { memryInsideInline = true; try { return N(e); } finally { memryInsideInline = false; memryInlineCaches.clear(); } }
++function gt(e,t){let n=0,r=t;for(;r<e.length&&e[r]==="`";)n++,r++;let i=r;for(;i<e.length;)if(e[i]==="`"){let t=0,a=i;for(;i<e.length&&e[i]==="`";)t++,i++;if(t===n){let t=e.substring(r,a);return t=t.replace(/\n/g,` `),t.length>=2&&t[0]===` `&&t[t.length-1]===` `&&/[^ ]/.test(t)&&(t=t.substring(1,t.length-1)),{html:`<code>${k(t)}</code>`,end:i}}}else i++;return null}function _t(t,n){let r=P(t,n+1);if(r===-1)return null;let i=n+2;if(t[r+1]!==`(`)return null;let a=r+2,o=F(t,a-1);if(o===-1)return null;let s=t.substring(i,r),{url:c,title:l}=yt(t.substring(a,o));if(e.bn(c)){let e=s||l;return{html:`<video src="${k(c)}"${e?` data-name="${k(e)}"`:``} data-url="${k(c)}" controls></video>`,end:o+1}}let u=l===void 0?``:` title="${k(l)}"`;return{html:`<img src="${k(c)}" alt="${k(s)}"${u}>`,end:o+1}}function vt(e,t){let n=t+1,r=P(e,t);if(r===-1||e[r+1]!==`(`)return null;let i=r+2,a=F(e,r+1);if(a===-1)return null;let o=e.substring(n,r),{url:s,title:c}=yt(e.substring(i,a)),l=c===void 0?``:` title="${k(c)}"`;return{html:`<a href="${k(s)}"${l}>${N(o)}</a>`,end:a+1}}function P(e, t) { return memryClosing(e, t, "[", "]"); }function F(e, t) { return memryClosing(e, t, "(", ")"); }function yt(e){e=e.trim();let t,n;if(e.startsWith(`<`)){let r=e.indexOf(`>`);r===-1?(t=e.substring(1),n=``):(t=e.substring(1,r),n=e.substring(r+1).trim())}else{let r=e.length;for(let t=0;t<e.length;t++){if(e[t]===`\\`&&t+1<e.length){t++;continue}if(e[t]===` `||e[t]===`	`||e[t]===`
++`){r=t;break}}t=e.substring(0,r),n=e.substring(r).trim()}let r;if(n.length>0){let e=n.match(/^"([^"]*)"$|^'([^']*)'$|^\(([^)]*)\)$/);e&&(r=e[1]??e[2]??e[3])}return{url:t,title:r}}function I(e, t, n, r, i) { let a = n.length, o = t + a; if (o >= e.length || e[o] === " " || e[o] === "\t") return null; let s = memryFindCloser(e, o, n); return s === -1 ? null : { html: r + N(e.substring(o, s)) + i, end: s + a }; }var bt=new Set(`address.article.aside.audio.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.section.source.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`));function L(e){if(/^ {0,3}<(!--|\?|![A-Za-z]|!\[CDATA\[)/.test(e))return!0;let t=e.match(/^ {0,3}<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s|\/?>|$)/);return t?bt.has(t[1].toLowerCase()):!1}function R(e){let t=e.split(`
++`),n=[],r=0,i=!0;for(;r<t.length;){let e=t[r];if(e.trim()===``){i=!0,r++;continue}let a=e.match(/^ {0,3}(`{3,}(?!`)|~{3,}(?!~))(.*)$/);if(a){let e=a[1],o=e[0],s=e.length,c=a[2].trim(),l=[];for(r++;r<t.length;){if(t[r].match(RegExp(`^ {0,3}${o}{${s},}\\s*$`))){r++;break}l.push(t[r]),r++}n.push({type:`codeBlock`,language:c||``,code:l.join(`
++`)}),i=!1;continue}let o=memryMatchHeading(e);if(o){n.push({type:`heading`,level:o[1].length,content:o[2]}),i=!1,r++;continue}if(/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e)){let t=n[n.length-1];if(!i&&e.trim().match(/^-+$/)&&t&&t.type===`paragraph`){let e=t;n[n.length-1]={type:`heading`,level:2,content:e.content},i=!1,r++;continue}n.push({type:`hr`}),i=!1,r++;continue}if(r+1<t.length){let a=t[r+1];if(/^={1,}\s*$/.test(a)&&e.trim().length>0){n.push({type:`heading`,level:1,content:e.trim()}),i=!1,r+=2;continue}}let s=xt(t,r);if(s){n.push(s.token),r=s.nextLine,i=!1;continue}if(/^\s{0,3}>/.test(e)){let e=[];for(;r<t.length&&/^\s{0,3}>/.test(t[r]);)e.push(t[r].replace(/^\s{0,3}>\s?/,``)),r++;for(;r<t.length;){let n=t[r];if(n.trim()===``||/^\s{0,3}>/.test(n)||/^(#{1,6})\s/.test(n)||/^(`{3,}|~{3,})/.test(n)||/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(n)||/^\s*([-*+]|\d+[.)])\s+/.test(n)||/^\s*\|.+\|\s*$/.test(n))break;e.push(n),r++}n.push({type:`blockquote`,content:e.join(`
++`)}),i=!1;continue}let c=e.match(/^(\s*)([-*+]|\d+[.)])(\s+)(?!\s)(\[[ xX]\] )?(.*)$/);if(c){let e=c[1].length,a=c[2],o=c[3],s=c[4],l=c[5],u,d,f;s?(u=`task`,f=s.trim()!==`[ ]`):/^\d+[.)]$/.test(a)?(u=`ordered`,d=parseInt(a,10)):u=`bullet`;let p=e+a.length+o.length+(s?s.length:0),m=e+1,h=e=>{if(e.trim()===``)return!0;let t=e.match(/^\s*/)[0].length;return!!(t>=p||t>=m&&e.match(/^\s*([-*+]|\d+[.)])\s+/))};r++;let g=[],memryNext=0;for(;r<t.length;){let e=t[r];if(e.trim()===``){if(memryNext<=r)for(memryNext=r+1;memryNext<t.length&&t[memryNext].trim()===``;)memryNext++;let e=memryNext;if(e<t.length&&h(t[e])){g.push(``),r++;continue}break}if(!h(e))break;e.match(/^\s*/)[0].length>=p?g.push(e.substring(p)):g.push(e.substring(m)),r++}let _=g.join(`
++`).replace(/^\n+|(?<!\n)\n+$/g,``);n.push({type:`listItem`,listType:u,indent:e,content:l.trim(),start:d,checked:f,childContent:_||void 0}),i=!1;continue}if(L(e)){let e=[];for(;r<t.length&&t[r].trim()!==``;)e.push(t[r]),r++;n.push({type:`rawHtml`,content:e.join(`
++`)}),i=!1;continue}let l=[e];for(r++;r<t.length;){let e=t[r];if(e.trim()===``||/^(#{1,6})\s/.test(e)||/^(`{3,}|~{3,})/.test(e)||/^\s{0,3}>/.test(e)||/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e)||/^\s*([-*+]|\d+[.)])\s+/.test(e)||/^\s*\|.+\|\s*$/.test(e)||L(e)||r+1<t.length&&/^[=-]+\s*$/.test(t[r+1])&&e.trim().length>0)break;l.push(e),r++}n.push({type:`paragraph`,content:l.map(e=>e.replace(/^ {1,3}/,``)).join(`
++`).replace(/(?<![ \t])[ \t]+$/,``)}),i=!1}return n}function xt(e,t){if(t+1>=e.length)return null;let n=e[t],r=e[t+1];if(!r.includes(`|`)||!/^\s*(?:\|\s*)?:?-+:?\s*(?:\|\s*:?-+:?\s*)*(?:\|\s*)?$/.test(r)||!n.includes(`|`))return null;let i=z(n),a=St(r),o=[],s=t+2;for(;s<e.length;){let t=e[s];if(!t.includes(`|`))break;o.push(z(t)),s++}return{token:{type:`table`,headers:i,rows:o,alignments:a},nextLine:s}}function z(e){let t=e.trim(),n=t.startsWith(`|`)?t.substring(1):t,r=n.endsWith(`|`)?n.substring(0,n.length-1):n,i=[],a=``;for(let e=0;e<r.length;e++)r[e]===`\\`&&e+1<r.length&&r[e+1]===`|`?(a+=`|`,e++):r[e]===`|`?(i.push(a.trim()),a=``):a+=r[e];return i.push(a.trim()),i}function St(e){return z(e).map(e=>{let t=e.trim(),n=t.startsWith(`:`),r=t.endsWith(`:`);return n&&r?`center`:r?`right`:n?`left`:null})}function B(e){let t=``,n=0;for(;n<e.length;){let r=e[n];switch(r.type){case`heading`:{let e=r;t+=`<h${e.level}>${N(e.content)}</h${e.level}>`,n++;break}case`paragraph`:t+=`<p>${N(r.content)}</p>`,n++;break;case`codeBlock`:{let e=r,i=e.language?` data-language="${k(e.language)}"`:``;t+=`<pre><code${i}>${k(e.code)}</code></pre>`,n++;break}case`blockquote`:{let e=B(R(r.content));t+=`<blockquote>${e}</blockquote>`,n++;break}case`hr`:t+=`<hr>`,n++;break;case`listItem`:{let r=Ct(e,n);t+=r.html,n=r.nextIndex;break}case`table`:t+=Tt(r),n++;break;case`rawHtml`:t+=r.content,n++;break;default:n++}}return t}function Ct(e,t){let n=``,r=t,i=null;for(;r<e.length&&e[r].type===`listItem`;){let t=e[r],a=wt(t.listType);if(i!==null&&i!==a&&(n+=`</${i===`ordered`?`ol`:`ul`}>`,i=null),i===null){if(a===`ordered`){let e=t.start!==void 0&&t.start!==1?` start="${t.start}"`:``;n+=`<ol${e}>`}else n+=`<ul>`;i=a}if(t.listType===`task`){let e=t.checked?` checked`:``;n+=`<li><input type="checkbox" disabled${e}><p>${N(t.content)}</p>`}else n+=`<li><p>${N(t.content)}</p>`;if(t.childContent){let e=R(t.childContent);n+=B(e)}n+=`</li>`,r++}return i!==null&&(n+=`</${i===`ordered`?`ol`:`ul`}>`),{html:n,nextIndex:r}}function wt(e){return e===`ordered`?`ordered`:`bullet`}function Tt(e){let t=`<table>`,n=e.headers.every(e=>e.trim()===``),r=e.headers.length;if(!n){t+=`<thead><tr>`;for(let n=0;n<r;n++){let r=e.alignments[n],i=r?` align="${r}"`:``;t+=`<th${i}>${N(e.headers[n])}</th>`}t+=`</tr></thead>`}if(e.rows.length>0){t+=`<tbody>`;for(let n of e.rows){t+=`<tr>`;for(let i=0;i<r;i++){let r=i<n.length?n[i]:``,a=e.alignments[i],o=a?` align="${a}"`:``;t+=`<td${o}>${N(r)}</td>`}t+=`</tr>`}t+=`</tbody>`}return t+=`</table>`,t}function Et(e){return B(R(e))}function V(e){return Et(e)}function Dt(e,t){return O(V(e),t)}var Ot=class{editor;constructor(e){this.editor=e}blocksToHTMLLossy(e=this.editor.document){return n.F(this.editor.pmSchema,this.editor).exportBlocks(e,{})}blocksToFullHTML(e=this.editor.document){return he(this.editor.pmSchema,this.editor).serializeBlocks(e,{})}tryParseHTMLToBlocks(e){return O(e,this.editor.pmSchema)}blocksToMarkdownLossy(e=this.editor.document){return n.b(e,this.editor.pmSchema,this.editor,{})}tryParseMarkdownToBlocks(e){return Dt(e,this.editor.pmSchema)}pasteHTML(e,t=!1){let n=e;if(!t){let t=this.tryParseHTMLToBlocks(e);n=this.blocksToFullHTML(t)}n&&this.editor.prosemirrorView?.pasteHTML(n)}pasteText(e){return this.editor.prosemirrorView?.pasteText(e)}pasteMarkdown(e){let t=V(e);return this.pasteHTML(t)}};function kt(t){let{bnBlock:n}=e.nr(t),r=t.doc.resolve(n.beforePos),i=r.nodeBefore,a=t.doc.resolve(n.afterPos).nodeAfter,o;return r.depth>1&&(o=r.node(),o.type.isInGroup(`bnBlock`)||(o=r.node(r.depth-1))),{block:e.wn(n.node,t.doc),prevBlock:i===null?void 0:e.wn(i,t.doc),nextBlock:a===null?void 0:e.wn(a,t.doc),parentBlock:o===void 0?void 0:e.wn(o,t.doc)}}function H(t,n,r=`start`){let i=typeof n==`string`?n:n.id,a=e.jn(t.doc),o=e.On(a),s=e.Nt(i,t.doc);if(!s)throw Error(`Block with ID ${i} not found`);let l=e.$n(s),u=o.blockSchema[l.blockNoteType].content;if(l.isBlockContainer){let n=l.blockContent;if(u===`none`){t.setSelection(c.NodeSelection.create(t.doc,n.beforePos));return}if(u===`inline`||u===`plain`)r===`start`?t.setSelection(c.TextSelection.create(t.doc,n.beforePos+1)):t.setSelection(c.TextSelection.create(t.doc,n.afterPos-1));else if(u===`table`)r===`start`?t.setSelection(c.TextSelection.create(t.doc,n.beforePos+4)):t.setSelection(c.TextSelection.create(t.doc,n.afterPos-4));else throw new e.Hn(u)}else{let n=r===`start`?l.childContainer.node.firstChild:l.childContainer.node.lastChild;H(t,e.ar(n,t.doc),r)}}var U=[`vscode-editor-data`,`blocknote/html`,`text/markdown`,`text/html`,`text/plain`,`Files`];function At(e,t){if(!e.startsWith(`.`)||!t.startsWith(`.`))throw Error(`The strings provided are not valid file extensions.`);return e===t}function jt(e,t){let n=e.split(`/`),r=t.split(`/`);if(n.length!==2)throw Error(`The string ${e} is not a valid MIME type.`);if(r.length!==2)throw Error(`The string ${t} is not a valid MIME type.`);return n[1]===`*`||r[1]===`*`?n[0]===r[0]:(n[0]===`*`||r[0]===`*`||n[0]===r[0])&&n[1]===r[1]}function Mt(e,t,n,r=`after`){let i;return i=Array.isArray(t.content)&&t.content.length===0?e.updateBlock(t,n).id:e.insertBlocks([n],t,r)[0].id,i}async function Nt(t,n){if(!n.uploadFile){console.warn(`Attempted ot insert file, but uploadFile is not set in the BlockNote editor options`);return}let r=`dataTransfer`in t?t.dataTransfer:t.clipboardData;if(r===null)return;let i=null;for(let e of U)if(r.types.includes(e)){i=e;break}if(i!==`Files`)return;let a=r.items;if(a){t.preventDefault();for(let r=0;r<a.length;r++){let i=`file`;for(let e of Object.values(n.schema.blockSpecs))for(let t of e.implementation.meta?.fileBlockAccept||[]){let n=t.startsWith(`.`),o=a[r].getAsFile();if(o&&(!n&&o.type&&jt(a[r].type,t)||n&&At(`.`+o.name.split(`.`).pop(),t))){i=e.config.type;break}}let o=a[r].getAsFile();if(o){let r={type:i,props:{name:o.name}},a;if(t.type===`paste`){let e=n.getTextCursorPosition().block;a=Mt(n,e,r)}else if(t.type===`drop`){let i={left:t.clientX,top:t.clientY},o=n.prosemirrorView.posAtCoords(i);if(!o)return;a=n.transact(t=>{let a=e.er(t,o.pos),s=e.ar(a.bnBlock.node,t.doc),c=(n.domElement?.querySelector(`[data-id="${s}"]`))?.getBoundingClientRect(),l=n.getBlock(s);if(l)return Mt(n,l,r,c&&(c.top+c.bottom)/2>i.top?`before`:`after`)})}else return;if(!a)return;let s=await n.uploadFile(o,a),c=typeof s==`string`?{props:{url:s}}:{...s};n.updateBlock(a,c)}}}}var Pt=e=>s.Extension.create({name:`dropFile`,addProseMirrorPlugins(){return[new c.Plugin({props:{handleDOMEvents:{drop(t,n){if(!e.isEditable)return;let r=null;for(let e of U)if(n.dataTransfer.types.includes(e)){r=e;break}return r===null||r===`Files`&&(Nt(n,e),!0)}}}})]}}),Ft=/(^|\n) {0,3}#{1,6} {1,8}[^\n]{1,64}\r?\n\r?\n\s{0,32}\S/,It=/(_|__|\*|\*\*|~~|==|\+\+)(?!\s)(?:[^\s](?:.{0,62}[^\s])?|\S)(?=\1)/,Lt=/\[[^\]]{1,128}\]\(https?:\/\/\S{1,999}\)/,Rt=/(?:\s|^)`(?!\s)(?:[^\s`](?:[^`]{0,46}[^\s`])?|[^\s`])`([^\w]|$)/,zt=/(?:^|\n)\s{0,5}-\s{1}[^\n]+\n\s{0,15}-\s/,Bt=/(?:^|\n)\s{0,5}\d+\.\s{1}[^\n]+\n\s{0,15}\d+\.\s/,Vt=/\n{2} {0,3}-{2,48}\n{2}/,Ht=/(?:\n|^)(```|~~~|\$\$)(?!`|~)[^\s]{0,64} {0,64}[^\n]{0,64}\n[\s\S]{0,9999}?\s*\1 {0,64}(?:\n+|$)/,Ut=/(?:\n|^)(?!\s)\w[^\n]{0,64}\r?\n(-|=)\1{0,64}\n\n\s{0,64}(\w|$)/,Wt=/(?:^|(\r?\n\r?\n))( {0,3}>[^\n]{1,333}\n){1,999}($|(\r?\n))/,Gt=/^\s*\|.+\|\s*$/m,Kt=/^\s*\|(\s*[-:]+[-:]\s*\|)+\s*$/m,qt=/^\s*\|.+\|\s*$/m,Jt=e=>Ft.test(e)||It.test(e)||Lt.test(e)||Rt.test(e)||zt.test(e)||Bt.test(e)||Vt.test(e)||Ht.test(e)||Ut.test(e)||Wt.test(e)||Gt.test(e)||Kt.test(e)||qt.test(e);function Yt(e,t){let{schema:n}=t.state;if(!e.clipboardData)return!1;let r=e.clipboardData.getData(`text/plain`);if(!r||!n.nodes.codeBlock)return!1;let i=e.clipboardData.getData(`vscode-editor-data`),a=(i?JSON.parse(i):void 0)?.mode;return a?(t.pasteHTML(`<pre><code class="language-${a}">${r.replace(/\r\n?/g,`
+ `)}</code></pre>`),!0):!1}function Xt({event:e,editor:t,prioritizeMarkdownOverHTML:n,plainTextAsMarkdown:r}){if(t.transact(e=>e.selection.$from.parent.type.spec.code&&e.selection.$to.parent.type.spec.code)){let n=e.clipboardData?.getData(`text/plain`);if(n)return t.pasteText(n),!0}let i;for(let t of U)if(e.clipboardData.types.includes(t)){i=t;break}if(!i)return!0;if(i===`vscode-editor-data`){if(Yt(e,t.prosemirrorView))return!0;i=`text/plain`}if(i===`Files`)return Nt(e,t),!0;let a=e.clipboardData.getData(i);if(i===`blocknote/html`)return t.pasteHTML(a,!0),!0;if(i===`text/markdown`)return t.pasteMarkdown(a),!0;if(n){let n=e.clipboardData.getData(`text/plain`);if(Jt(n))return t.pasteMarkdown(n),!0}return i===`text/html`?(t.pasteHTML(a),!0):r?(t.pasteMarkdown(a),!0):(t.pasteText(a),!0)}var Zt=(e,t)=>s.Extension.create({name:`pasteFromClipboard`,addProseMirrorPlugins(){return[new c.Plugin({props:{handleDOMEvents:{paste(n,r){if(r.preventDefault(),e.isEditable)return t({event:r,editor:e,defaultPasteHandler:({prioritizeMarkdownOverHTML:t=!0,plainTextAsMarkdown:n=!0}={})=>Xt({event:r,editor:e,prioritizeMarkdownOverHTML:t,plainTextAsMarkdown:n})})}}}})]}});function Qt(t,r,i){let a=!1,o=t.state.selection instanceof u.CellSelection;if(!o){let e=t.state.doc.slice(t.state.selection.from,t.state.selection.to,!1).content,n=[];for(let t=0;t<e.childCount;t++)n.push(e.child(t));a=n.find(e=>e.type.isInGroup(`bnBlock`)||e.type.name===`blockGroup`||e.type.spec.group===`blockContent`)===void 0,a&&(r=e)}let s,c=n.F(t.state.schema,i);if(o){r.firstChild?.type.name===`table`&&(r=r.firstChild.content);let t=e.Sn(r,i.schema.inlineContentSchema,i.schema.styleSchema);s=`<table>${c.exportInlineContent(t,{})}</table>`}else if(a){let t=e.xn(r,i.schema.inlineContentSchema,i.schema.styleSchema);s=c.exportInlineContent(t,{})}else{let e=n.y(r);s=c.exportBlocks(e,{})}return s}function W(e,t){`node`in e.state.selection&&e.state.selection.node.type.spec.group===`blockContent`&&t.transact(t=>t.setSelection(new c.NodeSelection(t.doc.resolve(e.state.selection.from-1))));let r=e.serializeForClipboard(e.state.selection.content()).dom.innerHTML,i=e.state.selection.content().content,a=Qt(e,i,t),{$from:o,$to:s}=e.state.selection,l=o.parent.type.name,u=t.blockImplementations[l];return{clipboardHTML:r,externalHTML:a,markdown:o.sameParent(s)&&u?.implementation.meta?.code===!0?e.state.doc.textBetween(o.pos,s.pos):n.x(a)}}var $t=e=>{if(e.state.selection.empty)return!0;let t=window.getSelection();if(t&&!t.isCollapsed){let e=t.focusNode;for(;e;){if(e instanceof HTMLElement&&e.getAttribute(`contenteditable`)===`false`)return!0;e=e.parentElement}}return!1},en=(e,t,n)=>{n.preventDefault(),n.clipboardData.clearData();let{clipboardHTML:r,externalHTML:i,markdown:a}=W(t,e);n.clipboardData.setData(`blocknote/html`,r),n.clipboardData.setData(`text/html`,i),n.clipboardData.setData(`text/plain`,a)},tn=e=>s.Extension.create({name:`copyToClipboard`,addProseMirrorPlugins(){return[new c.Plugin({props:{handleDOMEvents:{copy(t,n){return $t(t)||en(e,t,n),!0},cut(t,n){return $t(t)?!0:(en(e,t,n),t.editable&&t.dispatch(t.state.tr.deleteSelection()),!0)},dragstart(t,n){if(!(`node`in t.state.selection)||t.state.selection.node.type.spec.group!==`blockContent`)return;e.transact(e=>e.setSelection(new c.NodeSelection(e.doc.resolve(t.state.selection.from-1)))),n.preventDefault(),n.dataTransfer.clearData();let{clipboardHTML:r,externalHTML:i,markdown:a}=W(t,e);return n.dataTransfer.setData(`blocknote/html`,r),n.dataTransfer.setData(`text/html`,i),n.dataTransfer.setData(`text/plain`,a),!0}}}})]}}),nn=s.Extension.create({name:`blockBackgroundColor`,addGlobalAttributes(){return[{types:[`tableCell`,`tableHeader`],attributes:{backgroundColor:e.Ct()}}]}}),rn=s.Node.create({name:`hardBreak`,inline:!0,group:`inline`,selectable:!1,linebreakReplacement:!0,priority:10,parseHTML(){return[{tag:`br`}]},renderHTML({HTMLAttributes:e}){return[`br`,(0,s.mergeAttributes)(this.options.HTMLAttributes,e)]},renderText(){return`
+ `}}),an=(t,n)=>{let r=t.resolve(n),i=r.depth-1;if(i<1)return;let a=r.before(i),o=t.resolve(a).nodeAfter;if(o)return o.type.spec.group?.includes(`bnBlock`)?e.tr(t.resolve(a)):an(t,a)},G=(t,n)=>{let r=t.resolve(n),i=r.index();if(i===0)return;let a=r.posAtIndex(i-1);return e.tr(t.resolve(a))},K=(t,n)=>{let r=t.resolve(n),i=r.index();if(i===r.node().childCount-1)return;let a=r.posAtIndex(i+1);return e.tr(t.resolve(a))},q=(t,n)=>{for(;n.childContainer;){let r=n.childContainer.node,i=t.resolve(n.childContainer.beforePos+1).posAtIndex(r.childCount-1);n=e.tr(t.resolve(i))}return n},on=(e,t)=>e.isBlockContainer&&e.blockContent.node.type.spec.content===`inline*`&&e.blockContent.node.childCount>0&&t.isBlockContainer&&t.blockContent.node.type.spec.content===`inline*`,sn=(e,t,n,r)=>{if(!r.isBlockContainer)throw Error(`Attempted to merge block at position ${r.bnBlock.beforePos} into previous block at position ${n.bnBlock.beforePos}, but next block is not a block container`);if(r.childContainer){let n=e.doc.resolve(r.childContainer.beforePos+1),i=e.doc.resolve(r.childContainer.afterPos-1),a=n.blockRange(i);if(t){let t=e.doc.resolve(r.bnBlock.beforePos);e.tr.lift(a,t.depth)}}if(t){if(!n.isBlockContainer)throw Error(`Attempted to merge block at position ${r.bnBlock.beforePos} into previous block at position ${n.bnBlock.beforePos}, but previous block is not a block container`);t(e.tr.delete(n.blockContent.afterPos-1,r.blockContent.beforePos+1))}return!0},cn=t=>({state:n,dispatch:r})=>{let i=n.doc.resolve(t),a=e.tr(i),o=G(n.doc,a.bnBlock.beforePos);if(!o)return!1;let s=q(n.doc,o);return on(s,a)?sn(n,r,s,a):!1},ln=s.Extension.create({priority:50,addKeyboardShortcuts(){let t=()=>this.editor.commands.first(({chain:t,commands:n})=>[()=>n.deleteSelection(),()=>n.undoInputRule(),()=>n.command(({state:t})=>{let r=e.nr(t);if(!r.isBlockContainer)return!1;let i=t.selection.from===r.blockContent.beforePos+1,a=r.blockContent.node.type.name===`paragraph`;return i&&!a?n.command(e.jt(r.bnBlock.beforePos,{type:`paragraph`,props:{}})):!1}),()=>n.command(({state:t,tr:n})=>{let r=e.nr(t);if(!r.isBlockContainer)return!1;let{blockContent:i}=r;return t.selection.from===i.beforePos+1&&D(n,n.doc.type.schema.nodes.blockContainer,n.doc.type.schema.nodes.blockGroup)}),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer)return!1;let{bnBlock:i,blockContent:a}=r,o=G(n.doc,r.bnBlock.beforePos);if(!o||!o.isBlockContainer||o.blockContent.node.type.spec.content!==`inline*`)return!1;let s=n.selection.from===a.beforePos+1,c=n.selection.empty,l=i.beforePos;return s&&c?t().command(cn(l)).scrollIntoView().run():!1}),()=>n.command(({state:t,tr:n,dispatch:r})=>{let i=e.nr(t);if(!i.isBlockContainer||t.selection.from!==i.blockContent.beforePos+1)return!1;let a=G(t.doc,i.bnBlock.beforePos);if(!a||a.isBlockContainer)return!1;if(r){let e=a.bnBlock.afterPos-1,t=n.doc.resolve(e-1);return n.delete(i.bnBlock.beforePos,i.bnBlock.afterPos),n.insert(t.pos,i.bnBlock.node),n.setSelection(c.TextSelection.near(n.doc.resolve(t.pos+1))),!0}return!1}),()=>n.command(({state:t,tr:n,dispatch:r})=>{let i=e.nr(t);if(!i.isBlockContainer||n.selection.from!==i.blockContent.beforePos+1)return!1;let a=n.doc.resolve(i.bnBlock.beforePos);if(a.nodeBefore||a.node().type.name!==`column`)return!1;let o=n.doc.resolve(i.bnBlock.beforePos),s=n.doc.resolve(o.before()),l=s.before();return r&&(n.delete(i.bnBlock.beforePos,i.bnBlock.afterPos),x(n,l),s.pos===l+1?(n.insert(l,i.bnBlock.node),n.setSelection(c.TextSelection.near(n.doc.resolve(l)))):(n.insert(s.pos-1,i.bnBlock.node),n.setSelection(c.TextSelection.near(n.doc.resolve(s.pos))))),!0}),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer)return!1;if(r.blockContent.node.childCount===0&&r.blockContent.node.type.spec.content===`inline*`){let e=G(n.doc,r.bnBlock.beforePos);if(!e)return!1;let i=q(n.doc,e);if(!i.isBlockContainer||!i||!i.isBlockContainer)return!1;let a=t();if(r.childContainer&&a.insertContentAt(r.bnBlock.afterPos,r.childContainer?.node.content),i.blockContent.node.type.spec.content===`tableRow+`){let e=r.bnBlock.beforePos-1-1-1-1-1;a=a.setTextSelection(e)}else if(i.blockContent.node.type.spec.content===``)a=a.setNodeSelection(i.blockContent.beforePos);else{let e=i.blockContent.afterPos-1;a=a.setTextSelection(e)}return a.deleteRange({from:r.bnBlock.beforePos,to:r.bnBlock.afterPos}).scrollIntoView().run()}return!1}),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer)return!1;let i=n.selection.from===r.blockContent.beforePos+1,a=n.selection.empty,o=G(n.doc,r.bnBlock.beforePos);if(o&&i&&a){let e=q(n.doc,o);if(!e.isBlockContainer)return!1;if(e.blockContent.node.type.spec.content===``||e.blockContent.node.type.spec.content===`inline*`&&e.blockContent.node.childCount===0)return t().cut({from:r.bnBlock.beforePos,to:r.bnBlock.afterPos},e.bnBlock.afterPos).deleteRange({from:e.bnBlock.beforePos,to:e.bnBlock.afterPos}).run()}return!1})]),n=()=>this.editor.commands.first(({chain:t,commands:n})=>[()=>n.deleteSelection(),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer||!r.childContainer)return!1;let{blockContent:i,childContainer:o}=r,s=n.selection.from===i.afterPos-1,c=n.selection.empty,l=e.tr(n.doc.resolve(o.beforePos+1));if(!l.isBlockContainer)return!1;if(s&&c){let e=l.blockContent.node,r=e.type.spec.content===`inline*`,s=i.node.type.spec.content===`inline*`;return t().insertContentAt(l.bnBlock.afterPos,l.childContainer?.node.content||a.Fragment.empty).deleteRange(o.node.childCount===1?{from:o.beforePos,to:o.afterPos}:{from:l.bnBlock.beforePos,to:l.bnBlock.afterPos}).insertContentAt(n.selection.from,r&&s?e.content:null).setTextSelection(n.selection.from).scrollIntoView().run()}return!1}),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer)return!1;let{bnBlock:i,blockContent:a}=r,o=K(n.doc,r.bnBlock.beforePos);if(!o||!o.isBlockContainer)return!1;let s=n.selection.from===a.afterPos-1,c=n.selection.empty,l=i.afterPos;return s&&c?t().command(cn(l)).scrollIntoView().run():!1}),()=>n.command(({state:t,tr:n,dispatch:r})=>{let i=e.nr(t);if(!i.isBlockContainer||t.selection.from!==i.blockContent.afterPos-1)return!1;let a=K(t.doc,i.bnBlock.beforePos);if(!a||a.isBlockContainer)return!1;if(r){let e=a.bnBlock.beforePos+1,t=n.doc.resolve(e+1);return n.delete(t.pos,t.pos+t.nodeAfter.nodeSize),x(n,a.bnBlock.beforePos),n.insert(i.bnBlock.afterPos,t.nodeAfter),n.setSelection(c.TextSelection.near(n.doc.resolve(t.pos))),!0}return!1}),()=>n.command(({state:t,tr:n,dispatch:r})=>{let i=e.nr(t);if(!i.isBlockContainer||n.selection.from!==i.blockContent.afterPos-1)return!1;let a=n.doc.resolve(i.bnBlock.afterPos);if(a.nodeAfter||a.node().type.name!==`column`)return!1;let o=n.doc.resolve(i.bnBlock.afterPos),s=n.doc.resolve(o.after()),l=s.after();if(r){let t=s.pos===l-1?l:s.pos+1,r=e.tr(n.doc.resolve(t));n.delete(r.bnBlock.beforePos,r.bnBlock.afterPos),x(n,l-s.node().nodeSize),n.insert(o.pos,r.bnBlock.node),n.setSelection(c.TextSelection.near(n.doc.resolve(t)))}return!0}),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer)return!1;let{blockContent:i}=r,o=n.selection.from===i.afterPos-1,s=n.selection.empty;if(o&&s){let e=(t,n)=>{let r=K(t,n);if(r)return r;let i=an(t,n);if(i)return e(t,i.bnBlock.beforePos)},o=e(n.doc,r.bnBlock.beforePos);if(!o||!o.isBlockContainer)return!1;let s=o.blockContent.node,c=s.type.spec.content===`inline*`,l=i.node.type.spec.content===`inline*`;return t().insertContentAt(o.bnBlock.afterPos,o.childContainer?.node.content||a.Fragment.empty).deleteRange({from:o.bnBlock.beforePos,to:o.bnBlock.afterPos}).insertContentAt(n.selection.from,c&&l?s.content:null).setTextSelection(n.selection.from).scrollIntoView().run()}return!1}),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer)return!1;if(r.blockContent.node.childCount===0&&r.blockContent.node.type.spec.content===`inline*`){let e=K(n.doc,r.bnBlock.beforePos);if(!e||!e.isBlockContainer)return!1;let i=t();if(e.blockContent.node.type.spec.content===`tableRow+`){let e=r.bnBlock.afterPos+1+1+1+1+1;i=i.setTextSelection(e)}else i=e.blockContent.node.type.spec.content===``?i.setNodeSelection(e.blockContent.beforePos):i.setTextSelection(e.blockContent.beforePos+1);return i.deleteRange({from:r.bnBlock.beforePos,to:r.bnBlock.afterPos}).scrollIntoView().run()}return!1}),()=>n.command(({state:n})=>{let r=e.nr(n);if(!r.isBlockContainer)return!1;let i=n.selection.from===r.blockContent.afterPos-1,a=n.selection.empty,o=K(n.doc,r.bnBlock.beforePos);if(!o||!o.isBlockContainer)return!1;if(o&&i&&a&&(o.blockContent.node.type.spec.content===``||o.blockContent.node.type.spec.content===`inline*`&&o.blockContent.node.childCount===0)){let e=o.bnBlock.node.lastChild.content;return t().deleteRange({from:o.bnBlock.beforePos,to:o.bnBlock.afterPos}).insertContentAt(r.bnBlock.afterPos,o.bnBlock.node.childCount===2?e:null).run()}return!1})]),r=(t=!1)=>this.editor.commands.first(({commands:n,tr:r})=>[()=>n.command(({state:t,tr:n})=>{let r=e.nr(t);if(!r.isBlockContainer)return!1;let{bnBlock:i,blockContent:a}=r,{depth:o}=t.doc.resolve(i.beforePos),s=t.selection.$anchor.parentOffset===0,c=t.selection.anchor===t.selection.head,l=a.node.childCount===0;return s&&c&&l&&o>1?D(n,n.doc.type.schema.nodes.blockContainer,n.doc.type.schema.nodes.blockGroup):!1}),()=>n.command(({state:n})=>{let i=e.nr(n),a=this.options.editor.schema.blockSpecs[i.blockNoteType],o=a?.implementation?.meta?.hardBreakShortcut??`shift+enter`;if(o===`none`)return!1;if(o===`shift+enter`&&t||o===`enter`){if(a?.config?.content===`plain`)return r.insertText(`
+ `,r.selection.head),!0;let e=r.storedMarks||r.selection.$head.marks().filter(e=>this.editor.extensionManager.splittableMarks.includes(e.type.name));return r.insert(r.selection.head,r.doc.type.schema.nodes.hardBreak.create()).ensureMarks(e),!0}return!1}),()=>n.command(({state:t,dispatch:n,tr:r})=>{let i=e.nr(t);if(!i.isBlockContainer)return!1;let{bnBlock:a,blockContent:o}=i,s=t.selection.$anchor.parentOffset===0,l=t.selection.anchor===t.selection.head,u=o.node.childCount===0;if(s&&l&&u){let e=a.afterPos,o=e+2;if(n){let n=t.schema.nodes.blockContainer.createAndFill(void 0,[t.schema.nodes.paragraph.createAndFill()||void 0,i.childContainer?.node].filter(e=>e!==void 0));r.insert(e,n).setSelection(new c.TextSelection(r.doc.resolve(o))).scrollIntoView(),i.childContainer&&r.delete(i.childContainer.beforePos,i.childContainer.afterPos)}return!0}return!1}),()=>n.command(({state:t,chain:n})=>{let r=e.nr(t);if(!r.isBlockContainer)return!1;let{blockContent:i}=r,a=t.selection.$anchor.parentOffset===0;return i.node.childCount!==0&&(n().deleteSelection().command(e.W(t.selection.from,a,a)).scrollIntoView().run(),!0)})]);return{Backspace:t,Delete:n,Enter:()=>r(),"Shift-Enter":()=>r(!0),Tab:()=>this.options.tabBehavior!==`prefer-indent`&&(this.options.editor.getExtension(e.m)?.store.state||this.options.editor.getExtension(e.bt)?.store.state!==void 0)?!1:Ae(this.options.editor),"Shift-Tab":()=>this.options.tabBehavior!==`prefer-indent`&&(this.options.editor.getExtension(e.m)?.store.state||this.options.editor.getExtension(e.bt)?.store.state!==void 0)?!1:Me(this.options.editor),"Shift-Mod-ArrowUp":()=>(this.options.editor.moveBlocksUp(),!0),"Shift-Mod-ArrowDown":()=>(this.options.editor.moveBlocksDown(),!0),"Mod-z":()=>this.options.editor.undo(),"Mod-y":()=>this.options.editor.redo(),"Shift-Mod-z":()=>this.options.editor.redo()}}}),un=s.Extension.create({name:`textAlignment`,addGlobalAttributes(){return[{types:[`tableCell`,`tableHeader`],attributes:{textAlignment:{default:`left`,parseHTML:e=>e.getAttribute(`data-text-alignment`),renderHTML:e=>e.textAlignment===`left`?{}:{"data-text-alignment":e.textAlignment}}}}]}}),dn=s.Extension.create({name:`blockTextColor`,addGlobalAttributes(){return[{types:[`table`,`tableCell`,`tableHeader`],attributes:{textColor:e.Tt()}}]}}),fn=`aaa1rp3bb0ott3vie4c1le2ogado5udhabi7c0ademy5centure6ountant0s9o1tor4d0s1ult4e0g1ro2tna4f0l1rica5g0akhan5ency5i0g1rbus3force5tel5kdn3l0ibaba4pay4lfinanz6state5y2sace3tom5m0azon4ericanexpress7family11x2fam3ica3sterdam8nalytics7droid5quan4z2o0l2partments8p0le4q0uarelle8r0ab1mco4chi3my2pa2t0e3s0da2ia2sociates9t0hleta5torney7u0ction5di0ble3o3spost5thor3o0s4w0s2x0a2z0ure5ba0by2idu3namex4d1k2r0celona5laycard4s5efoot5gains6seball5ketball8uhaus5yern5b0c1t1va3cg1n2d1e0ats2uty4er2rlin4st0buy5t2f1g1h0arti5i0ble3d1ke2ng0o3o1z2j1lack0friday9ockbuster8g1omberg7ue3m0s1w2n0pparibas9o0ats3ehringer8fa2m1nd2o0k0ing5sch2tik2on4t1utique6x2r0adesco6idgestone9oadway5ker3ther5ussels7s1t1uild0ers6siness6y1zz3v1w1y1z0h3ca0b1fe2l0l1vinklein9m0era3p2non3petown5ital0one8r0avan4ds2e0er0s4s2sa1e1h1ino4t0ering5holic7ba1n1re3c1d1enter4o1rn3f0a1d2g1h0anel2nel4rity4se2t2eap3intai5ristmas6ome4urch5i0priani6rcle4sco3tadel4i0c2y3k1l0aims4eaning6ick2nic1que6othing5ud3ub0med6m1n1o0ach3des3ffee4llege4ogne5m0mbank4unity6pany2re3uter5sec4ndos3struction8ulting7tact3ractors9oking4l1p2rsica5untry4pon0s4rses6pa2r0edit0card4union9icket5own3s1uise0s6u0isinella9v1w1x1y0mru3ou3z2dad1nce3ta1e1ing3sun4y2clk3ds2e0al0er2s3gree4livery5l1oitte5ta3mocrat6ntal2ist5si0gn4v2hl2iamonds6et2gital5rect0ory7scount3ver5h2y2j1k1m1np2o0cs1tor4g1mains5t1wnload7rive4tv2ubai3pont4rban5vag2r2z2earth3t2c0o2deka3u0cation8e1g1mail3erck5nergy4gineer0ing9terprises10pson4quipment8r0icsson6ni3s0q1tate5t1u0rovision8s2vents5xchange6pert3osed4ress5traspace10fage2il1rwinds6th3mily4n0s2rm0ers5shion4t3edex3edback6rrari3ero6i0delity5o2lm2nal1nce1ial7re0stone6mdale6sh0ing5t0ness6j1k1lickr3ghts4r2orist4wers5y2m1o0o0d1tball6rd1ex2sale4um3undation8x2r0ee1senius7l1ogans4ntier7tr2ujitsu5n0d2rniture7tbol5yi3ga0l0lery3o1up4me0s3p1rden4y2b0iz3d0n2e0a1nt0ing5orge5f1g0ee3h1i0ft0s3ves2ing5l0ass3e1obal2o4m0ail3bh2o1x2n1odaddy5ld0point6f2odyear5g0le4p1t1v2p1q1r0ainger5phics5tis4een3ipe3ocery4up4s1t1u0cci3ge2ide2tars5ru3w1y2hair2mburg5ngout5us3bo2dfc0bank7ealth0care8lp1sinki6re1mes5iphop4samitsu7tachi5v2k0t2m1n1ockey4ldings5iday5medepot5goods5s0ense7nda3rse3spital5t0ing5t0els3mail5use3w2r1sbc3t1u0ghes5yatt3undai7ibm2cbc2e1u2d1e0ee3fm2kano4l1m0amat4db2mo0bilien9n0c1dustries8finiti5o2g1k1stitute6urance4e4t0ernational10uit4vestments10o1piranga7q1r0ish4s0maili5t0anbul7t0au2v3jaguar4va3cb2e0ep2tzt3welry6io2ll2m0p2nj2o0bs1urg4t1y2p0morgan6rs3uegos4niper7kaufen5ddi3e0rryhotels6properties14fh2g1h1i0a1ds2m1ndle4tchen5wi3m1n1oeln3matsu5sher5p0mg2n2r0d1ed3uokgroup8w1y0oto4z2la0caixa5mborghini8er3nd0rover6xess5salle5t0ino3robe5w0yer5b1c1ds2ease3clerc5frak4gal2o2xus4gbt3i0dl2fe0insurance9style7ghting6ke2lly3mited4o2ncoln4k2ve1ing5k1lc1p2oan0s3cker3us3l1ndon4tte1o3ve3pl0financial11r1s1t0d0a3u0ndbeck6xe1ury5v1y2ma0drid4if1son4keup4n0agement7go3p1rket0ing3s4riott5shalls7ttel5ba2c0kinsey7d1e0d0ia3et2lbourne7me1orial6n0u2rck0msd7g1h1iami3crosoft7l1ni1t2t0subishi9k1l0b1s2m0a2n1o0bi0le4da2e1i1m1nash3ey2ster5rmon3tgage6scow4to0rcycles9v0ie4p1q1r1s0d2t0n1r2u0seum3ic4v1w1x1y1z2na0b1goya4me2vy3ba2c1e0c1t0bank4flix4work5ustar5w0s2xt0direct7us4f0l2g0o2hk2i0co2ke1on3nja3ssan1y5l1o0kia3rton4w0ruz3tv4p1r0a1w2tt2u1yc2z2obi1server7ffice5kinawa6layan0group9lo3m0ega4ne1g1l0ine5oo2pen3racle3nge4g0anic5igins6saka4tsuka4t2vh3pa0ge2nasonic7ris2s1tners4s1y3y2ccw3e0t2f0izer5g1h0armacy6d1ilips5one2to0graphy6s4ysio5ics1tet2ures6d1n0g1k2oneer5zza4k1l0ace2y0station9umbing5s3m1n0c2ohl2ker3litie5rn2st3r0axi3ess3ime3o0d0uctions8f1gressive8mo2perties3y5tection8u0dential9s1t1ub2w0c2y2qa1pon3uebec3st5racing4dio4e0ad1lestate6tor2y4cipes5d0umbrella9hab3ise0n3t2liance6n0t0als5pair3ort3ublican8st0aurant8view0s5xroth6ich0ardli6oh3l1o1p2o0cks3deo3gers4om3s0vp3u0gby3hr2n2w0e2yukyu6sa0arland6fe0ty4kura4le1on3msclub4ung5ndvik0coromant12ofi4p1rl2s1ve2xo3b0i1s2c0b1haeffler7midt4olarships8ol3ule3warz5ience5ot3d1e0arch3t2cure1ity6ek2lect4ner3rvices6ven3w1x0y3fr2g1h0angrila6rp3ell3ia1ksha5oes2p0ping5uji3w3i0lk2na1gles5te3j1k0i0n2y0pe4l0ing4m0art3ile4n0cf3o0ccer3ial4ftbank4ware6hu2lar2utions7ng1y2y2pa0ce3ort2t3r0l2s1t0ada2ples4r1tebank4farm7c0group6ockholm6rage3e3ream4udio2y3yle4u0cks3pplies3y2ort5rf1gery5zuki5v1watch4iss4x1y0dney4stems6z2tab1ipei4lk2obao4rget4tamotors6r2too4x0i3c0i2d0k2eam2ch0nology8l1masek5nnis4va3f1g1h0d1eater2re6iaa2ckets5enda4ps2res2ol4j0maxx4x2k0maxx5l1m0all4n1o0day3kyo3ols3p1ray3shiba5tal3urs3wn2yota3s3r0ade1ing4ining5vel0ers0insurance16ust3v2t1ube2i1nes3shu4v0s2w1z2ua1bank3s2g1k1nicom3versity8o2ol2ps2s1y1z2va0cations7na1guard7c1e0gas3ntures6risign5sicherung10t2g1i0ajes4deo3g1king4llas4n1p1rgin4sa1ion4va1o3laanderen9n1odka3lvo3te1ing3o2yage5u2wales2mart4ter4ng0gou5tch0es6eather0channel12bcam3er2site5d0ding5ibo2r3f1hoswho6ien2ki2lliamhill9n0dows4e1ners6me2oodside6rk0s2ld3w2s1tc1f3xbox3erox4ihuan4n2xx2yz3yachts4hoo3maxun5ndex5e1odobashi7ga2kohama6u0tube6t1un3za0ppos4ra3ero3ip2m1one3uerich6w2`;function pn(e){let t=[],n=[],r=0;for(;r<e.length;){let i=0;for(;r+i<e.length&&e.charCodeAt(r+i)>=48&&e.charCodeAt(r+i)<=57;)i++;if(i>0){t.push(n.join(``));let a=parseInt(e.substring(r,r+i),10);for(;a-->0;)n.pop();r+=i}else n.push(e[r]),r++}return t}var mn=new Set(pn(fn)),hn=new Set([`localhost`]),gn=/[.,;:!?"']+$/,_n=/(?:https?|ftp|ftps):\/\/[^\s]+/g,vn=/mailto:[^\s]+/g,yn=/[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}/g,bn=/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:[/?#][^\s]*)?/g;function xn(e){let t=e,n=!0;for(;n;){n=!1;let e=t;t=t.replace(gn,``),t!==e&&(n=!0);for(let[e,r]of[[`(`,`)`],[`[`,`]`]])for(;t.endsWith(r);){let i=Sn(t,e);if(Sn(t,r)>i)t=t.slice(0,-1),n=!0;else break}}return t}function Sn(e,t){let n=0;for(let r=0;r<e.length;r++)e[r]===t&&n++;return n}function Cn(e){let t=e.split(`.`);return t[t.length-1].toLowerCase()}function wn(e){let t=Cn(e);return mn.has(t)}function Tn(e,t,n){return t===`email`?`mailto:`+e:/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(e)||/^mailto:/i.test(e)?e:n+`://`+e}function En(e,t){if(!e)return[];let n=t?.defaultProtocol||`http`,r=[];for(let t of e.matchAll(_n))r.push({type:`url`,value:t[0],start:t.index,end:t.index+t[0].length});for(let t of e.matchAll(vn))r.push({type:`url`,value:t[0],start:t.index,end:t.index+t[0].length});for(let t of e.matchAll(yn))r.push({type:`email`,value:t[0],start:t.index,end:t.index+t[0].length});for(let t of e.matchAll(bn))r.push({type:`url`,value:t[0],start:t.index,end:t.index+t[0].length});r.sort((e,t)=>e.start-t.start||t.end-e.end);let i=[],a=-1;for(let e of r)e.start>=a&&(i.push(e),a=e.end);let o=[];for(let e of i){let t=xn(e.value);if(!t)continue;let r=e.start,i=r+t.length;if(e.type===`url`&&!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(t)){let e=new URL(`http://`+t).hostname;if(!wn(e))continue}if(e.type===`email`){let e=t.split(`@`)[1];if(!wn(e))continue}let a=Tn(t,e.type,n);o.push({type:e.type,value:t,isLink:!0,href:a,start:r,end:i})}return o}function Dn(e,t=`http`){if(!e)return[X(e,0,0)];for(let[n,r]of[[`(`,`)`],[`[`,`]`],[`{`,`}`]])if(e.startsWith(n)&&e.endsWith(r)&&e.length>2){let i=e.slice(1,-1);if(J(i))return[X(n,0,1),Y(i,1,1+i.length,t),X(r,1+i.length,e.length)]}if(e.endsWith(`.`)&&e.length>1){let n=e.slice(0,-1);if(J(n))return[Y(n,0,n.length,t),X(`.`,n.length,e.length)]}return J(e)?[Y(e,0,e.length,t)]:[X(e,0,e.length)]}function J(e){if(/^(?:https?|ftp|ftps):\/\/[^\s]+$/.test(e)||/^mailto:[^\s]+$/.test(e)||hn.has(e.toLowerCase()))return!0;let t=e.match(/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+([a-zA-Z]{2,})(?::\d{1,5})?(?:[/?#][^\s]*)?$/);if(t){let e=t[1].toLowerCase();if(mn.has(e))return!0}return!1}function Y(e,t,n,r){let i=e.includes(`@`)&&!e.includes(`://`)&&!e.startsWith(`mailto:`)?`email`:`url`;return{type:i,value:e,isLink:!0,href:Tn(e,i,r),start:t,end:n}}function X(e,t,n){return{type:`text`,value:e,isLink:!1,href:e,start:t,end:n}}var Z=`[\0- \xA0 ᠎ -\u2029 　]`,On=new RegExp(Z),kn=RegExp(`${Z}$`),An=new RegExp(Z,`g`);function jn(e){return e.length===1?e[0].isLink:e.length===3&&e[1].isLink?[`()`,`[]`].includes(e[0].value+e[2].value):!1}function Mn(e){return new d.Plugin({key:new d.PluginKey(`autolink`),appendTransaction:(t,n,r)=>{let i=t.some(e=>e.docChanged)&&!n.doc.eq(r.doc),a=t.some(e=>e.getMeta(`preventAutolink`));if(!i||a)return;let{tr:o}=r,c=(0,s.combineTransactionSteps)(n.doc,[...t]);if((0,s.getChangedRanges)(c).forEach(({newRange:t})=>{let n=(0,s.findChildrenInRange)(r.doc,t,e=>e.isTextblock),i,a;if(n.length>1)i=n[0],a=r.doc.textBetween(i.pos,i.pos+i.node.nodeSize,void 0,` `);else if(n.length){let e=r.doc.textBetween(t.from,t.to,` `,` `);if(!kn.test(e))return;i=n[0],a=r.doc.textBetween(i.pos,t.to,void 0,` `)}if(i&&a){let t=a.split(On).filter(Boolean);if(t.length<=0)return;let n=t[t.length-1],c=i.pos+a.lastIndexOf(n);if(!n)return;let l=Dn(n,e.defaultProtocol);if(!jn(l))return;l.filter(e=>e.isLink).map(e=>({...e,from:c+e.start+1,to:c+e.end+1})).filter(e=>!r.schema.marks.code||!r.doc.rangeHasMark(e.from,e.to,r.schema.marks.code)).filter(t=>e.validate(t.value)).filter(t=>e.shouldAutoLink(t.value)).forEach(t=>{(0,s.getMarksBetween)(t.from,t.to,r.doc).some(t=>t.mark.type===e.type)||o.addMark(t.from,t.to,e.type.create({href:t.href}))})}}),o.steps.length)return o}})}function Nn(e){return new d.Plugin({key:new d.PluginKey(`handleClickLink`),props:{handleClick:(t,n,r)=>{if(r.button!==0||!t.editable)return!1;let i=null;if(r.target instanceof HTMLAnchorElement&&r.target.getAttribute(`data-inline-content-type`)===`link`)i=r.target;else{let t=r.target;if(!t)return!1;let n=e.tiptapEditor.view.dom;i=t.closest(`a[data-inline-content-type="link"]`),i&&!n.contains(i)&&(i=null)}if(!i)return!1;if(e.onClick){if(!e.editor)throw Error(`BlockNoteEditor not found in Link click handler`);return e.onClick(r,e.editor)??!0}let a=(0,s.getAttributes)(t.state,e.type.name),o=i.href??a.href,c=i.target??a.target;return o?(window.open(o,c),!0):!1}}})}function Pn(e){return new d.Plugin({key:new d.PluginKey(`handlePasteLink`),props:{handlePaste:(t,n,r)=>{let{shouldAutoLink:i,isValidLink:a}=e,{state:o}=t,{selection:s}=o,{empty:c}=s;if(c)return!1;let l=``;r.content.forEach(e=>{l+=e.textContent});let u=En(l,{defaultProtocol:e.defaultProtocol}).find(e=>e.isLink&&e.value===l);return!l||!u||!a(u.value)||i!==void 0&&!i(u.value)?!1:e.editor.commands.setMark(e.type,{href:u.href})}}})}var Q=`https`,Fn=/^(?:(?:http|https|ftp|ftps|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z0-9+.\-]+(?:[^a-z+.\-:]|$))/i;function In(e){if(!e)return!0;let t=e.replace(An,``);return Fn.test(t)}function $(e){let t=/^[a-z][a-z0-9+.-]*:\/\//i.test(e),n=/^[a-z][a-z0-9+.-]*:/i.test(e);if(t||n&&!e.includes(`@`))return!0;let r=(e.includes(`@`)?e.split(`@`).pop():e).split(/[/?#:]/)[0];return!(/^\d{1,3}(\.\d{1,3}){3}$/.test(r)||!/\./.test(r))}var Ln=s.Mark.create({name:`link`,keepOnSplit:!1,exitable:!0,inclusive:!1,addOptions(){return{HTMLAttributes:{target:`_blank`,rel:`noopener noreferrer nofollow`,className:`bn-inline-content-section`,"data-inline-content-type":`link`},editor:void 0,onClick:void 0,isValidLink:In}},addAttributes(){return{href:{default:null,parseHTML(e){return e.getAttribute(`href`)}}}},parseHTML(){let e=this.options.isValidLink;return[{tag:`a[href]`,getAttrs:t=>{let n=t.getAttribute(`href`);return!n||!e(n)?!1:null}}]},renderHTML({HTMLAttributes:e}){return this.options.isValidLink(e.href)?[`a`,(0,s.mergeAttributes)(e,this.options.HTMLAttributes),0]:[`a`,(0,s.mergeAttributes)({...e,href:``},this.options.HTMLAttributes),0]},addPasteRules(){let e=this.options.isValidLink;return[(0,s.markPasteRule)({find:t=>{let n=[];if(t){let r=En(t,{defaultProtocol:Q}).filter(t=>t.isLink&&e(t.value));for(let e of r)$(e.value)&&n.push({text:e.value,data:{href:e.href},index:e.start})}return n},type:this.type,getAttributes:e=>({href:e.data?.href})})]},addProseMirrorPlugins(){let e=[];return e.push(Mn({type:this.type,defaultProtocol:Q,validate:this.options.isValidLink,shouldAutoLink:$})),e.push(Nn({type:this.type,tiptapEditor:this.editor,editor:this.options.editor,onClick:this.options.onClick})),e.push(Pn({editor:this.editor,defaultProtocol:Q,type:this.type,shouldAutoLink:$,isValidLink:this.options.isValidLink})),e}}),Rn=t.t(({editor:e,options:t})=>({key:`link`,tiptapExtensions:[Ln.configure({HTMLAttributes:t.HTMLAttributes??{},editor:e,onClick:t.onClick,...t.isValidLink?{isValidLink:t.isValidLink}:{}})]})),zn={blockColor:`data-block-color`,blockStyle:`data-block-style`,id:`data-id`,depth:`data-depth`,depthChange:`data-depth-change`},Bn=s.Node.create({name:`blockContainer`,group:`blockGroupChild bnBlock`,content:`blockContent blockGroup?`,priority:50,defining:!0,marks(){return e.O(this.editor)},parseHTML(){return[{tag:`div[data-node-type=`+this.name+`]`,getAttrs:e=>{if(typeof e==`string`)return!1;let t={};for(let[n,r]of Object.entries(zn))e.getAttribute(r)&&(t[n]=e.getAttribute(r));return t}},{tag:`div[data-node-type="blockOuter"]`,skip:!0}]},renderHTML({HTMLAttributes:t}){let n=document.createElement(`div`);n.className=`bn-block-outer`,n.setAttribute(`data-node-type`,`blockOuter`);for(let[e,r]of Object.entries(t))e!==`class`&&n.setAttribute(e,r);let r={...this.options.domAttributes?.block||{},...t},i=document.createElement(`div`);i.className=e.Vn(`bn-block`,r.class),i.setAttribute(`data-node-type`,this.name);for(let[e,t]of Object.entries(r))e!==`class`&&i.setAttribute(e,t);return n.appendChild(i),{dom:n,contentDOM:i}}}),Vn=s.Node.create({name:`blockGroup`,group:`childContainer`,content:`blockGroupChild+`,marks(){return e.O(this.editor)},parseHTML(){return[{tag:`div`,getAttrs:e=>typeof e!=`string`&&e.getAttribute(`data-node-type`)===`blockGroup`&&null}]},renderHTML({HTMLAttributes:t}){let n={...this.options.domAttributes?.blockGroup||{},...t},r=document.createElement(`div`);r.className=e.Vn(`bn-block-group`,n.class),r.setAttribute(`data-node-type`,`blockGroup`);for(let[e,t]of Object.entries(n))e!==`class`&&r.setAttribute(e,t);return{dom:r,contentDOM:r}}}),Hn=s.Node.create({name:`doc`,topNode:!0,content:`blockGroup`,marks(){return e.O(this.editor)}});function Un(t,n){return[s.extensions.ClipboardTextSerializer,s.extensions.Commands,s.extensions.Editable,s.extensions.FocusEvents,s.extensions.Tabindex,g.Gapcursor,e.Qn.configure({types:[`blockContainer`,`columnList`,`column`],setIdAttribute:n.setIdAttribute,isWithinEditor:t.isWithinEditor}),rn,h.Text,...Object.values(t.schema.styleSpecs).map(e=>e.implementation.mark.configure({editor:t})),dn,nn,un,s.Extension.create({name:`OverrideEscape`,addKeyboardShortcuts:()=>({Escape:()=>!t.getExtension(e.f)?.shown()&&(t.blur(),!0)})}),Hn,Bn.configure({editor:t,domAttributes:n.domAttributes}),ln.configure({editor:t,tabBehavior:n.tabBehavior}),Vn.configure({domAttributes:n.domAttributes}),...Object.values(t.schema.inlineContentSpecs).filter(e=>e.config!==`link`&&e.config!==`text`).map(e=>e.implementation.node.configure({editor:t})),...Object.values(t.schema.blockSpecs).flatMap(e=>[...`node`in e.implementation?[e.implementation.node.configure({editor:t,domAttributes:n.domAttributes})]:[]]),tn(t),Zt(t,n.pasteHandler||(e=>e.defaultPasteHandler())),Pt(t)]}function Wn(t,i){let a=[n.N(),n.M(i),e.bt(i),e.m(i),Rn({HTMLAttributes:i.links?.HTMLAttributes??{},onClick:i.links?.onClick,...i.links?.isValidLink?{isValidLink:i.links.isValidLink}:{}}),n.O(i),n.T(),n.w(i),r.r(i),n.g(i),n.h(),n.m(),e.f(i),n.A(),n.k(),n.C(),...i.trailingBlock===!1?[]:[n.s()]];return`table`in t.schema.blockSpecs&&a.push(n.c(i)),i.animations!==!1&&a.push(n.S()),a}var Gn=class{editor;options;disabledExtensions=new Set;extensions=[];abortMap=new Map;extensionFactories=new Map;extensionPlugins=new Map;blockNoteExtensionDependents=new Map;constructor(e,t){this.editor=e,this.options=t,e.onMount(()=>{for(let t of this.extensions)if(t.mount){let n=new window.AbortController,r=t.mount({dom:e.prosemirrorView.dom,root:e.prosemirrorView.root,signal:n.signal});r&&n.signal.addEventListener(`abort`,()=>{r()}),this.abortMap.set(t,n)}}),e.onUnmount(()=>{for(let[e,t]of this.abortMap.entries())this.abortMap.delete(e),t.abort()}),this.disabledExtensions=new Set(t.disableExtensions||[]);for(let e of Wn(this.editor,this.options))this.addExtension(e);for(let e of this.options.extensions??[])this.addExtension(e);for(let e of Object.values(this.editor.schema.blockSpecs))for(let t of e.extensions??[])this.addExtension(t)}registerExtension(e){this.replaceExtension(void 0,e)}addExtension(e,n){let r;if(r=typeof e==`function`?e({editor:this.editor}):e,!(!r||this.disabledExtensions.has(r.key))){if(n){let e=this.blockNoteExtensionDependents.get(r.key);e||(e=new Set,this.blockNoteExtensionDependents.set(r.key,e)),e.add(n)}if(!this.extensions.some(e=>e.key===r.key)){if(typeof e==`function`){let e=r[t.r];typeof e==`function`&&this.extensionFactories.set(e,r)}if(this.extensions.push(r),r.blockNoteExtensions)for(let e of r.blockNoteExtensions)this.addExtension(e,r.key);return r}}}resolveExtensions(e){let t=[];if(typeof e==`function`){let n=this.extensionFactories.get(e);n&&t.push(n)}else if(Array.isArray(e))for(let n of e)t.push(...this.resolveExtensions(n));else if(typeof e==`object`&&`key`in e)t.push(e);else if(typeof e==`string`){let n=this.extensions.find(t=>t.key===e);n&&t.push(n)}return t}unregisterExtension(e){this.replaceExtension(e,[])}replaceExtension(e,t){let n=this.resolveExtensions(e);e&&!n.length&&console.warn(`No extensions found to unregister`,e);let r=!1,i=new Set,a=new Set;for(let t of n)this.extensions=this.extensions.filter(e=>e!==t),this.extensionFactories.forEach((e,n)=>{e===t&&this.extensionFactories.delete(n)}),this.abortMap.get(t)?.abort(),this.abortMap.delete(t),this.extensionPlugins.get(t)?.forEach(e=>{i.add(e);let t=e.spec?.key,n=typeof t==`object`&&t?t.key:t;typeof n==`string`&&a.add(n)}),this.extensionPlugins.delete(t),t.tiptapExtensions&&!r&&(r=!0,console.warn(`Extension ${t.key} has tiptap extensions, but they will not be removed. Please separate the extension into multiple extensions if you want to remove them, or re-initialize the editor.`,e));let o=[].concat(t).filter(Boolean).map(e=>this.addExtension(e)).filter(Boolean),s=[];for(let e of o)e?.tiptapExtensions&&console.warn(`Extension ${e.key} has tiptap extensions, but these cannot be changed after initializing the editor. Please separate the extension into multiple extensions if you want to add them, or re-initialize the editor.`,e),e?.inputRules?.length&&console.warn(`Extension ${e.key} has input rules, but these cannot be changed after initializing the editor. Please separate the extension into multiple extensions if you want to add them, or re-initialize the editor.`,e),this.getProsemirrorPluginsFromExtension(e).plugins.forEach(e=>{s.push(e)});!i.size&&!a.size&&!s.length||this.updatePlugins(e=>[...e.filter(e=>{if(i.has(e))return!1;if(a.size){let t=e.spec?.key,n=typeof t==`object`&&t?t.key:t;if(typeof n==`string`&&a.has(n))return!1}return!0}),...s])}updatePlugins(e){let t=this.editor.prosemirrorState,n=t.reconfigure({plugins:e(t.plugins.slice())});this.editor.prosemirrorView.updateState(n)}getTiptapExtensions(){let t=Un(this.editor,this.options).filter(e=>!this.disabledExtensions.has(e.name)),n=e.Yt(this.extensions.map(e=>{let t=this.blockNoteExtensionDependents.get(e.key);return t?.size?{key:e.key,runsBefore:[...e.runsBefore??[],...t]}:e})),r=new Map;for(let e of this.extensions){e.tiptapExtensions&&t.push(...e.tiptapExtensions);let i=n(e.key),{plugins:a,inputRules:o}=this.getProsemirrorPluginsFromExtension(e);a.length&&t.push(s.Extension.create({name:e.key,priority:i,addProseMirrorPlugins:()=>a})),o.length&&(r.has(i)||r.set(i,[]),r.get(i).push(...o))}t.push(s.Extension.create({name:`blocknote-input-rules`,addProseMirrorPlugins(){let e=[];Array.from(r.keys()).sort((e,t)=>e-t).reverse().forEach(t=>{e.push(...r.get(t))});let t=(0,p.inputRules)({rules:e});return[t,new c.Plugin({props:{handleKeyDown(e,n){if(n.key!==`Enter`||n.shiftKey||n.ctrlKey||n.metaKey||n.altKey)return!1;let{$cursor:r}=e.state.selection;return r?!!t.props.handleTextInput?.call(t,e,r.pos,r.pos,`
+ `,()=>e.state.tr.insertText(`
+ `,r.pos,r.pos)):!1}}})]}}));for(let e of this.options._tiptapOptions?.extensions??[])t.push(e);return t}getProsemirrorPluginsFromExtension(t){let n=[...t.prosemirrorPlugins??[]],r=[];return!t.prosemirrorPlugins?.length&&!Object.keys(t.keyboardShortcuts||{}).length&&!t.inputRules?.length?{plugins:n,inputRules:r}:(this.extensionPlugins.set(t,n),t.inputRules?.length&&r.push(...t.inputRules.map(t=>new p.InputRule(t.find,(n,r,i,a)=>{let o=t.replace({match:r,range:{from:i,to:a},editor:this.editor});if(o){let t=n.tr,r=e.nr(t);return!r.isBlockContainer||this.editor.schema.blockSchema[r.blockNoteType]?.content!==`inline`?null:(t.deleteRange(i,a),e.Mt(t,r.bnBlock.beforePos,o),H(t,e.ar(r.bnBlock.node,t.doc),`start`),t)}return null},{undoable:!0}))),Object.keys(t.keyboardShortcuts||{}).length&&n.push((0,m.keymap)(Object.fromEntries(Object.entries(t.keyboardShortcuts).map(([e,t])=>[e,()=>t({editor:this.editor})])))),{plugins:n,inputRules:r})}getExtensions(){return new Map(this.extensions.map(e=>[e.key,e]))}getExtension(e){if(typeof e==`string`)return this.extensions.find(t=>t.key===e)||void 0;if(typeof e==`function`)return this.extensionFactories.get(e)||void 0;throw Error(`Invalid extension type: ${typeof e}`)}hasExtension(e){return typeof e==`string`?this.extensions.some(t=>t.key===e):typeof e==`object`&&`key`in e?this.extensions.some(t=>t.key===e.key):typeof e==`function`&&this.extensionFactories.has(e)}};function Kn(e,t){let{$from:n,$to:r}=t;if(n.pos>n.start()&&n.pos<e.content.size){let t=e.textBetween(n.pos,n.pos+1);if(/^[\w\p{P}]$/u.test(t)){let t=e.textBetween(n.start(),n.pos).match(/[\w\p{P}]+$/u);t&&(n=e.resolve(n.pos-t[0].length))}}if(r.pos<r.end()&&r.pos>0){let t=e.textBetween(r.pos-1,r.pos);if(/^[\w\p{P}]$/u.test(t)){let t=e.textBetween(r.pos,r.end()).match(/^[\w\p{P}]+/u);t&&(r=e.resolve(r.pos+t[0].length))}}return{$from:n,$to:r,from:n.pos,to:r.pos}}function qn(t){if(t.selection.empty||`node`in t.selection)return;let n=t.doc.resolve(e.ir(t.doc,t.selection.from).posBeforeNode),r=t.doc.resolve(e.ir(t.doc,t.selection.to).posBeforeNode),i=(r,i)=>{let a=n.posAtIndex(r,i),o=t.doc.resolve(a).nodeAfter;if(!o)throw Error(`Error getting selection - node not found at position ${a}`);return e.wn(o,t.doc)},a=[],o=n.sharedDepth(r.pos),s=n.index(o),c=r.index(o);if(n.depth>o){a.push(e.wn(n.nodeAfter,t.doc));for(let e=n.depth;e>o;e--)if(n.node(e).type.isInGroup(`childContainer`)){let t=n.index(e)+1,r=n.node(e).childCount;for(let n=t;n<r;n++)a.push(i(n,e))}}else a.push(i(s,o));for(let e=s+1;e<=c;e++)a.push(i(e,o));if(a.length===0)throw Error(`Error getting selection - selection doesn't span any blocks (${t.selection})`);return{blocks:a}}function Jn(t,n,r){let i=typeof n==`string`?n:n.id,a=typeof r==`string`?r:r.id,o=e.jn(t),s=e.On(o);if(i===a)throw Error(`Attempting to set selection with the same anchor and head blocks (id ${i})`);let l=e.Nt(i,t.doc);if(!l)throw Error(`Block with ID ${i} not found`);let d=e.Nt(a,t.doc);if(!d)throw Error(`Block with ID ${a} not found`);let f=e.$n(l),p=e.$n(d),m=s.blockSchema[f.blockNoteType],h=s.blockSchema[p.blockNoteType];if(!f.isBlockContainer||m.content===`none`)throw Error(`Attempting to set selection anchor in block without content (id ${i})`);if(!p.isBlockContainer||h.content===`none`)throw Error(`Attempting to set selection anchor in block without content (id ${a})`);let g,_;if(m.content===`table`){let e=u.TableMap.get(f.blockContent.node);g=f.blockContent.beforePos+e.positionAt(0,0,f.blockContent.node)+1+2}else g=f.blockContent.beforePos+1;if(h.content===`table`){let e=u.TableMap.get(p.blockContent.node),n=p.blockContent.beforePos+e.positionAt(e.height-1,e.width-1,p.blockContent.node)+1;_=n+t.doc.resolve(n).nodeAfter.nodeSize-2}else _=p.blockContent.afterPos-1;t.setSelection(c.TextSelection.create(t.doc,g,_))}function Yn(t,n=!1){let r=n?Kn(t.doc,t.selection):t.selection,i=r.$from,a=r.$to;for(;a.parentOffset>=a.parent.nodeSize-2&&a.depth>0;)a=t.doc.resolve(a.pos+1);for(;a.parentOffset===0&&a.depth>0;)a=t.doc.resolve(a.pos-1);for(;i.parentOffset===0&&i.depth>0;)i=t.doc.resolve(i.pos-1);for(;i.parentOffset>=i.parent.nodeSize-2&&i.depth>0;)i=t.doc.resolve(i.pos+1);let o=e.En(t.doc.slice(i.pos,a.pos,!0));return{_meta:{startPos:i.pos,endPos:a.pos},...o}}var Xn=class{editor;constructor(e){this.editor=e}getSelection(){return this.editor.transact(e=>qn(e))}getSelectionCutBlocks(e=!1){return this.editor.transact(t=>Yn(t,e))}setSelection(e,t){return this.editor.transact(n=>Jn(n,e,t))}getTextCursorPosition(){return this.editor.transact(e=>kt(e))}setTextCursorPosition(e,t=`start`){return this.editor.transact(n=>H(n,e,t))}getSelectionBoundingBox(){if(!this.editor.prosemirrorView)return;let{selection:e}=this.editor.prosemirrorState,{ranges:t}=e,n=Math.min(...t.map(e=>e.$from.pos)),r=Math.max(...t.map(e=>e.$to.pos));if((0,s.isNodeSelection)(e)){let e=this.editor.prosemirrorView.nodeDOM(n);if(e)return e.getBoundingClientRect()}return(0,s.posToDOMRect)(this.editor.prosemirrorView,n,r).toJSON()}},Zn=class{editor;constructor(e){this.editor=e}activeTransaction=null;can(e){try{return this.isInCan=!0,e()}finally{this.isInCan=!1}}isInCan=!1;exec(e){if(this.activeTransaction)throw Error("`exec` should not be called within a `transact` call, move the `exec` call outside of the `transact` call");if(this.isInCan)return this.canExec(e);let t=this.prosemirrorState,n=this.prosemirrorView;return e(t,e=>this.prosemirrorView.dispatch(e),n)}canExec(e){if(this.activeTransaction)throw Error("`canExec` should not be called within a `transact` call, move the `canExec` call outside of the `transact` call");let t=this.prosemirrorState,n=this.prosemirrorView;return e(t,void 0,n)}transact(e){if(this.activeTransaction)return e(this.activeTransaction);try{this.activeTransaction=this.editor._tiptapEditor.state.tr;let t=e(this.activeTransaction),n=this.activeTransaction;return this.activeTransaction=null,n&&(n.docChanged||n.selectionSet||n.scrolledIntoView||n.storedMarksSet||!n.isGeneric)&&this.prosemirrorView.dispatch(n),t}finally{this.activeTransaction=null}}get prosemirrorState(){if(this.activeTransaction)throw Error("`prosemirrorState` should not be called within a `transact` call, move the `prosemirrorState` call outside of the `transact` call or use `editor.transact` to read the current editor state");return this.editor._tiptapEditor.state}get prosemirrorView(){return this.editor._tiptapEditor.view}isFocused(){return this.prosemirrorView?.hasFocus()||!1}focus(){this.prosemirrorView?.focus()}get isEditable(){if(!this.editor._tiptapEditor){if(!this.editor.headless)throw Error(`no editor, but also not headless?`);return!1}return this.editor._tiptapEditor.isEditable===void 0||this.editor._tiptapEditor.isEditable}set isEditable(e){if(!this.editor._tiptapEditor){if(!this.editor.headless)throw Error(`no editor, but also not headless?`);return}this.editor._tiptapEditor.options.editable!==e&&this.editor._tiptapEditor.setEditable(e)}undo(){let e=this.editor.getExtension(`yUndo`);if(e)return this.exec(e.undoCommand);let t=this.editor.getExtension(`history`);if(t)return this.exec(t.undoCommand);throw Error(`No undo plugin found`)}redo(){let e=this.editor.getExtension(`yUndo`);if(e)return this.exec(e.redoCommand);let t=this.editor.getExtension(`history`);if(t)return this.exec(t.redoCommand);throw Error(`No redo plugin found`)}};function Qn(e,t,n,r={updateSelection:!0}){let{from:i,to:a}=typeof t==`number`?{from:t,to:t}:{from:t.from,to:t.to},o=!0,c=!0,l=``;if(n.forEach(e=>{e.check(),o&&e.isText&&e.marks.length===0?l+=e.text:o=!1,c=c?e.isBlock:!1}),i===a&&c){let{parent:t}=e.doc.resolve(i);t.isTextblock&&!t.type.spec.code&&!t.childCount&&(--i,a+=1)}return o?e.insertText(l,i,a):e.replaceWith(i,a,n),r.updateSelection&&(0,s.selectionToInsertionEnd)(e,e.steps.length-1,-1),!0}var $n=class{editor;constructor(e){this.editor=e}insertInlineContent(t,{updateSelection:n=!1}={}){let r=e.It(t,this.editor.pmSchema);this.editor.transact(e=>{Qn(e,{from:e.selection.from,to:e.selection.to},r,{updateSelection:n})})}getActiveStyles(){return this.editor.transact(e=>{let t={},n=e.selection.$to.marks();for(let e of n){let n=this.editor.schema.styleSchema[e.type.name];if(!n){e.type.name!==`link`&&!e.type.spec.blocknoteIgnore&&console.warn(`mark not found in styleschema`,e.type.name);continue}n.propSchema===`boolean`?t[n.type]=!0:t[n.type]=e.attrs.stringValue}return t})}addStyles(t){for(let[n,r]of Object.entries(t)){let t=this.editor.schema.styleSchema[n];if(!t)throw Error(`style ${n} not found in styleSchema`);if(t.propSchema===`boolean`)this.editor._tiptapEditor.commands.setMark(n);else if(t.propSchema===`string`)this.editor._tiptapEditor.commands.setMark(n,{stringValue:r});else throw new e.Hn(t.propSchema)}}removeStyles(e){for(let t of Object.keys(e))this.editor._tiptapEditor.commands.unsetMark(t)}toggleStyles(t){for(let[n,r]of Object.entries(t)){let t=this.editor.schema.styleSchema[n];if(!t)throw Error(`style ${n} not found in styleSchema`);if(t.propSchema===`boolean`)this.editor._tiptapEditor.commands.toggleMark(n);else if(t.propSchema===`string`)this.editor._tiptapEditor.commands.toggleMark(n,{stringValue:r});else throw new e.Hn(t.propSchema)}}getSelectedText(){return this.editor.transact(e=>e.doc.textBetween(e.selection.from,e.selection.to))}getLinkMarkAtPos(e){return this.editor.transact(t=>{let n=t.doc.resolve(e),r=n.marks().find(e=>e.type.name===`link`);if(!r)return;let i=(0,s.getMarkRange)(n,r.type);if(i)return{href:r.attrs.href,from:i.from,to:i.to,text:t.doc.textBetween(i.from,i.to)}})}getSelectedLinkUrl(){return this.editor.transact(e=>this.getLinkMarkAtPos(e.selection.from)?.href)}createLink(e,t){e!==``&&this.editor.transact(n=>{let{from:r,to:i}=n.selection,a=this.editor.pmSchema.mark(`link`,{href:e});t?n.insertText(t,r,i).addMark(r,r+t.length,a):n.addMark(r,i,a)})}editLink(e,t,n=this.editor.transact(e=>e.selection.anchor)){this.editor.transact(r=>{let{from:i,to:a}=this.getLinkMarkAtPos(n+1)||{from:r.selection.from,to:r.selection.to},o=this.editor.pmSchema.mark(`link`,{href:e});t!==r.doc.textBetween(i,a)&&r.insertText(t,i,a),r.addMark(i,i+t.length,o)}),this.editor.prosemirrorView.focus()}deleteLink(e=this.editor.transact(e=>e.selection.anchor)){this.editor.transact(t=>{let{from:n,to:r}=this.getLinkMarkAtPos(e+1)||{from:t.selection.from,to:t.selection.to};t.removeMark(n,r,this.editor.pmSchema.marks.link).setMeta(`preventAutolink`,!0)}),this.editor.prosemirrorView.focus()}};function er(e){return(0,s.findParentNodeClosestToPos)(e.state.selection.$from,e=>e.type.name===`tableCell`||e.type.name===`tableHeader`)!==void 0}function tr(e,t){let n=t.nodes.hardBreak,r=l.Fragment.empty;return e.forEach(e=>{e.isTextblock&&e.childCount>0?(r=r.append(e.content),r=r.addToEnd(n.create())):e.isText?r=r.addToEnd(e):e.isBlock&&e.childCount>0&&(r=r.append(tr(e.content,t)),r=r.addToEnd(n.create()))}),r.lastChild?.type===n&&(r=r.cut(0,r.size-1)),r}function nr(e,t){let n=[];return e.forEach((e,r,i)=>{i!==t&&n.push(e)}),l.Fragment.from(n)}function rr(e,t){let n=[];for(let r=0;r<e.childCount;r++)if(e.child(r).type.name===`tableRow`){if(n.length>0&&n[n.length-1].type.name===`table`){let t=n[n.length-1],i=t.copy(t.content.addToEnd(e.child(r)));n[n.length-1]=i}else{let i=t.nodes.table.createChecked(void 0,e.child(r));n.push(i)}}else n.push(e.child(r));return e=l.Fragment.from(n),e}function ir(e,t){let n=l.Fragment.from(e.content);n=rr(n,t.state.schema);let r=ar(n,t,e);if(r)return r;if(er(t)){let e=!1;if(n.descendants(t=>{t.type.isInGroup(`tableContent`)&&(e=!0)}),!e&&!t.state.schema.nodes.tableParagraph.validContent(n))return new l.Slice(tr(n,t.state.schema),0,0)}if(!or(n,t))return new l.Slice(n,e.openStart,e.openEnd);for(let e=0;e<n.childCount;e++)if(n.child(e).type.spec.group===`blockContent`){let r=[n.child(e)];if(e+1<n.childCount&&n.child(e+1).type.name===`blockGroup`){let t=n.child(e+1).child(0).child(0);(t.type.name===`bulletListItem`||t.type.name===`numberedListItem`||t.type.name===`checkListItem`)&&(r.push(n.child(e+1)),n=nr(n,e+1))}let i=t.state.schema.nodes.blockContainer.createChecked(void 0,r);n=n.replaceChild(e,i)}return new l.Slice(n,e.openStart,e.openEnd)}function ar(t,n,r){if(er(n)||n.dragging)return null;let i=e.nr(n.state),a=i.isBlockContainer?i.blockContent.node:null;if(!a||a.type.name===`paragraph`||a.type.spec.content!==`inline*`||a.childCount>0)return null;let o=t.firstChild,s=o?.firstChild,c=s?.firstChild;if(o?.type.name!==`blockGroup`||s?.type.name!==`blockContainer`||c?.type.name!==`paragraph`)return null;let u=a.type.create(a.attrs,c.content),d=s.copy(s.content.replaceChild(0,u)),f=o.copy(o.content.replaceChild(0,d));return new l.Slice(t.replaceChild(0,f),r.openStart,r.openEnd)}function or(t,n){let r=t.childCount===1,i=t.firstChild?.type.spec.content===`inline*`,a=t.firstChild?.type.spec.content===`tableRow+`;if(r){if(i)return!1;if(a){let t=e.nr(n.state);if(t.isBlockContainer)return t.blockContent.node.type.spec.content!==`tableRow+`}}return!0}var sr={enableInputRules:!0,enablePasteRules:!0,enableCoreExtensions:!1},cr=class t extends w{options;pmSchema;_tiptapEditor;elementRenderer=null;blockCache=new WeakMap;dictionary;schema;blockImplementations;inlineContentImplementations;styleImplementations;uploadFile;onUploadStartCallbacks=[];onUploadEndCallbacks=[];resolveFileUrl;settings;static create(e){return new t(e??{})}constructor(t){super(),this.options=t,this.dictionary=t.dictionary||i.t,this.settings={tables:{splitCells:t?.tables?.splitCells??!1,cellBackgroundColor:t?.tables?.cellBackgroundColor??!1,cellTextColor:t?.tables?.cellTextColor??!1,headers:t?.tables?.headers??!1}};let n={defaultStyles:!0,schema:t.schema||e.t.create(),...t,placeholders:{...this.dictionary.placeholders,...t.placeholders}};if(this.schema=n.schema,this.blockImplementations=n.schema.blockSpecs,this.inlineContentImplementations=n.schema.inlineContentSpecs,this.styleImplementations=n.schema.styleSpecs,n.uploadFile){let e=n.uploadFile;this.uploadFile=async(t,n)=>{this.onUploadStartCallbacks.forEach(e=>e.apply(this,[n]));try{return await e(t,n)}finally{this.onUploadEndCallbacks.forEach(e=>e.apply(this,[n]))}}}this.resolveFileUrl=n.resolveFileUrl,this._eventManager=new Be(this),this._extensionManager=new Gn(this,n);let r=this._extensionManager.getTiptapExtensions(),a={...sr,...n._tiptapOptions,element:null,autofocus:n.autofocus??!1,extensions:r,editorProps:{scrollMargin:{top:72,bottom:72,left:0,right:0},...n._tiptapOptions?.editorProps,attributes:{tabIndex:`0`,...n._tiptapOptions?.editorProps?.attributes,...n.domAttributes?.editor,class:e.Vn(`bn-editor`,n.defaultStyles?`bn-default-styles`:``,n.domAttributes?.editor?.class||``)},transformPasted:ir}};try{let t=n.initialContent||[{type:`paragraph`,id:e.Qn.options.generateID()}];if(!Array.isArray(t)||t.length===0)throw Error(`initialContent must be a non-empty array of blocks, received: `+JSON.stringify(t));let r=(0,s.getSchema)(a.extensions);r.cached.blockNoteEditor=this;let i=t.map(t=>e.Ft(t,r,this.schema.styleSchema).toJSON()),o=(0,s.createDocument)({type:`doc`,content:[{type:`blockGroup`,content:i}]},r,a.parseOptions);this._tiptapEditor=new s.Editor({...a,content:o.toJSON()}),this.pmSchema=this._tiptapEditor.schema}catch(e){throw Error("Error creating document from blocks passed as `initialContent`",{cause:e})}this.pmSchema.cached.blockNoteEditor=this,this._tiptapEditor.on(`mount`,()=>{this.headless=!1}),this._tiptapEditor.on(`unmount`,()=>{this.headless=!0}),this._blockManager=new ze(this),this._exportManager=new Ot(this),this._selectionManager=new Xn(this),this._stateManager=new Zn(this),this._styleManager=new $n(this),this.emit(`create`)}_blockManager;_eventManager;_exportManager;_extensionManager;_selectionManager;_stateManager;_styleManager;get extensions(){return this._extensionManager.getExtensions()}exec(e){return this._stateManager.exec(e)}canExec(e){return this._stateManager.canExec(e)}transact(e){return this._stateManager.transact(e)}unregisterExtension=(...e)=>this._extensionManager.unregisterExtension(...e);registerExtension=(...e)=>this._extensionManager.registerExtension(...e);replaceExtension=(...e)=>this._extensionManager.replaceExtension(...e);getExtension=(e=>this._extensionManager.getExtension(e));mount=(e,t)=>{let n=e.getRootNode(),r=typeof ShadowRoot<`u`&&n instanceof ShadowRoot;(t?.portalTarget??e.parentElement??(r?n:document.body)).appendChild(this.portalElement),this._tiptapEditor.mount({mount:e})};unmount=()=>{this.portalElement?.remove(),this._tiptapEditor.unmount()};get prosemirrorState(){return this._stateManager.prosemirrorState}get prosemirrorView(){return this._stateManager.prosemirrorView}get domElement(){if(!this.headless)return this.prosemirrorView?.dom}_portalElement;get portalElement(){if(typeof document>`u`)throw Error(`Portal element accessed, but not available in headless mode`);return this._portalElement||=document.createElement(`div`),this._portalElement}isWithinEditor=e=>!!(this.domElement?.parentElement?.contains(e)||this.portalElement?.contains(e));isFocused(){return this.headless?!1:this.prosemirrorView?.hasFocus()||!1}headless=!0;focus(){this.headless||this.prosemirrorView.focus()}blur(){this.headless||this.domElement?.blur()}onUploadStart(e){return this.onUploadStartCallbacks.push(e),()=>{let t=this.onUploadStartCallbacks.indexOf(e);t>-1&&this.onUploadStartCallbacks.splice(t,1)}}onUploadEnd(e){return this.onUploadEndCallbacks.push(e),()=>{let t=this.onUploadEndCallbacks.indexOf(e);t>-1&&this.onUploadEndCallbacks.splice(t,1)}}get topLevelBlocks(){return this.document}get document(){return this._blockManager.document}getBlock(e){return this._blockManager.getBlock(e)}getPrevBlock(e){return this._blockManager.getPrevBlock(e)}getNextBlock(e){return this._blockManager.getNextBlock(e)}getParentBlock(e){return this._blockManager.getParentBlock(e)}forEachBlock(e,t=!1){this._blockManager.forEachBlock(e,t)}onEditorContentChange(e){this._tiptapEditor.on(`update`,e)}onEditorSelectionChange(e){this._tiptapEditor.on(`selectionUpdate`,e)}onBeforeChange(e){return this._extensionManager.getExtension(n.N).subscribe(e)}getTextCursorPosition(){return this._selectionManager.getTextCursorPosition()}setTextCursorPosition(e,t=`start`){return this._selectionManager.setTextCursorPosition(e,t)}getSelection(){return this._selectionManager.getSelection()}getSelectionCutBlocks(e=!1){return this._selectionManager.getSelectionCutBlocks(e)}setSelection(e,t){return this._selectionManager.setSelection(e,t)}get isEditable(){return this._stateManager.isEditable}set isEditable(e){this._stateManager.isEditable=e}insertBlocks(e,t,n=`before`){return this._blockManager.insertBlocks(e,t,n)}updateBlock(e,t){return this._blockManager.updateBlock(e,t)}removeBlocks(e){return this._blockManager.removeBlocks(e)}replaceBlocks(e,t){return this._blockManager.replaceBlocks(e,t)}undo(){return this._stateManager.undo()}redo(){return this._stateManager.redo()}insertInlineContent(e,{updateSelection:t=!1}={}){this._styleManager.insertInlineContent(e,{updateSelection:t})}getActiveStyles(){return this._styleManager.getActiveStyles()}addStyles(e){this._styleManager.addStyles(e)}removeStyles(e){this._styleManager.removeStyles(e)}toggleStyles(e){this._styleManager.toggleStyles(e)}getSelectedText(){return this._styleManager.getSelectedText()}getSelectedLinkUrl(){return this._styleManager.getSelectedLinkUrl()}createLink(e,t){this._styleManager.createLink(e,t)}getLinkMarkAtPos(e){return this._styleManager.getLinkMarkAtPos(e)}editLink(e,t,n){this._styleManager.editLink(e,t,n)}deleteLink(e){this._styleManager.deleteLink(e)}canNestBlock(){return this._blockManager.canNestBlock()}nestBlock(){this._blockManager.nestBlock()}canUnnestBlock(){return this._blockManager.canUnnestBlock()}unnestBlock(){this._blockManager.unnestBlock()}moveBlocksUp(e){return this._blockManager.moveBlocksUp(e)}moveBlocksDown(e){return this._blockManager.moveBlocksDown(e)}blocksToHTMLLossy(e=this.document){return this._exportManager.blocksToHTMLLossy(e)}blocksToFullHTML(e=this.document){return this._exportManager.blocksToFullHTML(e)}tryParseHTMLToBlocks(e){return this._exportManager.tryParseHTMLToBlocks(e)}blocksToMarkdownLossy(e=this.document){return this._exportManager.blocksToMarkdownLossy(e)}tryParseMarkdownToBlocks(e){return this._exportManager.tryParseMarkdownToBlocks(e)}onChange(e,t){return this._eventManager.onChange(e,t)}onSelectionChange(e,t){return this._eventManager.onSelectionChange(e,t)}onMount(e){return this._eventManager.onMount(e)}onUnmount(e){return this._eventManager.onUnmount(e)}getSelectionBoundingBox(){return this._selectionManager.getSelectionBoundingBox()}get isEmpty(){let e=this.document;return e.length===0||e.length===1&&e[0].type===`paragraph`&&e[0].content.length===0}pasteHTML(e,t=!1){this._exportManager.pasteHTML(e,t)}pasteText(e){return this._exportManager.pasteText(e)}pasteMarkdown(e){return this._exportManager.pasteMarkdown(e)}},lr=class{mappings;options;constructor(e,t,n){this.mappings=t,this.options=n}get dictionary(){return this.options.dictionary?.exporter??i.t.exporter}async resolveFile(e){if(!this.options?.resolveFileUrl)return this.fetchBlob(e);let t=await this.options.resolveFileUrl(e);return t instanceof Blob?t:this.fetchBlob(t)}async fetchBlob(e){let t=await fetch(e);if(!t.ok)throw Error(`Failed to fetch file "${e}": ${t.status} ${t.statusText}`);return t.blob()}mapStyles(e){return Object.entries(e).map(([e,t])=>{let n=this.mappings.styleMapping[e];if(!n)throw Error(`Exporter is missing a style mapping for style "${e}". If this style comes from a separate package, spread that package's exporter mappings into your styleMapping.`);return n(t,this)})}mapInlineContent(e){let t=this.mappings.inlineContentMapping[e.type];if(!t)throw Error(`Exporter is missing an inline content mapping for inline content type "${e.type}". If this inline content comes from a separate package, spread that package's exporter mappings into your inlineContentMapping.`);return t(e,this)}transformInlineContent(e){return e.map(e=>this.mapInlineContent(e))}async mapBlock(e,t,n,r){let i=this.mappings.blockMapping[e.type];if(!i)throw Error(`Exporter is missing a block mapping for block type "${e.type}". If this block comes from a separate package, spread that package's exporter mappings into your blockMapping.`);return i(e,this,t,n,r)}};function ur(e){if(`toBase64`in e&&typeof e.toBase64==`function`)return e.toBase64();let t=``;for(let n of e)t+=String.fromCharCode(n);return btoa(t)}function dr(e){return`data:${e.mimeType};base64,${ur(e.data)}`}function fr(e){return{createBlockMapping:e=>e,createInlineContentMapping:e=>e,createStyleMapping:e=>e}}function pr(e,...t){let n=[...e];for(let e of t)for(let t of e){let e=n.findLastIndex(e=>e.group===t.group);e===-1?n.push(t):n.splice(e+1,0,t)}return n}Object.defineProperty(exports,"A",{enumerable:!0,get:function(){return _}}),Object.defineProperty(exports,"C",{enumerable:!0,get:function(){return S}}),Object.defineProperty(exports,"D",{enumerable:!0,get:function(){return v}}),Object.defineProperty(exports,"E",{enumerable:!0,get:function(){return b}}),Object.defineProperty(exports,"O",{enumerable:!0,get:function(){return ie}}),Object.defineProperty(exports,"S",{enumerable:!0,get:function(){return he}}),Object.defineProperty(exports,"T",{enumerable:!0,get:function(){return y}}),Object.defineProperty(exports,"_",{enumerable:!0,get:function(){return ve}}),Object.defineProperty(exports,"a",{enumerable:!0,get:function(){return lr}}),Object.defineProperty(exports,"b",{enumerable:!0,get:function(){return C}}),Object.defineProperty(exports,"c",{enumerable:!0,get:function(){return W}}),Object.defineProperty(exports,"d",{enumerable:!0,get:function(){return O}}),Object.defineProperty(exports,"f",{enumerable:!0,get:function(){return Fe}}),Object.defineProperty(exports,"g",{enumerable:!0,get:function(){return w}}),Object.defineProperty(exports,"h",{enumerable:!0,get:function(){return Ie}}),Object.defineProperty(exports,"i",{enumerable:!0,get:function(){return dr}}),Object.defineProperty(exports,"k",{enumerable:!0,get:function(){return re}}),Object.defineProperty(exports,"l",{enumerable:!0,get:function(){return Dt}}),Object.defineProperty(exports,"m",{enumerable:!0,get:function(){return Re}}),Object.defineProperty(exports,"n",{enumerable:!0,get:function(){return fr}}),Object.defineProperty(exports,"o",{enumerable:!0,get:function(){return cr}}),Object.defineProperty(exports,"p",{enumerable:!0,get:function(){return Le}}),Object.defineProperty(exports,"r",{enumerable:!0,get:function(){return ur}}),Object.defineProperty(exports,"s",{enumerable:!0,get:function(){return Kn}}),Object.defineProperty(exports,"t",{enumerable:!0,get:function(){return pr}}),Object.defineProperty(exports,"u",{enumerable:!0,get:function(){return V}}),Object.defineProperty(exports,"v",{enumerable:!0,get:function(){return ye}}),Object.defineProperty(exports,"w",{enumerable:!0,get:function(){return x}}),Object.defineProperty(exports,"x",{enumerable:!0,get:function(){return be}}),Object.defineProperty(exports,"y",{enumerable:!0,get:function(){return _e}});
+-//# sourceMappingURL=src-C54Ok9E0.cjs.map
+\ No newline at end of file
++//# sourceMappingURL=src-C54Ok9E0.cjs.map
++
++// Memry: `/^(#{1,6})\s+(.+?)(?:\s+#+\s*|\s*)$/` took cubic time on a long line of blanks; same match, linear.
++function memryMatchHeading(line) {
++  const blank = /\s/;
++  const lineEnd = /[\n\r\u2028\u2029]/;
++  const length = line.length;
++  let level = 0;
++  while (level < 6 && line[level] === "#") level++;
++  if (level === 0 || level >= length || !blank.test(line[level])) return null;
++  let blanksEnd = level;
++  while (blanksEnd < length && blank.test(line[blanksEnd])) blanksEnd++;
++  let trailing = length;
++  while (trailing > 0 && blank.test(line[trailing - 1])) trailing--;
++  let hashes = trailing;
++  while (hashes > 0 && line[hashes - 1] === "#") hashes--;
++  let before = hashes;
++  while (before > 0 && blank.test(line[before - 1])) before--;
++  const closing = hashes < trailing && before < hashes;
++  let lineEndAt = length;
++  for (let at = blanksEnd; at < length; at++) {
++    if (lineEnd.test(line[at])) {
++      lineEndAt = at;
++      break;
++    }
++  }
++  for (let start = blanksEnd; start > level; start--) {
++    if (lineEnd.test(line[start] ?? "")) lineEndAt = start;
++    const least = start + 1;
++    if (least > length) continue;
++    const end = closing && least <= hashes - 1 ? Math.max(least, before) : Math.max(least, trailing);
++    if (lineEndAt >= end) return [line, line.slice(0, level), line.slice(start, end)];
++  }
++  return null;
++}
++
++// Memry: the inline parser read to the end of the text for every opener that never closes, and
++// copied everything written so far for every hard break. What follows keeps each answer once.
++// The caches hold the texts one outermost parseInline call reads, and are dropped when it returns.
++var memryInlineCaches = new Map();
++var memryInsideInline = false;
++function memryInlineCache(text) {
++  let cache = memryInlineCaches.get(text);
++  if (!cache) {
++    cache = { dead: new Map(), partners: new Map(), noCloser: new Map() };
++    memryInlineCaches.set(text, cache);
++  }
++  return cache;
++}
++// The first position at or after `afterOpen` where `delimiter` closes an emphasis, or -1. Whether a
++// position closes does not depend on the opener, except that it cannot close right at `afterOpen`
++// (an empty emphasis), so a walk that finds none marks every position it visited, and a later
++// opener stops at the first of them.
++function memryFindCloser(text, afterOpen, delimiter) {
++  const cache = memryInlineCache(text);
++  let dead = cache.dead.get(delimiter);
++  const length = delimiter.length;
++  const closes = (at) =>
++    text.startsWith(delimiter, at) &&
++    text[at - 1] !== " " &&
++    text[at - 1] !== "\t" &&
++    !(
++      length === 1 &&
++      ((at > 0 && text[at - 1] === delimiter[0] && !(at >= 2 && text[at - 2] === "\\")) ||
++        (at + length < text.length && text[at + length] === delimiter[0]))
++    );
++  let end = text.length;
++  let at = afterOpen;
++  while (at < text.length) {
++    if (dead !== undefined && dead[at] === 1) {
++      end = at;
++      break;
++    }
++    if (text[at] === "\\" && at + 1 < text.length) {
++      at += 2;
++      continue;
++    }
++    if (closes(at) && at !== afterOpen) return at;
++    at++;
++  }
++  if (dead === undefined) {
++    dead = new Uint8Array(text.length);
++    cache.dead.set(delimiter, dead);
++  }
++  for (at = afterOpen; at < end; ) {
++    if (!(at === afterOpen && closes(at))) dead[at] = 1;
++    at += text[at] === "\\" && at + 1 < text.length ? 2 : 1;
++  }
++  return -1;
++}
++// The `close` that balances the `open` at `openPos` (which is always an `open`), or -1. One pass from
++// the first opener asked about pairs every opener after it with a stack, and a scan from any of them
++// reads the same characters to the same answer.
++function memryClosing(text, openPos, open, close) {
++  const cache = memryInlineCache(text);
++  let partners = cache.partners.get(open);
++  if (partners === undefined) {
++    partners = new Int32Array(text.length).fill(-2);
++    cache.partners.set(open, partners);
++  }
++  if (partners[openPos] === -2) {
++    const stack = [];
++    for (let at = openPos; at < text.length; at++) {
++      const char = text[at];
++      if (char === "\\" && at + 1 < text.length) {
++        at++;
++      } else if (char === open) {
++        partners[at] = -1;
++        stack.push(at);
++      } else if (char === close && stack.length > 0) {
++        partners[stack.pop()] = at;
++      }
++    }
++  }
++  return partners[openPos];
++}
++function memryTrimEnd(parts) {
++  while (parts.length > 0) {
++    const last = parts[parts.length - 1];
++    let end = last.length;
++    while (end > 0 && last.charCodeAt(end - 1) === 32) end--;
++    if (end === last.length && end > 0) return;
++    if (end > 0) {
++      parts[parts.length - 1] = last.slice(0, end);
++      return;
++    }
++    parts.pop();
++  }
++}
+\ No newline at end of file
+diff --git a/src/api/parsers/markdown/markdownToHtml.ts b/src/api/parsers/markdown/markdownToHtml.ts
+index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..6ff6d26a5259d33d8dba332ae0b3503a9eb787a3 100644
+--- a/src/api/parsers/markdown/markdownToHtml.ts
++++ b/src/api/parsers/markdown/markdownToHtml.ts
+@@ -164,6 +164,30 @@ const HTML_CDATA_RE = /^<!\[CDATA\[[\s\S]*?\]\]>/;
+ const HTML_PI_RE = /^<\?[\s\S]*?\?>/;
+ const HTML_DECL_RE = /^<![A-Za-z][\s\S]*?>/;
+ 
++// Memry: a `<!--`, `<![CDATA[`, `<?` or `<!x` with no end read to the end of the text from every
++// opener. Whether a closer exists at or after a position does not depend on the opener, so the
++// first miss is kept (per text and closer) and a later opener stops at it.
++function memryIndexOfCloser(text: string, closer: string, from: number): number {
++  const cache = memryInlineCache(text);
++  const miss = cache.noCloser.get(closer);
++  if (miss !== undefined && from >= miss) return -1;
++  const at = text.indexOf(closer, from);
++  if (at < 0) cache.noCloser.set(closer, from);
++  return at;
++}
++function memryClosedAt(text: string, closer: string, from: number): number {
++  const at = memryIndexOfCloser(text, closer, from);
++  return at < 0 ? -1 : at + closer.length;
++}
++function memryInlineHtmlEnd(text: string, i: number): number {
++  let end = -1;
++  if (text.startsWith("<!--", i)) end = memryClosedAt(text, "-->", i + 4);
++  if (end < 0 && text.startsWith("<![CDATA[", i)) end = memryClosedAt(text, "]]>", i + 9);
++  if (end < 0 && text.startsWith("<?", i)) end = memryClosedAt(text, "?>", i + 2);
++  if (end < 0 && /^<![A-Za-z]/.test(text.substr(i, 3))) end = memryClosedAt(text, ">", i + 3);
++  return end;
++}
++
+ function tryInlineHtml(
+   text: string,
+   i: number,
+@@ -171,18 +195,13 @@ function tryInlineHtml(
+   if (text[i] !== "<") {
+     return null;
+   }
+-  const rest = text.substring(i);
+-  for (const re of [
+-    HTML_COMMENT_RE,
+-    HTML_CDATA_RE,
+-    HTML_PI_RE,
+-    HTML_DECL_RE,
+-    INLINE_HTML_TAG_RE,
+-  ]) {
+-    const m = rest.match(re);
+-    if (m) {
+-      return { html: m[0], end: i + m[0].length };
+-    }
++  const end = memryInlineHtmlEnd(text, i);
++  if (end >= 0) {
++    return { html: text.substring(i, end), end };
++  }
++  const m = text.substring(i).match(INLINE_HTML_TAG_RE);
++  if (m) {
++    return { html: m[0], end: i + m[0].length };
+   }
+   return null;
+ }
+@@ -207,13 +226,122 @@ const inlineTokenizers: InlineTokenizer[] = [
+   trySoftBreak,
+ ];
+ 
++// Memry: the inline parser read to the end of the text for every opener that never closes, and
++// copied everything written so far for every hard break. What follows keeps each answer once.
++// The caches hold the texts one outermost parseInline call reads, and are dropped when it returns.
++interface InlineCache {
++  dead: Map<string, Uint8Array>;
++  partners: Map<string, Int32Array>;
++  noCloser: Map<string, number>;
++}
++const memryInlineCaches = new Map<string, InlineCache>();
++let memryInsideInline = false;
++function memryInlineCache(text: string): InlineCache {
++  let cache = memryInlineCaches.get(text);
++  if (!cache) {
++    cache = { dead: new Map(), partners: new Map(), noCloser: new Map() };
++    memryInlineCaches.set(text, cache);
++  }
++  return cache;
++}
++// The first position at or after `afterOpen` where `delimiter` closes an emphasis, or -1. Whether a
++// position closes does not depend on the opener, except that it cannot close right at `afterOpen`
++// (an empty emphasis), so a walk that finds none marks every position it visited, and a later
++// opener stops at the first of them.
++function memryFindCloser(
++  text: string,
++  afterOpen: number,
++  delimiter: string,
++): number {
++  const cache = memryInlineCache(text);
++  let dead = cache.dead.get(delimiter);
++  const length = delimiter.length;
++  const closes = (at: number): boolean =>
++    text.startsWith(delimiter, at) &&
++    text[at - 1] !== " " &&
++    text[at - 1] !== "\t" &&
++    !(
++      length === 1 &&
++      ((at > 0 && text[at - 1] === delimiter[0] && !(at >= 2 && text[at - 2] === "\\")) ||
++        (at + length < text.length && text[at + length] === delimiter[0]))
++    );
++  let end = text.length;
++  let at = afterOpen;
++  while (at < text.length) {
++    if (dead !== undefined && dead[at] === 1) {
++      end = at;
++      break;
++    }
++    if (text[at] === "\\" && at + 1 < text.length) {
++      at += 2;
++      continue;
++    }
++    if (closes(at) && at !== afterOpen) return at;
++    at++;
++  }
++  if (dead === undefined) {
++    dead = new Uint8Array(text.length);
++    cache.dead.set(delimiter, dead);
++  }
++  for (at = afterOpen; at < end; ) {
++    if (!(at === afterOpen && closes(at))) dead[at] = 1;
++    at += text[at] === "\\" && at + 1 < text.length ? 2 : 1;
++  }
++  return -1;
++}
++// The `close` that balances the `open` at `openPos` (which is always an `open`), or -1. One pass from
++// the first opener asked about pairs every opener after it with a stack, and a scan from any of them
++// reads the same characters to the same answer.
++function memryClosing(
++  text: string,
++  openPos: number,
++  open: string,
++  close: string,
++): number {
++  const cache = memryInlineCache(text);
++  let partners = cache.partners.get(open);
++  if (partners === undefined) {
++    partners = new Int32Array(text.length).fill(-2);
++    cache.partners.set(open, partners);
++  }
++  if (partners[openPos] === -2) {
++    const stack: number[] = [];
++    for (let at = openPos; at < text.length; at++) {
++      const char = text[at];
++      if (char === "\\" && at + 1 < text.length) {
++        at++;
++      } else if (char === open) {
++        partners[at] = -1;
++        stack.push(at);
++      } else if (char === close && stack.length > 0) {
++        partners[stack.pop()!] = at;
++      }
++    }
++  }
++  return partners[openPos];
++}
++function memryTrimEnd(parts: string[]): void {
++  while (parts.length > 0) {
++    const last = parts[parts.length - 1];
++    let end = last.length;
++    while (end > 0 && last.charCodeAt(end - 1) === 32) end--;
++    if (end === last.length && end > 0) return;
++    if (end > 0) {
++      parts[parts.length - 1] = last.slice(0, end);
++      return;
++    }
++    parts.pop();
++  }
++}
++
+ /**
+  * Parse inline markdown syntax and return HTML.
+  * Handles: bold, italic, bold+italic, strikethrough, inline code,
+  * links, images (with video detection), hard line breaks, backslash escapes.
+  */
+ function parseInline(text: string): string {
+-  let result = "";
++  if (!memryInsideInline) return memryParseOutermostInline(text);
++  const result: string[] = [];
+   let i = 0;
+ 
+   while (i < text.length) {
+@@ -227,8 +355,8 @@ function parseInline(text: string): string {
+       text[i - 1] === " " &&
+       text[i - 2] === " "
+     ) {
+-      result = result.replace(/ +$/, "");
+-      result += "<br>\n";
++      memryTrimEnd(result);
++      result.push("<br>\n");
+       i++;
+       continue;
+     }
+@@ -239,7 +367,7 @@ function parseInline(text: string): string {
+       for (const tokenizer of inlineTokenizers) {
+         const r = tokenizer(text, i);
+         if (r) {
+-          result += r.html;
++          result.push(r.html);
+           i = r.end;
+           matched = true;
+           break;
+@@ -254,11 +382,22 @@ function parseInline(text: string): string {
+       while (i < text.length && !SPECIAL_CHARS.has(text[i])) {
+         i++;
+       }
+-      result += escapeHtml(text.substring(runStart, i));
++      result.push(escapeHtml(text.substring(runStart, i)));
+     }
+   }
+ 
+-  return result;
++  return result.join("");
++}
++
++// Memry: a nested parseInline call (a link's text) skips this frame, so links nest as deep as before.
++function memryParseOutermostInline(text: string): string {
++  memryInsideInline = true;
++  try {
++    return parseInline(text);
++  } finally {
++    memryInsideInline = false;
++    memryInlineCaches.clear();
++  }
+ }
+ 
+ function parseInlineCode(
+@@ -390,43 +529,11 @@ function parseLink(
+ }
+ 
+ function findClosingBracket(text: string, openPos: number): number {
+-  let depth = 0;
+-  for (let i = openPos; i < text.length; i++) {
+-    if (text[i] === "\\" && i + 1 < text.length) {
+-      i++; // skip escaped
+-      continue;
+-    }
+-    if (text[i] === "[") {
+-      depth++;
+-    }
+-    if (text[i] === "]") {
+-      depth--;
+-      if (depth === 0) {
+-        return i;
+-      }
+-    }
+-  }
+-  return -1;
++  return memryClosing(text, openPos, "[", "]");
+ }
+ 
+ function findClosingParen(text: string, openPos: number): number {
+-  let depth = 0;
+-  for (let i = openPos; i < text.length; i++) {
+-    if (text[i] === "\\" && i + 1 < text.length) {
+-      i++;
+-      continue;
+-    }
+-    if (text[i] === "(") {
+-      depth++;
+-    }
+-    if (text[i] === ")") {
+-      depth--;
+-      if (depth === 0) {
+-        return i;
+-      }
+-    }
+-  }
+-  return -1;
++  return memryClosing(text, openPos, "(", ")");
+ }
+ 
+ /**
+@@ -501,50 +608,14 @@ function parseDelimited(
+     return null;
+   }
+ 
+-  // Find closing delimiter
+-  let j = afterOpen;
+-  while (j < text.length) {
+-    // Skip escaped characters
+-    if (text[j] === "\\" && j + 1 < text.length) {
+-      j += 2;
+-      continue;
+-    }
+-
+-    if (text.substring(j, j + len) === delimiter) {
+-      // Closing delimiter must not be preceded by whitespace
+-      if (text[j - 1] === " " || text[j - 1] === "\t") {
+-        j++;
+-        continue;
+-      }
+-
+-      // For single-char delimiters, don't accept closer if it's part of a
+-      // multi-char run (e.g., don't treat the * in ** as italic closer)
+-      if (
+-        len === 1 &&
+-        ((j > 0 &&
+-          text[j - 1] === delimiter[0] &&
+-          !(j >= 2 && text[j - 2] === "\\")) ||
+-          (j + len < text.length && text[j + len] === delimiter[0]))
+-      ) {
+-        j++;
+-        continue;
+-      }
+-
+-      const inner = text.substring(afterOpen, j);
+-      if (inner.length === 0) {
+-        j++;
+-        continue;
+-      }
+-
+-      return {
+-        html: openTag + parseInline(inner) + closeTag,
+-        end: j + len,
+-      };
+-    }
+-    j++;
++  const closer = memryFindCloser(text, afterOpen, delimiter);
++  if (closer === -1) {
++    return null;
+   }
+-
+-  return null;
++  return {
++    html: openTag + parseInline(text.substring(afterOpen, closer)) + closeTag,
++    end: closer + len,
++  };
+ }
+ 
+ // ─── Block-Level Types ───────────────────────────────────────────────────────
+@@ -698,6 +769,40 @@ function isHtmlBlockStart(line: string): boolean {
+ 
+ // ─── Block-Level Tokenizer ──────────────────────────────────────────────────
+ 
++// Memry: `/^(#{1,6})\s+(.+?)(?:\s+#+\s*|\s*)$/` took cubic time on a long line of blanks; same match, linear.
++function memryMatchHeading(line: string): [string, string, string] | null {
++  const blank = /\s/;
++  const lineEnd = /[\n\r\u2028\u2029]/;
++  const length = line.length;
++  let level = 0;
++  while (level < 6 && line[level] === "#") level++;
++  if (level === 0 || level >= length || !blank.test(line[level])) return null;
++  let blanksEnd = level;
++  while (blanksEnd < length && blank.test(line[blanksEnd])) blanksEnd++;
++  let trailing = length;
++  while (trailing > 0 && blank.test(line[trailing - 1])) trailing--;
++  let hashes = trailing;
++  while (hashes > 0 && line[hashes - 1] === "#") hashes--;
++  let before = hashes;
++  while (before > 0 && blank.test(line[before - 1])) before--;
++  const closing = hashes < trailing && before < hashes;
++  let lineEndAt = length;
++  for (let at = blanksEnd; at < length; at++) {
++    if (lineEnd.test(line[at])) {
++      lineEndAt = at;
++      break;
++    }
++  }
++  for (let start = blanksEnd; start > level; start--) {
++    if (lineEnd.test(line[start] ?? "")) lineEndAt = start;
++    const least = start + 1;
++    if (least > length) continue;
++    const end = closing && least <= hashes - 1 ? Math.max(least, before) : Math.max(least, trailing);
++    if (lineEndAt >= end) return [line, line.slice(0, level), line.slice(start, end)];
++  }
++  return null;
++}
++
+ function tokenize(markdown: string): Token[] {
+   const lines = markdown.split("\n");
+   const tokens: Token[] = [];
+@@ -715,7 +820,7 @@ function tokenize(markdown: string): Token[] {
+     }
+ 
+     // Fenced code block (0-3 leading spaces allowed per CommonMark)
+-    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
++    const fenceMatch = line.match(/^ {0,3}(`{3,}(?!`)|~{3,}(?!~))(.*)$/);
+     if (fenceMatch) {
+       const fence = fenceMatch[1];
+       const fenceChar = fence[0];
+@@ -747,7 +852,7 @@ function tokenize(markdown: string): Token[] {
+     // - Closing `#` sequence requires a preceding space (so `### foo###`
+     //   keeps the trailing #s as text, while `### foo ###` strips them).
+     // - Trailing whitespace is always stripped from the heading content.
+-    const headingMatch = line.match(/^(#{1,6})\s+(.+?)(?:\s+#+\s*|\s*)$/);
++    const headingMatch = memryMatchHeading(line);
+     if (headingMatch) {
+       tokens.push({
+         type: "heading",
+@@ -841,7 +946,7 @@ function tokenize(markdown: string): Token[] {
+         if (/^\s*([-*+]|\d+[.)])\s+/.test(cur)) {
+           break;
+         } // list item
+-        if (/^\s*\|(.+\|)+\s*$/.test(cur)) {
++        if (/^\s*\|.+\|\s*$/.test(cur)) {
+           break;
+         } // table
+         quoteLines.push(cur);
+@@ -857,7 +962,7 @@ function tokenize(markdown: string): Token[] {
+ 
+     // List item (bullet, ordered, or task)
+     const listItemMatch = line.match(
+-      /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\] )?(.*)$/,
++      /^(\s*)([-*+]|\d+[.)])(\s+)(?!\s)(\[[ xX]\] )?(.*)$/,
+     );
+     if (listItemMatch) {
+       const indent = listItemMatch[1].length;
+@@ -914,14 +1019,18 @@ function tokenize(markdown: string): Token[] {
+       // Consume ALL subsequent lines that belong to this list item
+       i++;
+       const subLines: string[] = [];
++      let lookAhead = 0;
+       while (i < lines.length) {
+         const cur = lines[i];
+ 
+         if (cur.trim() === "") {
+           // Blank line: include if followed by content that belongs to this item
+-          let lookAhead = i + 1;
+-          while (lookAhead < lines.length && lines[lookAhead].trim() === "") {
+-            lookAhead++;
++          // Every blank line of a run has the same next line, so it is found once.
++          if (lookAhead <= i) {
++            lookAhead = i + 1;
++            while (lookAhead < lines.length && lines[lookAhead].trim() === "") {
++              lookAhead++;
++            }
+           }
+           if (lookAhead < lines.length && belongsToItem(lines[lookAhead])) {
+             subLines.push("");
+@@ -950,7 +1059,7 @@ function tokenize(markdown: string): Token[] {
+       // Build the list item token
+       // If there are sub-lines, they become child content (recursively tokenized)
+       // Don't trim — preserve relative indentation of sub-lines
+-      const childContent = subLines.join("\n").replace(/^\n+|\n+$/g, "");
++      const childContent = subLines.join("\n").replace(/^\n+|(?<!\n)\n+$/g, "");
+       tokens.push({
+         type: "listItem",
+         listType,
+@@ -1006,7 +1115,7 @@ function tokenize(markdown: string): Token[] {
+       if (/^\s*([-*+]|\d+[.)])\s+/.test(nextLine)) {
+         break;
+       }
+-      if (/^\s*\|(.+\|)+\s*$/.test(nextLine)) {
++      if (/^\s*\|.+\|\s*$/.test(nextLine)) {
+         break;
+       }
+       if (isHtmlBlockStart(nextLine)) {
+@@ -1032,7 +1141,7 @@ function tokenize(markdown: string): Token[] {
+       content: paraLines
+         .map((l) => l.replace(/^ {1,3}/, ""))
+         .join("\n")
+-        .replace(/[ \t]+$/, ""),
++        .replace(/(?<![ \t])[ \t]+$/, ""),
+     });
+     prevLineWasBlank = false;
+   }
+@@ -1056,7 +1165,7 @@ function tryParseTable(
+   // Must contain at least one pipe and only dashes, colons, pipes, and whitespace
+   if (
+     !separatorLine.includes("|") ||
+-    !/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(separatorLine)
++    !/^\s*(?:\|\s*)?:?-+:?\s*(?:\|\s*:?-+:?\s*)*(?:\|\s*)?$/.test(separatorLine)
+   ) {
+     return null;
+   }

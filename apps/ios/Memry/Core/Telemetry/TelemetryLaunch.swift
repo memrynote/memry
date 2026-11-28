@@ -18,7 +18,10 @@ enum TelemetryLaunch {
             installId = UUID().uuidString.lowercased()
             defaults.set(installId, forKey: installIdKey)
         }
-        let appVersion = (bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0"
+        let appVersion = TelemetryContext.appVersion(
+            marketing: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            build: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        )
         let previousVersion = defaults.string(forKey: lastRunVersionKey)
         defaults.set(appVersion, forKey: lastRunVersionKey)
 
@@ -29,7 +32,7 @@ enum TelemetryLaunch {
         let context = TelemetryContext(
             installId: installId,
             sessionId: UUID().uuidString.lowercased(),
-            appVersion: String(appVersion.prefix(32)),
+            appVersion: appVersion,
             buildChannel: channel,
             locale: String(Locale.current.identifier(.bcp47).prefix(16)),
             timezoneOffsetMinutes: TimeZone.current.secondsFromGMT() / 60
@@ -62,62 +65,5 @@ enum TelemetryLaunch {
             await Telemetry.shared.becameInactive()
             application.endBackgroundTask(task)
         }
-    }
-}
-
-/// MetricKit hands the previous session's crash and hang diagnostics to the
-/// next launch. Each crash becomes `app_crashed`, coded by its Mach exception
-/// and signal (`EXC_BAD_ACCESS:SIGSEGV`), so PostHog counts and groups them.
-/// The symbolicated stack stays in TestFlight and Xcode Organizer; nothing
-/// from the call tree is sent.
-final class CrashReporter: NSObject, MXMetricManagerSubscriber {
-    nonisolated func didReceive(_ payloads: [MXDiagnosticPayload]) {
-        var events: [TelemetryEvent] = []
-        for payload in payloads {
-            for crash in payload.crashDiagnostics ?? [] {
-                var event = TelemetryEvent.make(.appCrashed, surface: .app, action: "unclean_shutdown", result: .failed)
-                event.source = "metrickit"
-                event.errorCode = Self.code(exception: crash.exceptionType?.intValue, signal: crash.signal?.intValue)
-                events.append(event)
-            }
-            for hang in payload.hangDiagnostics ?? [] {
-                var event = TelemetryEvent.make(.appErrorSeen, surface: .app, action: "hang", result: .failed)
-                event.source = "metrickit"
-                event.errorCode = "APP_HANG"
-                event.metrics = TelemetryMetrics(durationMs: hang.hangDuration.converted(to: .milliseconds).value)
-                events.append(event)
-            }
-        }
-        guard !events.isEmpty else { return }
-        Task {
-            for event in events { await Telemetry.shared.record(event) }
-        }
-    }
-
-    static func code(exception: Int?, signal: Int?) -> String {
-        let exceptionName = switch exception {
-        case 1: "EXC_BAD_ACCESS"
-        case 2: "EXC_BAD_INSTRUCTION"
-        case 3: "EXC_ARITHMETIC"
-        case 5: "EXC_SOFTWARE"
-        case 6: "EXC_BREAKPOINT"
-        case 10: "EXC_CRASH"
-        case 11: "EXC_RESOURCE"
-        case 12: "EXC_GUARD"
-        case let .some(other): "EXC_\(other)"
-        case nil: "EXC_UNKNOWN"
-        }
-        let signalName = switch signal {
-        case 4: "SIGILL"
-        case 5: "SIGTRAP"
-        case 6: "SIGABRT"
-        case 8: "SIGFPE"
-        case 9: "SIGKILL"
-        case 10: "SIGBUS"
-        case 11: "SIGSEGV"
-        case let .some(other): "SIG\(other)"
-        case nil: "SIGNONE"
-        }
-        return "\(exceptionName):\(signalName)"
     }
 }

@@ -36,10 +36,10 @@ for four writes and no others:
 
 | Write                                | Entry point                                                                                                                                                                                                                                          | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:431`), called through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`) by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:112`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`crates/memry-core/src/crdt/markdown_seed/mod.rs:428-430`, `:437-439`)                                                                                                                                                                                                                                                                                                                                                     |
+| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:432`), called through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`) by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:112`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`crates/memry-core/src/crdt/markdown_seed/mod.rs:429-431`, `:438-440`)                                                                                                                                                                                                                                                                                                                                                     |
 | a note created from a template       | `seed_document`, through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`), called by `create_note` in the note's create transaction (`crates/memry-core/src/domain/templates.rs:155`)                                         | seeds the new, empty body with the `{{title}}`-substituted content, the same bytes as the payload `content` and `seed_markdown`. The same empty-body rule as the journal row                                                                                                                                                                                                                                                                                                                                                                                                            |
-| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:451`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)                                                                                           | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| text pasted into a block on iOS      | `plan` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:293`), through `BlockEdit::PasteMarkdown` (`crates/memry-core/src/crdt/body_edit/paste.rs:25`)                                                                                              | reads the text as desktop's converter reads a vault file, not as BlockNote's own paste of `text/plain` (`apps/desktop/src/renderer/src/components/note/content-area/table-cell-paste.ts:69-88`), which builds no callout, math block, toggle or embed (`crates/memry-core/src/crdt/markdown_seed/mod.rs:18-22`); each `\r\n` and `\r` reads as `\n` (`:294-295`). The blocks go in at the caret: below the text before it, above the text after it, which moves to a block of the target's type, and in place of an empty block (`crates/memry-core/src/crdt/body_edit/paste.rs:50-60`) |
+| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:452`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)                                                                                           | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| text pasted into a block on iOS      | `plan` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:294`), through `BlockEdit::PasteMarkdown` (`crates/memry-core/src/crdt/body_edit/paste.rs:25`)                                                                                              | reads the text as desktop's converter reads a vault file, not as BlockNote's own paste of `text/plain` (`apps/desktop/src/renderer/src/components/note/content-area/table-cell-paste.ts:69-88`), which builds no callout, math block, toggle or embed (`crates/memry-core/src/crdt/markdown_seed/mod.rs:18-22`); each `\r\n` and `\r` reads as `\n` (`:295-296`). The blocks go in at the caret: below the text before it, above the text after it, which moves to a block of the target's type, and in place of an empty block (`crates/memry-core/src/crdt/body_edit/paste.rs:50-60`) |
 
 **The seeded document MUST be the one desktop builds from the same bytes.** Each stage of
 desktop's conversion is ported with its quirks, and
@@ -122,7 +122,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
 
 - **`%% … %%` comments are `htmlComment` nodes (§12.7).** Desktop masks every comment outside
   code before any line is split (`apps/desktop/src/main/sync/blocknote-converter.ts:473-475`,
-  `packages/shared/src/html-comments.ts:131`, boundaries from `walkMarkdown`,
+  `packages/shared/src/html-comments.ts:173`, boundaries from `walkMarkdown`,
   `packages/shared/src/markdown-code.ts:150`, including a comment that crosses a table cell end
   as text and a code span's pipe as part of the cell, `:320`), and again on each chunk it parses.
   The core walks the text the same way and masks each `%%` comment to one word, then turns the
@@ -162,11 +162,11 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   `crates/memry-core/src/crdt/markdown_seed/runs.rs:350`). Once the blocks exist, each token in
   a run with no mark, of any block but a code block or a diagram, table cells and children
   included, becomes the node `inline_tokens` decides
-  (`crates/memry-core/src/crdt/markdown_seed/mod.rs:328`,
+  (`crates/memry-core/src/crdt/markdown_seed/mod.rs:329`,
   `crates/memry-core/src/crdt/markdown_seed/mentions.rs:147-160`,
   `crates/memry-core/src/crdt/inline_tokens/mod.rs:161`). That includes the literal paragraphs
   a block's fallback keeps. A fallback of the whole text returns before the promotion, so its
-  tokens stay text (`crates/memry-core/src/crdt/markdown_seed/mod.rs:316-326`). A token the core
+  tokens stay text (`crates/memry-core/src/crdt/markdown_seed/mod.rs:317-327`). A token the core
   cannot decide keeps its block's lines as literal text, reported as "mention or date token this
   port cannot decide" (`crates/memry-core/src/crdt/markdown_seed/prepare.rs:187-188`,
   `crates/memry-core/src/crdt/markdown_seed/mentions.rs:139`): a link whose host the core's URL
@@ -296,8 +296,8 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
-  (`packages/shared/src/hard-breaks.ts:83`, `:139-141`, `:184`;
-  `crates/memry-core/src/crdt/markdown_seed/hard_breaks.rs:76`, `:119`).
+  (`packages/shared/src/hard-breaks.ts:90`, `:146-148`, `:191`;
+  `crates/memry-core/src/crdt/markdown_seed/hard_breaks.rs:77`, `:122`).
 - **Text that spells a placeholder stays text.** The read path hides hard breaks, code span
   whitespace, table probes, `<details>` markup, colour spans, inline tokens, link cards, empty
   blocks and comments behind placeholders, and each carries a word drawn once per process
@@ -1310,7 +1310,7 @@ The core's markdown seed builds the `%%` form as a node, and keeps a `<!--` comm
 A `<!--` that opens an HTML block and never closes would hide the rest of the
 note, so it is a node whose `source` is `<!--` alone, and the text after it
 stays document content, written back as its own bytes (BBF-101,
-`packages/shared/src/html-comments.ts:127-142`,
+`packages/shared/src/html-comments.ts:168-186`,
 `packages/shared/src/markdown-code.ts:76-79`). Builds before BBF-101 parse such
 a note to an empty body and keep the file through the source record. A `<!--`
 that never closes inside a paragraph is text.
@@ -1407,13 +1407,13 @@ written, title and angle brackets included (BBF-109). `[a](u "t")` parses to
 field for a title. The destination counts only when it has no leading or
 trailing whitespace, no newline and no backtick, and the link mark accepts both
 it and its address half; anything else keeps BlockNote's address half
-(`packages/editor-schema/src/inline/link-destinations.ts:71`, `:112`,
+(`packages/editor-schema/src/inline/link-destinations.ts:86`, `:129`,
 `packages/editor-schema/src/parse-markdown.ts:376`;
 `crates/memry-core/src/crdt/markdown_seed/links.rs:26`). House style writes an
 `href` with whitespace back unescaped, so the bytes survive every save
 (`packages/editor-schema/src/inline/emphasis-runs.ts:224`). A reader that opens
 the link uses the address half (`linkDestination`,
-`packages/editor-schema/src/inline/link-destinations.ts:44`). Builds before
+`packages/editor-schema/src/inline/link-destinations.ts:59`). Builds before
 BBF-109 kept only the address half.
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6

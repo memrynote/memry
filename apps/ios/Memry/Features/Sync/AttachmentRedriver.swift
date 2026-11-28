@@ -23,18 +23,21 @@ final class AttachmentRedriver {
     private let reachability: @Sendable () -> Reachable
     private let setting: @MainActor () -> AttachmentDownload
     private let center: NotificationCenter
+    private let log: Log
     private var running = false
 
     init(
         filler: any VaultFilling,
         reachability: @escaping @Sendable () -> Reachable = { PathReachability.forAttachments.current() },
         setting: @escaping @MainActor () -> AttachmentDownload = { LocalSettings.shared.attachmentDownload },
-        center: NotificationCenter = .default
+        center: NotificationCenter = .default,
+        log: Log = .sync
     ) {
         self.filler = filler
         self.reachability = reachability
         self.setting = setting
         self.center = center
+        self.log = log
     }
 
     func redrive() async {
@@ -47,17 +50,39 @@ final class AttachmentRedriver {
         await syncInboxFiles(observed)
     }
 
+    /// One error line per reason a download failed, so telemetry says why.
+    /// The core schedules each failed attachment's next attempt, so a line
+    /// repeats only when an attempt was due.
     private func redriveNoteAttachments(_ reachable: Reachable) async {
         do {
             let summary = try await filler.redriveAttachments(reachable: reachable)
             if summary.downloaded > 0 {
-                Log.sync.info("attachment redrive downloaded", .count(Int(summary.downloaded)))
+                log.info("attachment redrive downloaded", .count(Int(summary.downloaded)))
             }
-            if summary.failed > 0 {
-                Log.sync.error("attachment redrive failed", .count(Int(summary.failed)))
+            for failure in summary.failures {
+                log.error("attachment redrive failed", .code(Self.code(failure.reason)))
             }
+        } catch SyncError.Locked {
+            // No account key on this device yet. Nothing can download until
+            // it unlocks, and the sync pass after the unlock redrives again.
+            log.info("attachment redrive waits for unlock")
         } catch {
-            Log.sync.error("attachment redrive refused", .code(ErrorMapping.userFacing(error).code))
+            log.error("attachment redrive refused", .code(ErrorMapping.userFacing(error).code))
+        }
+    }
+
+    private static func code(_ reason: AttachmentFailureReason) -> ErrorCode {
+        switch reason {
+        case .notFound: "attachmentRedrive.notFound"
+        case .unverified: "attachmentRedrive.unverified"
+        case .corrupt: "attachmentRedrive.corrupt"
+        case .rateLimited: "attachmentRedrive.rateLimited"
+        case .server: "attachmentRedrive.server"
+        case .refused: "attachmentRedrive.refused"
+        case .network: "attachmentRedrive.network"
+        case .keyStore: "attachmentRedrive.keyStore"
+        case .storage: "attachmentRedrive.storage"
+        case .other: "attachmentRedrive.other"
         }
     }
 
@@ -65,18 +90,20 @@ final class AttachmentRedriver {
         do {
             let summary = try await filler.syncInboxAttachments(reachable: reachable)
             if summary.uploaded > 0 {
-                Log.sync.info("inbox files uploaded", .count(Int(summary.uploaded)))
+                log.info("inbox files uploaded", .count(Int(summary.uploaded)))
                 requestSync?()
             }
             if summary.downloaded > 0 {
-                Log.sync.info("inbox files downloaded", .count(Int(summary.downloaded)))
+                log.info("inbox files downloaded", .count(Int(summary.downloaded)))
                 center.post(name: Self.inboxFilesDownloaded, object: nil)
             }
             if summary.failed > 0 {
-                Log.sync.error("inbox file sync failed", .count(Int(summary.failed)))
+                log.error("inbox file sync failed", .count(Int(summary.failed)))
             }
+        } catch SyncError.Locked {
+            log.info("inbox file sync waits for unlock")
         } catch {
-            Log.sync.error("inbox file sync refused", .code(ErrorMapping.userFacing(error).code))
+            log.error("inbox file sync refused", .code(ErrorMapping.userFacing(error).code))
         }
     }
 }

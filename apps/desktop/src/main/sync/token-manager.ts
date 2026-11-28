@@ -139,6 +139,11 @@ export const hasSessionEnded = (): boolean =>
  */
 const handleRefreshRejected = (error: SyncServerError): void => {
   refreshRejections += 1
+  // The spacing is for a transient 401. AUTH_TOKEN_EXPIRED is the refresh
+  // token's own `exp` passing, which no later attempt can undo.
+  if (error.serverError === 'AUTH_TOKEN_EXPIRED') {
+    refreshRejections = REFRESH_REJECT_TERMINAL_ATTEMPTS
+  }
   cancelTokenRefresh()
 
   if (refreshRejections >= REFRESH_REJECT_TERMINAL_ATTEMPTS) {

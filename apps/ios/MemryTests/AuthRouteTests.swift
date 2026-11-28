@@ -1,4 +1,5 @@
 import Foundation
+import MemryCore
 import Testing
 
 @testable import Memry
@@ -63,5 +64,30 @@ struct AuthRouteTests {
             source.contains("setupSettled = true"),
             "an unlocked device must not spend a round trip asking whether its account is set up"
         )
+    }
+
+    /// A registry and opener that are never called: the list is only shown,
+    /// not loaded.
+    private struct Unused: VaultRegistry, VaultOpening {
+        func vaults() async throws -> [VaultSummary] { [] }
+        func open(_ vaultId: String) async throws -> Vault { Vault(noHandle: Vault.NoHandle()) }
+    }
+
+    /// A sign-out publishes `signedOut` one render before `route(for:)` drops
+    /// the vault model. The account shell changes branch in that render, so a
+    /// vault list still shown there was rebuilt: its stores reopened against
+    /// the keychain the sign-out had just emptied (`auth.malformedToken`).
+    @MainActor
+    @Test("the vault list is shown only while the session is registered")
+    func vaultsLeaveWithTheSession() {
+        let vaults = VaultSelectionViewModel(
+            registry: Unused(),
+            opener: Unused(),
+            snapshot: LaunchSnapshot(defaults: UserDefaults(suiteName: "auth-route-\(UUID().uuidString)")!)
+        )
+        #expect(AuthRootView.shownVaults(vaults, in: .registered) === vaults)
+        for state: AuthState in [.signedOut, .sessionExpired, .revoked] {
+            #expect(AuthRootView.shownVaults(vaults, in: state) == nil, "\(state)")
+        }
     }
 }

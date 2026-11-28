@@ -1,6 +1,7 @@
 import Foundation
 import MemryCore
 import Network
+import os
 import Synchronization
 import Testing
 
@@ -157,8 +158,16 @@ private func settle(
 struct TransportSocketTests {
     private let hub = CoreEvents()
 
-    private func transport() -> URLSessionTransport {
-        URLSessionTransport(emitter: hub.emitter)
+    private func transport(log: Log = .transport) -> URLSessionTransport {
+        URLSessionTransport(emitter: hub.emitter, socketLog: log)
+    }
+
+    /// Every socket line, with its level: an `.error` line is what reaches
+    /// telemetry as `app_error_seen`.
+    private final class Lines: @unchecked Sendable {
+        private let lines = Mutex<[(OSLogType, String)]>([])
+        lazy var log = Log(capturing: { [self] level, text in lines.withLock { $0.append((level, text)) } })
+        var errors: [String] { lines.withLock { $0.filter { $0.0 == .error }.map(\.1) } }
     }
 
     private func socketRequest(_ server: LoopbackSocketServer) -> SocketRequest {
@@ -290,6 +299,26 @@ struct TransportSocketTests {
         #expect(thrown == .socketClosed)
     }
 
+    /// A socket the server or the network drops is reconnected by the core's
+    /// ladder (§9.10) and the next pull catches up. Logging each drop as an
+    /// error put every network blip into telemetry as a failure.
+    @Test("a socket dropped under an open connection is reported to the core but is not an error")
+    func droppedSocketIsNotAnError() async throws {
+        let server = try LoopbackSocketServer()
+        let listener = RecordingListener()
+        let lines = Lines()
+        let subject = transport(log: lines.log)
+
+        let handle = try subject.openSocket(request: socketRequest(server), listener: listener)
+        #expect(await settle { listener.history == [.open] })
+        server.stop()
+
+        #expect(await settle { listener.history.count == 2 })
+        #expect(listener.history.first == .open)
+        #expect(lines.errors.isEmpty, "\(lines.errors)")
+        withExtendedLifetime((subject, handle)) {}
+    }
+
     /// `open_socket` is synchronous on purpose: readiness is `on_open` and
     /// failure is `on_error`. So a handshake to a dead port still returns a
     /// handle, and the failure arrives later — and it is never reported inline,
@@ -352,13 +381,16 @@ struct TransportSocketTests {
             }
         }
         let listener = StatusListener { status in statuses.withLock { $0.append(status) } }
-        let subject = transport()
+        let lines = Lines()
+        let subject = transport(log: lines.log)
         let handle = try subject.openSocket(
             request: SocketRequest(url: "ws://127.0.0.1:\(port)/sync/ws", headers: [:]),
             listener: listener
         )
         #expect(await settle { !statuses.withLock { $0.isEmpty } })
         #expect(statuses.withLock { $0 } == [426])
+        // A server that answered and refused is a fault worth reporting.
+        #expect(lines.errors == ["realtime socket failed [status=426]"])
         withExtendedLifetime((subject, handle)) {}
     }
 }

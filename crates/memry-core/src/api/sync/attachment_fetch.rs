@@ -15,6 +15,9 @@ use tokio::sync::{OnceCell, Semaphore};
 use tokio::time::Instant;
 
 use crate::api::errors::ApiError;
+use crate::domain::attachment_download_failures::{
+    self as download_failures, AttachmentFailureReason,
+};
 use crate::protocol::attachment_manifest::{AttachmentManifest, EncryptedAttachmentManifest};
 
 #[allow(unused_imports)]
@@ -133,10 +136,37 @@ pub struct AttachmentRedriveSummary {
     pub downloaded: u32,
     /// Held back by the metered policy (FR-045). Not a failure.
     pub deferred: u32,
-    /// Failed this time; still missing, so the next re-drive asks again.
+    /// Failed this time; still missing, and asked for again when its next
+    /// attempt is due.
     pub failed: u32,
     /// Missing attachments past this call's batch, left for the next one.
     pub remaining: u32,
+    /// Why the `failed` ones failed, one entry per reason.
+    #[uniffi(default = [])]
+    pub failures: Vec<AttachmentRedriveFailure>,
+}
+
+/// How many of one re-drive's downloads failed for one reason.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AttachmentRedriveFailure {
+    pub reason: AttachmentFailureReason,
+    pub count: u32,
+}
+
+impl AttachmentRedriveSummary {
+    fn count_failure(&mut self, reason: AttachmentFailureReason) {
+        self.failed += 1;
+        match self
+            .failures
+            .iter_mut()
+            .find(|failure| failure.reason == reason)
+        {
+            Some(failure) => failure.count += 1,
+            None => self
+                .failures
+                .push(AttachmentRedriveFailure { reason, count: 1 }),
+        }
+    }
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -174,21 +204,24 @@ impl VaultSync {
     /// metered policy and the bounded queue apply unchanged and large
     /// prefetch on cellular stays opt-in per item.
     ///
-    /// One failure never stops the walk: it is counted and the row stays
-    /// missing for the next call.
+    /// One failure never stops the walk: it is counted by reason, and the
+    /// attachment is asked for again when its next attempt is due, a day after
+    /// a 404 and minutes after a blip (`attachment_download_failures`).
     pub async fn redrive_attachments(
         &self,
         reachable: Reachable,
     ) -> Result<AttachmentRedriveSummary, SyncError> {
+        let now = now_ms();
         let missing = self
             .db
-            .call(|conn| Ok(attachments::missing_downloads(conn)))
+            .call(move |conn| Ok(attachments::missing_downloads(conn, now)))
             .await??;
         let mut summary = AttachmentRedriveSummary {
             downloaded: 0,
             deferred: 0,
             failed: 0,
             remaining: count(missing.len().saturating_sub(REDRIVE_BATCH_LIMIT)),
+            failures: Vec::new(),
         };
         // The manifests of this call's downloads are read in one batch first
         // (§14.5.2). The doc comments above feed the UniFFI checksums.
@@ -200,14 +233,28 @@ impl VaultSync {
         for attachment_id in window {
             let manifest = prefetched.remove(&attachment_id);
             match self
-                .fetch_with_manifest(attachment_id, reachable, manifest, &directory)
+                .fetch_with_manifest(attachment_id.clone(), reachable, manifest, &directory)
                 .await
             {
                 Ok(fetch) if fetch.downloaded => summary.downloaded += 1,
                 Ok(_) => summary.deferred += 1,
                 // A locked device fails every row the same way; say so once.
                 Err(SyncError::Locked) => return Err(SyncError::Locked),
-                Err(_) => summary.failed += 1,
+                Err(error) => {
+                    let reason = AttachmentFailureReason::of(&error);
+                    summary.count_failure(reason);
+                    let recorded = self
+                        .db
+                        .call(move |conn| {
+                            download_failures::record(conn, &attachment_id, reason, now)
+                        })
+                        .await;
+                    if let Err(record) = recorded {
+                        eprintln!(
+                            "memry-core: attachment re-drive: recording {reason:?}: {record}"
+                        );
+                    }
+                }
             }
         }
         Ok(summary)
@@ -448,7 +495,7 @@ impl VaultSync {
             .call(move |conn| {
                 row.put(conn, &id)?;
                 attachments::record_download(conn, &id, &stored, now)?;
-                Ok(())
+                download_failures::clear(conn, &id)
             })
             .await?;
         // Only after the row records the file: a crash before this line keeps

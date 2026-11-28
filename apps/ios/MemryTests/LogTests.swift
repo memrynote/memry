@@ -81,6 +81,39 @@ struct LogTests {
         #expect(sink.lines.map { $0.text } == ["a", "b", "c", "d", "e"])
     }
 
+    /// A dropped task, a closed scanner, a mistyped phrase and a full plan
+    /// are logged at notice, which never reaches telemetry. Their neighbours
+    /// that are real failures stay errors.
+    @Test("an expected condition is a notice, a real failure stays an error")
+    func expectedConditionsAreNotErrors() {
+        let expected: [any Error] = [
+            CancellationError(),
+            TransportError.Cancelled,
+            CaptureError.Cancelled,
+            RecoveryError.UnknownWord(word: "x"),
+            RecoveryError.BadChecksum,
+            RecoveryError.WrongWordCount(actual: 12),
+            RecoveryError.NonAscii,
+            RecoveryError.VerifierMismatch,
+            ApiError.PaymentRequired(code: "SYNC_VAULT_LIMIT_EXCEEDED", message: "")
+        ]
+        let failures: [any Error] = [
+            TransportError.Failed(what: "x"),
+            CaptureError.Failed(what: "x"),
+            RecoveryError.Crypto(source: .OutOfMemory(requestedBytes: 1)),
+            ApiError.PaymentRequired(code: nil, message: "")
+        ]
+        let sink = Sink()
+        let log = sink.log()
+        for error in expected + failures {
+            log.error("a call failed", .code(ErrorMapping.userFacing(error).code))
+        }
+        let levels = sink.lines.map { $0.level.rawValue }
+        let want = Array(repeating: OSLogType.default.rawValue, count: expected.count)
+            + Array(repeating: OSLogType.error.rawValue, count: failures.count)
+        #expect(levels == want)
+    }
+
     @Test("subsystem categories are distinct and named")
     func categoriesAreDistinct() {
         let names = LogSubsystem.allCases.map(\.rawValue)

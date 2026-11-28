@@ -3,13 +3,6 @@ import Foundation
 import MemryCore
 import UIKit
 
-protocol SemanticTaskRun: AnyObject {
-    var expirationHandler: (() -> Void)? { get set }
-    func setTaskCompleted(success: Bool)
-}
-
-extension BGTask: SemanticTaskRun {}
-
 typealias SemanticStep = @MainActor (StepConditions) async throws -> StepOutcome
 
 @MainActor
@@ -54,7 +47,7 @@ final class SemanticBackgroundTask {
         }
     }
 
-    private func run(_ task: SemanticTaskRun) {
+    private func run(_ task: BackgroundTaskRun) {
         var step: SemanticStep?
         if let semantic, let vault {
             step = { try await semantic.embedStep(vault: vault, conditions: $0) }
@@ -67,7 +60,7 @@ final class SemanticBackgroundTask {
 
     @discardableResult
     static func drive(
-        _ task: SemanticTaskRun,
+        _ task: BackgroundTaskRun,
         step: SemanticStep?,
         conditions: @escaping @MainActor () -> StepConditions,
         reschedule: @escaping @MainActor () -> Void,

@@ -117,6 +117,22 @@ struct SettingsTests {
         #expect(account.failure == nil)
     }
 
+    /// A sign-out tears the vault's pages down, and SwiftUI runs a pushed
+    /// Account page's `.task` once more on the way out. Those calls went out
+    /// with no session: two 401s and an `auth.invalidState`, logged as errors.
+    @Test func a_signed_out_session_is_not_asked_for_account_settings() async {
+        let session = FakeAuthSession(from: .signedOut)
+        let account = AccountModel(session: session, filler: nil)
+
+        await account.load()
+        await account.loadStorage()
+        await account.loadDevices()
+
+        #expect(!session.calls.contains(.storage))
+        #expect(account.billing == nil)
+        #expect(account.failure == nil)
+    }
+
     @Test func the_accent_keeps_its_ink_readable_in_both_styles() {
         #expect(AccentColor.palette(for: "#f97316").ink.light == AdaptiveColor.RGB(hex: 0xB4_43_09))
         for preset in AccentColor.presets {

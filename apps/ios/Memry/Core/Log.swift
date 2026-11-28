@@ -167,7 +167,13 @@ struct Log: Sendable {
         sink(.default, Log.line(message, detail))
     }
 
+    /// A line whose code is one of `ErrorMapping.expectedConditions` is
+    /// written at notice instead, and does not reach telemetry.
     func error(_ message: StaticString, _ detail: LogDetail? = nil) {
+        if case let .code(code) = detail, ErrorMapping.expectedConditions.contains(code) {
+            notice(message, detail)
+            return
+        }
         sink(.error, Log.line(message, detail))
         report(message, detail)
     }

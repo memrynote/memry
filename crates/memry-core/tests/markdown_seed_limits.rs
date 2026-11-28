@@ -1,9 +1,10 @@
 //! Pasted or seeded markdown is untrusted: a pathological text must plan in
 //! bounded time and stack, never hang the main thread or abort the process.
-//! Each case is sized so that a quadratic or exponential pass takes seconds
-//! in a debug build, where the linear one stays far under the bound.
+//! Each timing case plans a shape at size `n` and `4n` and checks the ratio,
+//! so a loaded runner slows both runs alike and the check holds where a
+//! wall-clock bound flakes.
 
-use std::sync::mpsc;
+use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use memry_core::crdt::markdown_seed::{SeedPlan, plan};
@@ -11,9 +12,16 @@ use memry_core::crdt::markdown_seed::{SeedPlan, plan};
 /// The stack a default test thread (and an iOS secondary thread) gets.
 const STACK: usize = 2 << 20;
 
+/// One timed plan at a time, so the tests of this file, which cargo runs in
+/// parallel, do not slow each other's measurements.
+static TIMING: Mutex<()> = Mutex::new(());
+
 /// `plan(markdown)` on a 2 MB stack, with how long it took. A hang fails on
 /// the channel timeout, a stack overflow aborts the test process.
 fn planned(markdown: String) -> (SeedPlan, Duration) {
+    let _alone = TIMING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let (send, receive) = mpsc::channel();
     std::thread::Builder::new()
         .stack_size(STACK)
@@ -39,108 +47,156 @@ fn within(label: &str, markdown: String, limit: Duration) -> SeedPlan {
     plan
 }
 
-const BOUND: Duration = Duration::from_millis(200);
+/// 4× the input may take at most 8× the time. A linear pass takes about 4×,
+/// a quadratic one about 16×. Each size keeps its best of 5 runs, and the
+/// sizes alternate so a busy spell on the runner slows both alike. Returns
+/// the plan of the larger input.
+fn scales_linearly(label: &str, n: usize, shape: impl Fn(usize) -> String) -> SeedPlan {
+    let mut small = Duration::MAX;
+    let mut large = Duration::MAX;
+    let mut plan = None;
+    for _ in 0..5 {
+        small = small.min(planned(shape(n)).1);
+        let (larger, elapsed) = planned(shape(4 * n));
+        large = large.min(elapsed);
+        plan = Some(larger);
+    }
+    let ratio = large.as_secs_f64() / small.as_secs_f64();
+    eprintln!("{label}: n={n} in {small:?}, 4n in {large:?}, {ratio:.1}x");
+    assert!(
+        ratio <= 8.0,
+        "{label}: 4x the input took {ratio:.1}x the time ({small:?} -> {large:?})"
+    );
+    plan.expect("five runs")
+}
 
 #[test]
 fn a_comment_marker_before_a_long_quote_chain_plans_fast() {
-    within(
-        "%% then > chain",
-        format!("%%\n{}x", "> ".repeat(20)),
-        BOUND,
-    );
+    scales_linearly("%% then > chain", 5, |n| format!("%%\n{}x", "> ".repeat(n)));
 }
 
 #[test]
 fn a_long_table_plans_in_linear_time() {
-    let rows = "| 1 | 2 |\n".repeat(3000);
-    let plan = within("table rows", format!("| a | b |\n|---|---|\n{rows}"), BOUND);
+    let plan = scales_linearly("table rows", 750, |n| {
+        format!("| a | b |\n|---|---|\n{}", "| 1 | 2 |\n".repeat(n))
+    });
     assert_eq!(plan.blocks.len(), 1);
 }
 
 #[test]
 fn a_long_run_of_indented_lines_plans_in_linear_time() {
     for (label, head) in [("paragraph", "x\n"), ("list item", "- a\n")] {
-        let plan = within(label, format!("{head}{}", "  y\n".repeat(3000)), BOUND);
+        let plan = scales_linearly(label, 750, |n| format!("{head}{}", "  y\n".repeat(n)));
         assert_eq!(plan.blocks.len(), 1, "{label}");
     }
-    let breaks = format!("a{}", " \\\n".repeat(3000));
-    within("trailing backslashes", breaks, BOUND);
+    scales_linearly("trailing backslashes", 750, |n| {
+        format!("a{}", " \\\n".repeat(n))
+    });
 }
 
 /// Backtick runs of length 1, 2, 3, ...: no run has a partner of its length,
-/// so each scans to the end of the text for one.
-fn unmatched_runs(count: usize) -> String {
-    (1..=count)
+/// so each scans to the end of the text for one. The text grows with the
+/// square of the run count, so `size` bytes take about `sqrt(2 * size)` runs.
+fn unmatched_runs(size: usize) -> String {
+    (1..=(2 * size).isqrt())
         .map(|n| format!("{} a ", "`".repeat(n)))
         .collect()
 }
 
 #[test]
 fn unmatched_backtick_runs_in_a_paragraph_plan_in_linear_time() {
-    within("runs in a paragraph", unmatched_runs(250), BOUND);
+    scales_linearly("runs in a paragraph", 8000, unmatched_runs);
 }
 
 #[test]
 fn unmatched_backtick_runs_on_a_pipe_line_plan_in_linear_time() {
-    within(
-        "runs on a pipe line",
-        format!("a | {}", unmatched_runs(250)),
-        BOUND,
-    );
+    scales_linearly("runs on a pipe line", 8000, |n| {
+        format!("a | {}", unmatched_runs(n))
+    });
 }
 
 #[test]
 fn unmatched_backtick_runs_in_a_table_cell_plan_in_linear_time() {
-    let table = format!("| h |\n|---|\n| {} |", unmatched_runs(250));
-    let plan = within("runs in a table cell", table, BOUND);
+    let plan = scales_linearly("runs in a table cell", 8000, |n| {
+        format!("| h |\n|---|\n| {} |", unmatched_runs(n))
+    });
     assert_eq!(plan.blocks.len(), 1);
 }
 
 #[test]
 fn unmatched_backtick_runs_beside_a_comment_plan_in_linear_time() {
-    let text = format!("%% x %% {}", unmatched_runs(250));
-    within("runs beside a comment", text, BOUND);
+    scales_linearly("runs beside a comment", 8000, |n| {
+        format!("%% x %% {}", unmatched_runs(n))
+    });
 }
 
 #[test]
 fn one_long_backtick_run_plans_in_linear_time() {
-    within("one run", format!("a{}", "`".repeat(8000)), BOUND);
+    scales_linearly("one run", 2000, |n| format!("a{}", "`".repeat(n)));
 }
 
 #[test]
 fn adjacent_html_comments_on_one_line_plan_in_linear_time() {
-    within("html comments", "<!-- a -->".repeat(4000), BOUND);
-    within("html comments, spaced", "<!-- a --> ".repeat(4000), BOUND);
+    scales_linearly("html comments", 1000, |n| "<!-- a -->".repeat(n));
+    scales_linearly("html comments, spaced", 1000, |n| "<!-- a --> ".repeat(n));
 }
 
 #[test]
 fn adjacent_percent_comments_beside_code_spans_plan_in_linear_time() {
-    within("%% comments", "%% a %%".repeat(8000), BOUND);
-    within("%% comments, code spans", "`a`%% a %%".repeat(4000), BOUND);
+    scales_linearly("%% comments", 2000, |n| "%% a %%".repeat(n));
+    scales_linearly("%% comments, code spans", 1000, |n| "`a`%% a %%".repeat(n));
 }
 
 #[test]
 fn many_comments_in_a_table_row_plan_in_linear_time() {
-    let row = format!("| {} |", "<!-- a --> ".repeat(4000));
-    within("comments in a table row", row, BOUND);
+    scales_linearly("comments in a table row", 1000, |n| {
+        format!("| {} |", "<!-- a --> ".repeat(n))
+    });
 }
 
 #[test]
 fn many_unclosed_html_comments_before_a_fence_plan_in_linear_time() {
-    let text = format!("{}```\n", "x <!--\n".repeat(4000));
-    within("unclosed comments, then a fence", text, BOUND);
+    scales_linearly("unclosed comments, then a fence", 1000, |n| {
+        format!("{}```\n", "x <!--\n".repeat(n))
+    });
 }
 
 #[test]
 fn a_list_item_of_many_hard_breaks_plans_in_linear_time() {
-    let text = format!("- a  \n{}", "b  \n".repeat(2000));
-    within("hard breaks in a list item", text, BOUND);
+    scales_linearly("hard breaks in a list item", 500, |n| {
+        format!("- a  \n{}", "b  \n".repeat(n))
+    });
 }
 
 #[test]
 fn a_list_item_whose_link_text_spans_many_lines_plans_in_linear_time() {
-    let text = format!("- [a\n{}c](u)", "b\n".repeat(2000));
-    within("link text over many lines", text, BOUND);
+    scales_linearly("link text over many lines", 500, |n| {
+        format!("- [a\n{}c](u)", "b\n".repeat(n))
+    });
+}
+
+#[test]
+fn a_list_item_over_many_lines_before_a_link_they_do_not_open_plans_in_linear_time() {
+    scales_linearly("lines before a link they do not open", 500, |n| {
+        format!("- a\n{}x](u) y", "b\n".repeat(n))
+    });
+}
+
+/// Every line leaves link text open, so each asks whether the rest of the
+/// paragraph closes it, and the title on the last line says no.
+#[test]
+fn a_list_item_whose_lines_each_open_link_text_plans_in_linear_time() {
+    scales_linearly("lines each opening link text", 250, |n| {
+        format!("- [a\n{}](u \"t\")", "[b\n".repeat(n))
+    });
+}
+
+/// Each address starts inside the one before it on the same line.
+#[test]
+fn a_list_item_with_nested_addresses_after_its_link_text_plans_in_linear_time() {
+    scales_linearly("link text before nested addresses", 1000, |n| {
+        format!("- [x\n{}{}", "](a".repeat(n), ")".repeat(n + 1))
+    });
 }
 
 /// A recursive pass over nested input must stop at a depth the stack holds.
@@ -165,4 +221,41 @@ fn deeply_nested_lists_plan_without_overflowing_the_stack() {
         .map(|i| format!("{}- a\n", "  ".repeat(i)))
         .collect();
     within("nested lists", text, Duration::from_secs(30));
+}
+
+#[test]
+fn a_heading_with_a_long_whitespace_run_plans_in_linear_time() {
+    let plan = scales_linearly("heading, whitespace run", 5000, |n| {
+        format!("# a{}x", " ".repeat(n))
+    });
+    assert_eq!(plan.blocks.len(), 1);
+    scales_linearly("heading, whitespace runs around a mark", 5000, |n| {
+        let spaces = " ".repeat(n);
+        format!("# a{spaces}#{spaces}x")
+    });
+}
+
+const TOGGLE: &str = "<details data-memry-toggle>\n<summary>s</summary>\n";
+
+#[test]
+fn many_unclosed_toggles_plan_in_linear_time() {
+    scales_linearly("unclosed toggles", 750, |n| TOGGLE.repeat(n));
+    scales_linearly("unclosed toggles, one closer", 750, |n| {
+        format!("{}</details>\n", TOGGLE.repeat(n))
+    });
+}
+
+#[test]
+fn many_unclosed_toggles_between_fences_plan_in_linear_time() {
+    scales_linearly("unclosed toggles, fenced", 750, |n| {
+        format!("{TOGGLE}```\n").repeat(n)
+    });
+}
+
+#[test]
+fn a_list_item_over_many_whitespace_lines_plans_in_linear_time() {
+    let plan = scales_linearly("whitespace lines in a list item", 2000, |n| {
+        format!("- a\n{}  b", " \n".repeat(n))
+    });
+    assert_eq!(plan.blocks.len(), 1);
 }

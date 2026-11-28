@@ -16,11 +16,11 @@ private struct ListedVaults: VaultRegistry {
     func vaults() async throws -> [VaultSummary] { rows }
 }
 
-private func status(plan: String, status: String, store: String? = nil) -> BillingStatus {
+private func status(plan: String, status: String, store: String? = nil, expiresAt: Int64? = nil) -> BillingStatus {
     BillingStatus(
         email: "a@b.c", plan: plan, status: status, cadence: "annual",
         storageLimit: 0, storageUsed: 0, maxFileSize: 0, maxVaults: 1, versionHistoryDays: 30,
-        expiresAt: nil, store: store, manageUrl: nil, willRenew: nil, appAccountToken: nil,
+        expiresAt: expiresAt, store: store, manageUrl: nil, willRenew: nil, appAccountToken: nil,
         canManageBilling: nil
     )
 }
@@ -259,6 +259,17 @@ struct FreeLocalVaultTests {
         #expect(BillingFacts.isKnownUnpaid(status(plan: "pro", status: "inactive")))
         #expect(!BillingFacts.isKnownUnpaid(status(plan: "pro", status: "active")))
         #expect(!BillingFacts.isKnownUnpaid(nil))
+    }
+
+    /// The server's gate (`isPaidSyncEntitlementActive`) also refuses an
+    /// `active` plan whose `expiresAt` has passed, so Account and Storage asked
+    /// `GET /sync/storage` for it and got a 402 on every visit.
+    @Test("an active plan past its expiry is known unpaid; one still running is not")
+    func expiredPlanIsKnownUnpaid() {
+        let past = Int64(Date.now.timeIntervalSince1970) - 60
+        let future = Int64(Date.now.timeIntervalSince1970) + 86_400
+        #expect(BillingFacts.isKnownUnpaid(status(plan: "plus", status: "active", expiresAt: past)))
+        #expect(!BillingFacts.isKnownUnpaid(status(plan: "plus", status: "active", expiresAt: future)))
     }
 
     /// Every vault scope that opens submits the current entitlements again. A

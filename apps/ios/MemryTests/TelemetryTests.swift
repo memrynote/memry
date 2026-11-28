@@ -26,7 +26,7 @@ private func makeTelemetry(enabled: Bool = true) async -> (Telemetry, URL) {
     let context = TelemetryContext(
         installId: "11111111-1111-4111-8111-111111111111",
         sessionId: "22222222-2222-4222-8222-222222222222",
-        appVersion: "0.1.0",
+        appVersion: "0.1.0+1017",
         buildChannel: "staging",
         locale: "en-US",
         timezoneOffsetMinutes: 180
@@ -52,6 +52,7 @@ struct TelemetryTests {
         let batch = try json(body)
         #expect(batch["schemaVersion"] as? Int == 1)
         #expect(batch["platform"] as? String == "ios")
+        #expect(batch["appVersion"] as? String == "0.1.0+1017")
         #expect(batch["buildChannel"] as? String == "staging")
         #expect(batch["authState"] as? String == "signed_in")
         let events = try #require(batch["events"] as? [[String: Any]])
@@ -108,22 +109,45 @@ struct TelemetryTests {
         #expect(await telemetry.pending.isEmpty)
     }
 
-    @Test func aVersionChangeReportsTheUpdate() async throws {
+    @Test func theAppVersionCarriesTheBuildNumber() {
+        #expect(TelemetryContext.appVersion(marketing: "0.1.0", build: "1017") == "0.1.0+1017")
+        #expect(TelemetryContext.appVersion(marketing: "0.1.0", build: nil) == "0.1.0")
+        #expect(TelemetryContext.appVersion(marketing: nil, build: "1017") == "0+1017")
+        #expect(TelemetryContext.appVersion(marketing: "0.1.0", build: String(repeating: "9", count: 40)).count == 32)
+    }
+
+    private func startedEvents(appVersion: String, previousVersion: String?) async -> [TelemetryEvent] {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("telemetry-\(UUID().uuidString).json")
         let telemetry = Telemetry(store: TelemetryQueueStore(url: url))
         let context = TelemetryContext(
             installId: "11111111-1111-4111-8111-111111111111",
             sessionId: "22222222-2222-4222-8222-222222222222",
-            appVersion: "0.2.0",
+            appVersion: appVersion,
             buildChannel: "production",
             locale: "en-US",
             timezoneOffsetMinutes: 0
         )
-        await telemetry.start(context: context, allowed: true, enabled: true, previousVersion: "0.1.0")
+        await telemetry.start(context: context, allowed: true, enabled: true, previousVersion: previousVersion)
+        return await telemetry.pending
+    }
 
-        let update = try #require(await telemetry.pending.last)
-        #expect(update.name == .appUpdateInstalled)
-        #expect(update.dimensions == ["from_version": "0.1.0"])
+    @Test func aNewBuildOfTheSameVersionReportsTheUpdate() async {
+        // TestFlight builds share `0.1.0` and differ only in the build number.
+        let events = await startedEvents(appVersion: "0.1.0+1018", previousVersion: "0.1.0+1017")
+        #expect(events.map(\.name) == [.appStarted, .appUpdateInstalled])
+        #expect(events.last?.dimensions == ["from_version": "0.1.0+1017"])
+    }
+
+    @Test func theFirstBuildToCarryTheBuildNumberReportsOneUpdate() async {
+        // Builds before this one stored the bare marketing version.
+        let events = await startedEvents(appVersion: "0.1.0+1018", previousVersion: "0.1.0")
+        #expect(events.map(\.name) == [.appStarted, .appUpdateInstalled])
+        #expect(events.last?.dimensions == ["from_version": "0.1.0"])
+
+        let relaunch = await startedEvents(appVersion: "0.1.0+1018", previousVersion: "0.1.0+1018")
+        #expect(relaunch.map(\.name) == [.appStarted])
+        let firstLaunch = await startedEvents(appVersion: "0.1.0+1018", previousVersion: nil)
+        #expect(firstLaunch.map(\.name) == [.appStarted])
     }
 
     @Test func aDimensionThatCouldCarryContentIsDropped() {

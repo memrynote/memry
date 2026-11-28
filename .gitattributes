@@ -9,3 +9,6 @@ apps/ios/Memry/Resources/BlockRender.bundle/vendor/** -diff -merge -whitespace l
 # The iOS whiteboard editor, desktop's Excalidraw bundled with its fonts
 # (apps/ios/scripts/generate-whiteboard.mjs). Rebuilt, never hand-merged.
 apps/ios/Memry/Resources/Whiteboard.bundle/** -diff -merge -whitespace linguist-generated
+# pnpm patches record the third-party bytes they change, tabs and trailing
+# spaces included (patches/@blocknote__core@0.54.2.patch edits minified dist).
+patches/*.patch -whitespace

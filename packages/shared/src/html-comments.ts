@@ -120,16 +120,60 @@ function isMemryMarker(comment: string, wholeLine: boolean): boolean {
  * would be ignored keeps its bytes as an `htmlComment` node. `maskHtmlComments`
  * sees one comment at a time, so these lines are set aside before it runs.
  */
-const LINK_CARD_CANDIDATE =
-  /^(<!-- link-card:\{.*\} -->)(?=\n(?:<!-- [^\n]* -->\n)*(?:\*\*|~~|\*|_)*\[\[[^\]|\n]+(?:\|[^\]\n]+)?\]\](?:\*\*|~~|\*|_)*(?:\n|$))/gm
+const LINK_CARD_LINE = /^<!-- link-card:\{.*\} -->(?=\n)/gm
+// Each star is one token, so a run splits one way. `\*\*|\*` let it split every way.
+const LINK_PARAGRAPH = /(?:[*_]|~~)*\[\[[^\]|\n]+(?:\|[^\]\n]+)?\]\](?:[*_]|~~)*(?:\n|$)/my
+// A comment line is `<!-- `, anything, ` -->`, each with its own space: `<!-- -->` is not one.
+const COMMENT_LINE_MIN_LENGTH = '<!--  -->'.length
 const LINK_CARD_KEEP = `MEMRYLINKCARD${MASK_WORD}`
+
+/**
+ * True when, from `start`, only whole-line `<!-- … -->` comments come before a
+ * paragraph that is one `[[link]]`. `follows` keeps the answer for each line the
+ * walk crossed, so a run of marker lines is read once, not once per marker.
+ */
+function linkParagraphFollows(
+  markdown: string,
+  start: number,
+  follows: Map<number, boolean>
+): boolean {
+  const crossed: number[] = []
+  let at = start
+  let answer: boolean
+  for (;;) {
+    const known = follows.get(at)
+    if (known !== undefined) {
+      answer = known
+      break
+    }
+    crossed.push(at)
+    const end = markdown.indexOf('\n', at)
+    if (
+      end !== -1 &&
+      end - at >= COMMENT_LINE_MIN_LENGTH &&
+      markdown.startsWith('<!-- ', at) &&
+      markdown.startsWith(' -->', end - 4)
+    ) {
+      at = end + 1
+      continue
+    }
+    LINK_PARAGRAPH.lastIndex = at
+    answer = LINK_PARAGRAPH.test(markdown)
+    break
+  }
+  for (const line of crossed) follows.set(line, answer)
+  return answer
+}
 
 export function maskHtmlComments(
   markdown: string,
   { losslessTables = true }: { losslessTables?: boolean } = {}
 ): string {
-  const kept = markdown.replace(LINK_CARD_CANDIDATE, (line) =>
-    parseLinkCardMarker(line) ? line.replace('<!--', LINK_CARD_KEEP) : line
+  const follows = new Map<number, boolean>()
+  const kept = markdown.replace(LINK_CARD_LINE, (line, offset: number) =>
+    linkParagraphFollows(markdown, offset + line.length + 1, follows) && parseLinkCardMarker(line)
+      ? line.replace('<!--', LINK_CARD_KEEP)
+      : line
   )
   return replaceMarkdownComments(
     kept,

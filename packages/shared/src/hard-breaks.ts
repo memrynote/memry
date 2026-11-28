@@ -40,18 +40,25 @@ const HARD_BREAK_TOKEN_PREFIX = `MEMRYHBK${MASK_WORD}`
 const HARD_BREAK_TOKEN = new RegExp(`${HARD_BREAK_TOKEN_PREFIX}(\\d+);`, 'g')
 
 /**
- * The same token, with the spaces before it and the newline it marks when it
- * still has one. Spaces before a break are part of its spelling, never text.
+ * The same token, then the newline it marks when it still has one. The spaces
+ * before it are not part of the pattern: `unmaskHardBreaks` looks back for them,
+ * because a pattern opening with a run of blanks reads the run again from every
+ * start in it.
  */
-const HARD_BREAK_TOKEN_WITH_NEWLINE = new RegExp(
-  `([^\\S\\n]*)${HARD_BREAK_TOKEN_PREFIX}\\d+;(\\n?)`,
-  'g'
-)
+const HARD_BREAK_TOKEN_THEN_NEWLINE = new RegExp(`${HARD_BREAK_TOKEN_PREFIX}\\d+;(\\n?)`, 'g')
 
-// A hard break is a line ending in two or more spaces, or in a single
-// backslash. Both only count when a non-blank line follows: otherwise the line
-// ends the paragraph and the parser produces no break at all.
-const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
+/**
+ * What makes `line` a hard break: its two or more trailing spaces or tabs, or
+ * its single trailing backslash. Empty when it is not one. Both only count when
+ * a non-blank line follows: otherwise the line ends the paragraph and the
+ * parser produces no break at all.
+ */
+function hardBreakSpelling(line: string): string {
+  if (line.endsWith('\\')) return '\\'
+  let start = line.length
+  while (start > 0 && (line[start - 1] === ' ' || line[start - 1] === '\t')) start--
+  return line.length - start >= 2 ? line.slice(start) : ''
+}
 
 // An author's `<br>` with more text after it on the same line (BBF-85). The
 // parser turns the tag into the same newline a soft break gives, so the token
@@ -114,9 +121,9 @@ export function maskHardBreaks(markdown: string): MaskedHardBreaks {
 }
 
 function maskProseHardBreaks(text: string, breaks: string[]): string {
-  // Cheap reject on the characters a hard break or a link is spelled with. `$` in
-  // `HARD_BREAK_LINE` anchors to the end of the whole string, so it is only
-  // meaningful once the text is split into lines.
+  // Cheap reject on the characters a hard break or a link is spelled with. A hard
+  // break is a line's own ending, so it is only meaningful once the text is split
+  // into lines.
   const hasBr = /<br/i.test(text)
   if (
     !hasBr &&
@@ -129,133 +136,218 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
   }
 
   const lines = text.split('\n')
+  const kept: string[] = []
+  const restClosesLink = linkParagraphReader(lines)
+  // `current` is the line being masked, which a join may have grown; `lines[at]` is the line after it.
+  let current = lines[0]
+  let at = 1
   let inOtherBlock = false
   let inListItem = false
   let inTable = false
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index]
-    // A table row is one line, so its trailing `\` is the last cell's text:
-    // masked as a break, `| a \` lost the backslash.
-    const next = lines[index + 1] ?? ''
-    if (!line.includes('|')) inTable = false
-    else if (next.includes('|') && TABLE_DELIMITER_ROW.test(next)) inTable = true
-    // BlockNote ends a list item at a lazy line and opens a paragraph on it,
-    // so a `<br>` opening that line is one opening a paragraph: a hard break.
-    // Read as the soft break it parsed to, it had no spelling and was dropped
-    // on the next write (`- [a\n<br>b](u)`). Link syntax later in the line
-    // cannot hold the token, which sits before the tag at the line's start.
-    if (hasBr && inListItem && !NOT_PARAGRAPH_LINE.test(line) && !BLOCK_START.test(line)) {
-      lines[index] = line.replace(/^<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/i, (tag) => {
-        breaks.push('')
-        return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag}`
-      })
-    }
-    if (line.trim() === '') inOtherBlock = false
-    else if (NOT_PARAGRAPH_LINE.test(line)) inOtherBlock = true
-    if (line.trim() === '') inListItem = false
-    else if (LIST_ITEM_START.test(line)) inListItem = true
-    else if (BLOCK_START.test(line)) inListItem = false
-    // Link and image URLs never reach the unmask, so a line with any link
-    // syntax keeps its tags as they were rather than risk a token in the file.
-    if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
-      // The tag stays for the parser to break on. Its spelling is empty: in a
-      // `<pre>` block the tag's own newline is all it ever meant.
-      lines[index] = line.replace(HTML_BREAK_MID_LINE, (tag) => {
-        breaks.push('')
-        return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag}`
-      })
-    }
-    if (index === lines.length - 1) continue
-    if (lines[index + 1].trim() === '') continue
-    // The parser ends a list item at a soft break inside link text too, so
-    // `- [a\nb](u)` lost its link and gained a blank line (BBF-106). Joined
-    // with a `<br>`, the item keeps one link with a soft break in it.
-    if (
-      inListItem &&
-      !HARD_BREAK_LINE.test(line) &&
-      !BLOCK_START.test(lines[index + 1]) &&
-      endsInsideLinkText(line, lines.slice(index + 1))
-    ) {
-      lines[index] += `<br>${lines[index + 1].trimStart()}`
-      lines.splice(index + 1, 1)
-      index--
-      continue
-    }
-    if (inTable || line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
-    // The marker replaces the spelling rather than joining it: leaving the two
-    // trailing spaces in place would hand the parser a break it already knows
-    // how to drop, and leaving the backslash would escape the token's first
-    // character.
-    lines[index] = lines[index].replace(HARD_BREAK_LINE, (spelling) => {
-      breaks.push(spelling)
-      return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
-    })
-    // BlockNote's parser turns a list item's continuation line into a child
-    // paragraph, or ends the list on a lazy one, so the break is lost (BBF-99).
-    // Joined with the `<br>` the item parses to instead, the token lands
-    // against that newline; the joined line is scanned again for its own break.
-    // A code span, link or tag that the join would carry across keeps the
-    // old split rather than risk a `<br>` or token written into the file.
-    const joined = `${lines[index].replace(TASK_ITEM_BOX, '').replace(JOINED_BREAK, '')}${lines[index + 1]}`
-    if (inListItem && !BLOCK_START.test(lines[index + 1]) && !INLINE_SPAN_SYNTAX.test(joined)) {
-      lines[index] += `<br>${lines[index + 1].trimStart()}`
-      lines.splice(index + 1, 1)
-      index--
-    }
+  const tokenFor = (spelling: string): string => {
+    breaks.push(spelling)
+    return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
   }
-  return lines.join('\n')
+  for (;;) {
+    for (;;) {
+      const line = current
+      // A table row is one line, so its trailing `\` is the last cell's text:
+      // masked as a break, `| a \` lost the backslash.
+      const next = lines[at] ?? ''
+      if (!line.includes('|')) inTable = false
+      else if (next.includes('|') && TABLE_DELIMITER_ROW.test(next)) inTable = true
+      // BlockNote ends a list item at a lazy line and opens a paragraph on it,
+      // so a `<br>` opening that line is one opening a paragraph: a hard break.
+      // Read as the soft break it parsed to, it had no spelling and was dropped
+      // on the next write (`- [a\n<br>b](u)`). Link syntax later in the line
+      // cannot hold the token, which sits before the tag at the line's start.
+      if (hasBr && inListItem && !NOT_PARAGRAPH_LINE.test(line) && !BLOCK_START.test(line)) {
+        current = line.replace(
+          /^<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/i,
+          (tag) => `${tokenFor('')}${tag}`
+        )
+      }
+      if (line.trim() === '') inOtherBlock = false
+      else if (NOT_PARAGRAPH_LINE.test(line)) inOtherBlock = true
+      if (line.trim() === '') inListItem = false
+      else if (LIST_ITEM_START.test(line)) inListItem = true
+      else if (BLOCK_START.test(line)) inListItem = false
+      // Link and image URLs never reach the unmask, so a line with any link
+      // syntax keeps its tags as they were rather than risk a token in the file.
+      if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
+        // The tag stays for the parser to break on. Its spelling is empty: in a
+        // `<pre>` block the tag's own newline is all it ever meant.
+        current = line.replace(HTML_BREAK_MID_LINE, (tag) => `${tokenFor('')}${tag}`)
+      }
+      if (at === lines.length) return [...kept, current].join('\n')
+      if (next.trim() === '') break
+      // The parser ends a list item at a soft break inside link text too, so
+      // `- [a\nb](u)` lost its link and gained a blank line (BBF-106). Joined
+      // with a `<br>`, the item keeps one link with a soft break in it.
+      if (
+        inListItem &&
+        !hardBreakSpelling(line) &&
+        !BLOCK_START.test(next) &&
+        endsInsideLinkText(line) &&
+        restClosesLink(at)
+      ) {
+        // The joined line is read again from the top, and joins the next line while its link text
+        // stays open. For a joined line that read changes only `inTable`, so it runs here on the
+        // line joined in: read whole, a link text over n lines cost n reads of it.
+        let depth = linkTextDepth(line.replace(TASK_ITEM_BOX, '$1'), 0)
+        let pipe = current.includes('|')
+        for (let joining = next; ; joining = lines[at]) {
+          current += `<br>${joining.trimStart()}`
+          at++
+          depth = linkTextDepth(joining, depth)
+          pipe ||= joining.includes('|')
+          const after = lines[at] ?? ''
+          if (
+            at === lines.length ||
+            after.trim() === '' ||
+            hardBreakSpelling(joining) ||
+            BLOCK_START.test(after) ||
+            depth === 0 ||
+            !restClosesLink(at)
+          ) {
+            break
+          }
+          if (!pipe) inTable = false
+          else if (after.includes('|') && TABLE_DELIMITER_ROW.test(after)) inTable = true
+        }
+        continue
+      }
+      if (inTable || line.trim() === '' || !hardBreakSpelling(line)) break
+      // The marker replaces the spelling rather than joining it: leaving the two
+      // trailing spaces in place would hand the parser a break it already knows
+      // how to drop, and leaving the backslash would escape the token's first
+      // character.
+      const spelling = hardBreakSpelling(current)
+      current = `${current.slice(0, -spelling.length)}${tokenFor(spelling)}`
+      // BlockNote's parser turns a list item's continuation line into a child
+      // paragraph, or ends the list on a lazy one, so the break is lost (BBF-99).
+      // Joined with the `<br>` the item parses to instead, the token lands
+      // against that newline; the joined line is scanned again for its own break.
+      // A code span, link or tag that the join would carry across keeps the
+      // old split rather than risk a `<br>` or token written into the file.
+      const joined = `${current.replace(TASK_ITEM_BOX, '').replace(JOINED_BREAK, '')}${next}`
+      if (!inListItem || BLOCK_START.test(next) || INLINE_SPAN_SYNTAX.test(joined)) break
+      // As above, the joined line is read again for its own break, here on the line joined in. The
+      // part before it already passed the check for a code span, link or tag.
+      let pipe = current.includes('|')
+      for (let joining = next; ; joining = lines[at]) {
+        at++
+        pipe ||= joining.includes('|')
+        const after = lines[at] ?? ''
+        const joiningSpelling = hardBreakSpelling(joining)
+        // `inTable` is false here, or the first break would not have been masked, and a read that
+        // would set it masks nothing.
+        if (
+          at === lines.length ||
+          after.trim() === '' ||
+          !joiningSpelling ||
+          (pipe && after.includes('|') && TABLE_DELIMITER_ROW.test(after)) ||
+          BLOCK_START.test(after) ||
+          INLINE_SPAN_SYNTAX.test(after)
+        ) {
+          current += `<br>${joining.trimStart()}`
+          break
+        }
+        const trimmed = joining.trimStart()
+        current += `<br>${trimmed.slice(0, -joiningSpelling.length)}${tokenFor(joiningSpelling)}`
+      }
+    }
+    kept.push(current)
+    current = lines[at++]
+  }
 }
 
-/**
- * True when `line` ends inside link text that the last line of its paragraph
- * closes. An image, a code span, an escaped bracket, a link title, an
- * address the writer cannot spell back (`addressKeepsSplit`), a tag other than
- * `<br>`, a `<br>` against a line end or a hard break on a later line keeps
- * the old split.
- */
-function endsInsideLinkText(line: string, after: string[]): boolean {
-  const end = after.findIndex((next) => next.trim() === '' || BLOCK_START.test(next))
-  const rest = end < 0 ? after : after.slice(0, end)
-  const paragraph = [line, ...rest].join('\n')
-  if (
-    !rest.at(-1)?.includes('](') ||
-    /`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*\n|\n[^\S\n]*<br>/i.test(paragraph) ||
-    addressKeepsSplit(paragraph) ||
-    /<br/i.test(rest.join('\n')) ||
-    rest.slice(0, -1).some((next) => HARD_BREAK_LINE.test(next))
-  ) {
-    return false
-  }
-  let depth = 0
-  for (const [bracket] of line.replace(TASK_ITEM_BOX, '$1').matchAll(/[[\]]/g)) {
+/** The bracket depth after `text`, starting at `depth`. A `]` with no `[` open is skipped. */
+function linkTextDepth(text: string, depth: number): number {
+  for (const [bracket] of text.matchAll(/[[\]]/g)) {
     depth = Math.max(0, depth + (bracket === '[' ? 1 : -1))
   }
-  return depth > 0
+  return depth
 }
 
 /**
- * True when an address in `paragraph` holds a title or a space, or holds a
- * parenthesis that is unbalanced or next to a backslash, which the writer
- * escapes again on every save (BBF-107).
+ * True when `line` ends inside link text, holds no image, code span, escaped
+ * bracket, tag other than `<br>`, or `<br>` against its line end, and every
+ * address in it closes on the line with nothing `addressKeepsSplit` rejects.
+ * `linkParagraphReader` checks the lines after it.
  */
-function addressKeepsSplit(paragraph: string): boolean {
-  for (const open of paragraph.matchAll(/\]\(/g)) {
+function endsInsideLinkText(line: string): boolean {
+  return (
+    linkTextDepth(line.replace(TASK_ITEM_BOX, '$1'), 0) > 0 &&
+    !/`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*$/i.test(line) &&
+    !addressKeepsSplit(line, false)
+  )
+}
+
+/**
+ * Reads, for a line that ends inside link text, whether the rest of its
+ * paragraph lets the join go ahead: the last line closes the link, and no line
+ * holds an image, a code span, an escaped bracket, a tag, a title or address
+ * the writer cannot spell back, or (before the last line) a hard break.
+ *
+ * Each line is read once per paragraph: the answer for a later line of the same
+ * paragraph is whether the last line that keeps the split comes before it.
+ */
+function linkParagraphReader(lines: string[]): (at: number) => boolean {
+  let end = 0
+  let closes = false
+  let lastKeepingSplit = -1
+  return (at) => {
+    if (at >= end) {
+      end = at
+      while (end < lines.length && lines[end].trim() !== '' && !BLOCK_START.test(lines[end])) end++
+      closes = end > at && lines[end - 1].includes('](')
+      lastKeepingSplit = -1
+      for (let index = at; index < end; index++) {
+        const last = index === end - 1
+        if (
+          /`|<(?!br>)|!\[|\\[[\]]|<br/i.test(lines[index]) ||
+          addressKeepsSplit(lines[index], last) ||
+          (!last && hardBreakSpelling(lines[index]))
+        ) {
+          lastKeepingSplit = index
+        }
+      }
+    }
+    return closes && lastKeepingSplit < at
+  }
+}
+
+/**
+ * True when an address in `line` holds a title or a space, or holds a
+ * parenthesis that is unbalanced or next to a backslash, which the writer
+ * escapes again on every save (BBF-107). Unless `last` ends the paragraph, the
+ * line ends in a newline, which no address can hold.
+ *
+ * An address that starts inside one already read and closed is not read: it
+ * closes inside that one, so whatever it holds the outer one holds too.
+ */
+function addressKeepsSplit(line: string, last: boolean): boolean {
+  let read = 0
+  for (const open of line.matchAll(/\]\(/g)) {
+    if (open.index + 1 < read) continue
     let depth = 0
     let paren = false
     let backslash = false
-    let closed = false
-    for (const char of paragraph.slice(open.index + 2)) {
+    let at = open.index + 2
+    for (; at < line.length; at++) {
+      const char = line[at]
       if (/\s/.test(char)) return true
       if (char === '\\') backslash = true
       else if (char === '(') {
         paren = true
         depth++
-      } else if (char === ')' && depth-- === 0) {
-        closed = true
-        break
-      }
+      } else if (char === ')' && depth-- === 0) break
     }
-    if (paren && (!closed || backslash)) return true
+    if (at === line.length) {
+      if (!last || paren) return true
+    } else if (paren && backslash) return true
+    read = at
   }
   return false
 }
@@ -269,9 +361,15 @@ function addressKeepsSplit(paragraph: string): boolean {
  */
 export function unmaskHardBreaks(text: string): string {
   if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
-  return text.replace(HARD_BREAK_TOKEN_WITH_NEWLINE, (_whole, spaces: string, newline: string) =>
-    newline ? '\n\n' : spaces
-  )
+  let out = ''
+  let copied = 0
+  for (const { index, 0: token, 1: newline } of text.matchAll(HARD_BREAK_TOKEN_THEN_NEWLINE)) {
+    let end = index
+    if (newline) while (end > copied && /[^\S\n]/.test(text[end - 1])) end--
+    out += text.slice(copied, end) + (newline ? '\n\n' : '')
+    copied = index + token.length
+  }
+  return out + text.slice(copied)
 }
 
 /**

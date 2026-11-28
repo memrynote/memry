@@ -465,7 +465,7 @@ fn assert_keeps_the_file(vault: &Vault) {
     );
     let missing = vault
         .db_handle()
-        .call_blocking(|conn| attachments::missing_downloads(conn))
+        .call_blocking(|conn| attachments::missing_downloads(conn, 0))
         .expect("read");
     assert_eq!(missing, [FIRST], "its file is still wanted");
 }

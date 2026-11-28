@@ -46,12 +46,34 @@ final class CalendarBackgroundRefresh {
             task.setTaskCompleted(success: true)
             return
         }
-        nonisolated(unsafe) let refresh = task
-        let work = Task { @MainActor in
+        Self.drive(task) {
             await store.sync(forceProviders: false)
             _ = await store.refreshFeeds()
-            refresh.setTaskCompleted(success: !Task.isCancelled)
         }
-        task.expirationHandler = { work.cancel() }
+    }
+
+    /// Runs `pass` for `task` and completes the task once: when the pass
+    /// ends, or at expiry, whichever comes first. A cancel does not stop the
+    /// pass's network round trips, and iOS may kill an app whose task is
+    /// still open when its time runs out (`BGTask.setTaskCompleted`).
+    @discardableResult
+    static func drive(_ task: BackgroundTaskRun, pass: @escaping @MainActor () async -> Void) -> Task<Void, Never> {
+        var completed = false
+        let complete = { (success: Bool) in
+            guard !completed else { return }
+            completed = true
+            task.setTaskCompleted(success: success)
+        }
+        let work = Task { @MainActor in
+            await pass()
+            complete(!Task.isCancelled)
+        }
+        task.expirationHandler = {
+            Task { @MainActor in
+                work.cancel()
+                complete(false)
+            }
+        }
+        return work
     }
 }

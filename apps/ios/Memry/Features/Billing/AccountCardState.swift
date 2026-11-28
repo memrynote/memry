@@ -32,11 +32,15 @@ enum BillingFacts {
         return isWeb(billing) && billing.status == "active" && billing.plan != "free"
     }
 
-    /// Paid sync refuses this account with a 402: free, or a plan that is not
-    /// active. An unknown status (`nil`) is not known to be unpaid.
+    /// Paid sync refuses this account with a 402: free, a plan that is not
+    /// active, or an active one past its expiry (the server's
+    /// `isPaidSyncEntitlementActive`, as desktop's `isPaidBillingStatus`
+    /// mirrors it). An unknown status (`nil`) is not known to be unpaid.
     static func isKnownUnpaid(_ billing: BillingStatus?) -> Bool {
         guard let billing else { return false }
-        return billing.plan == "free" || billing.status != "active"
+        if billing.plan == "free" || billing.status != "active" { return true }
+        guard let expiry = date(billing.expiresAt) else { return false }
+        return expiry <= .now
     }
 
     /// Desktop's "activation pending": a plan is named and it is not active.
