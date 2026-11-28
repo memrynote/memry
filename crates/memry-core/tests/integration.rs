@@ -15,6 +15,7 @@ mod editor_support;
 mod http_fakes;
 #[cfg(feature = "markdown")]
 mod note_identity_support;
+mod stamp_gate;
 mod support;
 
 #[path = "account_setup.rs"]
@@ -29,6 +30,8 @@ mod api_attachment_fetch;
 mod api_inbox;
 #[path = "api_inbox_attachments.rs"]
 mod api_inbox_attachments;
+#[path = "api_inbox_suggest.rs"]
+mod api_inbox_suggest;
 #[path = "api_journal.rs"]
 mod api_journal;
 #[path = "api_note_attachment_queue.rs"]
@@ -44,6 +47,8 @@ mod api_search_cjk;
 #[cfg(feature = "markdown")]
 #[path = "api_search_file_text.rs"]
 mod api_search_file_text;
+#[path = "api_search_reindex_batches.rs"]
+mod api_search_reindex_batches;
 #[path = "api_sticky_store.rs"]
 mod api_sticky_store;
 #[path = "api_sync_declaration.rs"]
@@ -72,6 +77,8 @@ mod api_vault_reads;
 mod api_vault_sync;
 #[path = "attachment_cache.rs"]
 mod attachment_cache;
+#[path = "attachment_delete_records.rs"]
+mod attachment_delete_records;
 #[path = "attachment_download.rs"]
 mod attachment_download;
 #[path = "attachment_holds.rs"]
@@ -80,6 +87,8 @@ mod attachment_holds;
 mod attachment_manifest_vectors;
 #[path = "attachment_plan.rs"]
 mod attachment_plan;
+#[path = "attachment_runners.rs"]
+mod attachment_runners;
 #[path = "attachment_stream.rs"]
 mod attachment_stream;
 #[path = "attachment_upload_wire.rs"]
@@ -118,6 +127,8 @@ mod body_tags_reindex;
 mod body_write_handles;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
+#[path = "calendar_desktop_reads.rs"]
+mod calendar_desktop_reads;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
 #[path = "calendar_feed_untrusted.rs"]
@@ -246,6 +257,14 @@ mod domain_projects_statuses;
 mod domain_projects_write;
 #[path = "domain_related_items.rs"]
 mod domain_related_items;
+#[path = "domain_reminders_fire.rs"]
+mod domain_reminders_fire;
+#[path = "domain_reminders_fire_sync.rs"]
+mod domain_reminders_fire_sync;
+#[path = "domain_reminders_list.rs"]
+mod domain_reminders_list;
+#[path = "domain_reminders_readers.rs"]
+mod domain_reminders_readers;
 #[path = "domain_reminders_task.rs"]
 mod domain_reminders_task;
 #[path = "domain_saved_filters.rs"]
@@ -298,6 +317,8 @@ mod domain_template_legacy;
 mod domain_template_store;
 #[path = "domain_templates.rs"]
 mod domain_templates;
+#[path = "driver_imported_vault.rs"]
+mod driver_imported_vault;
 #[cfg(feature = "markdown")]
 #[path = "driver_observers.rs"]
 mod driver_observers;
@@ -329,6 +350,9 @@ mod editor_locked_refuses;
 mod editor_open_apply;
 #[path = "editor_origin_fanout.rs"]
 mod editor_origin_fanout;
+#[cfg(feature = "markdown")]
+#[path = "editor_search_stamp.rs"]
+mod editor_search_stamp;
 #[path = "embedding_input_vectors.rs"]
 mod embedding_input_vectors;
 #[path = "embedding_parity.rs"]
@@ -349,6 +373,8 @@ mod header_tags_untrusted;
 mod http_client;
 #[path = "inbox_seed_sync.rs"]
 mod inbox_seed_sync;
+#[path = "inbox_suggest_vectors.rs"]
+mod inbox_suggest_vectors;
 #[path = "inbox_vectors.rs"]
 mod inbox_vectors;
 #[path = "journal_body.rs"]
@@ -517,6 +543,8 @@ mod search_body_cache;
 mod session_refresh_errors;
 #[path = "snapshot_embeds.rs"]
 mod snapshot_embeds;
+#[path = "stamp_inside_hold.rs"]
+mod stamp_inside_hold;
 #[path = "sync_applied_records.rs"]
 mod sync_applied_records;
 #[path = "sync_body_heal.rs"]
@@ -568,6 +596,8 @@ mod sync_journal_day_pictures;
 #[cfg(feature = "markdown")]
 #[path = "sync_list_fields_union.rs"]
 mod sync_list_fields_union;
+#[path = "sync_manifest_watermark.rs"]
+mod sync_manifest_watermark;
 #[cfg(feature = "markdown")]
 #[path = "sync_note_attachment_union.rs"]
 mod sync_note_attachment_union;
@@ -580,6 +610,8 @@ mod sync_outbox;
 #[cfg(feature = "markdown")]
 #[path = "sync_project_nested_arrays.rs"]
 mod sync_project_nested_arrays;
+#[path = "sync_pull_search_stamp.rs"]
+mod sync_pull_search_stamp;
 #[path = "sync_realtime.rs"]
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]

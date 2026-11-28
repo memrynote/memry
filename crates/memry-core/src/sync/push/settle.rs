@@ -34,10 +34,12 @@ impl PushCoordinator {
     /// An upsert of a row the reconcile kept against an unattested marker
     /// applies that delete here instead of being sent ([`delete_wins`]).
     pub(super) async fn applies_kept_marker(&self, item: &Collapsed) -> Result<bool, StorageError> {
-        let (item, device, now) = (item.clone(), self.clock_device.clone(), now_ms());
+        let (item, device) = (item.clone(), self.clock_device.clone());
         let at_rest = self.at_rest.clone();
-        let apply =
-            move |conn: &mut _| delete_wins::apply_kept_marker(conn, &item, &device, &at_rest, now);
+        // #5849: stamped inside the hold that writes the rows.
+        let apply = move |conn: &mut _| {
+            delete_wins::apply_kept_marker(conn, &item, &device, &at_rest, now_ms())
+        };
         self.db.call(apply).await
     }
 
@@ -68,11 +70,10 @@ impl PushCoordinator {
     pub(super) async fn settle_delete_wins(
         &self,
         lost: Vec<Collapsed>,
-        now: i64,
         report: &mut PushReport,
     ) -> Result<(), PushError> {
         for item in lost {
-            match self.settle_one(&item, now).await {
+            match self.settle_one(&item).await {
                 Ok(deleted) => {
                     report.accepted += item.ids().len();
                     report.deleted_locally += usize::from(deleted);
@@ -88,7 +89,7 @@ impl PushCoordinator {
 
     /// `SYNC_DELETE_WINS` for one item: pulls its id with markers, then
     /// deletes only on verified evidence ([`delete_wins::apply_delete_wins`]).
-    async fn settle_one(&self, item: &Collapsed, now: i64) -> Result<bool, String> {
+    async fn settle_one(&self, item: &Collapsed) -> Result<bool, String> {
         // §5.8: an item whose delete cannot be checked is deferred, as a
         // failed pull is, and its queued upsert keeps protecting the row.
         let Some(pull) = &self.pull else {
@@ -103,6 +104,9 @@ impl PushCoordinator {
         let at_rest = self.at_rest.clone();
         self.db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the tombstone,
+                // after the by-id pull's round trip.
+                let now = now_ms();
                 let pull = pull.as_deref();
                 delete_wins::apply_delete_wins(conn, &item, &entries, pull, &device, &at_rest, now)
             })

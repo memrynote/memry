@@ -653,11 +653,11 @@ export const CanvasEditor = ({
       }
     }
     registerLiveCanvas(canvasId, handle)
-    void window.api.canvas.liveOpened(canvasId)
+    void canvasService.liveOpened(canvasId)
 
     return () => {
       unregisterLiveCanvas(canvasId, handle)
-      void window.api.canvas.liveClosed(canvasId)
+      void canvasService.liveClosed(canvasId)
     }
   }, [api, canvasId, corrupt, viewMode])
 

@@ -1,6 +1,10 @@
 //! The attachment stores against a real `data.db` file, opened and migrated as
 //! the app opens it.
 
+use std::fs::File;
+use std::io;
+use std::path::Path;
+
 use rusqlite::{Connection, params};
 
 use super::download_failures::{self as failures, FailureReason};
@@ -10,10 +14,43 @@ use super::upload_queue::{self as queue, DRAIN_BATCH_LIMIT, RETRY_MAX_MS, STUCK_
 use crate::api::errors::StorageError;
 use crate::storage::test_support::{TempDir, temp_dir};
 use crate::storage::{Db, open_data};
+use crate::sync::attachments::queue::VaultFiles;
 
 const MINUTE: i64 = 60 * 1000;
 const HOUR: i64 = 60 * MINUTE;
 const DAY: i64 = 24 * HOUR;
+
+/// A vault with no files, so the refusal check judges nothing.
+struct NoFiles;
+
+impl VaultFiles for NoFiles {
+    fn root(&self) -> &Path {
+        Path::new("/v")
+    }
+
+    fn open(&self, _: &str) -> io::Result<File> {
+        Err(io::ErrorKind::NotFound.into())
+    }
+
+    fn list_files(&self, _: &str) -> io::Result<Vec<String>> {
+        Err(io::ErrorKind::NotFound.into())
+    }
+
+    fn is_reachable(&self) -> bool {
+        true
+    }
+}
+
+fn queue_if_absent(conn: &Connection, disk_path: &str, now: i64) -> Result<bool, StorageError> {
+    queue::queue_if_absent(
+        conn,
+        &NoFiles,
+        &queue::Refusals::default(),
+        "n1",
+        disk_path,
+        now,
+    )
+}
 
 fn vault() -> (TempDir, Db) {
     let dir = temp_dir("attachment-store");
@@ -39,14 +76,14 @@ fn a_queued_upload_keeps_one_row_its_attempts_and_its_window() {
         queue::enqueue(conn, "n1", "/v/a.png", 1_000)?;
         assert_eq!(queue::mark_failed(conn, "n1", "/v/a.png", "503", 2_000)?, 1);
         // The backfill finds the file again: the failed row keeps its window.
-        assert!(!queue::queue_if_absent(conn, "n1", "/v/a.png", 3_000)?);
+        assert!(!queue_if_absent(conn, "/v/a.png", 3_000)?);
         // A save queues it again: the attempts stay, the write time moves.
         queue::enqueue(conn, "n1", "/v/a.png", 4_000)?;
         let rows = queue::list_pending(conn, 10)?;
         assert_eq!(rows.len(), 1);
         assert_eq!((rows[0].attempts, rows[0].updated_at), (1, 4_000));
 
-        assert!(queue::queue_if_absent(conn, "n1", "/v/b.png", 5_000)?);
+        assert!(queue_if_absent(conn, "/v/b.png", 5_000)?);
         assert!(queue::has_pending(conn, "n1", "/v/b.png")?);
         assert!(!queue::has_pending(conn, "n2", "/v/b.png")?);
         queue::clear(conn, "n1", "/v/a.png")?;

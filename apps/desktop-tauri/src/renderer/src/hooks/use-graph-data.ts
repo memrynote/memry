@@ -9,6 +9,7 @@ import {
 } from '@/services/notes-service'
 import { onTaskCreated, onTaskUpdated, onTaskDeleted } from '@/services/tasks-service'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
+import { graphService } from '@/services/graph-service'
 import { subscribeToEvents } from '@/services/tauri-event'
 import { rereadQueries } from './use-notes-query'
 
@@ -21,7 +22,7 @@ export const graphKeys = {
 export function useGraphData() {
   return useQuery<GraphDataResponse>({
     queryKey: graphKeys.data(),
-    queryFn: () => window.api.graph.getData(),
+    queryFn: () => graphService.getData(),
     staleTime: 30_000
   })
 }
@@ -29,7 +30,7 @@ export function useGraphData() {
 export function useLocalGraphData(noteId: string | undefined) {
   return useQuery<GraphDataResponse>({
     queryKey: graphKeys.local(noteId ?? ''),
-    queryFn: () => window.api.graph.getLocal({ noteId: noteId! }),
+    queryFn: () => graphService.getLocal({ noteId: noteId! }),
     enabled: !!noteId,
     staleTime: 15_000
   })

@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
-description = "Developer tasks for the desktop app: `cargo xtask seed bench` (Step 40, #3557)."
+description = "Developer tasks for the desktop app: `cargo xtask seed bench` and `measure-memory` (Step 40, #3557)."
 
 [dependencies]
 # The vault file tier writes the seeded files; the core gives the frontmatter types.
@@ -14,8 +14,19 @@ memry-desktop = { path = "../memry-desktop" }
 serde_json = { workspace = true }
 # The seed dates follow the local day, as `seed-data/date.ts` does; already built for memry-desktop.
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# `measure-memory`: the app's process tree (pid, parent, name) on every OS.
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+# `measure-memory`: one temp profile per run, removed when the run ends.
+tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+# `measure-memory`: `proc_pid_rusage` (macOS footprint) and `dlsym` (the responsibility API).
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+# `measure-memory`: the Ctrl-C handler (`SetConsoleCtrlHandler`); the version memry-desktop builds.
+windows = { version = "0.62.2", features = ["Win32_System_Console"] }
 
 [dev-dependencies]
 sha2 = { workspace = true }
 hex = { workspace = true }
-tempfile = "3"

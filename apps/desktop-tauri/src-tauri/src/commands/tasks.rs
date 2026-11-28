@@ -5,7 +5,7 @@
 //!
 //! After a landed write [`announce`] sends the events the service lists, in `publisher.ts`'s
 //! order. The status commands send nothing, as Electron's publisher sends nothing for them. The
-//! other task writes live in `task_writes`.
+//! other task writes live in `task_writes`, the project commands in `task_projects`.
 
 use std::sync::Arc;
 
@@ -23,8 +23,9 @@ use super::blocking;
 use super::error::CommandError;
 use super::notes::open_vault;
 use crate::events::{
-    NoteTagsChangedEvent, TaskCompletedEvent, TaskCreatedEvent, TaskDeletedEvent, TaskMovedEvent,
-    TaskUpdatedEvent, broadcast,
+    NoteTagsChangedEvent, ProjectCreatedEvent, ProjectDeletedEvent, ProjectUpdatedEvent,
+    TaskCompletedEvent, TaskCreatedEvent, TaskDeletedEvent, TaskMovedEvent, TaskUpdatedEvent,
+    broadcast,
 };
 
 fn service<R: Runtime>(app: &AppHandle<R>) -> Result<TasksService, CommandError> {
@@ -62,6 +63,9 @@ pub fn announce<R: Runtime, M>(app: &AppHandle<R>, written: &TaskWritten<M>) {
             TaskEvent::Completed(id) => broadcast(app, TaskCompletedEvent { id: id.clone() }),
             TaskEvent::Moved(id) => broadcast(app, TaskMovedEvent { id: id.clone() }),
             TaskEvent::TagsChanged => broadcast(app, NoteTagsChangedEvent),
+            TaskEvent::ProjectCreated(id) => broadcast(app, ProjectCreatedEvent { id: id.clone() }),
+            TaskEvent::ProjectUpdated(id) => broadcast(app, ProjectUpdatedEvent { id: id.clone() }),
+            TaskEvent::ProjectDeleted(id) => broadcast(app, ProjectDeletedEvent { id: id.clone() }),
         }
     }
 }

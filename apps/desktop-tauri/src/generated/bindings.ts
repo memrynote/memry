@@ -40,8 +40,21 @@ export const commands = {
 	syncSetupFirstDevice: (provider: string, oauthToken: string, state: string) => __TAURI_INVOKE<AuthFirstDevice>("sync_setup_first_device", { provider, oauthToken, state }),
 	/**  `sync:setup-new-account`. The phrase waits for `sync_get_recovery_phrase`. */
 	syncSetupNewAccount: () => __TAURI_INVOKE<AccountDevice>("sync_setup_new_account"),
+	/**
+	 *  `agent:editTrustList` with `scope: 'vault'`, which Settings uses to revoke a standing
+	 *  approval. The gate reads the list at every write call, so the revoke holds from the next one.
+	 */
+	agentEditVaultTrustList: (edit: AgentVaultTrustEdit) => __TAURI_INVOKE<AgentToolGrants>("agent_edit_vault_trust_list", { edit }),
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
 	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**
+	 *  `agent_get_tool_call`: the name and arguments of a card on screen, which the all-window
+	 *  `tool_call_pending_approval` event leaves out. A card that settled or belongs to another
+	 *  conversation is `not_found`.
+	 */
+	agentGetToolCall: (conversationId: string, toolCallId: string) => __TAURI_INVOKE<ToolCall>("agent_get_tool_call", { conversationId, toolCallId }),
+	/**  `agent:getToolGrants`. No open vault has no grants, as Electron's unavailable handler answers. */
+	agentGetToolGrants: () => __TAURI_INVOKE<AgentToolGrants>("agent_get_tool_grants"),
 	/**
 	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
 	 *  list, as in Electron.
@@ -143,26 +156,6 @@ export const commands = {
 	 *  answers `sync_failed`. The answer carries no `source` until the source view lands (#4894).
 	 */
 	calendarRefreshProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_refresh_provider", { input }),
-	/**  `canvas:create`. */
-	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
-	/**  `canvas:delete`: the document goes to the OS trash. */
-	canvasDelete: (id: string) => __TAURI_INVOKE<CanvasDeleteResponse>("canvas_delete", { id }),
-	/**  `canvas:duplicate`: `null` when the original is gone or its document cannot be read. */
-	canvasDuplicate: (id: string) => __TAURI_INVOKE<CanvasSummaryView | null>("canvas_duplicate", { id }),
-	/**  `canvas:get`: `null` for a deleted canvas. */
-	canvasGet: (id: string) => __TAURI_INVOKE<CanvasView | null>("canvas_get", { id }),
-	/**  `canvas:library-list`. */
-	canvasLibraryList: () => __TAURI_INVOKE<CanvasLibraryListResponse>("canvas_library_list"),
-	/**  `canvas:library-save`. */
-	canvasLibrarySave: (input: CanvasLibrarySaveInput) => __TAURI_INVOKE<CanvasLibrarySaveResponse>("canvas_library_save", { input }),
-	/**  `canvas:list`. */
-	canvasList: () => __TAURI_INVOKE<CanvasListResponse>("canvas_list"),
-	/**  `canvas:open-external`: the document in the OS default app. */
-	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
-	/**  `canvas:reveal-in-finder`. */
-	canvasRevealInFinder: (id: string) => __TAURI_INVOKE<null>("canvas_reveal_in_finder", { id }),
-	/**  `canvas:update`. A conflict or a missing canvas fails with Electron's message. */
-	canvasUpdate: (input: CanvasUpdateInput) => __TAURI_INVOKE<CanvasUpdateResponse>("canvas_update", { input }),
 	/**  `canvasFolder:create`: a directory and its record under `parent` (`null` the root). */
 	canvasFolderCreate: (parent: string | null, name: string) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_create", { parent, name }),
 	/**  `canvasFolder:delete`: one [`CanvasDeletedEvent`] per canvas it took, then the folder's. */
@@ -286,6 +279,20 @@ export const commands = {
 	/**  Saves how the cover sits in its band; only the fields that changed are sent. */
 	homePagesSetCoverFraming: (id: string, changes: CoverFramingInput) => __TAURI_INVOKE<HomePageView>("home_pages_set_cover_framing", { id, changes }),
 	homePagesUpdate: (input: HomePageUpdateInput) => __TAURI_INVOKE<HomePageView>("home_pages_update", { input }),
+	/**  `import:readwise:ack-error-toast`: `first` once per parked episode. */
+	importReadwiseAckErrorToast: () => __TAURI_INVOKE<boolean>("import_readwise_ack_error_toast"),
+	/**  `import:readwise:cancel`: stops the run in progress at its next book. */
+	importReadwiseCancel: () => __TAURI_INVOKE<null>("import_readwise_cancel"),
+	/**  `import:readwise:connect`: checks the pasted token with Readwise, then stores it. */
+	importReadwiseConnect: (token: string) => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_connect", { token }),
+	/**  `import:readwise:disconnect`: the token and run state go, the notes stay. */
+	importReadwiseDisconnect: () => __TAURI_INVOKE<null>("import_readwise_disconnect"),
+	/**  `import:readwise:set-options`: writes the given options, answers the status. */
+	importReadwiseSetOptions: (input: ReadwiseOptionsInput) => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_set_options", { input }),
+	/**  `import:readwise:status`. */
+	importReadwiseStatus: () => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_status"),
+	/**  `import:readwise:sync-now`: runs now, or joins the scheduled run, and returns when it ends. */
+	importReadwiseSyncNow: () => __TAURI_INVOKE<null>("import_readwise_sync_now"),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -400,6 +407,11 @@ export const commands = {
 	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
 	/**  `notes:export-html`: the note as a self-contained HTML file where the save dialog says. */
 	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
+	/**
+	 *  `notes:export-pdf`: the note printed in a hidden window with the page size asked for, written
+	 *  where the save dialog says. Like the HTML export it takes no path from the webview.
+	 */
+	notesExportPdf: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_pdf", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
@@ -615,6 +627,10 @@ export const commands = {
 	ocrLanguagesRetry: () => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_retry"),
 	/**  Stores the chosen languages (English is always added) and starts converging on them. */
 	ocrLanguagesSet: (languages: OcrLanguage[]) => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_set", { languages }),
+	/**  `onboarding:detect-sources`: note apps installed on this computer, and Obsidian's vaults. */
+	onboardingDetectSources: () => __TAURI_INVOKE<OnboardingSources>("onboarding_detect_sources"),
+	/**  `onboarding:is-memry-vault`: whether a folder the user picked already has `.memry`. */
+	onboardingIsMemryVault: (path: string) => __TAURI_INVOKE<boolean>("onboarding_is_memry_vault", { path }),
 	/**
 	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
 	 *  that link to it.
@@ -660,15 +676,6 @@ export const commands = {
 	spellAddWord: (word: string) => __TAURI_INVOKE<boolean>("spell_add_word", { word }),
 	/**  Adds each valid word and returns how many were taken (the Electron dictionary import). */
 	spellAddWords: (words: string[]) => __TAURI_INVOKE<number>("spell_add_words", { words }),
-	/**  Whether there was a draft to delete. */
-	stickyDeleteDraft: (id: string) => __TAURI_INVOKE<boolean>("sticky_delete_draft", { id }),
-	stickyGetSession: () => __TAURI_INVOKE<StickyWindowSession>("sticky_get_session"),
-	stickyListDrafts: () => __TAURI_INVOKE<StickyDraftView[]>("sticky_list_drafts"),
-	/**  The card's measured height in logical pixels; the shell clamps it to 140 to 560. */
-	stickyResize: (height: number | null) => __TAURI_INVOKE<null>("sticky_resize", { height }),
-	stickySaveDraft: (input: StickySaveDraftInput) => __TAURI_INVOKE<StickyDraftView>("sticky_save_draft", { input }),
-	/**  Closes the sticky; its renderer saved the draft before asking. */
-	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**
 	 *  Every installed font family. Enumeration touches every font file, so it runs off the async
 	 *  runtime.
@@ -1018,6 +1025,37 @@ export const commands = {
 	windowSetCaptionRects: (min: CaptionRect, max: CaptionRect, close: CaptionRect) => __TAURI_INVOKE<null>("window_set_caption_rects", { min, max, close }),
 	/**  Maximizes the calling window, or restores it when it is maximized. */
 	windowToggleMaximize: () => __TAURI_INVOKE<null>("window_toggle_maximize"),
+	/**  `calendar:create-event`. */
+	calendarCreateEvent: (input: CalendarCreateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_create_event", { input }),
+	/**  `calendar:delete-event`. */
+	calendarDeleteEvent: (id: string) => __TAURI_INVOKE<CalendarDeleteView>("calendar_delete_event", { id }),
+	/**  `calendar:get-event`: `null` when there is no such event. */
+	calendarGetEvent: (id: string) => __TAURI_INVOKE<CalendarEventView | null>("calendar_get_event", { id }),
+	/**  `calendar:get-external-event`. */
+	calendarGetExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarExternalEventDetailsView>("calendar_get_external_event", { input }),
+	/**  `calendar:get-range`. */
+	calendarGetRange: (input: CalendarRangeInput) => __TAURI_INVOKE<CalendarRangeView>("calendar_get_range", { input }),
+	/**  `calendar:list-linked-notes`. */
+	calendarListLinkedNotes: (input: CalendarLinkedNotesInput) => __TAURI_INVOKE<CalendarLinkedNotesView>("calendar_list_linked_notes", { input }),
+	/**  `calendar:list-sources`. */
+	calendarListSources: (input: CalendarListSourcesInput | null) => __TAURI_INVOKE<CalendarSourceListView>("calendar_list_sources", { input }),
+	/**
+	 *  `calendar:promote-external-event`. A gone, read-only or orphaned mirror answers
+	 *  `success: false` with the reason, as the handler's three error classes did. It sends no
+	 *  calendar event, as the handler sent none.
+	 */
+	calendarPromoteExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarPromoteView>("calendar_promote_external_event", { input }),
+	/**  `calendar:search-events`. */
+	calendarSearchEvents: (input: CalendarSearchInput) => __TAURI_INVOKE<CalendarEventSearchView>("calendar_search_events", { input }),
+	/**  `calendar:update-event` (also move and resize). */
+	calendarUpdateEvent: (input: CalendarUpdateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_update_event", { input }),
+	/**  `calendar:update-source-selection`. It sends no calendar event, as the handler sent none. */
+	calendarUpdateSourceSelection: (input: CalendarSourceSelectionInput) => __TAURI_INVOKE<CalendarSourceMutationView>("calendar_update_source_selection", { input }),
+	/**
+	 *  Shows the inbox review notification now (Settings > Inbox), so the user can check that the
+	 *  system shows it and, on macOS, answer the permission prompt (`sendTestReviewNotification`).
+	 */
+	settingsSendTestInboxReviewNotification: () => __TAURI_INVOKE<InboxReviewTestResult>("settings_send_test_inbox_review_notification"),
 	tasksArchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_archive", { id }),
 	tasksBulkArchive: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_archive", { input }),
 	tasksBulkComplete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_complete", { input }),
@@ -1049,10 +1087,144 @@ export const commands = {
 	tasksUnarchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_unarchive", { id }),
 	tasksUncomplete: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_uncomplete", { id }),
 	tasksUpdate: (input: TaskUpdateInput) => __TAURI_INVOKE<TaskMutation>("tasks_update", { input }),
+	tasksProjectArchive: (id: string) => __TAURI_INVOKE<ProjectMutation>("tasks_project_archive", { id }),
+	tasksProjectCreate: (input: ProjectCreateInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_create", { input }),
+	tasksProjectDelete: (id: string) => __TAURI_INVOKE<ProjectMutation>("tasks_project_delete", { id }),
+	tasksProjectGet: (id: string) => __TAURI_INVOKE<ProjectWithStatusesView | null>("tasks_project_get", { id }),
+	tasksProjectLinkItem: (input: ProjectLinkItemInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_link_item", { input }),
+	tasksProjectList: () => __TAURI_INVOKE<ProjectListView>("tasks_project_list"),
+	tasksProjectListContents: (id: string) => __TAURI_INVOKE<ProjectContentsView>("tasks_project_list_contents", { id }),
+	tasksProjectListForItem: (input: ProjectListForItemInput) => __TAURI_INVOKE<ProjectRefView[]>("tasks_project_list_for_item", { input }),
+	tasksProjectListLinks: (id: string) => __TAURI_INVOKE<ProjectLinkView[]>("tasks_project_list_links", { id }),
+	tasksProjectReorder: (input: ProjectReorderInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_reorder", { input }),
+	tasksProjectSetHomeNote: (input: ProjectSetHomeNoteInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_set_home_note", { input }),
+	tasksProjectSetLinkPinned: (input: ProjectSetLinkPinnedInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_set_link_pinned", { input }),
+	tasksProjectUnlinkItem: (input: ProjectLinkItemInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_unlink_item", { input }),
+	tasksProjectUpdate: (input: ProjectUpdateInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_update", { input }),
+	/**  Bookmarks each item not bookmarked yet and answers how many it made. */
+	bookmarksBulkCreate: (items: BookmarkItemInput[]) => __TAURI_INVOKE<number>("bookmarks_bulk_create", { items }),
+	/**  Removes each bookmark of `bookmark_ids` and answers how many it removed. */
+	bookmarksBulkDelete: (bookmarkIds: string[]) => __TAURI_INVOKE<number>("bookmarks_bulk_delete", { bookmarkIds }),
+	/**
+	 *  Bookmarks the item at the end of the list; an item bookmarked already is refused with
+	 *  Electron's "already bookmarked".
+	 */
+	bookmarksCreate: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView>("bookmarks_create", { input }),
+	/**  Removes the bookmark `id`; an id with no live bookmark is refused with Electron's "not found". */
+	bookmarksDelete: (id: string) => __TAURI_INVOKE<null>("bookmarks_delete", { id }),
+	bookmarksGet: (id: string) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get", { id }),
+	bookmarksGetByItem: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get_by_item", { input }),
+	bookmarksIsBookmarked: (input: BookmarkItemInput) => __TAURI_INVOKE<boolean>("bookmarks_is_bookmarked", { input }),
+	/**  One page of bookmarks, each with what it points at. */
+	bookmarksList: (input: BookmarkListInput) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list", { input }),
+	/**  Every bookmark of `item_type`, by position. */
+	bookmarksListByType: (itemType: string) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list_by_type", { itemType }),
+	/**  Puts `bookmark_ids` in this order. */
+	bookmarksReorder: (bookmarkIds: string[]) => __TAURI_INVOKE<null>("bookmarks_reorder", { bookmarkIds }),
+	/**  Bookmarks an unbookmarked item, or removes every bookmark of a bookmarked one. */
+	bookmarksToggle: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkToggleView>("bookmarks_toggle", { input }),
+	/**  The newest opened items that still exist, at most `limit` (50 when absent). */
+	recentsList: (limit: number | null) => __TAURI_INVOKE<RecentlyOpenedView[]>("recents_list", { limit }),
+	/**  Records that the note or canvas was opened now: whether it was written. */
+	recentsRecord: (input: RecordRecentInput) => __TAURI_INVOKE<boolean>("recents_record", { input }),
+	/**
+	 *  Dismisses each id that names a live reminder and returns how many. A failure stops the
+	 *  batch; the reminders dismissed before it keep their events and lose their banners.
+	 */
+	reminderBulkDismiss: (reminderIds: string[]) => __TAURI_INVOKE<number>("reminder_bulk_dismiss", { reminderIds }),
+	reminderCountPending: () => __TAURI_INVOKE<number>("reminder_count_pending"),
+	reminderCreate: (input: ReminderCreateInput) => __TAURI_INVOKE<ReminderView>("reminder_create", { input }),
+	reminderDelete: (id: string) => __TAURI_INVOKE<null>("reminder_delete", { id }),
+	reminderDismiss: (id: string) => __TAURI_INVOKE<ReminderView>("reminder_dismiss", { id }),
+	reminderGet: (id: string) => __TAURI_INVOKE<ReminderWithTargetView | null>("reminder_get", { id }),
+	reminderGetDue: () => __TAURI_INVOKE<ReminderWithTargetView[]>("reminder_get_due"),
+	reminderGetForTarget: (input: ReminderTargetInput) => __TAURI_INVOKE<ReminderView[]>("reminder_get_for_target", { input }),
+	reminderGetUpcoming: (days: number | null) => __TAURI_INVOKE<ReminderListView>("reminder_get_upcoming", { days }),
+	reminderList: (input: ReminderListInput | null) => __TAURI_INVOKE<ReminderListView>("reminder_list", { input }),
+	reminderSnooze: (input: ReminderSnoozeInput) => __TAURI_INVOKE<ReminderView>("reminder_snooze", { input }),
+	reminderUpdate: (input: ReminderUpdateInput) => __TAURI_INVOKE<ReminderView>("reminder_update", { input }),
+	/**  Whether there was a draft to delete. */
+	stickyDeleteDraft: (id: string) => __TAURI_INVOKE<boolean>("sticky_delete_draft", { id }),
+	stickyGetSession: () => __TAURI_INVOKE<StickyWindowSession>("sticky_get_session"),
+	stickyListDrafts: () => __TAURI_INVOKE<StickyDraftView[]>("sticky_list_drafts"),
+	/**  The pointer entered (`true`) or left the edge tab: it fans the draft list out or folds it. */
+	stickyPeek: (open: boolean) => __TAURI_INVOKE<null>("sticky_peek", { open }),
+	/**  The card's measured height in logical pixels; the shell clamps it to 140 to 560. */
+	stickyResize: (height: number | null) => __TAURI_INVOKE<null>("sticky_resize", { height }),
+	stickySaveDraft: (input: StickySaveDraftInput) => __TAURI_INVOKE<StickyDraftView>("sticky_save_draft", { input }),
+	/**  Closes the sticky; its renderer saved the draft before asking. */
+	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
+	/**  The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`). */
+	stickyUnfold: (draftId: string | null) => __TAURI_INVOKE<null>("sticky_unfold", { draftId }),
+	/**  Shows the main window, asks it to open what a send made, and tucks the sticky away. */
+	stickyOpenTarget: (kind: string, targetId: string) => __TAURI_INVOKE<null>("sticky_open_target", { kind, targetId }),
+	/**  Sends the text to a note, a task or today's journal entry, and deletes its draft. */
+	stickySend: (input: StickySendInput) => __TAURI_INVOKE<StickySent>("sticky_send", { input }),
+	/**  Takes a note or task send back within its minute and answers the draft it restores. */
+	stickyUndoSend: (undoToken: string) => __TAURI_INVOKE<StickyDraftView>("sticky_undo_send", { undoToken }),
+	/**  `graph:clear-layout`: forgets the view's layout. */
+	graphClearLayout: (viewKey: string) => __TAURI_INVOKE<null>("graph_clear_layout", { viewKey }),
+	/**  `graph:get-layout`: the layout saved for the view, `null` when none reads. */
+	graphGetLayout: (viewKey: string) => __TAURI_INVOKE<GraphLayoutView | null>("graph_get_layout", { viewKey }),
+	/**  `graph:save-layout`: replaces the view's layout. */
+	graphSaveLayout: (viewKey: string, layout: GraphLayoutView) => __TAURI_INVOKE<null>("graph_save_layout", { viewKey, layout }),
+	/**  Marks `electron-localstorage.json` applied, so no later window sets its keys again. */
+	migrationLocalstorageApplied: () => __TAURI_INVOKE<null>("migration_localstorage_applied"),
+	/**
+	 *  Show details: shows the verification report (`electron-import-report.json`) in the file
+	 *  manager.
+	 */
+	migrationOpenReport: () => __TAURI_INVOKE<null>("migration_open_report"),
+	/**
+	 *  Try again: runs the import again after a failure. Refused while a run is going, after it
+	 *  succeeded, and on a launch without one.
+	 */
+	migrationRetry: () => __TAURI_INVOKE<null>("migration_retry"),
+	/**  What the migration view shows now; `idle` on a launch that migrates nothing. */
+	migrationStatus: () => __TAURI_INVOKE<MigrationStatus>("migration_status"),
+	/**
+	 *  `canvas:can-upload-asset`: `false` until the attachment upload lands (30f), Electron's answer
+	 *  with no sync. The editor then keeps new images inline in the scene.
+	 */
+	canvasCanUploadAsset: () => __TAURI_INVOKE<CanvasCanUploadAssetResponse>("canvas_can_upload_asset"),
+	/**  `canvas:create`. */
+	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
+	/**  `canvas:delete`: the document goes to the OS trash. */
+	canvasDelete: (id: string) => __TAURI_INVOKE<CanvasDeleteResponse>("canvas_delete", { id }),
+	/**  `canvas:duplicate`: `null` when the original is gone or its document cannot be read. */
+	canvasDuplicate: (id: string) => __TAURI_INVOKE<CanvasSummaryView | null>("canvas_duplicate", { id }),
+	/**  `canvas:get`: `null` for a deleted canvas. */
+	canvasGet: (id: string) => __TAURI_INVOKE<CanvasView | null>("canvas_get", { id }),
+	/**  `canvas:get-asset`. */
+	canvasGetAsset: (canvasId: string, fileId: string) => __TAURI_INVOKE<CanvasGetAssetResponse>("canvas_get_asset", { canvasId, fileId }),
+	/**  `canvas:library-list`. */
+	canvasLibraryList: () => __TAURI_INVOKE<CanvasLibraryListResponse>("canvas_library_list"),
+	/**  `canvas:library-save`. */
+	canvasLibrarySave: (input: CanvasLibrarySaveInput) => __TAURI_INVOKE<CanvasLibrarySaveResponse>("canvas_library_save", { input }),
+	/**  `canvas:list`. */
+	canvasList: () => __TAURI_INVOKE<CanvasListResponse>("canvas_list"),
+	/**  `canvas:list-assets`. */
+	canvasListAssets: (canvasId: string) => __TAURI_INVOKE<CanvasListAssetsResponse>("canvas_list_assets", { canvasId }),
+	/**  `canvas:live-closed`: only the window that owns the canvas releases it. */
+	canvasLiveClosed: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_closed", { canvasId }),
+	/**  `canvas:live-opened`: the calling window now has the canvas in its editor. */
+	canvasLiveOpened: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_opened", { canvasId }),
+	/**  `canvas:open-external`: the document in the OS default app. */
+	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
+	/**  `canvas:reveal-in-finder`. */
+	canvasRevealInFinder: (id: string) => __TAURI_INVOKE<null>("canvas_reveal_in_finder", { id }),
+	/**  `canvas:update`. A conflict or a missing canvas fails with Electron's message. */
+	canvasUpdate: (input: CanvasUpdateInput) => __TAURI_INVOKE<CanvasUpdateResponse>("canvas_update", { input }),
+	/**
+	 *  `canvas:upload-asset`: only bytes this vault already stores (a dedup hit); the upload of new
+	 *  bytes is 30f's.
+	 */
+	canvasUploadAsset: (input: CanvasUploadAssetInput) => __TAURI_INVOKE<UploadedAsset>("canvas_upload_asset", { input }),
 };
 
 /** Events */
 export const events = {
+	agentEventEmittedEvent: makeEvent<AgentEventEmittedEvent, AgentEventEmittedEvent>("agent-event-emitted-event"),
 	aiEmbeddingProgressEvent: makeEvent<AiEmbeddingProgressEvent, AiEmbeddingProgressEvent>("ai-embedding-progress-event"),
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
@@ -1061,6 +1233,10 @@ export const events = {
 	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
 	authSessionExpiredEvent: makeEvent<AuthSessionExpiredEvent, AuthSessionExpiredEvent>("auth-session-expired-event"),
 	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
+	bookmarkCreatedEvent: makeEvent<BookmarkCreatedEvent, BookmarkCreatedEvent>("bookmark-created-event"),
+	bookmarkDeletedEvent: makeEvent<BookmarkDeletedEvent, BookmarkDeletedEvent>("bookmark-deleted-event"),
+	bookmarksReorderedEvent: makeEvent<BookmarksReorderedEvent, BookmarksReorderedEvent>("bookmarks-reordered-event"),
+	calendarChangedEvent: makeEvent<CalendarChangedEvent, CalendarChangedEvent>("calendar-changed-event"),
 	canvasCreatedEvent: makeEvent<CanvasCreatedEvent, CanvasCreatedEvent>("canvas-created-event"),
 	canvasDeletedEvent: makeEvent<CanvasDeletedEvent, CanvasDeletedEvent>("canvas-deleted-event"),
 	canvasFolderCreatedEvent: makeEvent<CanvasFolderCreatedEvent, CanvasFolderCreatedEvent>("canvas-folder-created-event"),
@@ -1077,7 +1253,14 @@ export const events = {
 	homePageCreatedEvent: makeEvent<HomePageCreatedEvent, HomePageCreatedEvent>("home-page-created-event"),
 	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
 	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
+	importReadwiseStatusChangedEvent: makeEvent<ImportReadwiseStatusChangedEvent, ImportReadwiseStatusChangedEvent>("import-readwise-status-changed-event"),
+	inboxMetadataCompleteEvent: makeEvent<InboxMetadataCompleteEvent, InboxMetadataCompleteEvent>("inbox-metadata-complete-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
+	inboxProcessingErrorEvent: makeEvent<InboxProcessingErrorEvent, InboxProcessingErrorEvent>("inbox-processing-error-event"),
+	inboxReviewDueEvent: makeEvent<InboxReviewDueEvent, InboxReviewDueEvent>("inbox-review-due-event"),
+	inboxReviewOpenEvent: makeEvent<InboxReviewOpenEvent, InboxReviewOpenEvent>("inbox-review-open-event"),
+	inboxSnoozeDueEvent: makeEvent<InboxSnoozeDueEvent, InboxSnoozeDueEvent>("inbox-snooze-due-event"),
+	inboxUpdatedEvent: makeEvent<InboxUpdatedEvent, InboxUpdatedEvent>("inbox-updated-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -1097,10 +1280,23 @@ export const events = {
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	ocrLanguagesChangedEvent: makeEvent<OcrLanguagesChangedEvent, OcrLanguagesChangedEvent>("ocr-languages-changed-event"),
 	portalsUsageChangedEvent: makeEvent<PortalsUsageChangedEvent, PortalsUsageChangedEvent>("portals-usage-changed-event"),
+	projectCreatedEvent: makeEvent<ProjectCreatedEvent, ProjectCreatedEvent>("project-created-event"),
+	projectDeletedEvent: makeEvent<ProjectDeletedEvent, ProjectDeletedEvent>("project-deleted-event"),
+	projectUpdatedEvent: makeEvent<ProjectUpdatedEvent, ProjectUpdatedEvent>("project-updated-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
+	reminderClickedEvent: makeEvent<ReminderClickedEvent, ReminderClickedEvent>("reminder-clicked-event"),
+	reminderCreatedEvent: makeEvent<ReminderCreatedEvent, ReminderCreatedEvent>("reminder-created-event"),
+	reminderDeletedEvent: makeEvent<ReminderDeletedEvent, ReminderDeletedEvent>("reminder-deleted-event"),
+	reminderDismissedEvent: makeEvent<ReminderDismissedEvent, ReminderDismissedEvent>("reminder-dismissed-event"),
+	reminderDueEvent: makeEvent<ReminderDueEvent, ReminderDueEvent>("reminder-due-event"),
+	reminderSnoozedEvent: makeEvent<ReminderSnoozedEvent, ReminderSnoozedEvent>("reminder-snoozed-event"),
+	reminderUpdatedEvent: makeEvent<ReminderUpdatedEvent, ReminderUpdatedEvent>("reminder-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
+	stickyOpenTargetRequestedEvent: makeEvent<StickyOpenTargetRequestedEvent, StickyOpenTargetRequestedEvent>("sticky-open-target-requested-event"),
+	syncAttachmentMaterializedEvent: makeEvent<SyncAttachmentMaterializedEvent, SyncAttachmentMaterializedEvent>("sync-attachment-materialized-event"),
+	syncAttachmentUploadFailedEvent: makeEvent<SyncAttachmentUploadFailedEvent, SyncAttachmentUploadFailedEvent>("sync-attachment-upload-failed-event"),
 	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
 	syncClockSkewWarningEvent: makeEvent<SyncClockSkewWarningEvent, SyncClockSkewWarningEvent>("sync-clock-skew-warning-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
@@ -1195,6 +1391,20 @@ export type AddReasonInput = {
 	searchQuery: string,
 };
 
+/**
+ *  The approval-card events, which reach every window. They carry ids and small hints only,
+ *  never the tool arguments: a card fetches those through `agent_get_tool_call`, served from
+ *  `AgentWriteGate::pending_approval`.
+ */
+export type AgentEvent = { kind: "tool_call_pending_approval"; conversationId: string; toolCallId: string; name: string; requiresDiff: boolean; previewKind: PreviewKind; reviewTarget: ReviewTarget | null } | { kind: "tool_call_failed"; conversationId: string; toolCallId: string; error: AgentEventError };
+
+export type AgentEventEmittedEvent = AgentEvent;
+
+export type AgentEventError = {
+	code: string,
+	message: string,
+};
+
 /**  `AgentLocalModelList`. */
 export type AgentLocalModelList = {
 	models: string[],
@@ -1244,6 +1454,17 @@ export type AgentLocalProviderSettingsUpdate = {
 
 /**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
 export type AgentLocalThinking = "default" | "off";
+
+/**  The open vault's standing tool approvals (`AgentToolGrantsSchema`), for the Settings list. */
+export type AgentToolGrants = {
+	tools: string[],
+};
+
+/**  The vault branch of `EditTrustListRequestSchema`: grants `add`, then revokes `remove`. */
+export type AgentVaultTrustEdit = {
+	add?: string[],
+	remove?: string[],
+};
 
 /**  `EmbeddingProgressEvent.phase`: the model's download and load, then a note embedding pass. */
 export type AiEmbeddingPhase = "downloading" | "loading" | "ready" | "error" | "embedding" | "complete";
@@ -1568,6 +1789,93 @@ export type BillingUsage = {
 	storageUsed: number,
 };
 
+/**  A bookmark was made, by a create, a toggle or a bulk create (`bookmarks:created`). */
+export type BookmarkCreatedEvent = {
+	bookmark: BookmarkView,
+};
+
+/**
+ *  A bookmark was removed (`bookmarks:deleted`). It names the item, so a star knows whether it
+ *  is its own.
+ */
+export type BookmarkDeletedEvent = {
+	id: string,
+	itemType: string,
+	itemId: string,
+};
+
+/**
+ *  `BookmarkCheckSchema`, `BookmarkCreateSchema`, `BookmarkToggleSchema` and one item of
+ *  `BookmarkBulkCreateSchema`.
+ */
+export type BookmarkItemInput = {
+	itemType: string,
+	itemId: string,
+};
+
+/**  `BookmarkItemMeta`: only what the item has. */
+export type BookmarkItemMetaView = {
+	path?: string | null,
+	emoji?: string | null,
+	tags?: string[] | null,
+};
+
+/**  `BookmarkListSchema`: by position, ascending, 100 from the first when a field is absent. */
+export type BookmarkListInput = {
+	itemType?: string | null,
+	sortBy?: BookmarkSortBy | null,
+	sortOrder?: SortOrder | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+/**  `BookmarkListResponse`. */
+export type BookmarkListView = {
+	bookmarks: BookmarkWithItemView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `BookmarkListSchema.sortBy`. */
+export type BookmarkSortBy = "position" | "createdAt";
+
+/**  `bookmarks:toggle`'s answer. */
+export type BookmarkToggleView = {
+	isBookmarked: boolean,
+	/**  The row made; `null` when the toggle removed the bookmark. */
+	bookmark: BookmarkView | null,
+};
+
+/**  `Bookmark`. */
+export type BookmarkView = {
+	id: string,
+	itemType: string,
+	itemId: string,
+	position: number,
+	/**  Empty for a row a peer wrote without one. */
+	createdAt: string,
+};
+
+/**
+ *  `BookmarkWithItem`: a row and what it points at. An item that is gone, or of a type nothing
+ *  resolves, has no title and `itemExists: false`, and the list shows it as an orphan.
+ */
+export type BookmarkWithItemView = {
+	id: string,
+	itemType: string,
+	itemId: string,
+	position: number,
+	createdAt: string,
+	itemTitle: string | null,
+	itemExists: boolean,
+	itemMeta?: BookmarkItemMetaView | null,
+};
+
+/**  The bookmarks were put in a new order (`bookmarks:reordered`). */
+export type BookmarksReorderedEvent = {
+	bookmarkIds: string[],
+};
+
 export type BuildKind = "dev" | "packaged";
 
 /**  A built-in column (`GetAvailablePropertiesResponse.builtIn`). */
@@ -1595,10 +1903,327 @@ export type BulkMutation = {
 	error?: string | null,
 };
 
+/**  `CalendarProjectionBinding`. */
+export type CalendarBindingView = {
+	provider: string,
+	remoteCalendarId: string,
+	remoteEventId: string,
+	ownershipMode: string,
+	writebackMode: string,
+};
+
+/**  `CalendarChangeEntityType`: what kind of record changed. */
+export type CalendarChangeEntityType = "calendar_event" | "calendar_source" | "calendar_binding" | "calendar_external_event" | "projection";
+
+/**  A calendar record changed (`calendar:changed`): the calendar views refetch their range. */
+export type CalendarChangedEvent = {
+	entityType: CalendarChangeEntityType,
+	id: string,
+};
+
 export type CalendarCounts = {
 	total: number,
 	selected: number,
 	memryManaged: number,
+};
+
+/**
+ *  `CreateCalendarEventSchema`. `recurrenceRule` and `recurrenceExceptions` are not taken:
+ *  the core's event has no field for them, and no renderer path sends them.
+ */
+export type CalendarCreateEventInput = {
+	title: string,
+	description?: string | null,
+	location?: string | null,
+	startAt: string,
+	endAt?: string | null,
+	timezone?: string | null,
+	isAllDay?: boolean | null,
+	targetCalendarId?: string | null,
+	color?: CalendarEventColor | null,
+};
+
+/**  `CalendarDeleteResponse`. */
+export type CalendarDeleteView = {
+	success: boolean,
+	error?: string | null,
+};
+
+/**  `CalendarProjectionEditability`. */
+export type CalendarEditabilityView = {
+	canMove: boolean,
+	canResize: boolean,
+	canEditText: boolean,
+	canDelete: boolean,
+};
+
+/**  `CalendarEventColor` (`calendar-colors.ts` `CALENDAR_EVENT_COLORS`). */
+export type CalendarEventColor = "tomato" | "flamingo" | "tangerine" | "banana" | "sage" | "basil" | "peacock" | "blueberry" | "lavender" | "grape" | "graphite";
+
+/**  `CalendarEventMutationResponse`. */
+export type CalendarEventMutationView = {
+	success: boolean,
+	event: CalendarEventView | null,
+	error?: string | null,
+};
+
+/**  `CalendarEventSearchItem`: native events carry no `kind`. */
+export type CalendarEventSearchItemView = {
+	id: string,
+	title: string,
+	startAt: string,
+	endAt: string | null,
+	isAllDay: boolean,
+	kind?: CalendarEventSearchKind | null,
+};
+
+/**  `CalendarEventSearchItem.kind`. */
+export type CalendarEventSearchKind = "event" | "external_event";
+
+/**  `CalendarEventSearchResponse`. */
+export type CalendarEventSearchView = {
+	events: CalendarEventSearchItemView[],
+};
+
+/**
+ *  `CalendarEventRecord`. The core keeps no recurrence exceptions, parent event, original
+ *  start, archive or sync time on an event, so those are always `null`.
+ */
+export type CalendarEventView = {
+	id: string,
+	title: string,
+	description: string | null,
+	location: string | null,
+	startAt: string,
+	endAt: string | null,
+	timezone: string,
+	isAllDay: boolean,
+	recurrenceRule: Value | null,
+	recurrenceExceptions: string[] | null,
+	attendees: Value | null,
+	reminders: Value | null,
+	visibility: string | null,
+	colorId: string | null,
+	color: CalendarEventColor | null,
+	conferenceData: Value | null,
+	parentEventId: string | null,
+	originalStartTime: string | null,
+	targetCalendarId: string | null,
+	archivedAt: string | null,
+	syncedAt: string | null,
+	createdAt: string,
+	modifiedAt: string,
+};
+
+/**  `GetExternalEventResponse`. */
+export type CalendarExternalEventDetailsView = {
+	event: CalendarExternalEventView | null,
+};
+
+/**  `GetExternalEventSchema` and `PromoteExternalEventSchema`. */
+export type CalendarExternalEventInput = {
+	externalEventId: string,
+};
+
+/**  `CalendarExternalEventDetails`. */
+export type CalendarExternalEventView = {
+	id: string,
+	title: string,
+	description: string | null,
+	location: string | null,
+	startAt: string,
+	endAt: string | null,
+	timezone: string | null,
+	isAllDay: boolean,
+	status: string,
+	recurrenceRule: Value | null,
+	attendees: Value | null,
+	reminders: Value | null,
+	conferenceData: Value | null,
+	source: CalendarExternalSourceView | null,
+};
+
+/**  `CalendarExternalEventDetails.source`. */
+export type CalendarExternalSourceView = {
+	id: string,
+	provider: string,
+	title: string,
+	color: string | null,
+	accountTitle: string | null,
+};
+
+/**  `CalendarProjectionSourceMeta`. */
+export type CalendarItemSourceView = {
+	provider: string | null,
+	calendarSourceId: string | null,
+	title: string | null,
+	color: string | null,
+	kind: CalendarSourceKind | null,
+	isMemryManaged: boolean,
+};
+
+/**  `CalendarLinkedNote`. */
+export type CalendarLinkedNoteView = {
+	id: string,
+	title: string,
+	emoji: string | null,
+};
+
+/**  `ListLinkedNotesSchema`. */
+export type CalendarLinkedNotesInput = {
+	sourceType: CalendarLinkedSourceType,
+	sourceId: string,
+};
+
+/**  `CalendarLinkedNotesResponse`. */
+export type CalendarLinkedNotesView = {
+	notes: CalendarLinkedNoteView[],
+};
+
+/**  `ListLinkedNotesSchema.sourceType`. */
+export type CalendarLinkedSourceType = "event" | "external_event";
+
+/**  `ListCalendarSourcesSchema`. */
+export type CalendarListSourcesInput = {
+	provider?: string | null,
+	kind?: CalendarSourceKind | null,
+	selectedOnly?: boolean | null,
+};
+
+/**  `CalendarProjectionItem`. The keys the contract marks optional are left out when unset. */
+export type CalendarProjectionItemView = {
+	projectionId: string,
+	sourceType: CalendarProjectionSourceType,
+	sourceId: string,
+	title: string,
+	descriptionPreview: string | null,
+	startAt: string,
+	endAt: string | null,
+	isAllDay: boolean,
+	timezone: string,
+	visualType: CalendarProjectionVisualType,
+	editability: CalendarEditabilityView,
+	source: CalendarItemSourceView,
+	binding: CalendarBindingView | null,
+	snoozeOffsetMinutes: number | null,
+	noteId?: string | null,
+	anchorId?: string | null,
+	isTriggered?: boolean | null,
+	color?: CalendarEventColor | null,
+	displayColor?: string | null,
+	task?: CalendarTaskMetaView | null,
+};
+
+/**  `CalendarProjectionSourceType`. */
+export type CalendarProjectionSourceType = "event" | "task" | "reminder" | "inbox_snooze" | "external_event" | "note" | "note_date";
+
+/**  `CalendarProjectionVisualType`. */
+export type CalendarProjectionVisualType = "event" | "task" | "reminder" | "snooze" | "external_event" | "note" | "note_date";
+
+/**  `PromoteExternalEventResponse`. */
+export type CalendarPromoteView = {
+	success: boolean,
+	eventId: string | null,
+	error?: string | null,
+};
+
+/**  `GetCalendarRangeSchema`. */
+export type CalendarRangeInput = {
+	startAt: string,
+	endAt: string,
+	includeUnselectedSources?: boolean | null,
+	includeCompletedTasks?: boolean | null,
+	includeExternal?: boolean | null,
+	externalProviders?: string[] | null,
+};
+
+/**  `CalendarRangeResponse`. */
+export type CalendarRangeView = {
+	items: CalendarProjectionItemView[],
+};
+
+/**  `SearchCalendarEventsSchema`. */
+export type CalendarSearchInput = {
+	query: string,
+	limit?: number | null,
+	includeExternal?: boolean | null,
+};
+
+/**  `CalendarSourceKind`. */
+export type CalendarSourceKind = "account" | "calendar";
+
+/**  `CalendarSourceListResponse`. */
+export type CalendarSourceListView = {
+	sources: CalendarSourceView[],
+};
+
+/**  `CalendarSourceMutationResponse`. */
+export type CalendarSourceMutationView = {
+	success: boolean,
+	source: CalendarSourceView | null,
+	error?: string | null,
+};
+
+/**  `UpdateCalendarSourceSelectionSchema`. */
+export type CalendarSourceSelectionInput = {
+	id: string,
+	isSelected: boolean,
+};
+
+/**  `CalendarSourceSyncStatus`. */
+export type CalendarSourceSyncStatus = "idle" | "ok" | "error" | "pending";
+
+/**
+ *  `CalendarSourceRecord`. The core's source record has no sync, creation or change time, so
+ *  those are `null`; nothing in the renderer reads them.
+ */
+export type CalendarSourceView = {
+	id: string,
+	provider: string,
+	kind: CalendarSourceKind,
+	accountId: string | null,
+	remoteId: string,
+	title: string,
+	timezone: string | null,
+	color: string | null,
+	isPrimary: boolean,
+	isSelected: boolean,
+	isMemryManaged: boolean,
+	syncCursor: string | null,
+	syncStatus: CalendarSourceSyncStatus,
+	lastSyncedAt: string | null,
+	lastError: string | null,
+	metadata: Value | null,
+	archivedAt: string | null,
+	syncedAt: string | null,
+	createdAt: string | null,
+	modifiedAt: string | null,
+};
+
+/**  `CalendarProjectionItem.task`. */
+export type CalendarTaskMetaView = {
+	projectId: string,
+	statusId: string | null,
+	isCompleted: boolean,
+};
+
+/**  `UpdateCalendarEventSchema`: an absent key keeps the field, `null` clears it. */
+export type CalendarUpdateEventInput = {
+	id: string,
+	title?: string | null,
+	description?: string | null,
+	location?: string | null,
+	startAt?: string | null,
+	endAt?: string | null,
+	timezone?: string | null,
+	isAllDay?: boolean | null,
+	targetCalendarId?: string | null,
+	color?: CalendarEventColor | null,
+};
+
+/**  `CanvasCanUploadAssetResponse`. */
+export type CanvasCanUploadAssetResponse = {
+	canUpload: boolean,
 };
 
 /**  `CanvasCreateSchema`. */
@@ -1665,6 +2290,11 @@ export type CanvasFolderView = {
 	updatedAt: number,
 };
 
+/**  `CanvasGetAssetResponse`. */
+export type CanvasGetAssetResponse = {
+	ref: string | null,
+};
+
 /**  `CanvasLibraryListResponse`. */
 export type CanvasLibraryListResponse = {
 	libraryItems: Value[],
@@ -1680,8 +2310,18 @@ export type CanvasLibrarySaveResponse = {
 	changed: number,
 };
 
+/**  `CanvasListAssetsResponse`. */
+export type CanvasListAssetsResponse = {
+	assets: MemryAssetDescriptor[],
+};
+
 export type CanvasListResponse = {
 	canvases: CanvasSummaryView[],
+};
+
+/**  The `{ ok }` of `canvas:live-opened` and `canvas:live-closed`. */
+export type CanvasLiveAck = {
+	ok: boolean,
 };
 
 /**  `CanvasSummary`. */
@@ -1731,6 +2371,14 @@ export type CanvasUpdateResponse = {
 /**  A canvas was saved, renamed or moved (`canvas:updated`). */
 export type CanvasUpdatedEvent = {
 	canvas: CanvasSummaryView,
+};
+
+/**  `canvas:upload-asset`'s input; the bytes come as Electron's `number[]`. */
+export type CanvasUploadAssetInput = {
+	canvasId: string,
+	fileId: string,
+	mimeType: string,
+	data: number[],
 };
 
 /**
@@ -2080,8 +2728,8 @@ export type ExportFailure = "cancelled" | "not_found" | "failed";
  *  `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
  *  webview never names the file to write, so the command always asks the user through the save
  *  dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
- *  Electron, whose handler writes to the renderer's `outputPath`). The headless export is
- *  [`export_html_to`], reachable in process only.
+ *  Electron, whose handler writes to the renderer's `outputPath`). The headless exports are
+ *  [`export_html_to`] and [`export_pdf_to`], reachable in process only.
  */
 export type ExportNoteInput = {
 	noteId: string,
@@ -2423,6 +3071,19 @@ export type GlobalCaptureResult = {
 	fallbackRegistered: boolean,
 };
 
+/**  `GraphLayoutNodeSchema`. */
+export type GraphLayoutNodeView = {
+	x: number | null,
+	y: number | null,
+	pinned?: boolean | null,
+};
+
+/**  `GraphLayoutSchema`. */
+export type GraphLayoutView = {
+	version: number,
+	nodes: { [key in string]: GraphLayoutNodeView },
+};
+
 export type HeaderPair = {
 	name: string,
 	value: string,
@@ -2563,6 +3224,12 @@ export type ImportFilesResult = {
 	importedFiles: ImportedFileInfo[],
 };
 
+/**
+ *  The Readwise run started, moved on, ended or failed (`import:readwise:status-changed`): the
+ *  page reads the status again.
+ */
+export type ImportReadwiseStatusChangedEvent = null;
+
 /**  `ImportedFileInfo`. */
 export type ImportedFileInfo = {
 	/**  Absolute, as Electron's `path.join(targetDir, destFilename)`. */
@@ -2573,11 +3240,46 @@ export type ImportedFileInfo = {
 };
 
 /**
+ *  The capture fields a job wrote (`Partial<InboxItem>`). A field the job did not write is
+ *  absent; Electron sent `processingError: null` and `thumbnailPath: null` on a success.
+ */
+export type InboxItemChanges = {
+	processingStatus?: string | null,
+	processingError?: string | null,
+	thumbnailPath?: string | null,
+	content?: string | null,
+};
+
+/**  The link preview `inbox:metadata-complete` carries. */
+export type InboxLinkPreview = {
+	title: string | null,
+	description: string | null,
+	image: string | null,
+	thumbnailPath: string | null,
+};
+
+/**  `InboxMetadataCompleteEvent`: the link preview of capture `id` is stored. */
+export type InboxMetadataCompleteEvent = {
+	id: string,
+	metadata: InboxLinkPreview,
+};
+
+/**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
  *  (#3544), a clicked inbox notification.
  */
 export type InboxOpenItemEvent = {
 	itemId: string,
+};
+
+/**
+ *  `InboxProcessingErrorEvent`: a job's last attempt failed. `operation` is one of
+ *  `transcription`, `metadata`, `pdf` and `ocr`; the runner sends `metadata`.
+ */
+export type InboxProcessingErrorEvent = {
+	id: string,
+	operation: string,
+	error: string,
 };
 
 /**  `InboxResultMetadata`. `itemType` is the stored text; the renderer narrows it. */
@@ -2586,6 +3288,40 @@ export type InboxResultMetadata = {
 	sourceUrl: string | null,
 	sourceTitle: string | null,
 	filedAt: string | null,
+};
+
+/**
+ *  The daily inbox review nudge fired (`inbox:review-due`): the renderer shows its toast.
+ *  `count` is the number of captures to review.
+ */
+export type InboxReviewDueEvent = {
+	count: number,
+};
+
+/**  The inbox review notification was clicked (`inbox:review-open`): the renderer opens the inbox. */
+export type InboxReviewOpenEvent = Record<string, never>;
+
+/**
+ *  What the inbox review test reports: `supported` is false when the platform cannot show a
+ *  notification. A refusal by the user shows nowhere, as in Electron.
+ */
+export type InboxReviewTestResult = {
+	supported: boolean,
+};
+
+/**
+ *  Snoozed captures came back (`inbox:snooze-due`): the renderer refreshes the inbox list and
+ *  shows its banner and toast. `count` is the number of `items`, as Electron sends it.
+ */
+export type InboxSnoozeDueEvent = {
+	count: number,
+	items: SnoozeDueItem[],
+};
+
+/**  `InboxUpdatedEvent`: a job wrote these fields of capture `id`. */
+export type InboxUpdatedEvent = {
+	id: string,
+	changes: InboxItemChanges,
 };
 
 export type InheritedFieldsView = {
@@ -2985,6 +3721,17 @@ export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
 /**  `MatchType`. */
 export type MatchType = "exact" | "prefix" | "fuzzy";
 
+/**  `MemryAssetDescriptor`: one image a canvas shows, as the sidecar carries it. */
+export type MemryAssetDescriptor = {
+	fileId: string,
+	attachmentId: string,
+	contentHash: string,
+	chunkHashes: string[],
+	mimeType: string,
+	sizeBytes: number,
+	filename: string,
+};
+
 /**
  *  A native menu item that the renderer runs as a command was clicked. `command` is the
  *  command id (`tabs.closeTab`).
@@ -3017,6 +3764,28 @@ export type Metrics = {
 	retryCount?: number | null,
 	activeSeconds?: number | null,
 	value?: number | null,
+};
+
+/**  `idle` on a launch that migrates nothing. */
+export type MigrationState = "idle" | "running" | "failed" | "done";
+
+export type MigrationStatus = {
+	/**  Grows with every change, so the page drops an answer older than an update it was sent. */
+	seq: number,
+	state: MigrationState,
+	/**  0 to 100. */
+	percent: number,
+	title: string,
+	/**  The phase line while running. */
+	phase: string | null,
+	body: string,
+	note: string | null,
+	/**  The failing check, as Step 37e2's `RunError::check` names it. */
+	check: string | null,
+	/**  The line that names `check` to the user. */
+	checkLine: string | null,
+	/**  The error message, in English like the log. */
+	details: string | null,
 };
 
 /**
@@ -3474,6 +4243,18 @@ export type OcrLanguagesState = {
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
 };
 
+/**  `OnboardingObsidianVault` (`packages/contracts/src/onboarding-api.ts`). */
+export type OnboardingObsidianVault = {
+	name: string,
+	path: string,
+};
+
+/**  `OnboardingSources`: Obsidian's vaults and the importer ids whose app is installed. */
+export type OnboardingSources = {
+	obsidianVaults: OnboardingObsidianVault[],
+	installedApps: string[],
+};
+
 export type OpenSettingsResult = {
 	success: boolean,
 };
@@ -3614,11 +4395,197 @@ export type PresetOfferView = {
 /**  `PresetOffer.state`. */
 export type PresetState = "add" | "add-fields" | "added";
 
+/**  `ChangePreviewKindSchema` (`ipc-agent.ts:618`): the picture the approval card draws. */
+export type PreviewKind = "none" | "fields" | "body" | "loss";
+
 /**  A tag on the card, with its colour (`stone` when the tag has no definition). */
 export type PreviewTagView = {
 	name: string,
 	color: string,
 };
+
+/**  `ProjectContents['counts']`. */
+export type ProjectContentCounts = {
+	notes: number,
+	files: number,
+	events: number,
+};
+
+/**  `ProjectContents`. */
+export type ProjectContentsView = {
+	notes: ProjectLinkedNoteView[],
+	files: ProjectLinkedFileView[],
+	events: ProjectLinkedEventView[],
+	counts: ProjectContentCounts,
+};
+
+/**  `ProjectCreateSchema`. Nullish fields are `None` for both absent and `null`. */
+export type ProjectCreateInput = {
+	name: string,
+	description?: string | null,
+	color?: string | null,
+	icon?: string | null,
+	statuses?: ProjectStatusInput[] | null,
+};
+
+/**  A project was made (`tasks:project-created`). */
+export type ProjectCreatedEvent = {
+	id: string,
+};
+
+/**  A project was deleted with its tasks (`tasks:project-deleted`). */
+export type ProjectDeletedEvent = {
+	id: string,
+};
+
+/**  `ProjectLinkItemSchema`; `itemType` is `note`, `calendar_event` or `file`. */
+export type ProjectLinkItemInput = {
+	projectId: string,
+	itemType: string,
+	itemId: string,
+};
+
+/**  `ProjectLink`. `createdAt` is empty for an entry that carries none. */
+export type ProjectLinkView = {
+	id: string,
+	projectId: string,
+	itemType: string,
+	itemId: string,
+	position: number,
+	createdAt: string,
+};
+
+/**  `ProjectLinkedEvent`. */
+export type ProjectLinkedEventView = {
+	id: string,
+	title: string,
+	startAt: string,
+	endAt: string | null,
+	isAllDay: boolean,
+};
+
+/**  `ProjectLinkedFile`. */
+export type ProjectLinkedFileView = {
+	id: string,
+	title: string,
+	fileType: string,
+	mimeType: string | null,
+	fileSize: number | null,
+	modifiedAt: string,
+};
+
+/**  `ProjectLinkedNote`. */
+export type ProjectLinkedNoteView = {
+	id: string,
+	title: string,
+	emoji: string | null,
+	modifiedAt: string,
+	pinned: boolean,
+};
+
+/**  `ProjectListForItemSchema`. */
+export type ProjectListForItemInput = {
+	itemType: string,
+	itemId: string,
+};
+
+/**  `tasks:project-list`'s `{ projects }`. */
+export type ProjectListView = {
+	projects: ProjectWithStatsView[],
+};
+
+/**  The `withDb` envelope of a project write: `{ success, project?, error? }`. */
+export type ProjectMutation = {
+	success: boolean,
+	project?: ProjectWithStatusesView | null,
+	error?: string | null,
+};
+
+/**  `ProjectRef`. */
+export type ProjectRefView = {
+	id: string,
+	name: string,
+	color: string,
+	icon: string | null,
+};
+
+/**  `ProjectReorderSchema`. */
+export type ProjectReorderInput = {
+	projectIds: string[],
+	positions: number[],
+};
+
+/**  `ProjectSetHomeNoteSchema`; `null` clears the home note. */
+export type ProjectSetHomeNoteInput = {
+	projectId: string,
+	noteId: string | null,
+};
+
+/**  `ProjectSetLinkPinnedSchema`. */
+export type ProjectSetLinkPinnedInput = {
+	projectId: string,
+	itemId: string,
+	pinned: boolean,
+};
+
+/**  `StatusInputSchema` (create) and `StatusUpsertSchema` (update, with `id`). */
+export type ProjectStatusInput = {
+	id?: string | null,
+	name: string,
+	/**  `#6b7280` when absent. */
+	color?: string | null,
+	/**  `todo`, `in_progress` or `done`. */
+	type: string,
+	order: number,
+};
+
+/**
+ *  `ProjectUpdateSchema`. On `description` and `icon` an absent key keeps the value and `null`
+ *  clears it.
+ */
+export type ProjectUpdateInput = {
+	id: string,
+	name?: string | null,
+	description?: string | null,
+	color?: string | null,
+	icon?: string | null,
+	statuses?: ProjectStatusInput[] | null,
+};
+
+/**
+ *  A project's metadata, statuses, links, home note, archive or position changed
+ *  (`tasks:project-updated`).
+ */
+export type ProjectUpdatedEvent = {
+	id: string,
+};
+
+/**  `Project`. A stamp the row does not carry is empty. */
+export type ProjectView = {
+	id: string,
+	name: string,
+	description: string | null,
+	color: string,
+	icon: string | null,
+	position: number,
+	isInbox: boolean,
+	createdAt: string,
+	modifiedAt: string,
+	archivedAt: string | null,
+	homeNoteId: string | null,
+};
+
+/**  `ProjectWithStats`. */
+export type ProjectWithStatsView = {
+	taskCount: number,
+	completedCount: number,
+	overdueCount: number,
+} & ProjectView;
+
+/**  `ProjectWithStatuses`. */
+export type ProjectWithStatusesView = {
+	statuses: StatusView[],
+} & ProjectView;
 
 /**
  *  A property definition was created for a tag field (`properties:definition-changed`). The
@@ -3727,11 +4694,124 @@ export type QuickSearchResponse = {
 	queryTimeMs: number | null,
 };
 
+/**  `ReadwiseCadence`. */
+export type ReadwiseCadence = "manual" | "hourly" | "daily";
+
+/**  `Record<ReadwiseCategory, boolean>`, defaults filled in. */
+export type ReadwiseCategories = {
+	books: boolean,
+	articles: boolean,
+	tweets: boolean,
+	podcasts: boolean,
+	supplementals: boolean,
+};
+
+/**  `ReadwiseSetOptionsSchema.categories`. */
+export type ReadwiseCategoriesInput = {
+	books: boolean | null,
+	articles: boolean | null,
+	tweets: boolean | null,
+	podcasts: boolean | null,
+	supplementals: boolean | null,
+};
+
+/**  `ReadwiseFolderLayout`. */
+export type ReadwiseFolderLayout = "by-category" | "flat";
+
+/**  `ReadwiseSetOptionsInput`. */
+export type ReadwiseOptionsInput = {
+	rootFolder: string | null,
+	folderLayout: ReadwiseFolderLayout | null,
+	categories: ReadwiseCategoriesInput | null,
+	cadence: ReadwiseCadence | null,
+	readerDocuments: boolean | null,
+	readerFullText: boolean | null,
+	journalHighlights: boolean | null,
+};
+
+/**  `ReadwiseOptions` (`readReadwiseOptions`). */
+export type ReadwiseOptionsView = {
+	rootFolder: string,
+	folderLayout: ReadwiseFolderLayout,
+	categories: ReadwiseCategories,
+	cadence: ReadwiseCadence,
+	readerDocuments: boolean,
+	readerFullText: boolean,
+	journalHighlights: boolean,
+};
+
+/**  `ReadwiseRunCounts`. */
+export type ReadwiseRunCounts = {
+	books: number,
+	added: number,
+	updated: number,
+	appended: number,
+	deferred: number,
+	failed: number,
+	highlights: number,
+};
+
+/**  `ReadwiseRunError`. */
+export type ReadwiseRunError = {
+	kind: ReadwiseRunErrorKind,
+	detail: string | null,
+};
+
+/**  `ReadwiseErrorKind`. */
+export type ReadwiseRunErrorKind = "invalid-token" | "subscription-expired" | "rate-limited" | "network" | "server" | "unexpected";
+
+/**  `ReadwiseRunProgress`. */
+export type ReadwiseRunProgress = {
+	stage: ReadwiseRunStage,
+	planned: number | null,
+	done: number,
+};
+
+/**  `ReadwiseRunProgress.stage`. */
+export type ReadwiseRunStage = "waiting-for-sync" | "reading" | "writing";
+
+/**  `ReadwiseStatusResult`. */
+export type ReadwiseStatus = {
+	connected: boolean,
+	options: ReadwiseOptionsView,
+	lastSyncAt: string | null,
+	needsAttention: boolean,
+	hasImported: boolean,
+	thisDevicePulls: boolean,
+	pullingDeviceName: string | null,
+	syncing: ReadwiseRunProgress | null,
+	lastRun: ReadwiseRunCounts | null,
+	error: ReadwiseRunError | null,
+	nextRunAt: string | null,
+};
+
+/**  `RecentlyOpenedItemType`. */
+export type RecentItemType = "note" | "canvas";
+
+/**  `RecentlyOpenedItem`. */
+export type RecentlyOpenedView = {
+	itemId: string,
+	itemType: RecentItemType,
+	openedAt: string,
+	title: string,
+	path: string,
+	/**  A bare emoji, or an `icon:` or `custom:` reference. */
+	emoji: string | null,
+	/**  The note's file type (`markdown`, `pdf`, ...), or `canvas`. */
+	fileType: string,
+};
+
 /**
  *  Why a `reconnect_required` account needs attention on this device. `rejected` comes with the
  *  sync pass's auth-failure marker (29e2).
  */
 export type ReconnectReason = "missing";
+
+/**  `RecordRecentlyOpenedSchema`. */
+export type RecordRecentInput = {
+	itemId: string,
+	itemType: RecentItemType,
+};
 
 /**  `refreshBillingStatus(input?)`: the web checkout's transaction, when known. */
 export type RefreshBillingInput = {
@@ -3762,6 +4842,158 @@ export type RelationView = {
 	many: boolean,
 	inverse: string | null,
 };
+
+/**  The user clicked a reminder notification. */
+export type ReminderClickedEvent = {
+	reminder: ReminderHint,
+};
+
+/**
+ *  `CreateReminderSchema`, flattened: the arm `targetType` names decides which of the optional
+ *  fields it needs.
+ */
+export type ReminderCreateInput = {
+	targetType: ReminderTargetType,
+	targetId: string,
+	remindAt: string,
+	title?: string | null,
+	note?: string | null,
+	/**  The `highlight` arm. */
+	highlightText?: string | null,
+	highlightStart?: number | null,
+	highlightEnd?: number | null,
+	/**  The `note_date` arm. */
+	anchorId?: string | null,
+};
+
+/**  A reminder command created this reminder. */
+export type ReminderCreatedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  A reminder command deleted this reminder. */
+export type ReminderDeletedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  A reminder command dismissed this reminder. */
+export type ReminderDismissedEvent = {
+	reminder: ReminderHint,
+};
+
+/**
+ *  One scheduler tick fired these reminders; `count` is how many (Electron `ReminderDueEvent`),
+ *  also when some are gone by the time the renderer reads them back.
+ */
+export type ReminderDueEvent = {
+	reminders: ReminderHint[],
+	count: number,
+};
+
+/**  The reminder an event is about. */
+export type ReminderHint = {
+	id: string,
+	targetType: string,
+	targetId: string,
+};
+
+/**  `ListRemindersSchema`. */
+export type ReminderListInput = {
+	targetType?: ReminderTargetType | null,
+	targetId?: string | null,
+	status?: ReminderStatusFilter | null,
+	fromDate?: string | null,
+	toDate?: string | null,
+	/**  1 to 200, 50 when absent. */
+	limit?: number | null,
+	offset?: number | null,
+};
+
+/**  `ReminderListResponse`. */
+export type ReminderListView = {
+	reminders: ReminderWithTargetView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `SnoozeReminderSchema`. */
+export type ReminderSnoozeInput = {
+	id: string,
+	snoozeUntil: string,
+};
+
+/**  A reminder command snoozed this reminder. */
+export type ReminderSnoozedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  `ReminderStatusSchema`. `triggered` is this device's fire, never a synced status. */
+export type ReminderStatus = "pending" | "triggered" | "dismissed" | "snoozed";
+
+/**  `ListRemindersSchema.status`: one status or several. */
+export type ReminderStatusFilter = ReminderStatus | ReminderStatus[];
+
+/**  `GetForTargetSchema`. */
+export type ReminderTargetInput = {
+	targetType: ReminderTargetType,
+	targetId: string,
+};
+
+/**  `ReminderTargetTypeSchema`. */
+export type ReminderTargetType = "note" | "journal" | "highlight" | "task" | "note_date";
+
+/**
+ *  `UpdateReminderSchema`. An absent field is left alone; `title` and `note` take `null` as a
+ *  clear.
+ */
+export type ReminderUpdateInput = {
+	id: string,
+	remindAt?: string | null,
+	title?: string | null,
+	note?: string | null,
+};
+
+/**  A reminder command changed this reminder's time, title or note. */
+export type ReminderUpdatedEvent = {
+	reminder: ReminderHint,
+};
+
+/**
+ *  `Reminder`. `status` and `targetType` are carried verbatim: a newer build may write a value
+ *  this one does not know.
+ */
+export type ReminderView = {
+	id: string,
+	targetType: string,
+	targetId: string,
+	remindAt: string,
+	anchorId: string | null,
+	highlightText: string | null,
+	highlightStart: number | null,
+	highlightEnd: number | null,
+	title: string | null,
+	note: string | null,
+	status: string,
+	/**
+	 *  When this device last fired the reminder for its `remindAt` or `snoozedUntil`: kept
+	 *  through a dismiss and a snooze, gone after a new `remindAt` (Electron's `triggeredAt`).
+	 */
+	triggeredAt: string | null,
+	dismissedAt: string | null,
+	snoozedUntil: string | null,
+	createdAt: string,
+	modifiedAt: string,
+};
+
+/**  `ReminderWithTarget`. */
+export type ReminderWithTargetView = {
+	targetTitle: string | null,
+	targetExists: boolean,
+	/**  Set for a highlight only: whether its note is still there. */
+	highlightExists?: boolean | null,
+	/**  Set for a task only: the project it belongs to. */
+	projectId?: string | null,
+} & ReminderView;
 
 /**  Why a link produced no attachment: `DownloadAttachmentFromUrlFailure`. */
 export type RemoteFailure = "not-an-image" | "too-large" | "offline" | "failed" | "write-failed";
@@ -3891,6 +5123,9 @@ export type ResumeSyncResult = {
 	success: boolean,
 	pendingCount: number,
 };
+
+/**  `AgentReviewTargetSchema` (`ipc-agent.ts:694`): the page that reviews a body edit in place. */
+export type ReviewTarget = { kind: "note"; id: string } | { kind: "journal"; date: string };
 
 /**  `NoteWithProperties.kind`. */
 export type RowKindView = "note" | "task" | "inbox";
@@ -4123,6 +5358,28 @@ export type SizeClass = "note" | "large-file";
 
 export type SkippedKind = "code" | "table" | "image" | "callout" | "embed" | "other";
 
+/**
+ *  A capture the snooze pass brought back, as the inbox list shows it (`toListItem` in
+ *  `inbox/snooze.ts`). Dates are ISO 8601 in UTC.
+ */
+export type SnoozeDueItem = {
+	id: string,
+	type: string,
+	title: string,
+	content: string | null,
+	createdAt: string,
+	thumbnailUrl: string | null,
+	sourceUrl: string | null,
+	tags: string[],
+	isStale: boolean,
+	processingStatus: string,
+	duration?: number | null,
+	excerpt?: string | null,
+	pageCount?: number | null,
+	transcription: string | null,
+	transcriptionStatus: string | null,
+};
+
 export type SortOrder = "asc" | "desc";
 
 /**  What the page needs to build its menu. */
@@ -4242,12 +5499,40 @@ export type StickyDraftView = {
  */
 export type StickyDraftsChangedEvent = null;
 
+/**  The sticky asks the main window to open what a send made (`sticky:open-target-requested`). */
+export type StickyOpenTargetRequestedEvent = {
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+};
+
 /**  `StickySaveDraftInput`: no id creates a draft. */
 export type StickySaveDraftInput = {
 	id: string | null,
 	/**  At most 100000 characters. */
 	content: string,
 	kind: string,
+};
+
+/**  `StickySendSchema`. */
+export type StickySendInput = {
+	/**  The draft the text came from; deleted once the send lands. */
+	draftId: string | null,
+	/**  1 to 100000 characters. */
+	content: string,
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+};
+
+/**  The success arm of `StickySendResult`. */
+export type StickySent = {
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+	title: string,
+	/**  None for a journal send, which has no undo. */
+	undoToken: string | null,
 };
 
 /**  `StickyShortcutResult` of `@memry/contracts/settings-schemas`. */
@@ -4265,6 +5550,22 @@ export type StreakView = {
 	currentStreak: number,
 	longestStreak: number,
 	lastEntryDate: string | null,
+};
+
+/**  `sync:attachment-materialized`: a download of the note's attachment landed. */
+export type SyncAttachmentMaterializedEvent = {
+	noteId: string,
+};
+
+/**
+ *  `sync:attachment-upload-failed`: an attachment of the note failed to download, or will not
+ *  upload. `errorCategory` is sent only for a file over the plan's limit (`file_too_large`).
+ */
+export type SyncAttachmentUploadFailedEvent = {
+	noteId: string,
+	diskPath: string,
+	error: string,
+	errorCategory?: SyncErrorCategory,
 };
 
 /**  `sync:certificate-pin-failed`: the sync host's certificate matches none of its pins. */
@@ -4959,6 +6260,15 @@ export type TitleMatchView = {
 	path: string,
 };
 
+/**
+ *  What `agent_get_tool_call` serves for a card on screen: the arguments the all-window event
+ *  leaves out.
+ */
+export type ToolCall = {
+	name: string,
+	args: Value,
+};
+
 /**  `TranscriptionResult`. */
 export type TranscriptionResult = {
 	success: boolean,
@@ -5093,6 +6403,13 @@ export type UpdateSyncedSettingResult = {
 export type UpdaterStateChangedEvent = AppUpdateState;
 
 export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
+
+/**  `CanvasUploadAssetResponse`. */
+export type UploadedAsset = {
+	ref: string,
+	descriptor: MemryAssetDescriptor,
+	deduped: boolean,
+};
 
 /**  `kind: 'url'` of `CalendarProviderConnectionSchema`. */
 export type UrlConnectionInput = {
@@ -5372,12 +6689,14 @@ export type VersionDetailView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+	outsideWrite: boolean,
 	fileContent: string,
 };
 
 /**
  *  `SnapshotListItem`. `reason` is the stored column, which the renderer reads as
- *  `SnapshotReason`.
+ *  `SnapshotReason`; `outside_write` tells an outside-write version from the other
+ *  `significant` ones, which Electron never did ([`Listed::outside_write`]).
  */
 export type VersionView = {
 	id: string,
@@ -5386,6 +6705,7 @@ export type VersionView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+	outsideWrite: boolean,
 };
 
 /**  `ViewScope`. */

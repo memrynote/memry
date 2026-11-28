@@ -2,11 +2,10 @@
 //! `waitForVaultIndexBuild` in `pull-gate.ts`), read from the session's running
 //! [`SyncSupervisor`] and the note index.
 //!
-//! No supervisor running (before the launch attach, or after a sign-out detach) reads as no
-//! verdict, so a run waits and then is skipped as `not-ready`. Electron's signed-out install
-//! reaches the verdict "does not sync" and pulls without a claim; here a run needs a
-//! supervisor's verdict first, since a run that starts before the launch attach cannot tell
-//! "signed out" from "not decided yet".
+//! No supervisor running reads by the account. Signed out is Electron's sign-out verdict
+//! (`markSyncIneligible`, `session-teardown.ts:59`): decided, this install does not sync, and
+//! Readwise pulls with no claim. Signed in, the supervisor is not attached yet: no verdict, so
+//! a run waits.
 
 use std::sync::Arc;
 
@@ -30,6 +29,8 @@ pub struct SessionSyncView {
     device_id: Reading,
     /// `readCurrentDeviceName`.
     device_name: Reading,
+    /// The account is signed in. Signed out, sync never runs here.
+    signed_in: Arc<dyn Fn() -> bool + Send + Sync>,
 }
 
 impl SessionSyncView {
@@ -39,6 +40,7 @@ impl SessionSyncView {
         runtime: Handle,
         device_id: Reading,
         device_name: Reading,
+        signed_in: Arc<dyn Fn() -> bool + Send + Sync>,
     ) -> Self {
         Self {
             session,
@@ -46,6 +48,7 @@ impl SessionSyncView {
             runtime,
             device_id,
             device_name,
+            signed_in,
         }
     }
 
@@ -57,7 +60,11 @@ impl SessionSyncView {
 impl SyncView for SessionSyncView {
     fn env(&self) -> PullEnv {
         let Some(sync) = self.supervisor() else {
-            return PullEnv::default();
+            return PullEnv {
+                decided: !(self.signed_in)(),
+                device_id: (self.device_id)(),
+                ..PullEnv::default()
+            };
         };
         PullEnv {
             decided: sync.decided(),

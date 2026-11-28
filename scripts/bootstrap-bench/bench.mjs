@@ -25,6 +25,7 @@ import {
   existingDbs,
   findBootstrapDb,
   noBootstrapDbWarning,
+  catchUpHeadMs,
   feedHeadMs,
   iosMarks,
   tauriStartMs
@@ -267,6 +268,7 @@ async function runElectron(proxy) {
 // ------------------------------------------------- tauri and ios (Rust core)
 
 const DEBT_POLL_MS = 1_000
+const CATCH_UP_DEADLINE_MS = 120_000
 
 /**
  * Waits for the shell's start mark, then until the bootstrapping vault's
@@ -388,9 +390,19 @@ async function runTauri(proxy) {
       startMs: () => tauriStartMs(readLog()),
       dbRoots: [profile, vaultsDir],
       knownDbs,
-      // Tauri runs no first sync; its passes pull the feed, then owed bodies.
       done: (debt, start) => debt.owed === 0 && feedHeadMs(proxy.requests, start) !== null
     })
+    // The marks are taken; the app stays up for the driver's pass after the
+    // first sync, so the reopen starts where a user's install leaves it.
+    if (waited.bodiesMs !== null) {
+      const deadline = Date.now() + CATCH_UP_DEADLINE_MS
+      while (catchUpHeadMs(proxy.requests, waited.bodiesMs) === null && Date.now() < deadline) {
+        await sleep(DEBT_POLL_MS)
+      }
+      if (catchUpHeadMs(proxy.requests, waited.bodiesMs) === null) {
+        console.warn('bench:tauri: no feed head after the first sync; the reopen reads the tail')
+      }
+    }
   } finally {
     try {
       if (child?.pid) process.kill(-child.pid, 'SIGTERM')

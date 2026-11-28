@@ -1,15 +1,16 @@
 //! A pulled change to a note that has its file here (#5309): its title or folder moves the
 //! file, its tags, other names and properties reach the file's frontmatter (Electron
-//! `note-handler.ts` `applyUpsert`, markdown branch). The sync observer marks each pulled note
-//! ([`Pulled`]); the note's next pass takes the mark, so a local edit never moves a file or
-//! rewrites its frontmatter.
+//! `note-handler.ts` `applyUpsert`, markdown branch). The sync observer marks each pulled note in
+//! `data.db` ([`PulledMark`], migration 46), so the mark outlives a quit before the pass; the
+//! note's next pass takes the mark, so a local edit never moves a file or rewrites its
+//! frontmatter. Every stop before the pass gave the file the pull keeps the mark.
 //!
 //! In the pass, under the rows' lane, after its row, hash and file checks (a missing file is
 //! kept missing, an outside edit not fed yet is kept, and the mark stays for the next pass; a
 //! pass that keeps the file later, for a body not pulled yet or a file changed under the write,
-//! gives the mark back, #5509):
+//! keeps the mark too, #5509):
 //! - **Place** ([`Pass::place`]). The record's folder as the disk spells it, under the name its
-//!   title makes ([`name_for`]) when the pull changed the title ([`Mark::title_before`]), else
+//!   title makes ([`name_for`]) when the pull changed the title ([`PulledMark::title_before`]), else
 //!   under the file's name byte for byte (Electron's `titleChanged`, `note-handler.ts:349`), numbered
 //!   `<name> 1.md` on when another note or file holds it ([`free_target`]). A journal day is
 //!   never placed: its path is its date's. A target that would make the note a
@@ -21,9 +22,10 @@
 //!   in between finished by the next open. [`Applied::Renamed`] follows: `Renamed` for a new
 //!   name, `Moved` for a new folder alone. A move that fails keeps the file where it is: the
 //!   pass still writes the frontmatter and the body there, and the move is tried again on the
-//!   next pass, [`PLACE_TRIES`] passes at most ([`Mark::move_failed`]; Electron logs and goes on,
-//!   L438-442). A mark whose moves are given up still waits for a pass that writes its
-//!   frontmatter.
+//!   next pass, [`PLACE_TRIES`] passes at most ([`Pass::retry_pulled`]; Electron logs and goes
+//!   on, L438-442). A mark whose moves are given up still waits for a pass that writes its
+//!   frontmatter; that pass parks it ([`PARKED`]) until the next pull of the note, which still
+//!   knows the title the file carries.
 //! - **Frontmatter** ([`patch`], inside `file_for`). `tags` when the set differs
 //!   (case-insensitive), `aliases` when they differ, and each property value the record holds
 //!   that the file does not. A file key goes only when the record lacks it and the property
@@ -37,9 +39,9 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
-use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use memry_core::domain::note_files::Unfiled;
+use memry_core::domain::note_pulled_marks::PulledMark;
 use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::app_move::AppMoved;
 use memry_core::domain::notes::names::normalize_aliases;
@@ -64,99 +66,87 @@ const SCOPE: &str = "vault_writeback";
 /// The passes a failed move of a pulled place is tried in, the first included.
 pub(super) const PLACE_TRIES: u32 = 3;
 
-/// The notes a pull changed whose pass has not taken the change yet.
-#[derive(Default)]
-pub(super) struct Pulled(Mutex<HashMap<String, Mark>>);
+/// The failed tries of a mark whose moves were given up and whose frontmatter a pass wrote:
+/// kept for its `title_before`, read by no pass until the next pull resets the tries.
+pub(super) const PARKED: u32 = PLACE_TRIES + 1;
 
-/// A pulled change a pass has not taken yet.
-#[derive(Debug, Clone)]
-pub(super) struct Mark {
-    /// The note's title before the first pull since its file was last placed; `None` when the
-    /// note was not here. The file takes the record's title only when it differs.
-    pub(super) title_before: Option<String>,
-    /// The passes whose move failed.
-    failed: u32,
-    /// The record was strictly newer than its file when the file was first named: the pass
-    /// writes the file's `aliases` key alone and never moves it ([`owed_aliases`]).
-    pub(super) aliases_only: bool,
+/// Whether a pass still tries the mark's move.
+pub(super) fn moves(mark: &PulledMark) -> bool {
+    mark.failed < PLACE_TRIES
 }
 
-impl Mark {
-    /// Whether a pass still tries the move.
-    pub(super) fn moves(&self) -> bool {
-        self.failed < PLACE_TRIES
+impl Pass {
+    /// The note's pulled mark a pass takes ([`PulledMark`]): `None` when there is none, or it is
+    /// parked ([`PARKED`]) until the next pull.
+    pub(super) fn pulled_mark(&self, note_id: &str) -> Result<Option<PulledMark>, String> {
+        let mark = self.vault.note_files().pulled_mark(note_id);
+        let mark = mark.map_err(|error| format!("the pulled mark: {error}"))?;
+        Ok(mark.filter(|mark| mark.failed < PARKED))
+    }
+
+    /// The pass gave the file the pull `mark` was read at: the mark goes, unless a later pull
+    /// came in while the pass ran. A mark whose moves were given up is parked instead
+    /// ([`PARKED`]): its failed tries go one past the limit.
+    pub(super) fn settle_pulled(&self, note_id: &str, mark: &PulledMark) {
+        let note_files = self.vault.note_files();
+        let settled = match moves(mark) {
+            true => note_files.settle_pulled(note_id, mark.pulls),
+            false => note_files.fail_pulled(note_id, mark.pulls).map(|_| ()),
+        };
+        if let Err(error) = settled {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "the pulled mark stays for the next pass: {error}"
+            );
+        }
+    }
+
+    /// The note has no file to place, or its first file took the record's place.
+    pub(super) fn forget_pulled(&self, note_id: &str) {
+        if let Err(error) = self.vault.note_files().forget_pulled(note_id) {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "the pulled mark stays for the next pass: {error}"
+            );
+        }
     }
 
     /// A move that failed: the next pass tries it again, until [`PLACE_TRIES`] passes failed;
     /// then the file stays where it is until the next pull of the note. The mark itself still
-    /// waits for a pass that writes the pulled frontmatter.
-    pub(super) fn move_failed(&mut self, note_id: &str, why: &str) {
-        self.failed += 1;
-        if self.moves() {
+    /// waits for a pass that writes the pulled frontmatter. `mark` takes the counted tries;
+    /// whether a pass still tries the move.
+    pub(super) fn retry_pulled(&self, note_id: &str, mark: &mut PulledMark, why: &str) -> bool {
+        match self.vault.note_files().fail_pulled(note_id, mark.pulls) {
+            Ok(Some(tries)) => mark.failed = tries,
+            // A later pull reset the mark: its pass tries afresh.
+            Ok(None) => return true,
+            Err(error) => {
+                mark.failed += 1;
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    "a failed pulled place was not counted: {error}"
+                );
+            }
+        }
+        if moves(mark) {
             tracing::warn!(
                 scope = SCOPE,
                 note_id,
-                tries = self.failed,
+                tries = mark.failed,
                 "a pulled place waits for the next pass; the file stays where it is: {why}"
             );
         } else {
             tracing::error!(
                 scope = SCOPE,
                 note_id,
-                tries = self.failed,
+                tries = mark.failed,
                 "a pulled place is given up; the file stays where it is: {why}"
             );
         }
-    }
-}
-
-impl Pulled {
-    /// A later pull keeps the first one's title: the file still carries that one. A pull
-    /// replaces an aliases-only mark: its frontmatter patch writes the aliases too.
-    pub(super) fn mark(&self, note_id: &str, title_before: Option<&str>) {
-        let pulled = Mark {
-            title_before: title_before.map(str::to_owned),
-            failed: 0,
-            aliases_only: false,
-        };
-        let mut map = self.map();
-        match map.get(note_id) {
-            Some(mark) if !mark.aliases_only => {}
-            _ => {
-                map.insert(note_id.to_owned(), pulled);
-            }
-        }
-    }
-
-    /// A mark that writes the file's `aliases` key alone and never moves the file
-    /// (`Pass::mark_record_newer`). A pull's mark, already there, stays.
-    pub(super) fn mark_in_place(&self, note_id: &str) {
-        self.map().entry(note_id.to_owned()).or_insert(Mark {
-            title_before: None,
-            failed: PLACE_TRIES,
-            aliases_only: true,
-        });
-    }
-
-    pub(super) fn take(&self, note_id: &str) -> Option<Mark> {
-        self.map().remove(note_id)
-    }
-
-    /// Gives `mark` back to the next pass: this one stopped before it took the change. A pull's
-    /// mark made meanwhile stays over an aliases-only one, as in [`Pulled::mark`]: its patch
-    /// writes the aliases too, and dropping it would lose the pulled frontmatter (#5316).
-    pub(super) fn put_back(&self, note_id: &str, mark: Mark) {
-        let mut map = self.map();
-        match map.get(note_id) {
-            Some(held) if !held.aliases_only && mark.aliases_only => {}
-            _ => {
-                map.insert(note_id.to_owned(), mark);
-            }
-        }
-    }
-
-    fn map(&self) -> MutexGuard<'_, HashMap<String, Mark>> {
-        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+        moves(mark)
     }
 }
 
@@ -169,7 +159,9 @@ pub(crate) struct Patch<'a> {
 
 /// The file `output` with its `aliases` key set to the record's list, as the in-app alias edit
 /// writes it ([`with_aliases`]): every other key, comment and the body as `output` has them. A
-/// record with no list, or a frontmatter that is not a map, leaves `output` as it is.
+/// record with no list, or a frontmatter that is not a map, leaves `output` as it is. The
+/// pass gives it a file that owes its record's aliases
+/// ([`memry_core::domain::owed_file_aliases`]).
 pub(super) fn owed_aliases(output: String, record: &Unfiled) -> Result<String, String> {
     let Some(held) = &record.aliases else {
         return Ok(output);

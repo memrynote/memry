@@ -532,7 +532,6 @@ pub(super) fn applier(
         untaken: Mutex::default(),
         emptied: Mutex::default(),
         writeback: None,
-        pass: None,
     }
 }
 

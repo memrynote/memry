@@ -1,19 +1,21 @@
 //! The sticky's drafts and window commands (`sticky:*` of `ipc/sticky-handlers.ts`). Drafts are
-//! `memry_core::api::sticky_store`; the window is `crate::windows::sticky`. Every draft write sends
-//! [`StickyDraftsChangedEvent`] to every window, as `drafts-changed.ts` does.
-//! Send, undo and open-target arrive with stage 31c of Step 31 (#3548).
+//! `memry_core::api::sticky_store`; the windows are `crate::windows::{sticky, edge_tab}`. Every
+//! draft write sends `StickyDraftsChangedEvent` to every window and refreshes the edge tab, as
+//! `drafts-changed.ts` does.
+//! Send, undo and open-target are `super::sticky_send`.
 
 use std::sync::Arc;
 
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::sticky::drafts::{self, StickyDraft, StickyKind, StickyStore};
+use memry_desktop::sticky::session::OpenRequest;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::tags::open_vault;
-use crate::events::{StickyDraftsChangedEvent, broadcast};
+use crate::windows::edge_tab;
 use crate::windows::sticky::{self, StickyWindow};
 
 /// `StickyDraft` of `@memry/contracts/sticky-api`.
@@ -69,14 +71,14 @@ fn invalid(message: &str) -> CommandError {
 }
 
 /// `STICKY_KINDS`: the zod enum refuses any other.
-fn kind(kind: &str) -> Result<StickyKind, CommandError> {
+pub(super) fn kind(kind: &str) -> Result<StickyKind, CommandError> {
     match kind {
         "note" | "task" | "journal" => Ok(StickyKind::parse(kind)),
         _ => Err(invalid("sticky kind must be note, task or journal")),
     }
 }
 
-fn non_empty(id: &str) -> Result<(), CommandError> {
+pub(super) fn non_empty(id: &str) -> Result<(), CommandError> {
     if id.is_empty() {
         return Err(invalid("sticky draft id must not be empty"));
     }
@@ -109,7 +111,7 @@ pub async fn sticky_save_draft(
         let saved = store(&app)?
             .save(input.id, input.content, kind)
             .map_err(|error| CommandError::from_core(&error))?;
-        broadcast(&app, StickyDraftsChangedEvent);
+        edge_tab::drafts_changed(&app);
         Ok(saved.into())
     })
     .await
@@ -125,7 +127,7 @@ pub async fn sticky_delete_draft(app: AppHandle<Wry>, id: String) -> Result<bool
             .delete(id)
             .map_err(|error| CommandError::from_core(&error))?;
         if deleted {
-            broadcast(&app, StickyDraftsChangedEvent);
+            edge_tab::drafts_changed(&app);
         }
         Ok(deleted)
     })
@@ -155,5 +157,24 @@ pub fn sticky_resize(app: AppHandle<Wry>, height: f64) -> Result<(), CommandErro
         return Err(invalid("sticky height must be positive"));
     }
     sticky::resize(&app, height)
+        .map_err(|error| CommandError::new(ErrorKind::Internal, "window_failed", error.to_string()))
+}
+
+/// The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`).
+#[tauri::command]
+#[specta::specta]
+pub fn sticky_unfold(app: AppHandle<Wry>, draft_id: Option<String>) -> Result<(), CommandError> {
+    if let Some(id) = &draft_id {
+        non_empty(id)?;
+    }
+    sticky::open(&app, OpenRequest::Draft(draft_id));
+    Ok(())
+}
+
+/// The pointer entered (`true`) or left the edge tab: it fans the draft list out or folds it.
+#[tauri::command]
+#[specta::specta]
+pub fn sticky_peek(app: AppHandle<Wry>, open: bool) -> Result<(), CommandError> {
+    edge_tab::peek(&app, open)
         .map_err(|error| CommandError::new(ErrorKind::Internal, "window_failed", error.to_string()))
 }

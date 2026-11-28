@@ -217,6 +217,7 @@ pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
         }
     }
     crate::windows::sticky::on_window_destroyed(app, label);
+    crate::windows::edge_tab::on_window_destroyed(app, label);
 }
 
 /// The `run` callback of the app.
@@ -226,6 +227,14 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
     if startup::boot_halted() {
         if let RunEvent::Exit = event {
             crate::updater::relaunch_guard::hand_off_on_exit();
+            flush_log(app);
+        }
+        return;
+    }
+    // The boot waits for the first-launch migration: closing its window quits, and a rerun
+    // repeats the migration cleanly, so only the log needs flushing.
+    if startup::boot_suspended() {
+        if let RunEvent::Exit = event {
             flush_log(app);
         }
         return;

@@ -579,7 +579,10 @@
       "journalOff": "日誌功能已在設定中關閉。",
       "sendFailed": "無法傳送便利貼。",
       "undoExpired": "已來不及復原。",
-      "undoFailed": "無法復原傳送。"
+      "undoFailed": "無法復原傳送。",
+      "journalBusy": "今天的日誌仍在儲存中。請稍後再試。",
+      "folderExcluded": "Sticky 資料夾已被排除。請在設定中將它從排除的資料夾中移除，才能傳送筆記。",
+      "projectMissing": "此任務的專案不存在。請在設定中選擇預設專案，或將它當作筆記傳送。"
     },
     "inputLabel": "便利貼文字",
     "dismissError": "關閉"

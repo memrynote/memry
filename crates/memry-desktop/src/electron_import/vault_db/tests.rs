@@ -5,45 +5,6 @@ use super::source::copy_sources;
 use super::tables::SourceDb;
 use super::*;
 
-/// The probe over a profile directory with no LevelDB store in it.
-fn no_electron(dir: &Path) -> ProfileLock {
-    use crate::electron_import::{AppNameCandidates, ElectronProfile, HostOs};
-    ProfileLock::probe(&ElectronProfile {
-        dir: dir.join("electron-profile"),
-        host: HostOs::current(),
-        pin: None,
-        app_names: AppNameCandidates(Vec::new()),
-        has_config: false,
-        has_secure_store: false,
-        has_local_state: false,
-        has_local_storage: false,
-        has_legacy_crdt_store: false,
-        has_custom_dictionary: false,
-        crdt_store_dirs: Vec::new(),
-        other_candidates: Vec::new(),
-    })
-    .unwrap()
-}
-
-fn input<'a>(
-    vault: &Path,
-    pair: &electron_db::ElectronPair,
-    lock: &'a ProfileLock,
-) -> VaultImportInput<'a> {
-    VaultImportInput {
-        electron_closed: lock,
-        vault_dir: vault.to_owned(),
-        vault_id: "vault-1".into(),
-        electron_data_db: pair.data.clone(),
-        electron_index_db: pair.index.clone(),
-        docs: Vec::new(),
-        extra_owed_docs: Vec::new(),
-        vault_key: None,
-        now_ms: 1_800_000_000_000,
-        progress: None,
-    }
-}
-
 /// Copies the pair the way a run does and reads `note_metadata.id` back from the copy.
 fn ids_through_the_copy(pair: &electron_db::ElectronPair, staging: &Path) -> Vec<String> {
     let sources = copy_sources(&pair.data, &pair.index, staging).unwrap();
@@ -65,11 +26,9 @@ fn a_fresh_electron_pair_passes_the_preflight() {
     let pair = electron_db::create_pair(&dir.path().join(".memry"));
     let staging = dir.path().join("staging");
     let sources = copy_sources(&pair.data, &pair.index, &staging).unwrap();
-    let lock = no_electron(dir.path());
-    let preflight = preflight::run(&sources, &input(dir.path(), &pair, &lock)).unwrap();
+    let preflight = preflight::run(&sources).unwrap();
     // Every mapped table and nothing else: the fts5 and vec0 shadow tables are recognised.
     assert_eq!(preflight.tables.len(), tables::TABLE_MAP.len());
-    assert!(preflight.dropped_keys.is_empty());
 }
 
 /// Ids are read as the exact bytes Electron stored, uppercase, `_`, `-`, NUL and combining
@@ -210,6 +169,8 @@ fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
         vault_id: "vault-1",
         writer: &mut writer,
         now_ms: 7,
+        electron_device_id: None,
+        docs: &[],
     };
     assert!(matches!(
         tables::unknown_fields::import(&mut ctx),
@@ -220,7 +181,7 @@ fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
 /// Electron's push sends the body only for a queued `create` (`readNoteFileFields`,
 /// `journal-handler.ts:276`). A clocked row Electron never marked synced (a day pushed from this
 /// device, an offline edit) is pushed as an update with `content: null`, unless `sync_queue`
-/// still holds its `create`. `sync_queue` is pending (36c), so the importer runs directly.
+/// still holds its `create`. The importer runs directly, so the rule is seen on its own.
 #[test]
 fn only_a_queued_create_carries_the_body() {
     // Electron f5fd229's journal `buildPushPayload` with operation `create` over this day file.
@@ -311,6 +272,8 @@ fn only_a_queued_create_carries_the_body() {
         vault_id: "vault-1",
         writer: &mut writer,
         now_ms: 7,
+        electron_device_id: None,
+        docs: &[],
     };
     import(&mut ctx).unwrap();
     let payload = |item_type: &str, id: &str| -> serde_json::Value {

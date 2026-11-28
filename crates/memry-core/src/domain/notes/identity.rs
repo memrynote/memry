@@ -161,8 +161,13 @@ pub enum Removed {
 }
 
 /// Records what the core database was created over, once: every open calls this,
-/// so one that failed is retried, and a value already there is kept.
+/// so one that failed is retried, and a value already there is kept. A read-only
+/// database records nothing and still opens (read-only, as the editor reports it):
+/// the next writable open records it.
 pub fn record_origin(conn: &Connection, origin: Origin) -> Result<(), StorageError> {
+    if conn.is_readonly(rusqlite::MAIN_DB).map_err(failed)? {
+        return Ok(());
+    }
     let value = match origin {
         Origin::Native => "native",
         Origin::OverElectron => "electron",

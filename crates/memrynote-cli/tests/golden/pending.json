@@ -330,11 +330,5 @@
   "templates duplicate",
   "templates get",
   "templates list",
-  "templates update",
-  "vault activity",
-  "vault config",
-  "vault locks",
-  "vault reindex",
-  "vault set-icon",
-  "vault update-config"
+  "templates update"
 ]

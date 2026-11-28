@@ -78,7 +78,7 @@ fn every_drizzle_table_has_a_mapping_or_a_skip_reason() {
         }
         if let Some(Importer::Pending(stage)) = m.class.importer() {
             assert!(
-                ["36b", "36c", "36d1", "36d2", "36e", "36f"].contains(&stage),
+                super::pending_area(stage).is_some(),
                 "{}: pending names no stage ({stage})",
                 m.table
             );

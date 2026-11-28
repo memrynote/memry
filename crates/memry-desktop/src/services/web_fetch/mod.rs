@@ -12,6 +12,7 @@
 
 mod fetcher;
 mod image;
+mod metadata;
 mod reddit;
 
 use std::net::SocketAddr;
@@ -26,6 +27,10 @@ use wreq::tls::trust::CertStore;
 
 pub use fetcher::BlockingFetcher;
 pub use image::image_extension;
+pub use metadata::{
+    METASCRAPE_MAX_DEPTH, MetascrapeError, is_bot_page_title, metascrape, metascrape_at,
+    metascrape_parse_steps, metascrape_steps,
+};
 pub use reddit::{
     UrlMetadata, is_reddit_url, reddit_json_url, reddit_metadata_from_listing,
     rewrite_url_for_fetch,

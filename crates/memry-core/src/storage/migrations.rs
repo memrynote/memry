@@ -249,6 +249,46 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "readwise",
         sql: include_str!("migrations/data/0039_readwise.sql"),
     },
+    Migration {
+        version: 40,
+        name: "manifest_watermark",
+        sql: include_str!("migrations/data/0040_manifest_watermark.sql"),
+    },
+    Migration {
+        version: 41,
+        name: "note_snapshot_outside_writes",
+        sql: include_str!("migrations/data/0041_note_snapshot_outside_writes.sql"),
+    },
+    Migration {
+        version: 42,
+        name: "reminder_fires",
+        sql: include_str!("migrations/data/0042_reminder_fires.sql"),
+    },
+    Migration {
+        version: 43,
+        name: "inbox_suggestion_feedback",
+        sql: include_str!("migrations/data/0043_inbox_suggestion_feedback.sql"),
+    },
+    Migration {
+        version: 44,
+        name: "graph_layouts",
+        sql: include_str!("migrations/data/0044_graph_layouts.sql"),
+    },
+    Migration {
+        version: 45,
+        name: "attachment_revivals",
+        sql: include_str!("migrations/data/0045_attachment_revivals.sql"),
+    },
+    Migration {
+        version: 46,
+        name: "note_pulled_marks",
+        sql: include_str!("migrations/data/0046_note_pulled_marks.sql"),
+    },
+    Migration {
+        version: 47,
+        name: "canvas_scene_marks",
+        sql: include_str!("migrations/data/0047_canvas_scene_marks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -437,6 +477,8 @@ mod agent_records_tests;
 #[cfg(test)]
 mod attachment_sync_tests;
 #[cfg(test)]
+mod canvas_scene_marks_tests;
+#[cfg(test)]
 mod canvases_tests;
 #[cfg(test)]
 mod concurrent_open_tests;
@@ -449,6 +491,8 @@ mod legacy_numbering;
 mod note_file_marks_tests;
 #[cfg(test)]
 mod note_large_files_tests;
+#[cfg(test)]
+mod note_pulled_marks_tests;
 #[cfg(test)]
 mod numbering_tests;
 #[cfg(test)]

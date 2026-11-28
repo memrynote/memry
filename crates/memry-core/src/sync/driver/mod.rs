@@ -34,6 +34,7 @@
 //!   shutdown, and behind an update too large for the incremental route. All
 //!   CRDT pushes share one [`CrdtAdmission`].
 
+mod attachments;
 mod bodies;
 mod cipher;
 #[cfg(feature = "markdown")]
@@ -60,6 +61,7 @@ use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
 use crate::domain::task_activity::superseded::SupersededObserver;
+use crate::domain::unclocked_seed::UnclockedSeed;
 use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
 use crate::protocol::auth::TokenManager;
 use crate::protocol::http::{HttpClient, TokenProvider};
@@ -319,7 +321,8 @@ impl SyncDriver {
             .with_gate(pass_gate)
             .with_max_pages(config.max_pages_per_pass)
             .with_seed(Arc::new(TagSeed(Arc::new(tags))))
-            .with_seed(ProjectSeed::over(db.clone(), device_id.clone()));
+            .with_seed(ProjectSeed::over(db.clone(), device_id.clone()))
+            .with_seed(Arc::new(UnclockedSeed::new(db.clone(), device_id.clone())));
         #[cfg(feature = "markdown")]
         if declaration.classify(crate::domain::vault_locks::ITEM_TYPE)
             == crate::protocol::types::ArrivingItemType::Subscribed

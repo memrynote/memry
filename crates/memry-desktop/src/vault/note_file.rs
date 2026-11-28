@@ -116,7 +116,7 @@ pub enum WriteOutcome {
     Unchanged,
 }
 
-fn open_note_file(vault: &Path, rel: &str) -> Result<Option<File>, NoteFileError> {
+pub(super) fn open_note_file(vault: &Path, rel: &str) -> Result<Option<File>, NoteFileError> {
     open_vault_file(vault, rel).map_err(|error| match error {
         OpenError::HardLinked => NoteFileError::HardLinked,
         other => other.into(),

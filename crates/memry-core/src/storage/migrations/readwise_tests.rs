@@ -40,7 +40,7 @@ fn upsert(db: &Db, book: Option<i64>, document: Option<&str>, note: &str) -> rea
 #[test]
 fn the_readwise_migration_keeps_rows_reruns_and_leaves_the_file_readable() {
     let db = Db::open_in_memory().expect("open");
-    let before = DATA_MIGRATIONS.len() - 1;
+    let before = 38; // `readwise`, version 39
     db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..before]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {
@@ -51,7 +51,8 @@ fn the_readwise_migration_keeps_rows_reruns_and_leaves_the_file_readable() {
     })
     .expect("a row to keep");
     assert_eq!(
-        db.call_blocking(|conn| run(conn, DATA_MIGRATIONS)).unwrap(),
+        db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..=before]))
+            .unwrap(),
         39
     );
     upsert(&db, Some(1), None, "n1");

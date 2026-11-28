@@ -107,6 +107,52 @@ pub fn group_defaults(name: &str) -> Option<Value> {
     groups::find(name).map(|group| Value::Object(spec_defaults(group)))
 }
 
+/// A flat local key's stored text on `conn`, for a caller already inside a
+/// write (the review tick's guard).
+pub(crate) fn local_text_in(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
+    require_local_key(key)?;
+    conn.query_row(
+        "SELECT value FROM local_settings WHERE key = ?1",
+        params![key],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(failed)
+}
+
+/// Replaces a flat local key's stored text on `conn` (Electron's `setSetting`).
+pub(crate) fn put_local_text_in(
+    conn: &Connection,
+    key: &str,
+    text: &str,
+    now: i64,
+) -> Result<(), StorageError> {
+    require_local_key(key)?;
+    conn.execute(
+        "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        params![key, text, now],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Deletes a flat local key on `conn` (Electron's `deleteSetting`).
+pub(crate) fn drop_local_in(conn: &Connection, key: &str) -> Result<(), StorageError> {
+    require_local_key(key)?;
+    conn.execute("DELETE FROM local_settings WHERE key = ?1", params![key])
+        .map_err(failed)?;
+    Ok(())
+}
+
+fn require_local_key(key: &str) -> Result<(), StorageError> {
+    if local_key_ok(key) {
+        Ok(())
+    } else {
+        Err(invalid(format!("`{key}` is not a local settings key")))
+    }
+}
+
 /// Whether a group write takes `value` for `group.field`: the check of every write and of the
 /// promotion, for a shell that filters a patch before writing it.
 pub fn value_ok(group: &str, field: &str, value: &Value) -> bool {
@@ -320,36 +366,15 @@ impl AppSettings {
     /// its `ai.*` keys this way: `ai.summarizeAgent` holds the bare choice (`codex_cli`), which
     /// is not JSON.
     pub fn get_local_text(&self, key: &str) -> Result<Option<String>, StorageError> {
-        if !local_key_ok(key) {
-            return Err(invalid(format!("`{key}` is not a local settings key")));
-        }
         let key = key.to_owned();
-        self.db.read_blocking(move |conn| {
-            conn.query_row(
-                "SELECT value FROM local_settings WHERE key = ?1",
-                params![key],
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(failed)
-        })
+        self.db.read_blocking(move |conn| local_text_in(conn, &key))
     }
 
     /// Replaces a flat local key's stored text (Electron's `setSetting`).
     pub fn set_local_text(&self, key: &str, text: &str) -> Result<SettingsChange, StorageError> {
-        if !local_key_ok(key) {
-            return Err(invalid(format!("`{key}` is not a local settings key")));
-        }
         let (name, text) = (key.to_owned(), text.to_owned());
-        self.db.call_blocking(move |conn| {
-            conn.execute(
-                "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-                params![name, text, now_ms()],
-            )
-            .map_err(failed)?;
-            Ok(())
-        })?;
+        self.db
+            .call_blocking(move |conn| put_local_text_in(conn, &name, &text, now_ms()))?;
         Ok(SettingsChange {
             group: key.to_owned(),
             fields: Vec::new(),

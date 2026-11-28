@@ -129,15 +129,30 @@ fn replacement_for_node(dom: &mut Dom, node: NodeId, root: NodeId) -> Result<Str
     Ok(format!("{}{replacement}{}", info.leading, info.trailing))
 }
 
+thread_local! {
+    static PARSE_STEPS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Steps Turndown's capped parses took on this thread (nodes created, parent links followed),
+/// for the complexity tests.
+#[doc(hidden)]
+pub fn parse_steps() -> usize {
+    PARSE_STEPS.with(std::cell::Cell::get)
+}
+
 /// `turndown(input)` for a string input. Fails where the JS throws: the wrapper element is
 /// missing when the input holds a `frameset`, which replaces the body.
 pub fn turndown(input: &str) -> Result<String, ExtractError> {
     if input.is_empty() {
         return Ok(String::new());
     }
-    let mut dom = parse::parse(&format!(
-        "<x-turndown id=\"turndown-root\">{input}</x-turndown>"
-    ));
+    let html = format!("<x-turndown id=\"turndown-root\">{input}</x-turndown>");
+    let (mut dom, steps) =
+        parse::parse_capped(&html, parse::Caps::for_page(html.len())).map_err(|hit| {
+            tracing::warn!(?hit, "turndown input parse stopped at a cap");
+            ExtractError::TooLarge(hit)
+        })?;
+    PARSE_STEPS.with(|count| count.set(count.get().saturating_add(steps)));
     let root = dom
         .doc
         .get_element_by_id(dom.doc.root(), "turndown-root")

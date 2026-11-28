@@ -3889,12 +3889,36 @@ public protocol InboxProtocol: AnyObject, Sendable {
      */
     func resumePendingJobs() throws  -> InboxJobsResumed
     
+    /**
+     * One review tick (`runReviewTick`) at the shell's local wall clock:
+     * `today` as `YYYY-MM-DD`, `now_minutes` since local midnight. Answers
+     * the reviewable count when the nudge is due, after recording today as
+     * notified, so the next tick today answers `None`.
+     */
+    func reviewDue(today: String, nowMinutes: UInt32) throws  -> Int64?
+    
     func reviewSettings() throws  -> InboxReviewSettings
     
     /**
      * Writes both keys (each carries its own field clock, §6.9).
      */
     func setReviewSettings(settings: InboxReviewSettings) throws 
+    
+    /**
+     * `getSuggestionStats`.
+     */
+    func suggestionStats() throws  -> InboxSuggestionStats
+    
+    /**
+     * `getSuggestions`: up to three folders, then up to three notes to link.
+     * The caller answers an empty list itself when local AI is off.
+     */
+    func suggestions(itemId: String, index: InboxSuggestIndex) throws  -> [InboxSuggestion]
+    
+    /**
+     * `trackSuggestionFeedback`. Local only.
+     */
+    func trackSuggestion(itemId: String, itemType: String, suggestedTo: String, actualTo: String, confidence: Double, suggestedTags: [String], actualTags: [String]) throws 
     
     func addTag(id: String, tag: String) throws 
     
@@ -3938,6 +3962,11 @@ public protocol InboxProtocol: AnyObject, Sendable {
      * gives (unsupported type, empty, over 50 MB).
      */
     func checkFile(mimeType: String, size: UInt64) throws  -> String
+    
+    /**
+     * `convertToEvent`: `start_at` and `end_at` are ISO instants.
+     */
+    func convertToEvent(id: String, startAt: String, endAt: String?, isAllDay: Bool, location: String?, localNow: String) throws  -> InboxFiled
     
     /**
      * Convert → Note: a note at the vault root.
@@ -4404,6 +4433,23 @@ open func resumePendingJobs()throws  -> InboxJobsResumed  {
 })
 }
     
+    /**
+     * One review tick (`runReviewTick`) at the shell's local wall clock:
+     * `today` as `YYYY-MM-DD`, `now_minutes` since local midnight. Answers
+     * the reviewable count when the nudge is due, after recording today as
+     * notified, so the next tick today answers `None`.
+     */
+open func reviewDue(today: String, nowMinutes: UInt32)throws  -> Int64?  {
+    return try  FfiConverterOptionInt64.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_review_due(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(today),
+        FfiConverterUInt32.lower(nowMinutes),uniffiCallStatus
+    )
+})
+}
+    
 open func reviewSettings()throws  -> InboxReviewSettings  {
     return try  FfiConverterTypeInboxReviewSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
@@ -4421,6 +4467,51 @@ open func setReviewSettings(settings: InboxReviewSettings)throws   {try rustCall
     uniffi_memry_core_fn_method_inbox_set_review_settings(
             self.uniffiCloneHandle(),
         FfiConverterTypeInboxReviewSettings_lower(settings),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `getSuggestionStats`.
+     */
+open func suggestionStats()throws  -> InboxSuggestionStats  {
+    return try  FfiConverterTypeInboxSuggestionStats_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_suggestion_stats(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `getSuggestions`: up to three folders, then up to three notes to link.
+     * The caller answers an empty list itself when local AI is off.
+     */
+open func suggestions(itemId: String, index: InboxSuggestIndex)throws  -> [InboxSuggestion]  {
+    return try  FfiConverterSequenceTypeInboxSuggestion.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_suggestions(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemId),
+        FfiConverterTypeInboxSuggestIndex_lower(index),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `trackSuggestionFeedback`. Local only.
+     */
+open func trackSuggestion(itemId: String, itemType: String, suggestedTo: String, actualTo: String, confidence: Double, suggestedTags: [String], actualTags: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_track_suggestion(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemId),
+        FfiConverterString.lower(itemType),
+        FfiConverterString.lower(suggestedTo),
+        FfiConverterString.lower(actualTo),
+        FfiConverterDouble.lower(confidence),
+        FfiConverterSequenceString.lower(suggestedTags),
+        FfiConverterSequenceString.lower(actualTags),uniffiCallStatus
     )
 }
 }
@@ -4578,6 +4669,24 @@ open func checkFile(mimeType: String, size: UInt64)throws  -> String  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(mimeType),
         FfiConverterUInt64.lower(size),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `convertToEvent`: `start_at` and `end_at` are ISO instants.
+     */
+open func convertToEvent(id: String, startAt: String, endAt: String?, isAllDay: Bool, location: String?, localNow: String)throws  -> InboxFiled  {
+    return try  FfiConverterTypeInboxFiled_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_convert_to_event(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(startAt),
+        FfiConverterOptionString.lower(endAt),
+        FfiConverterBool.lower(isAllDay),
+        FfiConverterOptionString.lower(location),
+        FfiConverterString.lower(localNow),uniffiCallStatus
     )
 })
 }
@@ -8792,6 +8901,18 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func reindex() throws  -> ReindexSummary
     
     /**
+     * One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+     * when more remain.
+     *
+     * For a shell that runs core calls on one serial queue: a call per batch
+     * lets the queue's other calls run between batches (#5842). The pass
+     * belongs to the vault, so a step through any of its `Search`es goes on
+     * with it. A step that fails, or finds the pass stale, drops it; the next
+     * step plans again and resumes after the batches already committed.
+     */
+    func reindexStep() throws  -> ReindexSummary?
+    
+    /**
      * Everything matching `query`, in desktop's four groups, each best
      * first and at most `limit` long. `filter` narrows the types, the
      * modified date and the tags; `None` narrows nothing.
@@ -8947,6 +9068,25 @@ open func reindex()throws  -> ReindexSummary  {
     return try  FfiConverterTypeReindexSummary_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_search_reindex(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+     * when more remain.
+     *
+     * For a shell that runs core calls on one serial queue: a call per batch
+     * lets the queue's other calls run between batches (#5842). The pass
+     * belongs to the vault, so a step through any of its `Search`es goes on
+     * with it. A step that fails, or finds the pass stale, drops it; the next
+     * step plans again and resumes after the batches already committed.
+     */
+open func reindexStep()throws  -> ReindexSummary?  {
+    return try  FfiConverterOptionTypeReindexSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_reindex_step(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -20954,6 +21094,442 @@ public func FfiConverterTypeInboxStatsRecord_lift(_ buf: RustBuffer) throws -> I
 #endif
 public func FfiConverterTypeInboxStatsRecord_lower(_ value: InboxStatsRecord) -> RustBuffer {
     return FfiConverterTypeInboxStatsRecord.lower(value)
+}
+
+
+/**
+ * A KNN neighbour of the capture's text, resolved to its note.
+ */
+public struct InboxSuggestHit: Equatable, Hashable {
+    public var noteId: String
+    /**
+     * Vault-relative path of the note's file.
+     */
+    public var path: String
+    public var title: String
+    public var emoji: String?
+    public var snippet: String?
+    /**
+     * Cosine distance (`1 - cosine`), as the vector index answers it.
+     */
+    public var distance: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(noteId: String, 
+        /**
+         * Vault-relative path of the note's file.
+         */path: String, title: String, emoji: String?, snippet: String?, 
+        /**
+         * Cosine distance (`1 - cosine`), as the vector index answers it.
+         */distance: Double) {
+        self.noteId = noteId
+        self.path = path
+        self.title = title
+        self.emoji = emoji
+        self.snippet = snippet
+        self.distance = distance
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestHit: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestHit: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestHit {
+        return
+            try InboxSuggestHit(
+                noteId: FfiConverterString.read(from: &buf), 
+                path: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf), 
+                snippet: FfiConverterOptionString.read(from: &buf), 
+                distance: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestHit, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.noteId, into: &buf)
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+        FfiConverterOptionString.write(value.snippet, into: &buf)
+        FfiConverterDouble.write(value.distance, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestHit_lift(_ buf: RustBuffer) throws -> InboxSuggestHit {
+    return try FfiConverterTypeInboxSuggestHit.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestHit_lower(_ value: InboxSuggestHit) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestHit.lower(value)
+}
+
+
+/**
+ * What the search index contributes to a capture's suggestions.
+ */
+public struct InboxSuggestIndex: Equatable, Hashable {
+    /**
+     * The capture's similarity-input neighbours, nearest first
+     * (`SIMILAR_NOTE_LIMIT` = 20 of them).
+     */
+    public var hits: [InboxSuggestHit]
+    /**
+     * Folders that hold notes.
+     */
+    public var folders: [String]
+    /**
+     * Notes carrying one of the capture's tags; others are ignored.
+     */
+    public var taggedNotes: [InboxTaggedNote]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The capture's similarity-input neighbours, nearest first
+         * (`SIMILAR_NOTE_LIMIT` = 20 of them).
+         */hits: [InboxSuggestHit], 
+        /**
+         * Folders that hold notes.
+         */folders: [String], 
+        /**
+         * Notes carrying one of the capture's tags; others are ignored.
+         */taggedNotes: [InboxTaggedNote]) {
+        self.hits = hits
+        self.folders = folders
+        self.taggedNotes = taggedNotes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestIndex: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestIndex: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestIndex {
+        return
+            try InboxSuggestIndex(
+                hits: FfiConverterSequenceTypeInboxSuggestHit.read(from: &buf), 
+                folders: FfiConverterSequenceString.read(from: &buf), 
+                taggedNotes: FfiConverterSequenceTypeInboxTaggedNote.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestIndex, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeInboxSuggestHit.write(value.hits, into: &buf)
+        FfiConverterSequenceString.write(value.folders, into: &buf)
+        FfiConverterSequenceTypeInboxTaggedNote.write(value.taggedNotes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestIndex_lift(_ buf: RustBuffer) throws -> InboxSuggestIndex {
+    return try FfiConverterTypeInboxSuggestIndex.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestIndex_lower(_ value: InboxSuggestIndex) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestIndex.lower(value)
+}
+
+
+/**
+ * A note a suggestion links to (`SuggestedNote`).
+ */
+public struct InboxSuggestedNote: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var snippet: String
+    public var emoji: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, snippet: String, emoji: String?) {
+        self.id = id
+        self.title = title
+        self.snippet = snippet
+        self.emoji = emoji
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestedNote: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestedNote: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestedNote {
+        return
+            try InboxSuggestedNote(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                snippet: FfiConverterString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestedNote, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.snippet, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestedNote_lift(_ buf: RustBuffer) throws -> InboxSuggestedNote {
+    return try FfiConverterTypeInboxSuggestedNote.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestedNote_lower(_ value: InboxSuggestedNote) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestedNote.lower(value)
+}
+
+
+/**
+ * One `FilingSuggestion`. `destination_type` is `folder`, `note`, or the
+ * action a filing-history pattern recorded; a folder carries `path`, a note
+ * `note_id` and `note_title`.
+ */
+public struct InboxSuggestion: Equatable, Hashable {
+    public var destinationType: String
+    public var path: String?
+    public var noteId: String?
+    public var noteTitle: String?
+    public var confidence: Double
+    public var reason: String
+    public var suggestedTags: [String]
+    public var suggestedNote: InboxSuggestedNote?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(destinationType: String, path: String?, noteId: String?, noteTitle: String?, confidence: Double, reason: String, suggestedTags: [String], suggestedNote: InboxSuggestedNote?) {
+        self.destinationType = destinationType
+        self.path = path
+        self.noteId = noteId
+        self.noteTitle = noteTitle
+        self.confidence = confidence
+        self.reason = reason
+        self.suggestedTags = suggestedTags
+        self.suggestedNote = suggestedNote
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestion: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestion: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestion {
+        return
+            try InboxSuggestion(
+                destinationType: FfiConverterString.read(from: &buf), 
+                path: FfiConverterOptionString.read(from: &buf), 
+                noteId: FfiConverterOptionString.read(from: &buf), 
+                noteTitle: FfiConverterOptionString.read(from: &buf), 
+                confidence: FfiConverterDouble.read(from: &buf), 
+                reason: FfiConverterString.read(from: &buf), 
+                suggestedTags: FfiConverterSequenceString.read(from: &buf), 
+                suggestedNote: FfiConverterOptionTypeInboxSuggestedNote.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestion, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.destinationType, into: &buf)
+        FfiConverterOptionString.write(value.path, into: &buf)
+        FfiConverterOptionString.write(value.noteId, into: &buf)
+        FfiConverterOptionString.write(value.noteTitle, into: &buf)
+        FfiConverterDouble.write(value.confidence, into: &buf)
+        FfiConverterString.write(value.reason, into: &buf)
+        FfiConverterSequenceString.write(value.suggestedTags, into: &buf)
+        FfiConverterOptionTypeInboxSuggestedNote.write(value.suggestedNote, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestion_lift(_ buf: RustBuffer) throws -> InboxSuggestion {
+    return try FfiConverterTypeInboxSuggestion.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestion_lower(_ value: InboxSuggestion) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestion.lower(value)
+}
+
+
+/**
+ * `getSuggestionStats`.
+ */
+public struct InboxSuggestionStats: Equatable, Hashable {
+    public var totalSuggestions: Int64
+    public var acceptedCount: Int64
+    public var rejectedCount: Int64
+    public var acceptanceRate: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(totalSuggestions: Int64, acceptedCount: Int64, rejectedCount: Int64, acceptanceRate: Double) {
+        self.totalSuggestions = totalSuggestions
+        self.acceptedCount = acceptedCount
+        self.rejectedCount = rejectedCount
+        self.acceptanceRate = acceptanceRate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestionStats: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestionStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestionStats {
+        return
+            try InboxSuggestionStats(
+                totalSuggestions: FfiConverterInt64.read(from: &buf), 
+                acceptedCount: FfiConverterInt64.read(from: &buf), 
+                rejectedCount: FfiConverterInt64.read(from: &buf), 
+                acceptanceRate: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestionStats, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.totalSuggestions, into: &buf)
+        FfiConverterInt64.write(value.acceptedCount, into: &buf)
+        FfiConverterInt64.write(value.rejectedCount, into: &buf)
+        FfiConverterDouble.write(value.acceptanceRate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestionStats_lift(_ buf: RustBuffer) throws -> InboxSuggestionStats {
+    return try FfiConverterTypeInboxSuggestionStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestionStats_lower(_ value: InboxSuggestionStats) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestionStats.lower(value)
+}
+
+
+/**
+ * An index note carrying `tag`.
+ */
+public struct InboxTaggedNote: Equatable, Hashable {
+    public var path: String
+    public var tag: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(path: String, tag: String) {
+        self.path = path
+        self.tag = tag
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxTaggedNote: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxTaggedNote: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxTaggedNote {
+        return
+            try InboxTaggedNote(
+                path: FfiConverterString.read(from: &buf), 
+                tag: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxTaggedNote, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.tag, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTaggedNote_lift(_ buf: RustBuffer) throws -> InboxTaggedNote {
+    return try FfiConverterTypeInboxTaggedNote.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTaggedNote_lower(_ value: InboxTaggedNote) -> RustBuffer {
+    return FfiConverterTypeInboxTaggedNote.lower(value)
 }
 
 
@@ -36276,6 +36852,30 @@ fileprivate struct FfiConverterOptionTypeInboxJob: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeInboxSuggestedNote: FfiConverterRustBuffer {
+    typealias SwiftType = InboxSuggestedNote?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeInboxSuggestedNote.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeInboxSuggestedNote.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeJournalDayRecord: FfiConverterRustBuffer {
     typealias SwiftType = JournalDayRecord?
 
@@ -36460,6 +37060,30 @@ fileprivate struct FfiConverterOptionTypeParsedDate: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeParsedDate.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeReindexSummary: FfiConverterRustBuffer {
+    typealias SwiftType = ReindexSummary?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeReindexSummary.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeReindexSummary.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -37572,6 +38196,81 @@ fileprivate struct FfiConverterSequenceTypeInboxPanelEntry: FfiConverterRustBuff
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeInboxPanelEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxSuggestHit: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxSuggestHit]
+
+    public static func write(_ value: [InboxSuggestHit], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxSuggestHit.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxSuggestHit] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxSuggestHit]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxSuggestHit.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxSuggestion: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxSuggestion]
+
+    public static func write(_ value: [InboxSuggestion], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxSuggestion.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxSuggestion] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxSuggestion]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxSuggestion.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxTaggedNote: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxTaggedNote]
+
+    public static func write(_ value: [InboxTaggedNote], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxTaggedNote.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxTaggedNote] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxTaggedNote]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxTaggedNote.read(from: &buf))
         }
         return seq
     }
@@ -40021,10 +40720,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_resume_pending_jobs() != 7670) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_inbox_review_due() != 11816) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_inbox_review_settings() != 48359) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_set_review_settings() != 10488) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_suggestion_stats() != 46431) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_suggestions() != 21375) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_track_suggestion() != 54117) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_add_tag() != 59207) {
@@ -40058,6 +40769,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_check_file() != 43407) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_convert_to_event() != 35363) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_convert_to_note() != 24326) {
@@ -40400,6 +41114,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_reindex_step() != 7775) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_search() != 61726) {

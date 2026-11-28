@@ -94,7 +94,7 @@ fn records_and_the_vault_id_import_byte_for_byte() {
     let staged = super::staged(stage_vault_import(input).unwrap());
     let report = staged.report().clone();
     staged.install().unwrap();
-    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
     for (table, written) in [
         ("data.db/folder_configs", 5),
         ("data.db/property_definitions", 5),

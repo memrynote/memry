@@ -75,6 +75,22 @@ fn seal(doc_id: &str, update: &[u8]) -> Vec<u8> {
     .expect("seal")
 }
 
+/// Sealed under a signing key that is not `SIGNER`'s: the vault key is right,
+/// the signature is not the account's.
+fn forge(doc_id: &str, update: &[u8]) -> Vec<u8> {
+    let (_, secret) = memry_core::crypto::sodium::sign_seed_keypair(&[9u8; 32]).expect("keypair");
+    pack(
+        &CrdtRequest {
+            note_id: doc_id,
+            update,
+            vault_key: &VAULT_KEY,
+            signing_secret_key: &secret,
+        },
+        &CrdtMaterial::random(),
+    )
+    .expect("forge")
+}
+
 /// `n` edits of one paragraph of a body the desktop write-back serializes
 /// (§12.5.0's `blockGroup`, a block id): edit `i` appends the word `w<i>`.
 fn edits(n: i64) -> Vec<Vec<u8>> {
@@ -200,6 +216,23 @@ impl ServerDoc {
             .enumerate()
             .map(|(i, update)| (i as i64 + 1, seal(&id, update)))
             .collect();
+        self
+    }
+
+    /// Re-seals the snapshot under a key outside the account ([`forge`]).
+    pub fn snapshot_forged(mut self) -> Self {
+        let state = state_of(&self.raw);
+        let snapshot = self.snapshot.as_mut().expect("a snapshot");
+        snapshot.packed = forge(&self.id, &state);
+        self
+    }
+
+    /// Re-seals update `sequence_num` under a key outside the account
+    /// ([`forge`]).
+    pub fn update_forged(mut self, sequence_num: i64) -> Self {
+        let raw = &self.raw[sequence_num as usize - 1];
+        let forged = forge(&self.id, raw);
+        self.updates.insert(sequence_num, forged);
         self
     }
 

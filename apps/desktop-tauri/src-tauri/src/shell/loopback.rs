@@ -9,6 +9,11 @@ use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::protocols;
+use crate::startup::{self, Stage};
+
+pub fn register_stages() {
+    startup::register(Stage::Protocols, "loopback server", start_server);
+}
 
 /// Binds the server and keeps it for the life of the app.
 pub fn start_server(app: &AppHandle<Wry>) -> Result<(), CommandError> {

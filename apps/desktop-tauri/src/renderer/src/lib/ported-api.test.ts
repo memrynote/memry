@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type * as Bindings from '../../../generated/bindings'
 import { installNotPortedShim } from './not-ported'
 import { installPortedApi, type PortedApiHost } from './ported-api'
+import { readwiseService } from '../services/readwise-service'
 import { settingsService } from '../services/settings-service'
 
 const syncGetStatus = vi.hoisted(() => vi.fn())
@@ -47,6 +48,25 @@ describe('installPortedApi', () => {
     const host: PortedApiHost = {}
     installPortedApi(host)
     expect(typeof (host.api as Record<string, unknown>).locale).toBe('object')
+  })
+
+  it('serves the Readwise page from Rust and leaves its unported names to the shim', async () => {
+    const host: PortedApiHost = {}
+    installNotPortedShim(host)
+    installPortedApi(host)
+    const api = host.api as {
+      import: { readwise: Record<string, () => Promise<unknown>> } & Record<string, unknown>
+      onReadwiseStatusChanged: unknown
+    }
+
+    expect(typeof api.onReadwiseStatusChanged).toBe('function')
+    expect(api.import.readwise.status).toBe(readwiseService.status)
+    let pending: Promise<unknown> | undefined
+    expect(() => {
+      pending = api.import.readwise.takeOver()
+    }).not.toThrow()
+    await expect(pending).rejects.toMatchObject({ name: 'NotPortedError' })
+    expect(typeof api.import.preview).toBe('function')
   })
 
   it('sends ported sync names to the Rust commands and rejects the unported ones', async () => {

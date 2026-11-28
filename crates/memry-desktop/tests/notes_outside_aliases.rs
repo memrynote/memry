@@ -19,7 +19,7 @@ use crate::notes_outside_tags::{clear_outbox, edited_outside, opened, upserts};
 use crate::vault_env::{Env, QUIET, env, indexed};
 
 /// The record's `aliases`, as its payload holds them.
-fn record_aliases(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
+pub(crate) fn record_aliases(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
     let id = id.to_owned();
     let payload: String = e
         .core()
@@ -39,7 +39,7 @@ fn record_aliases(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
 }
 
 /// The id of the row at `rel`.
-fn id_at(e: &Env, rel: &str) -> String {
+pub(crate) fn id_at(e: &Env, rel: &str) -> String {
     e.rows()
         .into_iter()
         .find(|(_, path)| path == rel)
@@ -190,6 +190,17 @@ fn a_large_file_first_named_gives_its_record_its_aliases() {
 /// A pulled note `pulled` titled `title`, no row names, with `content`, `aliases` and a
 /// `modifiedAt`.
 fn pulled_note(e: &Env, title: &str, content: &str, aliases: &[&str], modified_at: &str) {
+    pulled_note_in(e, None, (title, content), aliases, modified_at);
+}
+
+/// [`pulled_note`] in the folder `folder`.
+pub(crate) fn pulled_note_in(
+    e: &Env,
+    folder: Option<&str>,
+    (title, content): (&str, &str),
+    aliases: &[&str],
+    modified_at: &str,
+) {
     let record = InboundRecord {
         item_type: "note".to_owned(),
         item_id: "pulled".to_owned(),
@@ -197,7 +208,7 @@ fn pulled_note(e: &Env, title: &str, content: &str, aliases: &[&str], modified_a
             "title": title,
             "content": content,
             "fileType": "markdown",
-            "folderPath": null,
+            "folderPath": folder,
             "aliases": aliases,
             "clock": {"device-b": 1},
             "createdAt": "2025-01-01T00:00:00.000Z",
@@ -229,10 +240,10 @@ fn adopted_plan(modified_at: &str, aliases: &[&str]) -> (Env, Arc<dyn SecureStor
     (e, store)
 }
 
-const NEWER: &str = "2999-01-01T00:00:00.000Z";
+pub(crate) const NEWER: &str = "2999-01-01T00:00:00.000Z";
 
 /// Waits until the write-back gave `rel` the list `aliases`, then until the tier is quiet.
-fn file_holds(e: &mut Env, rel: &str, aliases: &[&str]) {
+pub(crate) fn file_holds(e: &mut Env, rel: &str, aliases: &[&str]) {
     let list: String = aliases.iter().map(|name| format!("  - {name}\n")).collect();
     until("the write-back gives the file the record's aliases", || {
         e.read(rel).contains(&format!("aliases:\n{list}"))
@@ -265,7 +276,7 @@ fn a_matched_record_older_than_its_file_takes_its_aliases() {
 }
 
 /// The file `rel` with its body replaced by `body`, every frontmatter line as it is on disk.
-fn body_edited(e: &Env, rel: &str, body: &str) -> String {
+pub(crate) fn body_edited(e: &Env, rel: &str, body: &str) -> String {
     let text = e.read(rel);
     let end = text.find("\n---\n").expect("a frontmatter block") + "\n---\n".len();
     format!("{}{body}", &text[..end])
@@ -337,8 +348,10 @@ fn a_large_file_that_shrinks_with_a_body_edit_keeps_a_newer_records_aliases() {
     e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Dump.md"));
     assert_eq!(id_at(&e, "Dump.md"), "pulled");
     assert_eq!(record_aliases(&e, "note", "pulled"), ["Newer"]);
+    // The large file takes the names first (#5825); the shrink then edits its body alone.
+    file_holds(&mut e, "Dump.md", &["Newer"]);
 
-    e.write("Dump.md", "---\naliases: [Old]\n---\nSmall now\n");
+    e.write("Dump.md", &body_edited(&e, "Dump.md", "Small now\n"));
     file_holds(&mut e, "Dump.md", &["Newer"]);
     assert_eq!(record_aliases(&e, "note", "pulled"), ["Newer"]);
     assert!(e.read("Dump.md").ends_with("---\nSmall now\n"));

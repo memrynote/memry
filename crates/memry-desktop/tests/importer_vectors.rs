@@ -15,6 +15,7 @@ use memry_desktop::import::messages::{
     IMPORTING_ITEM_CODE, ONENOTE_DOWNLOADING_ATTACHMENT_CODE, STATUS, codes, importing_item,
     onenote_downloading_attachment,
 };
+use memry_desktop::import::todoist::TodoistImporter;
 use memry_desktop::import::{ImportContext, ImportInput, Importer, JournalEntry, Registry};
 use serde_json::{Map, Value, json};
 use tokio_util::sync::CancellationToken;
@@ -101,6 +102,7 @@ fn run_case(source: &str, importer: &dyn Importer, case: &Value) -> Value {
     );
     let mut sink = RecordingSink::new(Arc::clone(&timeline));
     configure_tasks(&mut sink, case);
+    sink.exact_created = case["exactCreated"].as_bool().unwrap_or(false);
     importer.run(&input, &mut ctx, &sink).unwrap();
 
     let unroot_summary = |summary: &mut Value| {
@@ -150,8 +152,29 @@ fn configure_tasks(sink: &mut RecordingSink, case: &Value) {
 }
 
 fn assert_source(source: &str) {
-    let expected = load(&format!("{source}/expected.json"));
-    let importer = Registry::builtin().get(source).unwrap();
+    assert_importer(source, Registry::builtin().get(source).unwrap().as_ref());
+}
+
+/// Electron's preview warnings repeat their row as `row`, which the renderer never reads; the
+/// Rust importers leave it out.
+fn drop_warning_rows(preview: &mut Value) {
+    for group in preview["groups"].as_array_mut().into_iter().flatten() {
+        let warnings = group.get_mut("warnings").and_then(Value::as_array_mut);
+        for warning in warnings.into_iter().flatten() {
+            if let Some(warning) = warning.as_object_mut() {
+                warning.remove("row");
+            }
+        }
+    }
+}
+
+fn assert_importer(source: &str, importer: &dyn Importer) {
+    let mut expected = load(&format!("{source}/expected.json"));
+    for case in expected["cases"].as_array_mut().unwrap() {
+        if let Some(preview) = case.get_mut("preview") {
+            drop_warning_rows(preview);
+        }
+    }
     for case in expected["cases"].as_array().unwrap() {
         let name = case["name"].as_str().unwrap();
         // The inputs of the case, without what the importer recorded.
@@ -162,7 +185,7 @@ fn assert_source(source: &str) {
         if inputs.remove("preview").is_some() {
             inputs.insert("preview".to_owned(), json!(true));
         }
-        let actual = run_case(source, importer.as_ref(), &Value::Object(inputs));
+        let actual = run_case(source, importer, &Value::Object(inputs));
         for key in ["timeline", "summary", "preview"] {
             let (want, got) = (&case[key], &actual[key]);
             if key == "timeline" {
@@ -203,8 +226,38 @@ fn noteplan_importer_matches_the_typescript_importer() {
 }
 
 #[test]
+fn raindrop_importer_matches_the_typescript_importer() {
+    assert_source("raindrop");
+}
+
+#[test]
 fn roam_importer_matches_the_typescript_importer() {
     assert_source("roam");
+}
+
+#[test]
+fn todoist_importer_matches_the_typescript_importer() {
+    // The generator's `TODOIST_NOW`.
+    let importer = TodoistImporter {
+        today: chrono::NaiveDate::from_ymd_opt(2026, 1, 14),
+        ..TodoistImporter::default()
+    };
+    assert_importer("todoist", &importer);
+}
+
+#[test]
+fn html_importer_matches_the_typescript_importer() {
+    assert_source("html");
+}
+
+#[test]
+fn evernote_importer_matches_the_typescript_importer() {
+    assert_source("evernote");
+}
+
+#[test]
+fn apple_journal_importer_matches_the_typescript_importer() {
+    assert_source("apple-journal");
 }
 
 #[test]

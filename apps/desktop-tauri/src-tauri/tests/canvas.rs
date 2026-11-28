@@ -1,6 +1,7 @@
 //! The canvas and canvas folder commands on a mock app over a real temp vault (#3547 30e1):
 //! Electron's event payloads, a refused save's wording, a folder refusal's code and
-//! `errors:canvasFolder.*` key, and the update input's absent-versus-`null` fields. Deletes go to
+//! `errors:canvasFolder.*` key, the update input's absent-versus-`null` fields, and (30e3) the
+//! asset and live-canvas commands. Deletes go to
 //! the OS trash, so they are proved in `memry-desktop/tests/canvas_*.rs` with a stand-in trash.
 
 use std::fs;
@@ -9,17 +10,22 @@ use std::time::Duration;
 
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::canvas::live::LiveCanvases;
 use memry_desktop::canvas::service::{CanvasCreateInput, CanvasUpdateInput};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore, Store, StoreFactory};
 use memry_desktop::session::{OpenSource, Session};
-use memry_tauri::commands::canvas::{canvas_create, canvas_get, canvas_update};
+use memry_tauri::commands::canvas::{
+    canvas_can_upload_asset, canvas_create, canvas_get, canvas_get_asset, canvas_list_assets,
+    canvas_live_closed, canvas_live_opened, canvas_update, canvas_upload_asset,
+};
 use memry_tauri::commands::canvas_folders::{canvas_folder_create, canvas_folder_rename};
 use memry_tauri::events::{CanvasCreatedEvent, CanvasFolderUpdatedEvent, CanvasUpdatedEvent};
+use memry_tauri::guards::process_gone::release_page_resources;
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_app};
-use tauri::{App, Listener, Manager};
+use tauri::{App, Listener, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_specta::Event;
 
 const WAIT: Duration = Duration::from_secs(25);
@@ -174,4 +180,91 @@ fn a_folder_refusal_reaches_the_renderer_as_its_code_and_key() {
     assert_eq!(updated.len(), 1);
     assert_eq!(updated[0].1["previousPath"], json!("work"));
     assert_eq!(updated[0].1["folder"]["path"], json!("Plans"));
+}
+
+#[test]
+fn the_asset_commands_answer_as_electron_does_with_no_sync() {
+    let f = opened();
+    let app = || f.app.handle().clone();
+    let id = tauri::async_runtime::block_on(canvas_create(app(), CanvasCreateInput::default()))
+        .unwrap()
+        .summary
+        .id;
+
+    let can = tauri::async_runtime::block_on(canvas_can_upload_asset()).unwrap();
+    assert_eq!(
+        serde_json::to_value(can).unwrap(),
+        json!({ "canUpload": false })
+    );
+    let listed = tauri::async_runtime::block_on(canvas_list_assets(app(), id.clone())).unwrap();
+    assert_eq!(
+        serde_json::to_value(listed).unwrap(),
+        json!({ "assets": [] })
+    );
+    let got =
+        tauri::async_runtime::block_on(canvas_get_asset(app(), id.clone(), "f1".into())).unwrap();
+    assert_eq!(serde_json::to_value(got).unwrap(), json!({ "ref": null }));
+
+    let input = serde_json::from_value(json!({
+        "canvasId": id, "fileId": "f1", "mimeType": "image/png", "data": [1, 2, 3]
+    }))
+    .unwrap();
+    let refused = tauri::async_runtime::block_on(canvas_upload_asset(app(), input)).unwrap_err();
+    assert_eq!(refused.code, "canvas_asset_upload_unavailable");
+    assert!(
+        !f.dir
+            .path()
+            .join("vault/attachments/canvas-assets")
+            .exists()
+    );
+}
+
+#[test]
+fn a_window_owns_the_canvas_it_opened_until_it_closes_it() {
+    let f = opened();
+    let app = || f.app.handle().clone();
+    let main = WebviewWindowBuilder::new(&f.app, "main", WebviewUrl::default())
+        .build()
+        .unwrap();
+    let window = || main.as_ref().window();
+    let opened =
+        tauri::async_runtime::block_on(canvas_live_opened(app(), window(), "c1".into())).unwrap();
+    assert!(opened.ok);
+    assert_eq!(
+        f.app.state::<LiveCanvases>().window_of("c1").as_deref(),
+        Some("main")
+    );
+    let empty =
+        tauri::async_runtime::block_on(canvas_live_opened(app(), window(), String::new())).unwrap();
+    assert!(!empty.ok);
+
+    let closed =
+        tauri::async_runtime::block_on(canvas_live_closed(app(), window(), "c1".into())).unwrap();
+    assert!(closed.ok);
+    assert_eq!(f.app.state::<LiveCanvases>().window_of("c1"), None);
+}
+
+#[test]
+fn a_window_that_goes_forgets_the_canvases_it_had_open() {
+    let f = opened();
+    let app = || f.app.handle().clone();
+    let main = WebviewWindowBuilder::new(&f.app, "main", WebviewUrl::default())
+        .build()
+        .unwrap();
+    let board = WebviewWindowBuilder::new(&f.app, "board", WebviewUrl::default())
+        .build()
+        .unwrap();
+    for (window, id) in [(&board, "c1"), (&board, "c2"), (&main, "c3")] {
+        let window = window.as_ref().window();
+        tauri::async_runtime::block_on(canvas_live_opened(app(), window, id.into())).unwrap();
+    }
+
+    // What the window's `Destroyed` (and a page reload) runs: the page-watch plugin's hooks
+    // cannot be driven (`RunEvent` is non-exhaustive).
+    release_page_resources(&app(), "board");
+
+    let live = f.app.state::<LiveCanvases>();
+    assert_eq!(live.window_of("c1"), None);
+    assert_eq!(live.window_of("c2"), None);
+    assert_eq!(live.window_of("c3").as_deref(), Some("main"));
 }

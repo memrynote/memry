@@ -1,6 +1,7 @@
 //! Reindexes asked together share one pass (REVIEW-5806 finding 2): the askers waiting when a
 //! pass starts are all answered by it, a failed one included, and one asked during it gets a
-//! pass of its own after it, so it is never answered by work that started before it asked.
+//! pass of its own after it, so it is never answered by work that started before it asked. A pass
+//! that carries the open's build ends it before it answers.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -12,8 +13,10 @@ use crate::vault_env;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
-use index_support::{seeded, with_cancellable_task, with_task};
-use memry_desktop::notes::index::{Backfilled, IndexError, IndexProgress, TaskHandle};
+use index_support::{seeded, with_cancellable_task, with_task, with_task_under};
+use memry_desktop::notes::index::{
+    Backfilled, IndexError, IndexProgress, OpenBuild, TaskHandle, hold_after_reindex_answer,
+};
 use memry_desktop::vault::consumer::Applied;
 use tokio::sync::broadcast;
 
@@ -70,6 +73,37 @@ fn reindexes_asked_during_a_first_sync_share_one_pass() {
             .map(|(asker, _)| *asker)
             .collect();
         assert_eq!(ends, [0, 1, 2, 3, 4], "one last step each: {told:?}");
+    });
+    drop(open);
+    e.close();
+}
+
+/// A reindex asked before the walk's end carries the open's build, and ends it before its askers
+/// hear (#3967): an asker whose reindex failed reads `NoteIndex::indexing` for the status that
+/// carries the error, which must say the indexing ended. The task waits after answering, so a
+/// build that ends only after the answer is still on when the asker looks.
+#[test]
+fn a_reindex_carrying_the_open_build_ends_it_before_it_answers() {
+    let (mut e, _store, _) = seeded(3);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    let ended = Mutex::new(false);
+    let report = |build| {
+        if matches!(build, OpenBuild::Ended { .. }) {
+            *ended.lock().unwrap() = true;
+        }
+    };
+    let store = device_key::with_device_key();
+    with_task_under(&open, receiver, store, &report, |task| {
+        let _held = hold_after_reindex_answer(&open.path);
+        let answer = ask(task, &Told::default(), 0);
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        answer.recv().unwrap().unwrap();
+        assert!(
+            *ended.lock().unwrap(),
+            "the askers were answered before the open's build ended"
+        );
     });
     drop(open);
     e.close();

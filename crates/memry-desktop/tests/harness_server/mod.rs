@@ -101,6 +101,13 @@ impl Server {
         assert_eq!(reply["harnessEntitled"], true, "{reply}");
     }
 
+    /// The user's plan allows files up to `bytes`; the Worker refuses larger ones with a 413.
+    #[allow(dead_code)] // One binary limits.
+    pub fn file_limit(&mut self, bytes: u64) {
+        let reply = self.command(&format!("file-limit {bytes}"));
+        assert_eq!(reply["harnessFileLimit"], true, "{reply}");
+    }
+
     /// Changes an account vault's id on the server, as a server that chose a hostile id would.
     #[allow(dead_code)] // One binary renames.
     pub fn rename_vault(&mut self, from: &str, to: &str) {

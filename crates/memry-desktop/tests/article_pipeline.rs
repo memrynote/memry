@@ -17,12 +17,12 @@ use serde_json::Value;
 /// path, without the async extractors (`article_vectors.rs` covers those).
 fn run_sync(html: &str, url: &str) -> Result<DefuddleResponse, ExtractError> {
     let page_url = if url.is_empty() { "about:blank" } else { url };
-    Defuddle::new(Document::parse_html(html), page_url).parse()
+    Defuddle::new(Document::parse_html(html)?, page_url).parse()
 }
 
 fn sync_capture(html: &str, url: &str, now: &str) -> Result<ArticleCapture, ExtractError> {
     let mut response = run_sync(html, url)?;
-    response.content = create_markdown_content(&response.content);
+    response.content = create_markdown_content(&response.content).expect("within the caps");
     Ok(to_article_capture(&response.to_map_input(), url, now))
 }
 

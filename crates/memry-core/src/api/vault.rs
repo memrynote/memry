@@ -49,7 +49,7 @@ use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
-use crate::api::search::Search;
+use crate::api::search::{Search, SharedPass};
 use crate::api::search_recents::SearchRecents;
 use crate::api::semantic::SemanticSearch;
 use crate::api::sync::VaultSync;
@@ -72,6 +72,7 @@ use crate::storage::{Db, OpenOptions, open_data, open_data_with};
 pub struct Vault {
     id: String,
     db: Db,
+    reindexing: SharedPass,
     /// Kept because `index.db` lives beside `data.db` and is opened later, on
     /// demand: the index is a cache of the vault (data-model §A.5) and a
     /// vault that is never searched must not pay for it at open.
@@ -92,6 +93,8 @@ mod tags;
 mod sync_driver;
 // The desktop sticky drafts' accessor (Step 31).
 mod sticky;
+// The desktop's and the command line's `Search` opens, kept apart for the line ceiling.
+mod desktop_search;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
@@ -107,6 +110,7 @@ impl Vault {
         Ok(Self {
             id,
             db,
+            reindexing: Arc::default(),
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
@@ -120,14 +124,6 @@ impl Vault {
     /// surface; needs the keychain as [`Vault::tasks`] does.
     pub fn task_store(&self, store: &Arc<dyn SecureStore>) -> Result<TaskStore, AuthError> {
         TaskStore::over(self.db.clone(), store)
-    }
-
-    /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
-    /// was reused or migrated in place). Not on the FFI surface.
-    pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
-        // Desktop has no on-device semantic search (the `semantic` feature is iOS-only).
-        let (search, reason) = Search::over_reporting(self.db.clone(), &self.directory, None)?;
-        Ok((Arc::new(search), reason))
     }
 
     /// [`Vault::sync`] under another declaration (chapter 13 §13.1): desktop
@@ -451,6 +447,7 @@ impl Vault {
         Ok(Self {
             id: vault_id,
             db,
+            reindexing: Arc::default(),
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
@@ -581,6 +578,7 @@ impl Vault {
     ) -> Result<Arc<Search>, StorageError> {
         Ok(Arc::new(Search::over(
             self.db.clone(),
+            Arc::clone(&self.reindexing),
             &self.directory,
             semantic,
         )?))
