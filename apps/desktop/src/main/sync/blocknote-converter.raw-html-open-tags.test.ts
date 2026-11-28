@@ -15,6 +15,15 @@ import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { markdownToYFragment, yDocToCanonicalMarkdown } from './blocknote-converter'
 
+/**
+ * CPU time the process has used, in ms. The bounds below are on the work a read
+ * does; wall time also counts the seconds a loaded machine makes it wait.
+ */
+function cpuMs(): number {
+  const { user, system } = process.cpuUsage()
+  return (user + system) / 1000
+}
+
 const count = (text: string, needle: string): number => text.split(needle).length - 1
 
 /** The canonical markdown of the document `markdown` seeds, twice over. */
@@ -34,9 +43,9 @@ async function seedTime(markdown: string, runs = 2): Promise<number> {
   let ms = Infinity
   for (let run = 0; run < runs; run++) {
     const doc = new Y.Doc()
-    const start = performance.now()
+    const start = cpuMs()
     const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-    ms = Math.min(ms, performance.now() - start)
+    ms = Math.min(ms, cpuMs() - start)
     expect(ok, 'the markdown reached the document').toBe(true)
   }
   return ms

@@ -30,6 +30,15 @@ beforeAll(() => {
 import { editorSchema } from './editor-schema'
 import { parseMarkdownPreservingBlanks } from './markdown-utils'
 
+/**
+ * CPU time the process has used, in ms. The bounds below are on the work a read
+ * does; wall time also counts the seconds a loaded machine makes it wait.
+ */
+function cpuMs(): number {
+  const { user, system } = process.cpuUsage()
+  return (user + system) / 1000
+}
+
 const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } as never)
 
 const CAP = 100
@@ -74,9 +83,9 @@ describe.each([4000, 8000])('a paste of %i nested handled tags', (depth) => {
       let ms = Infinity
       let blocks: Block[] = []
       for (let run = 0; run < 2; run++) {
-        const start = performance.now()
+        const start = cpuMs()
         blocks = await parseMarkdownPreservingBlanks(editor, markdown)
-        ms = Math.min(ms, performance.now() - start)
+        ms = Math.min(ms, cpuMs() - start)
       }
       expect(ms).toBeLessThan(LIMIT_MS)
       // Only the spans no color token took are left for the parse.

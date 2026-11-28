@@ -14,6 +14,15 @@ import type { Block } from '@blocknote/core'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { markdownToYFragment, yFragmentToBlocks } from './blocknote-converter'
 
+/**
+ * CPU time the process has used, in ms. The bounds below are on the work a read
+ * does; wall time also counts the seconds a loaded machine makes it wait.
+ */
+function cpuMs(): number {
+  const { user, system } = process.cpuUsage()
+  return (user + system) / 1000
+}
+
 /** The depth past which a handled tag is text (`MAX_NESTING` of the core's seed). */
 const CAP = 100
 const LIMIT_MS = 500
@@ -60,9 +69,9 @@ async function seed(markdown: string): Promise<{ blocks: Block[]; ms: number }> 
   let doc = new Y.Doc()
   for (let run = 0; run < 2; run++) {
     doc = new Y.Doc()
-    const start = performance.now()
+    const start = cpuMs()
     const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-    ms = Math.min(ms, performance.now() - start)
+    ms = Math.min(ms, cpuMs() - start)
     expect(ok, 'the markdown reached the document').toBe(true)
   }
   return {
