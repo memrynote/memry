@@ -55,7 +55,7 @@ struct AuthRootView: View {
                 // is on screen: the way out under everything, the revoked
                 // screen instead of everything.
                 AccountShell(state: model.state, account: startup.account) {
-                    if let vaults {
+                    if let vaults = Self.shownVaults(vaults, in: model.state) {
                         VaultListView(model: vaults)
                     } else if let setup {
                         AccountSetupView(
@@ -147,6 +147,17 @@ struct AuthRootView: View {
                 LaunchView().onAppear { localVaults = startup.localVaultModel() }
             }
         }
+    }
+
+    /// The signed-in vault list, only while the session is registered.
+    ///
+    /// `route(for:)` drops `vaults` in an `onChange`, one render after a
+    /// sign-out publishes its state. In that render `AccountShell` swaps its
+    /// branch, which rebuilt the vault shell: every store reopened against the
+    /// keychain the sign-out had just emptied (`auth.malformedToken`) and the
+    /// account screen called the server with no session.
+    static func shownVaults(_ vaults: VaultSelectionViewModel?, in state: AuthState) -> VaultSelectionViewModel? {
+        state == .registered ? vaults : nil
     }
 
     /// Which of the three screens this state means.
