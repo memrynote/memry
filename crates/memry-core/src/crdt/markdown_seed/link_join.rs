@@ -14,6 +14,8 @@ use super::hard_breaks::{block_start, hard_break_spelling, is_blank, is_inline_s
 /// runs from some line up to `end`, a blank line or a block start.
 #[derive(Default)]
 pub(super) struct LinkParagraphs {
+    /// The `at` of the last call, which the next may not go below.
+    asked: usize,
     end: usize,
     /// The paragraph's last line holds an address.
     closes: bool,
@@ -39,6 +41,12 @@ impl LinkParagraphs {
         lines: &[String],
         at: usize,
     ) -> Option<usize> {
+        debug_assert!(
+            at >= self.asked,
+            "asked at line {at} after line {}: the paragraph read is stale",
+            self.asked
+        );
+        self.asked = at;
         // The depth test only reads `line`, and the rest only refuses, so asking
         // it first keeps a long lazy paragraph from being read at all.
         if depth == 0 {
