@@ -70,9 +70,11 @@ impl CanvasService {
                 && (stale || input.expected_sha256.as_deref() != Some(document.sha256.as_str()))
             {
                 match canonical_scene(&strip_file_meta(&document.text)) {
-                    // The save writes the scene the document holds (only its sidecar moved on,
-                    // as a rename refreshes it): nothing to keep.
-                    Ok(on_disk) if Some(&on_disk) == scene.as_ref() => {}
+                    // The save writes the scene the document holds (only its sidecars moved on:
+                    // the file meta a rename refreshes, the asset list a save injects): nothing
+                    // to keep.
+                    Ok(on_disk)
+                        if Some(&assets::with_sidecar(conn, id, &on_disk)?) == scene.as_ref() => {}
                     Ok(_) => {
                         conflict_copy = Some(Box::new(
                             self.conflict_copy(conn, &canvas, document, now_ms)?,
