@@ -1563,7 +1563,7 @@ export class VaultWatcher {
         (cached.contentHash
           ? null
           : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt)))
-      const renamedFile = this.renamedFileToAdd(vaultPath, renamedTo)
+      const renamedFile = this.renamedFileToAdd(vaultPath, renamedTo, db)
       const renamedPath =
         renamedFile && normalizeRelativePath(path.relative(vaultPath, renamedFile))
 
@@ -1630,9 +1630,20 @@ export class VaultWatcher {
     }
   }
 
-  /** The file the unlinked file was renamed to, when the watcher would add it. */
-  private renamedFileToAdd(vaultPath: string, renamedTo: string | null): string | null {
+  /**
+   * The file the unlinked file was renamed to, when the watcher would add it.
+   * A file the index already lists is another note's: a move to another folder
+   * names its new name in the old folder, and the add of that note's file fed
+   * a body the index had not read to its doc.
+   */
+  private renamedFileToAdd(
+    vaultPath: string,
+    renamedTo: string | null,
+    db: ReturnType<typeof getIndexDatabase>
+  ): string | null {
     if (renamedTo === null) return null
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, renamedTo))
+    if (getNoteCacheByPath(db, relativePath)) return null
     try {
       const stats = lstatSync(renamedTo, { throwIfNoEntry: false })
       return stats?.isFile() && !this.isIgnored(vaultPath, renamedTo, stats) ? renamedTo : null
