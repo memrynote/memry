@@ -295,9 +295,10 @@ fn note_ids(source: &Connection, table: &'static str) -> Result<Vec<String>, Imp
     Ok(ids)
 }
 
-/// Writes the documents, their cursors, the extra owed documents' debts, the bodies an outside
-/// edit replaces and the hash of each document's file. Runs after every table, so the
-/// `note_files` rows and the owed markers it reads are staged.
+/// Writes the documents, their cursors, the extra owed documents' debts and those of the server's
+/// notes the fold brought no body of ([`ImportWriter::put_unfolded_body_debts`]), the bodies an
+/// outside edit replaces and the hash of each document's file. Runs after every table, so the
+/// `note_files` rows, the owed markers, the outbox and the record cursor it reads are staged.
 ///
 /// A document whose body is ahead of its file is stored at `now_ms`, after its row's stamp, so
 /// the first write-back writes it. Any other is stored at Electron's `last_confirmed_at`, the
@@ -340,6 +341,7 @@ pub(super) fn import_documents(
     }
     writer.put_documents(&docs, input.now_ms)?;
     writer.put_body_debts(&input.extra_owed_docs)?;
+    writer.put_unfolded_body_debts()?;
     writer.put_body_versions(&versions, input.now_ms)?;
     writer.put_file_hashes(&hashes, input.now_ms)?;
     Ok(())

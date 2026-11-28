@@ -351,6 +351,54 @@ fn body_debts_withheld_bodies_and_extra_owed_documents_are_owed() {
     assert_eq!(owed, ["Debt-note001", "Extra-doc001", "Held-note001"]);
 }
 
+/// A synced vault's note or day whose body the fold brought none of (a skipped document, one the
+/// store never held) is owed its pull: unowed, its empty body would take the file as a seed, and
+/// the server body would merge in beside it. A record the server lacks owes nothing (local-only,
+/// queued as a create), and neither does any note of a vault that never synced.
+#[test]
+fn a_server_note_the_fold_brought_no_body_of_is_owed_its_pull() {
+    for synced in [true, false] {
+        let vault = Vault::new();
+        if synced {
+            electron_db::seed(
+                &vault.data_conn(),
+                "sync_state",
+                &[
+                    ("key", text("lastCursor")),
+                    ("value", text("42")),
+                    ("updated_at", Value::Integer(1_790_000_000)),
+                ],
+            );
+        }
+        seed_note(&vault, NOTE, PATH, None, false);
+        seed_note(&vault, "Skip-note001", "Skip.md", None, false);
+        seed_note(
+            &vault,
+            "j2026-01-05",
+            "journal/2026-01-05.md",
+            Some("2026-01-05"),
+            false,
+        );
+        seed_note(&vault, "Local-note01", "Local.md", None, true);
+        seed_note(&vault, "Made-note001", "Made.md", None, false);
+        queue(
+            &vault.data_conn(),
+            "note",
+            "Made-note001",
+            "create",
+            "{}",
+            10,
+        );
+        import_docs(&vault, vec![folded(NOTE, "Today.\n", None)]);
+        let owed = memry_core::sync::body_debt::owed(&installed(&vault)).unwrap();
+        let expected: &[&str] = match synced {
+            true => &["Skip-note001", "j2026-01-05"],
+            false => &[],
+        };
+        assert_eq!(owed, expected, "synced {synced}");
+    }
+}
+
 /// A queued body push whose document the store copy does not hold has no state to send.
 #[test]
 fn a_body_push_without_its_document_is_refused() {

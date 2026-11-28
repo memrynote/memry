@@ -985,6 +985,26 @@ describe('ContentArea', () => {
     expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
   })
 
+  // Typing into the empty body would start a second body beside the server's (#2536).
+  it('says why a note waiting for its server body takes no typing', () => {
+    const doc = new Y.Doc()
+    contentAreaMocks.yjsState = {
+      fragment: doc.getXmlFragment('blocks'),
+      doc,
+      provider: { doc, isSynced: true },
+      isReady: true,
+      readOnly: 'body-not-pulled',
+      isRemoteUpdateRef: { current: false }
+    }
+
+    render(<ContentArea noteId="note-1" />)
+
+    expect(screen.getByTestId('note-body-not-pulled')).toHaveTextContent(
+      "Waiting for sync — read-only until this note's synced contents arrive"
+    )
+    expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
+  })
+
   it('shows no read-only notice for a lock, which the page shows', () => {
     const doc = new Y.Doc()
     contentAreaMocks.yjsState = {

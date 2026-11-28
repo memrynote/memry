@@ -334,6 +334,8 @@ mod driver_unknown_signer;
 mod driver_vault_header;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
+#[path = "editor_body_not_pulled.rs"]
+mod editor_body_not_pulled;
 #[path = "editor_compaction.rs"]
 mod editor_compaction;
 #[path = "editor_concurrency.rs"]

@@ -551,6 +551,47 @@ fn an_edit_of_a_large_file_note_is_refused_as_note_large_file_and_reaches_no_win
     assert!(side_frames.lock().unwrap().is_empty());
 }
 
+/// A note waiting for its server body opens read-only by name, refuses an edit with a code the
+/// renderer reads, and asks the shell for the sync pass that pulls it.
+#[test]
+fn a_note_waiting_for_its_server_body_opens_read_only_and_asks_for_a_pull() {
+    let env = env();
+    let note = env.note();
+    let db = env.session.current().unwrap().vault.db_handle();
+    let id = note.clone();
+    db.call_blocking(move |conn| memry_core::sync::body_debt::owe(conn, &id))
+        .unwrap();
+    let owed = || {
+        env.events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| matches!(event, HostEvent::BodyOwed { .. }))
+            .count()
+    };
+
+    let (subscriber, _) = recording("main");
+    let opened = env.host.open(&note, Some(&env.vault), subscriber).unwrap();
+    let read_only = opened.read_only.map(memry_desktop::editor::read_only_name);
+    assert_eq!(read_only, Some("body-not-pulled"));
+    assert_eq!(owed(), 1);
+
+    let refused = env
+        .host
+        .apply_update(
+            &note,
+            &Window::from_state(&opened.state).type_text("x"),
+            "main",
+        )
+        .unwrap_err();
+    let failure = map_core(&refused);
+    assert_eq!(
+        (failure.kind, failure.code),
+        (FailureKind::Sync, "body_not_pulled")
+    );
+    assert_eq!(owed(), 1, "only an open asks");
+}
+
 #[test]
 fn only_a_stored_window_edit_asks_for_its_file_to_be_written() {
     let env = env();

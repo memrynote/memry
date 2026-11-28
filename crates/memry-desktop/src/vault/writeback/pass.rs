@@ -10,7 +10,7 @@ use memry_core::domain::external_feed::same_text;
 use memry_core::domain::note_files::StampMark;
 use memry_core::domain::note_pulled_marks::PulledMark;
 use memry_core::domain::note_snapshots;
-use memry_core::domain::write_back::BodyRead;
+use memry_core::domain::write_back::{BodyRead, Fork};
 use memry_core::markdown::frontmatter::{
     ParsedMarkdownNote, YamlMap, YamlValue, serialize_parsed_markdown_note, split_frontmatter_block,
 };
@@ -91,6 +91,8 @@ pub enum Keep {
     BodyNotPulled,
     /// Writing would lose content; the nodes the schema cannot build, when those are it.
     NotRepresentable(Vec<String>),
+    /// The body forked: writing it would wipe or cut the file. Logged as an error.
+    Forked(Fork),
     /// No live note by that id.
     NoNote,
 }
@@ -500,6 +502,7 @@ pub(crate) fn output_over(
         Ok(BodyRead::NotRepresentable(what)) => {
             return Err(Outcome::Kept(Keep::NotRepresentable(what)));
         }
+        Ok(BodyRead::Forked(fork)) => return Err(Outcome::Kept(Keep::Forked(fork))),
         Ok(BodyRead::Failed(reason)) => return Err(Outcome::Broken(reason.to_owned())),
         Err(error) => {
             return Err(Outcome::Failed(format!(

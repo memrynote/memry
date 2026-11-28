@@ -402,7 +402,7 @@ impl NotesService {
         let body = match read {
             BodyRead::Body(body) => body,
             BodyRead::NoNote | BodyRead::FileAhead | BodyRead::BodyNotPulled => return Ok(()),
-            BodyRead::NotRepresentable(_) | BodyRead::Failed(_) => {
+            BodyRead::NotRepresentable(_) | BodyRead::Forked(_) | BodyRead::Failed(_) => {
                 tracing::warn!(
                     scope = SCOPE,
                     note_id = stamp.id,
@@ -474,7 +474,9 @@ fn text_of(
         BodyRead::NoNote => "the day is gone".to_owned(),
         BodyRead::FileAhead => "the day owes a file's text".to_owned(),
         BodyRead::BodyNotPulled => "the day's text has not arrived from sync".to_owned(),
-        BodyRead::NotRepresentable(_) => "the file would not hold all of the day".to_owned(),
+        BodyRead::NotRepresentable(_) | BodyRead::Forked(_) => {
+            "the file would not hold all of the day".to_owned()
+        }
         BodyRead::Failed(reason) => reason.to_owned(),
     };
     Err(NotesError::DayTextUnwritable(why))

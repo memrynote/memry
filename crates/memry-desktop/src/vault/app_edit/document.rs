@@ -71,7 +71,9 @@ impl AppEdit {
             BodyRead::Body(_) => Err(Kept::BodyAhead),
             BodyRead::FileAhead => Err(Kept::FileAhead),
             BodyRead::BodyNotPulled => Err(Kept::BodyNotPulled),
-            BodyRead::NotRepresentable(_) | BodyRead::Failed(_) => Err(Kept::NotRepresentable),
+            BodyRead::NotRepresentable(_) | BodyRead::Forked(_) | BodyRead::Failed(_) => {
+                Err(Kept::NotRepresentable)
+            }
             BodyRead::NoNote => Err(Kept::NoBody),
         })
     }
