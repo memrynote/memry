@@ -92,8 +92,8 @@ const changeHeard = vi.hoisted(() => ({
 // the set never reaches the app.
 const lostAdds = vi.hoisted(() => new Set<string>())
 const lostChanges = vi.hoisted(() => new Set<string>())
-// Files whose own watcher reports a rename as a change, as kqueue does on a
-// loaded machine when it folds a write and the rename after it into one event.
+// Files whose own watcher folds a write and the rename after it into one
+// change that names the new file, as kqueue does on a loaded machine.
 const renamesAsChanges = vi.hoisted(() => new Set<string>())
 vi.mock('chokidar', async (importOriginal) => {
   const actual = await importOriginal<typeof Chokidar>()
@@ -104,16 +104,17 @@ vi.mock('chokidar', async (importOriginal) => {
       // Untyped: the override forwards every event, whatever its arguments.
       const emit = watcher.emit.bind(watcher) as (event: string, ...args: unknown[]) => boolean
       watcher.emit = ((event: string, ...emitted: unknown[]) => {
-        const details: unknown = emitted[2]
-        const asChange =
-          event === 'raw' &&
-          emitted[0] === 'rename' &&
-          typeof details === 'object' &&
-          details !== null &&
-          'watchedPath' in details &&
-          typeof details.watchedPath === 'string' &&
-          renamesAsChanges.has(details.watchedPath)
-        return asChange ? emit(event, 'change', ...emitted.slice(1)) : emit(event, ...emitted)
+        const [, eventPath, details] = emitted
+        const watchedPath =
+          event === 'raw' && typeof details === 'object' && details !== null
+            ? (details as { watchedPath?: unknown }).watchedPath
+            : null
+        if (typeof watchedPath !== 'string' || !renamesAsChanges.has(watchedPath)) {
+          return emit(event, ...emitted)
+        }
+        // The write's own event is folded into the rename's.
+        if (eventPath === path.basename(watchedPath)) return false
+        return emit(event, 'change', eventPath, details)
       }) as typeof watcher.emit
       const emitWithAll = watcher.emitWithAll.bind(watcher)
       watcher.emitWithAll = (event, emitted) => {
@@ -414,22 +415,33 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     80_000
   )
 
-  it.runIf(process.platform === 'darwin')(
-    "a rename the file's own watcher reports as a change keeps the note id",
-    async () => {
-      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
-      await watch()
-      const renamed = path.join(vault.path, 'Docs/pear.md')
-      lostAdds.add(renamed)
-      renamesAsChanges.add(path.join(vault.path, 'Docs/apple.md'))
-      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), renamed)
-      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+  for (const [newName, runs] of [
+    ['pear.md', process.platform === 'darwin'],
+    ['Apple.md', process.platform === 'darwin' && fileSystemIgnoresCase()]
+  ] as const) {
+    it.runIf(runs)(
+      `an edit and a rename to ${newName} the file's own watcher reports as one change keep the note id`,
+      async () => {
+        seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+        await watch()
+        const [oldPath, renamed] = ['Docs/apple.md', `Docs/${newName}`].map((relativePath) =>
+          path.join(vault.path, relativePath)
+        )
+        lostAdds.add(renamed)
+        // Inside chokidar's write-finish wait: no change.
+        lostChanges.add(oldPath)
+        renamesAsChanges.add(oldPath)
+        fs.writeFileSync(oldPath, '# apple\n\nbody edited\n')
+        fs.renameSync(oldPath, renamed)
+        await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
 
-      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
-      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
-    },
-    80_000
-  )
+        await settleOn(() => expect(editFedTo('n1')).toBe(true))
+        expect(metadataRows()).toEqual([{ id: 'n1', path: `Docs/${newName}` }])
+        expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+      },
+      80_000
+    )
+  }
 
   // macOS can deliver one write's FSEvents in two batches, which chokidar
   // reports as the file's add and then a change.
