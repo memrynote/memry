@@ -21,6 +21,15 @@ const cases: Array<[string, () => unknown]> = [
     'a long run of backticks beside a color span',
     () => maskInlineColorSpans(`x ${'`'.repeat(150_000)}${'a'.repeat(150_000)}</span>`)
   ],
+  // Each `<span` reads on to the end of the line for a `>` that never comes.
+  [
+    'a line of unfinished span tags',
+    () => maskInlineColorSpans(`${'<span '.repeat(50_000)}</span>`)
+  ],
+  [
+    'a line of unfinished coloured span tags',
+    () => maskInlineColorSpans(`${'<span style="'.repeat(30_000)}</span>`)
+  ],
   ['a delimiter row under a table row', () => maskHardBreaks(`| a |\n|-${'\t'.repeat(50_000)}x`)],
   // Each `>` could take the space after it or leave it to the next marker.
   [

@@ -20,6 +20,7 @@ import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { MASK_WORD } from '@memry/shared/mask-word'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
+import { scanRawHtml } from '../inline/raw-html.ts'
 import { DETAILS_LINE_TAIL, DETAILS_MARKUP, endsParagraphBefore } from './block-starts.ts'
 import { isCalloutTypeName } from './callout-types.ts'
 import {
@@ -620,11 +621,11 @@ export const TOGGLE_OPEN_LINE_EXPANDED = '<details data-memry-toggle open>'
 export const TOGGLE_CLOSE_LINE = '</details>'
 
 /** Only a `<details>` carrying our attribute, alone on its line, is a toggle. */
-const TOGGLE_OPEN_LINE_REGEX = /^<details\s+data-memry-toggle(\s+open)?>$/
+export const TOGGLE_OPEN_LINE_REGEX = /^<details\s+data-memry-toggle(\s+open)?>$/
 /** Any `<details>` open tag — used for depth only, so a foreign one nested in a
  * toggle body cannot close the toggle early. */
-const DETAILS_OPEN_LINE_REGEX = /^<details(?:\s[^>]*)?>$/
-const TOGGLE_SUMMARY_LINE_REGEX = /^<summary>(.*)<\/summary>$/
+export const DETAILS_OPEN_LINE_REGEX = /^<details(?:\s[^>]*)?>$/
+export const TOGGLE_SUMMARY_LINE_REGEX = /^<summary>(.*)<\/summary>$/
 
 export interface ToggleBlockSegment {
   kind: 'toggle'
@@ -742,10 +743,35 @@ const DETAILS_LT_TOKEN = `MEMRYDLT${MASK_WORD};`
  * to double them so a `\` already in front of a `<` could not pair with the
  * backslash being added; nothing is added now, so there is nothing to pair
  * with and `<summary>C:\<path></summary>` survives as its author wrote it.
+ * The one exception is the escape the writer spells a handled tag with
+ * (`hideDetailsLt`).
  */
 function escapeDetailsMarkup(line: string): string {
   if (!DETAILS_MARKUP_LINE_REGEX.test(line)) return line
-  return line.split('<').join(DETAILS_LT_TOKEN)
+  return hideDetailsLt(line)
+}
+
+/**
+ * `markup` with every `<` hidden behind the token.
+ *
+ * The writer spells a tag the editor handles, in text, with its `<` escaped
+ * (`\<b>x\</b>`, `escapeMarkdownText`), so a `<summary>` line that holds one is
+ * written that way. The backslash is the escape here as it is in a paragraph
+ * (`scanRawHtml`): no part of the text, so it goes with the `<` it escapes, and
+ * a bare tag and its escaped spelling are the same characters. Read as text, the
+ * backslash would be escaped again on every save.
+ */
+function hideDetailsLt(markup: string): string {
+  const escaped = markup.includes('\\<')
+    ? new Set(scanRawHtml(markup, true).flatMap((span) => (span.escaped ? [span.start] : [])))
+    : new Set<number>()
+  let out = ''
+  let last = 0
+  for (let at = markup.indexOf('<'); at !== -1; at = markup.indexOf('<', at + 1)) {
+    out += markup.slice(last, escaped.has(at) ? at - 1 : at) + DETAILS_LT_TOKEN
+    last = at + 1
+  }
+  return out + markup.slice(last)
 }
 
 /** `markdown` with every details markup line escaped, prefixed or not; fenced code keeps its bytes. */
@@ -756,9 +782,14 @@ export function escapePrefixedDetailsMarkup(markdown: string): string {
     .split('\n')
     .map((line) => {
       const match = fence.consume(line) ? null : PREFIXED_DETAILS_LINE_REGEX.exec(line)
-      return match ? match[1] + match[2].split('<').join(DETAILS_LT_TOKEN) + match[3] : line
+      return match ? match[1] + hideDetailsLt(match[2]) + match[3] : line
     })
     .join('\n')
+}
+
+/** True when `text` holds a `<` that `escapeDetailsMarkup` hid. */
+export function hasDetailsMarkupToken(text: string): boolean {
+  return text.includes(DETAILS_LT_TOKEN)
 }
 
 /**
@@ -769,7 +800,7 @@ export function escapePrefixedDetailsMarkup(markdown: string): string {
  * runs over every parsed run rather than only the ones expected to carry one.
  */
 export function restoreDetailsMarkup(text: string): string {
-  return text.includes(DETAILS_LT_TOKEN) ? text.split(DETAILS_LT_TOKEN).join('<') : text
+  return hasDetailsMarkupToken(text) ? text.split(DETAILS_LT_TOKEN).join('<') : text
 }
 
 /**

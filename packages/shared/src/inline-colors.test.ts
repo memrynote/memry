@@ -442,7 +442,7 @@ describe('maskInlineColorSpans / applyInlineColorTokens (parse side)', () => {
     expect(spans).toHaveLength(0)
   })
 
-  it('drops a stray close token once a real span was masked', () => {
+  it('keeps a stray close tag as text once a real span was masked', () => {
     const { text, spans } = maskInlineColorSpans(
       '<span style="color:red">x</span> mid </span> tail'
     )
@@ -457,8 +457,44 @@ describe('maskInlineColorSpans / applyInlineColorTokens (parse side)', () => {
     const applied = applyInlineColorTokens(parsed, spans)
     expect((applied[0] as { content: unknown[] }).content).toEqual([
       { type: 'text', text: 'x', styles: { textColor: 'red' } },
-      { type: 'text', text: ' mid ', styles: {} },
-      { type: 'text', text: ' tail', styles: {} }
+      { type: 'text', text: ' mid </span> tail', styles: {} }
+    ])
+  })
+
+  it('pairs each close tag with the innermost open span, and masks it only for a coloured one', () => {
+    // Each token as `[n` (the nth span) or `]`.
+    const mask = (markdown: string): string =>
+      maskInlineColorSpans(markdown)
+        .text.replace(/MEMRYICO[A-Z]+(\d+):/g, '[$1')
+        .replace(/:MEMRYICC[A-Z]+;/g, ']')
+    expect(mask('<span>a</span> <span style="color:red">c</span>')).toBe('<span>a</span> [0c]')
+    expect(mask('<span style="color:red">a <span>b</span> c</span>')).toBe('[0a <span>b</span> c]')
+    expect(mask('<span class="x">a</span><span style="color:red">c</span></span>')).toBe(
+      '<span class="x">a</span>[0c]</span>'
+    )
+    expect(mask('<span/> </span> <span style="color:red">c</span>')).toBe('<span/> </span> [0c]')
+    expect(mask('<span style="x:1">a</span> <span style="color:red">c</span>')).toBe(
+      '<span style="x:1">a</span> [0c]'
+    )
+    expect(mask('`<span>` </span> <span style="color:red">c</span>')).toBe('`<span>` </span> [0c]')
+  })
+
+  it('keeps a close token whose open was in an earlier block as text', () => {
+    const { text, spans } = maskInlineColorSpans('<span style="color:red">a\n\nb</span>')
+    const [first, second] = text.split('\n\n')
+    const block = (part: string): unknown => ({
+      type: 'paragraph',
+      props: {},
+      content: [{ type: 'text', text: part, styles: {} }],
+      children: []
+    })
+    const applied = applyInlineColorTokens([block(first), block(second)] as never, spans)
+    expect((applied as Array<{ content: unknown[] }>).map((b) => b.content)).toEqual([
+      [{ type: 'text', text: 'a', styles: { textColor: 'red' } }],
+      [
+        { type: 'text', text: 'b', styles: {} },
+        { type: 'text', text: '</span>', styles: {} }
+      ]
     ])
   })
 

@@ -20,6 +20,7 @@ use super::media::media_block;
 use super::mentions;
 use super::nesting::{MAX_NESTING, TOO_DEEP};
 use super::prepare::{fence_indented_code, line_fallback};
+use super::raw_html;
 use super::runs::block_content;
 use super::table::{escape_wiki_link_pipes_in_table_rows, table_block};
 use super::tokens::{ListType, Token, TokenKind, tokenize};
@@ -44,23 +45,34 @@ pub(super) fn parse_chunk(
     let fenced = fence_indented_code(&escape_wiki_link_pipes_in_table_rows(&chunk));
     let (masked, breaks) = mask_hard_breaks(&fenced);
     let lines: Vec<&str> = masked.split('\n').collect();
-    // A token mask changes no line, so `lines` are still the source's.
-    let tokens_masked = mentions::mask(&masked);
+    // Desktop's mask order: the `((…))` tokens, then the raw HTML the editor does
+    // not handle, which reads a token as the placeholder it is (and counts its
+    // length as desktop does). No mask changes a line, so `lines` are still the
+    // source's, and the masked ones line up with them.
+    let (numbered, tokens) = mentions::mask_numbered(&masked);
+    let (html_masked, html) = raw_html::mask(&numbered);
+    let tokens_masked = mentions::hexify(&html_masked, &tokens);
+    let html: Vec<String> = html
+        .iter()
+        .map(|source| mentions::hexify(source, &tokens))
+        .collect();
+    let masked_lines: Vec<&str> = tokens_masked.split('\n').collect();
     let mut list = ListState::default();
     // The parser holds a placeholder on each empty item or heading line; the
     // source lines a fallback keeps are the ones without it.
     for token in tokenize(&mask_empty_block_lines(&tokens_masked)) {
-        let converted = check_lines(&token, &lines).and_then(|()| match &token.kind {
-            TokenKind::Paragraph { content } => {
-                list = ListState::default();
-                text_block(SeedKind::Paragraph, content, &breaks)
-            }
-            TokenKind::Heading { level, content } => {
-                list = ListState::default();
-                text_block(SeedKind::Heading { level: *level }, content, &breaks)
-            }
-            _ => convert(&token, &breaks, &mut list, 0).map(|block| vec![block]),
-        });
+        let converted =
+            check_lines(&token, &lines, &masked_lines).and_then(|()| match &token.kind {
+                TokenKind::Paragraph { content } => {
+                    list = ListState::default();
+                    text_block(SeedKind::Paragraph, content, &breaks)
+                }
+                TokenKind::Heading { level, content } => {
+                    list = ListState::default();
+                    text_block(SeedKind::Heading { level: *level }, content, &breaks)
+                }
+                _ => convert(&token, &breaks, &mut list, 0).map(|block| vec![block]),
+            });
         match converted {
             Ok(blocks) => out.extend(blocks),
             Err(Unsupported(reason)) => {
@@ -76,15 +88,12 @@ pub(super) fn parse_chunk(
             }
         }
     }
+    // First, as desktop's `repairRuns` is: a hidden tag holds the placeholders
+    // of the masks that ran before it.
+    raw_html::restore_blocks(&mut out[first_block..], &html);
     drop_empty_block_placeholders(&mut out[first_block..]);
-    // A token placeholder left in a prop is desktop's masked word.
-    let leaks_token = tokens_masked != masked
-        && mentions::holds_placeholder(&format!("{:?}", &out[first_block..]));
-    let leak = if leaks_placeholder(&out[first_block..]) {
-        Some("empty item or heading inside a paragraph")
-    } else {
-        leaks_token.then_some("mention or date token in a prop")
-    };
+    let leak = leaks_placeholder(&out[first_block..])
+        .then_some("empty item or heading inside a paragraph");
     if let Some(reason) = leak {
         out.truncate(first_block);
         fallbacks.truncate(first_fallback);
@@ -169,13 +178,17 @@ fn media_only<'a>(nodes: &'a [Html], media: &mut Vec<&'a super::media::Media>) -
 }
 
 /// The line-level fallback, for every token but a code block (whose lines are
-/// its literal content).
-fn check_lines(token: &Token, lines: &[&str]) -> Result<(), Unsupported> {
+/// its literal content). A tag is read on the line as masked, where only a tag
+/// the editor handles is left; the rest of what desktop converts after the
+/// parse, an inline token or a task marker, is read on the line as written,
+/// hidden tags included.
+fn check_lines(token: &Token, lines: &[&str], masked: &[&str]) -> Result<(), Unsupported> {
     if matches!(token.kind, TokenKind::Code { .. }) {
         return Ok(());
     }
-    for line in &lines[token.start..token.end.min(lines.len())] {
-        if let Some(reason) = line_fallback(line) {
+    let range = token.start..token.end.min(lines.len());
+    for (line, hidden) in lines[range.clone()].iter().zip(&masked[range]) {
+        if let Some(reason) = raw_html::fallback(hidden).or_else(|| line_fallback(line)) {
             return Err(Unsupported(reason));
         }
     }

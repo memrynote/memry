@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 189
+    "caseCount": 226
   },
   "cases": [
     {
@@ -1009,6 +1009,42 @@
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[](u)\" code={}\n3 text \" [](v)\""
     },
     {
+      "name": "empty-label link across lines: in a line of text",
+      "pins": "one paragraph of text with a soft break, brackets and address as written: a link whose address crosses a line is no node",
+      "markdown": "a [](u\nv) b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a [](u\"\n3 element hardBreak\n3 text \"v) b\""
+    },
+    {
+      "name": "empty-label link across lines: alone, a blank label and a title",
+      "pins": "each paragraph keeps its source as text; the block is not dropped for holding only the link",
+      "markdown": "[](u\nv)\n\n[ ](u\nv \"t\")",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[](u\"\n3 element hardBreak\n3 text \"v)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[ ](u\"\n3 element hardBreak\n3 text \"v \\\"t\\\")\""
+    },
+    {
+      "name": "empty-label link across lines: in a quote and a bullet item",
+      "pins": "the quote and the item keep the link as text",
+      "markdown": "> [](u\n> v)\n\n- [](u\nv)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[](u\"\n3 element hardBreak\n3 text \"v)\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[](u\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"v)\""
+    },
+    {
+      "name": "empty-label link across lines: inside link text",
+      "pins": "the brackets of the text stay neutral to the label they sit in: one link whose label is the text, brackets included",
+      "markdown": "[a [](u\nv) b](w)\n\n[[](u\nv)](w)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a [](u\" link={\"href\":\"w\"}\n3 element hardBreak\n3 text \"v) b\" link={\"href\":\"w\"}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[](u\" link={\"href\":\"w\"}\n3 element hardBreak\n3 text \"v)\" link={\"href\":\"w\"}"
+    },
+    {
+      "name": "empty-label link across lines: in an address and in a fence info string",
+      "pins": "a link whose address is cut at the line break with a parenthesis open in it stays text, and the link inside it with it; a fence info string holds no link",
+      "markdown": "[b]([](u\nv))\n\n- a\n    ```[](u\nv)\n    x\n    ```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b]([](u\"\n3 element hardBreak\n3 text \"v))\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"[](u\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"v)\"\n3 element hardBreak\n3 text \"x\"\n3 element hardBreak\n3 text \"```\""
+    },
+    {
+      "name": "empty-label link across lines: then a link of one line",
+      "pins": "the second paragraph is still an htmlComment node: a link that stays text leaves the next one alone",
+      "markdown": "[](u\nv)\n\n[](w)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[](u\"\n3 element hardBreak\n3 text \"v)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"[](w)\""
+    },
+    {
       "name": "placeholder text: table cell code spans",
       "pins": "a code span holding text that spells a cell code span placeholder keeps it, and the spans beside it keep their spaces and pipes",
       "markdown": "| `x|MEMRYCSP0X` | `MEMRYCSPSX MEMRYCSPTX` |\n| --- | --- |\n| `a b` | c |",
@@ -1145,6 +1181,192 @@
       "pins": "both kinds promote in one paragraph, in document order",
       "markdown": "See ((mention:https%3A%2F%2Fexample.com%2Fa)) by ((date:eyJhbmNob3JJZCI6ImRtX2ExIiwiZGF0ZUlTTyI6IjIwOTktMDYtMTVUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) ok.",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"See \"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/a\"\n3 text \" by \"\n3 element dateMention anchorId=\"dm_a1\" dateFormat=\"relative\" dateISO=\"2099-06-15T09:00:00.000Z\" hasTime=true remind=\"none\" timeFormat=\"system\"\n3 text \" ok.\""
+    },
+    {
+      "name": "raw html: tags the editor does not render stay text",
+      "pins": "each tag is the characters it was written with, in one paragraph with the words around it",
+      "markdown": "a <kbd>Ctrl</kbd>+<kbd>K</kbd> b <sup>2</sup> <mark>m</mark> <x-y> <kq/>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <kbd>Ctrl</kbd>+<kbd>K</kbd> b <sup>2</sup> <mark>m</mark> <x-y> <kq/>\""
+    },
+    {
+      "name": "raw html: a block tag does not split its paragraph",
+      "pins": "a tag at a line start or in a line is text, so the four lines are one paragraph with soft breaks",
+      "markdown": "kq0 <div> kq1\nkq2 <p>kq3\n<article>\nkq4 <summary>s</summary>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq0 <div> kq1\"\n3 element hardBreak\n3 text \"kq2 <p>kq3\"\n3 element hardBreak\n3 text \"<article>\"\n3 element hardBreak\n3 text \"kq4 <summary>s</summary>\""
+    },
+    {
+      "name": "raw html: a script and a style keep their bodies",
+      "pins": "the body of a script or a style is text between its two tags",
+      "markdown": "<script>kq9</script>\n\nkq0 <style>kq8</style> kq1",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<script>kq9</script>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq0 <style>kq8</style> kq1\""
+    },
+    {
+      "name": "raw html: a declaration, an instruction and a CDATA section",
+      "pins": "each construct is read whole and stays text",
+      "markdown": "a <!x> b <?x?> c <![CDATA[x]]> d",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <!x> b <?x?> c <![CDATA[x]]> d\""
+    },
+    {
+      "name": "raw html: a tag that is not complete hides only its angle bracket",
+      "pins": "an unfinished tag, a tag across two lines and an angle bracket that opens nothing are text, and the rest of the line is read as markdown",
+      "markdown": "a <div\n\nb <kq\nc> d\n\ne <?x f <![CDATA[x g\n\n<1> < kq> h<",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <div\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b <kq\"\n3 element hardBreak\n3 text \"c> d\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"e <?x f <![CDATA[x g\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<1> < kq> h<\""
+    },
+    {
+      "name": "raw html: the characters inside a tag are not markdown",
+      "pins": "no stars or underscores inside a tag pair with each other or with a mark outside it",
+      "markdown": "a <x a=\"*b*\"> c <x a=\"_\" b=\"_\"> d _e_ *f*",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <x a=\\\"*b*\\\"> c <x a=\\\"_\\\" b=\\\"_\\\"> d \"\n3 text \"e\" italic={}\n3 text \" \"\n3 text \"f\" italic={}"
+    },
+    {
+      "name": "raw html: emphasis beside and between tags",
+      "pins": "a mark next to or between tags is read as it was with the angle brackets there",
+      "markdown": "<kbd>_x_</kbd> a_<kbd> **b**<kbd>**c**</kbd> _<kbd>_",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<kbd>\"\n3 text \"x\" italic={}\n3 text \"</kbd> a\"\n3 text \"<kbd> \" italic={}\n3 text \"b\" bold={} italic={}\n3 text \"<kbd>\" italic={}\n3 text \"c\" bold={} italic={}\n3 text \"</kbd> _<kbd>\" italic={}"
+    },
+    {
+      "name": "raw html: a tag with a pipe in it splits a table row",
+      "pins": "a row splits at a pipe before it reads a tag, so the tag with a pipe keeps only its angle bracket as text",
+      "markdown": "| a | b |\n| - | - |\n| <x a=\"|\"> c | <y> |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"<x a=\\\"\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"\\\"> c\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"<y>\""
+    },
+    {
+      "name": "raw html: in a quote, a list item, a heading and a table cell",
+      "pins": "a tag is text wherever the block holds inline content",
+      "markdown": "> kq0 <kbd>x</kbd> kq1\n\n- kq2 <kbd>y</kbd>\n- kq3 <div>\n\n# kq4 <kbd>z</kbd>\n\n| a <kbd>h</kbd> | b |\n| - | - |\n| c <kbd>c</kbd> | d |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"kq0 <kbd>x</kbd> kq1\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq2 <kbd>y</kbd>\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq3 <div>\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"kq4 <kbd>z</kbd>\"\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a <kbd>h</kbd>\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c <kbd>c</kbd>\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"d\""
+    },
+    {
+      "name": "raw html: in code, as written",
+      "pins": "a tag in a code span or a fence is the code, and the tag after the spans is text",
+      "markdown": "a `<kbd>` b `` <x a=\"*\"> `` c <kbd>\n\n```\n<div>\n<script>kq9</script>\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a \"\n3 text \"<kbd>\" code={}\n3 text \" b \"\n3 text \"<x a=\\\"*\\\">\" code={}\n3 text \" c <kbd>\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"<div>\\n<script>kq9</script>\""
+    },
+    {
+      "name": "raw html: in a link label, a link address and an image alt",
+      "pins": "a tag in a label, an address or an alt is text there",
+      "markdown": "[a <kbd>x</kbd>](https://e.com/<kq>) ![b <kbd>y</kbd>](https://e.com/i.png)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <kbd>x</kbd>\" link={\"href\":\"https://e.com/<kq>\"}\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"b <kbd>y</kbd>\" showPreview=true textAlignment=\"left\" url=\"https://e.com/i.png\""
+    },
+    {
+      "name": "raw html: after a backslash",
+      "pins": "a backslash before a tag stays text beside it, and a pair of backslashes before one is a single backslash",
+      "markdown": "a \\<kq> b \\\\<kq> c",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a \\\\<kq> b \\\\<kq> c\""
+    },
+    {
+      "name": "raw html: in a toggle summary and a callout",
+      "pins": "a summary, its body and a callout keep the tags as text",
+      "markdown": "<details data-memry-toggle>\n<summary>kq0 <kbd>x</kbd></summary>\n\nkq1 <div> kq2\n\n</details>\n\n> [!note]\n> kq3 <kbd>y</kbd>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element toggleListItem backgroundColor=\"default\" open=false textAlignment=\"left\" textColor=\"default\"\n3 text \"kq0 <kbd>x</kbd>\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"kq1 <div> kq2\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"kq3 <kbd>y</kbd>\""
+    },
+    {
+      "name": "raw html: beside a hard break",
+      "pins": "a tag at the end of a line keeps the line break that follows it",
+      "markdown": "kq0 <kbd>x</kbd>  \nkq1 <kbd>y</kbd>\\\nkq2",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq0 <kbd>x</kbd>\"\n3 element hardBreak\n3 element hardBreak\n3 text \"kq1 <kbd>y</kbd>\"\n3 element hardBreak\n3 element hardBreak\n3 text \"kq2\""
+    },
+    {
+      "name": "raw html: a token beside a tag and a tag holding a token",
+      "pins": "a token is hidden before the tags are read, so the tag around it is text and a tag that holds one is text with the token put back and promoted after it",
+      "markdown": "<kbd>((mention:https%3A%2F%2Fexample.com%2Fa))</kbd> b <x t=\"((mention:https%3A%2F%2Fexample.com%2Fb))\"> c",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<kbd>\"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/a\"\n3 text \"</kbd> b <x t=\\\"\"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/b\"\n3 text \"\\\"> c\""
+    },
+    {
+      "name": "raw html: an angle bracket inside a token",
+      "pins": "the angle bracket in a token payload opens no tag, and the tag after the token is text",
+      "markdown": "a ((mention:https%3A%2F%2Fexample.com%2F<kbd>x)) b <kbd>y</kbd>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a \"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://example.com/<kbd>x\"\n3 text \" b <kbd>y</kbd>\""
+    },
+    {
+      "name": "raw html: a backslash before a tag the editor handles",
+      "pins": "the backslash escapes the angle bracket of a handled tag, so the tag is text and the backslash is gone; before a tag the editor does not handle it stays text, a pair is one backslash, and a third escapes the tag after them",
+      "markdown": "a \\<b>x\\</b> \\<a href=\"u\">y\\</a> \\<br> \\<ul>\\<li>z\\</li>\\</ul> \\<input type=checkbox> \\<kq> \\\\<kq> \\\\\\<i>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <b>x</b> <a href=\\\"u\\\">y</a> <br> <ul><li>z</li></ul> <input type=checkbox> \\\\<kq> \\\\<kq> \\\\<i>\""
+    },
+    {
+      "name": "raw html: an escaped tag in a quote, a list item, a heading and a table cell",
+      "pins": "an escaped tag is text wherever the block holds inline content, inside a mark and a link label too",
+      "markdown": "> kq0 \\<b>x\\</b>\n\n- kq1 \\<i>y\\</i>\n\n# kq2 \\<u>z\\</u>\n\n| a | b |\n| - | - |\n| c \\<s>d\\</s> | e |\n\n**kq3 \\<b>f\\</b>** [g \\<i>h\\</i>](https://e.com)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"kq0 <b>x</b>\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq1 <i>y</i>\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"kq2 <u>z</u>\"\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c <s>d</s>\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"e\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"kq3 <b>f</b>\" bold={}\n3 text \" \"\n3 text \"g <i>h</i>\" link={\"href\":\"https://e.com\"}"
+    },
+    {
+      "name": "raw html: a backslash before a span",
+      "pins": "the backslash escapes the angle bracket of a span tag, coloured or plain, so the tag is text and the backslash is gone, and no span tag closes or ends a colour",
+      "markdown": "a \\<span style=\"color:red\">x\\</span> \\<span>y\\</span> \\<span class=\"k\">z\\</span> \\</span> b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <span style=\\\"color:red\\\">x</span> <span>y</span> <span class=\\\"k\\\">z</span> </span> b\""
+    },
+    {
+      "name": "raw html: an escaped tag in a details line no toggle claimed",
+      "pins": "the backslash escapes the angle bracket of a handled tag on a details markup line too, so the line is the text it spells with the tag bare and the backslash is gone",
+      "markdown": "<details>\n<summary>kq0 \\<b>x\\</b> \\<i>y\\</i> z</summary>\nkq1\n</details>\n\n<summary>\\<a href=\"u\">w\\</a></summary>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>kq0 <b>x</b> <i>y</i> z</summary>\"\n3 element hardBreak\n3 text \"kq1\"\n3 element hardBreak\n3 text \"</details>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<summary><a href=\\\"u\\\">w</a></summary>\""
+    },
+    {
+      "name": "raw html: escaped tags past the nesting cap",
+      "pins": "an escaped tag opens nothing and counts toward no cap, so a hundred and fifty of them are text",
+      "markdown": "\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>\\<b>x\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>\\</b>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b><b>x</b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b></b>\""
+    },
+    {
+      "name": "mask in a prop: a comment in a fence info string",
+      "pins": "the language is the info string as written, comment included, in a fence at the top level and in one under a list item",
+      "markdown": "```%% c %%`\nx\n```\n\n- a\n    ```js %% c %%\n    x\n    ```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"%% c %%`\"\n3 text \"x\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"js %% c %%\"\n5 text \"  x\""
+    },
+    {
+      "name": "fence info string: a backtick in it, blanks around it",
+      "pins": "BlockNote trims the language of every fence it opens, and a backtick in the info string of a backtick fence is no reason to keep the blanks of a code span of blanks in it",
+      "markdown": "```  ``` x\na\n```\n\n``` ```  y\nb\n```\n\n```  `` z\nc\n```\n\n~~~  ``` w\nd\n~~~\n\n```  ```|\ne\n```\n\n- a\n\n    ```  ``` v\n    f\n    ```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"``` x\"\n3 text \"a\"\n1 element blockContainer\n2 element codeBlock language=\"```  y\"\n3 text \"b\"\n1 element blockContainer\n2 element codeBlock language=\"`` z\"\n3 text \"c\"\n1 element blockContainer\n2 element codeBlock language=\"``` w\"\n3 text \"d\"\n1 element blockContainer\n2 element codeBlock language=\"```|\"\n3 text \"e\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"``` v\"\n5 text \"  f\""
+    },
+    {
+      "name": "comment in a summary line that is no toggle",
+      "pins": "a <!-- comment in the summary line of a <details> block that is no toggle is a comment node among the text of the line, and its bytes in a code span or a link label",
+      "markdown": "<details>\n<summary><!-- c --></summary>\n\nx\n\n</details>\n\n<details>\n<summary>a <!-- c --> **b** `<!-- d -->` [e<!-- f -->](u)</summary>\n\ny\n\n</details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>\"\n3 element htmlComment source=\"<!-- c -->\"\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>a \"\n3 element htmlComment source=\"<!-- c -->\"\n3 text \" \"\n3 text \"b\" bold={}\n3 text \" \"\n3 text \"<!-- d -->\" code={}\n3 text \" \"\n3 text \"e<!-- f -->\" link={\"href\":\"u\"}\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"y\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
+    },
+    {
+      "name": "an address no markdown writes back as itself",
+      "pins": "a link or an image whose address the parse cuts at a blank with a parenthesis open in it, or holds a line break, stays the text it was; an address with a blank and balanced parentheses is the link",
+      "markdown": "[b]([](u\nv))\n\n![a]([](u\nv))\n\n[b](x(y\nz) w)\n\n![i](x(y z) w)\n\n[b](<1\ny>)\n\n[b](x(y z) w)\n\n`[b](x(y\nz) w)` and `a\n[](u)\nb`",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b]([](u\"\n3 element hardBreak\n3 text \"v))\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"![a]([](u\"\n3 element hardBreak\n3 text \"v))\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b](x(y\"\n3 element hardBreak\n3 text \"z) w)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"![i](x(y z) w)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b](<1\"\n3 element hardBreak\n3 text \"y>)\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"b\" link={\"href\":\"x(y z) w\"}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[b](x(y z) w)\" code={}\n3 text \" and \"\n3 text \"a [](u) b\" code={}"
+    },
+    {
+      "name": "mask in a prop: a comment in an address, an alt and a formula",
+      "pins": "the link address, the image name and the math source hold the comment as written",
+      "markdown": "[a](https://e.com/%% b %%)\n\n![a %% b %% c](https://e.com/i.png)\n\n$$\nx %% y %% z\n$$",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" link={\"href\":\"https://e.com/%% b %%\"}\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"a %% b %% c\" showPreview=true textAlignment=\"left\" url=\"https://e.com/i.png\"\n1 element blockContainer\n2 element mathBlock latex=\"x %% y %% z\""
+    },
+    {
+      "name": "mask in a prop: a comment in a bookmark and a video address",
+      "pins": "a marker line holding a comment is the block its bytes make, the comment as written in its address",
+      "markdown": "![bookmark](https://e.com/a%% c %%b)\n\n![v](https://youtu.be/dQw4w9WgXcQ?t=%% c %%)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bookmark description=\"\" domain=\"e.com\" favicon=\"\" image=\"\" siteName=\"\" title=\"\" url=\"https://e.com/a%% c %%b\"\n1 element blockContainer\n2 element youtubeEmbed alt=\"v\" title=\"\" videoId=\"dQw4w9WgXcQ\" videoUrl=\"https://youtu.be/dQw4w9WgXcQ?t=%% c %%\""
+    },
+    {
+      "name": "mask in a prop: an address across a hard break",
+      "pins": "the address is what the parser reads up to its first whitespace: the hard break is no part of it",
+      "markdown": "[a](u  \nv)\n\n> [b](w\\\nx)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" link={\"href\":\"u\"}\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"b\" link={\"href\":\"w\"}"
+    },
+    {
+      "name": "mask in a prop: details markup in a formula and a spaced address in a summary",
+      "pins": "the formula holds the tag as written; the summary link keeps its spaced address whole, with no placeholder in it",
+      "markdown": "$$\n<details>\n$$\n\n<details>\n<summary>[a](<1 v>)</summary>\n\nx\n\n</details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"<details>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>\"\n3 text \"a\" link={\"href\":\"<1 v>\"}\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
+    },
+    {
+      "name": "comment between escaped backticks",
+      "pins": "a backslash makes a backtick text, so a comment between two of them is a comment node; after an escaped backslash the backtick opens a span and the comment is its bytes",
+      "markdown": "\\`%%x%%\\`\n\na \\`%%y%%\\` b\n\n\\\\`%%z%%`\n\n| a |\n|---|\n| \\`%%x%%\\` |\n\n<details>\n<summary>\\`<!-- c -->\\`</summary>\n\nx\n\n</details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"`\"\n3 element htmlComment source=\"%%x%%\"\n3 text \"`\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a `\"\n3 element htmlComment source=\"%%y%%\"\n3 text \"` b\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"\\\\\"\n3 text \"%%z%%\" code={}\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"`\"\n6 element htmlComment source=\"%%x%%\"\n6 text \"`\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>`\"\n3 element htmlComment source=\"<!-- c -->\"\n3 text \"`</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
+    },
+    {
+      "name": "comment in a span a run of backticks retries into",
+      "pins": "a run of backticks with no closer of its length retries from each later backtick against the shorter run left, as the parser does, so a comment the span reaches is the span's own bytes; a run that opens a fence line pairs only with its own length; an empty-label link outside such a span is a node, and its brackets make no row unsafe for the span's blanks",
+      "markdown": "a``%%x%%b`c\n\na``%%x%%b`c`\n\n\\``%%x%%`\n\n| a |\n|---|\n| a``%%x%%b`c |\n| ``x ` |\n| ``x ` y |\n| ```x  y` |\n| [](u) `x  y` |\n| [](u)``` x  y` |\n| \\```[](u)\\`[](u)\\` |\n\n```%% a`\n`%%\nc\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a`\"\n3 text \"%%x%%b\" code={}\n3 text \"c\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a`\"\n3 text \"%%x%%b\" code={}\n3 text \"c`\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"`\"\n3 text \"%%x%%\" code={}\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a`\"\n6 text \"%%x%%b\" code={}\n6 text \"c\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"`\"\n6 text \"x \" code={}\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"`\"\n6 text \"x \" code={}\n6 text \" y\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"``\"\n6 text \"x  y\" code={}\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 element htmlComment source=\"[](u)\"\n6 text \" \"\n6 text \"x  y\" code={}\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 element htmlComment source=\"[](u)\"\n6 text \"``\"\n6 text \" x  y\" code={}\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"``\"\n6 text \"[](u)\\\\\" code={}\n6 element htmlComment source=\"[](u)\"\n6 text \"`\"\n1 element blockContainer\n2 element codeBlock language=\"%% a`\\n`%%\"\n3 text \"c\""
     }
   ]
 }

@@ -304,11 +304,20 @@ describe('shared-doc channel', () => {
   })
 
   it.each([
-    ['before #2741 (BBF-29)', { source: '* One' }, { htmlComments: false, losslessBlocks: false }],
+    [
+      'before #2741 (BBF-29)',
+      { source: '* One' },
+      { htmlComments: false, losslessBlocks: false, literalHtml: false }
+    ],
     [
       'before lossless tables',
       { source: '* One', htmlComments: true },
-      { htmlComments: true, losslessBlocks: false }
+      { htmlComments: true, losslessBlocks: false, literalHtml: false }
+    ],
+    [
+      'before raw HTML stayed text',
+      { source: '* One', htmlComments: true, losslessBlocks: true },
+      { htmlComments: true, losslessBlocks: true, literalHtml: false }
     ]
   ])(
     'reads a record an older build wrote %s as its parse, and rewrites it as this one',
@@ -319,7 +328,12 @@ describe('shared-doc channel', () => {
 
       writeMarkdownSourceToYDoc(doc, '* One')
 
-      const current = { source: '* One', htmlComments: true, losslessBlocks: true }
+      const current = {
+        source: '* One',
+        htmlComments: true,
+        losslessBlocks: true,
+        literalHtml: true
+      }
       expect(doc.getMap('markdownSource').get('record')).toEqual(current)
       expect(readMarkdownSourceRecordFromYDoc(doc)).toEqual(current)
     }

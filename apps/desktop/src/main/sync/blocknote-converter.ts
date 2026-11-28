@@ -43,7 +43,9 @@ import {
   serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
 import { sidecarMarkerLines } from '@memry/shared/block-markers'
+import { hideBacktickLanguages, spellBacktickLanguages } from '@memry/shared/code-fence-language'
 import { extractInlineColorRuns, restoreInlineColorTokens } from '@memry/shared/inline-colors'
+import { withoutStaleMaskTokens } from '@memry/shared/stale-mask-tokens'
 import {
   assembleMarkdownWithBlanks,
   extractWikiImageEmbedRefs,
@@ -52,10 +54,13 @@ import {
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
+  legacyReading,
   parseDroppingHtmlComments,
   parseWithLegacyBlocks,
+  parseWithLegacyHtml,
   parseMarkdownToBlocks,
   parsesHtmlComments,
+  readsLiteralHtml,
   readsLosslessBlocks
 } from './blocknote-parse-breaks'
 import { createBlockNestingMarker } from '@memry/shared/block-nesting'
@@ -203,10 +208,13 @@ export async function yDocToMarkdown(
   // the comments from the source like any other unchanged region (BBF-29).
   // A record from before lossless blocks sits beside tables cut and quotes
   // flattened the old way: read the same way, a cut row or a flat quote is
-  // unchanged and keeps the file's bytes.
+  // unchanged and keeps the file's bytes. One from before raw HTML stayed text
+  // sits beside a document that dropped `<kbd>` and `<sup>`, so the source is
+  // read as text only if the document kept it so.
   const canonicalize = (markdown: string): Promise<string | null> => {
     const parse = (): Promise<string | null> => canonicalMarkdown(markdown, options.notePath)
-    const blocks = record.losslessBlocks ? parse : () => parseWithLegacyBlocks(parse)
+    const html = record.literalHtml ? parse : () => parseWithLegacyHtml(parse)
+    const blocks = record.losslessBlocks ? html : () => parseWithLegacyBlocks(html)
     return record.htmlComments ? blocks() : parseDroppingHtmlComments(blocks)
   }
   try {
@@ -360,7 +368,12 @@ async function serializeCanonical(
     Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))
     prepareSnapshot?.(snapshot)
     const editor = getEditor()
-    const blocks = editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
+    // A token an older build left in a string of the document is no use to this
+    // process, which cannot decode another's word, and would be written into
+    // the file. Dropped before this process makes tokens of its own.
+    const blocks = withoutStaleMaskTokens(
+      editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
+    )
     if (blocks.length === 0) {
       // `''` is a real body — the body of a note that has never been written —
       // so an empty result cannot simply be refused. It is only that body when
@@ -471,7 +484,7 @@ export async function markdownToBlocks(
     // multi-line comment holding blank lines or a fence stays one comment
     // (AF-015).
     const masked = parsesHtmlComments()
-      ? maskHtmlComments(markdown, { losslessTables: readsLosslessBlocks() })
+      ? maskHtmlComments(markdown, { legacy: legacyReading() })
       : markdown
     return await markdownToBlocksPreserving(editor, masked, notePath)
   } catch (err) {
@@ -752,9 +765,10 @@ async function serializeBlocks(
   editor: ServerBlockNoteEditor,
   blocks: PartialBlock[]
 ): Promise<string> {
+  const { blocks: spelled, languages } = hideBacktickLanguages(blocks)
   const { blocks: wrapped, replacements } = extractInlineColorRuns(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-    withPlainCheckboxMarkers(blocks as never[])
+    withPlainCheckboxMarkers(spelled as never[])
   )
   // The server editor exports the blocks before its first await, so the
   // export runs inside the token scope.
@@ -762,7 +776,7 @@ async function serializeBlocks(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     await writeHtmlCommentTokens(wrapped as PartialBlock[], (b) => editor.blocksToMarkdownLossy(b))
   )
-  return restoreInlineColorTokens(md, replacements)
+  return restoreInlineColorTokens(spellBacktickLanguages(md, languages), replacements)
 }
 
 function canSerializeChildNatively(parent: Block, child: Block): boolean {
@@ -969,7 +983,8 @@ async function markdownToBlocksPreserving(
     {
       parse: (md) => parseMarkdownToBlocks(editor, md),
       serialize: (blocks) => serializeBlocks(editor, blocks),
-      legacyBlocks: !readsLosslessBlocks()
+      legacyBlocks: !readsLosslessBlocks(),
+      legacyHtml: !readsLiteralHtml()
     },
     withEmbeds
   )

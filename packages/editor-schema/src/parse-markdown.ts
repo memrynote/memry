@@ -1,6 +1,7 @@
 import { markdownToHTML } from '@blocknote/core'
 import { escapeWikiLinkPipesInTableRows, fenceIndentedCodeBlocks } from '@memry/shared/empty-lines'
 import {
+  dropHardBreakTokens,
   maskHardBreaks,
   restoreHardBreakSpelling,
   unmaskHardBreaks
@@ -11,13 +12,16 @@ import {
   maskHtmlComments,
   splitHtmlCommentTokens
 } from '@memry/shared/html-comments'
+import type { LegacyReading } from '@memry/shared/markdown-code'
 import { escapePrefixedDetailsMarkup, restoreDetailsMarkup } from './blocks/markdown'
 import { dropEmptyBlockPlaceholders, maskEmptyBlockLines } from './empty-blocks'
 import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
 import { maskEmptyLinks } from './inline/empty-links'
+import { escapeUnwritableLinks } from './inline/unwritable-links'
 import { type InlineItem, trimEmphasisEdges } from './inline/emphasis-runs'
 import { linkCodeAsText } from './inline/link-code-spans'
 import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
+import { maskRawHtml, restoreRawHtml } from './inline/raw-html'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 import { widenTables } from './table-width'
@@ -117,6 +121,29 @@ interface Masks {
   codeChars: string[]
   /** The spaced link destinations, by placeholder index. */
   destinations: string[]
+  /** The raw HTML the editor has no node for, by placeholder index. */
+  html: string[]
+}
+
+/**
+ * Every mask but the hard break's, undone in one string: a run's text, a link's
+ * address, a prop. Each is unconditional, because a placeholder that survives
+ * into a block is written into the vault as literal text.
+ */
+function restoreMasks(value: string, masks: Masks): string {
+  // The reverse of the order they were applied in: a hidden tag holds the
+  // placeholders of the masks that ran before it, a spaced address was cut
+  // from text whose `<details>` markup was already hidden, so it holds that
+  // token, and each comes back before the mask it holds the placeholder of.
+  return restoreDetailsMarkup(
+    restoreLinkDestinations(
+      restoreInlineTokens(
+        restoreRawHtml(restoreCellCodeSpans(value, masks.codeChars), masks.html),
+        masks.tokens
+      ),
+      masks.destinations
+    )
+  )
 }
 
 /**
@@ -146,14 +173,13 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     const linkContent = (run as StyledRun)?.type === 'link' ? (run as StyledRun).content : null
     const link = run as StyledRun | undefined
     if (link?.href) {
-      link.href = restoreLinkDestinations(
-        restoreCellCodeSpans(link.href, masks.codeChars),
-        masks.destinations
-      )
+      // A break is no part of an address, so its token is dropped, not spelled.
+      const address = masks.breaks.length > 0 ? dropHardBreakTokens(link.href) : link.href
+      link.href = restoreMasks(address, masks)
     }
     // An inline node's props: an image in a table cell keeps its address and
-    // alt here, and a masked pipe can sit in either.
-    if (run) restoreStringProps(run, (value) => restoreCellCodeSpans(value, masks.codeChars))
+    // alt here, and any mask can sit in either.
+    if (run) restoreStringProps(run, (value) => restoreMasks(value, masks))
     // A leading space in link text is the author's: CommonMark keeps it.
     if (Array.isArray(linkContent)) repairRuns(linkContent, code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
@@ -177,13 +203,11 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     const unmasked = unmaskRun(stripped, code, masks.breaks)
     // Every restore is unconditional: a placeholder that survives into a block
     // is written into the vault as literal text.
-    run.text = restoreLinkDestinations(
-      restoreCellCodeSpans(
-        restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
-        masks.codeChars
-      ),
-      masks.destinations
-    )
+    //
+    // A token left after that was inside a hidden tag, whose source the restore
+    // just brought back (`<x a="<br>">`): it is the spelling the author wrote.
+    const restored = restoreMasks(unmasked, masks)
+    run.text = masks.breaks.length > 0 ? restoreHardBreakSpelling(restored, masks.breaks) : restored
     if (stripped === '' && original !== '') emptied.add(run)
   }
   // A run that held only the artifact would split the marks around it:
@@ -267,12 +291,11 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   for (const block of blocks) {
     const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
     // An image's alt text is a prop, not a run: it gets the author's spelling back.
-    restoreStringProps(block, (value) =>
-      restoreCellCodeSpans(
-        masks.breaks.length > 0 ? restoreHardBreakSpelling(value, masks.breaks) : value,
-        masks.codeChars
-      )
-    )
+    restoreStringProps(block, (value) => {
+      // The breaks ran first, so a hidden tag or a spaced address holds theirs.
+      const restored = restoreMasks(value, masks)
+      return masks.breaks.length > 0 ? restoreHardBreakSpelling(restored, masks.breaks) : restored
+    })
     if (Array.isArray(block.content)) {
       repairRuns(block.content, code, masks)
       block.content = withHtmlCommentNodes(block.content, code)
@@ -342,45 +365,62 @@ function restoreStringProps(node: BlockLike, restore: (value: string) => string)
  * comment, and `losslessBlocks: false` as builds before lossless blocks did,
  * splitting a table row on a code span's pipe, cutting it to its header's
  * width, dropping a list item's images and reading an empty list item or
- * heading as text, for reading a source the way an older build read it.
+ * heading as text, and `literalHtml: false` as builds before raw HTML stayed
+ * text did, dropping the tags the editor has no node for, for reading a source
+ * the way an older build read it.
  */
 export async function parseMarkdownToBlocksRepaired<T>(
   editor: MarkdownParsingEditor,
   markdown: string,
   {
     htmlComments = true,
-    losslessBlocks = true
-  }: { htmlComments?: boolean; losslessBlocks?: boolean } = {}
+    losslessBlocks = true,
+    literalHtml = true
+  }: { htmlComments?: boolean; losslessBlocks?: boolean; literalHtml?: boolean } = {}
 ): Promise<T[]> {
+  const legacy: LegacyReading = { tables: !losslessBlocks, html: !literalHtml }
   // A `[[target|alias]]` already in a vault table has to be escaped before the
   // parse or 0.51's table parser splits the row on it and drops the alias.
   //
   // HTML comments come off first, as one token each (AF-015). The callers that
   // split a note into blocks before this mask them already; a caller that
   // hands in raw markdown (paste, a template) gets the same treatment here.
-  const commentsMasked = htmlComments
-    ? maskHtmlComments(markdown, { losslessTables: losslessBlocks })
-    : markdown
+  const commentsMasked = htmlComments ? maskHtmlComments(markdown, { legacy }) : markdown
   const wikiEscaped = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
   // A link with no label has no text to hold its address, so it travels as a
   // comment's token too. After the pipe escape, which still reads a `[[` that
   // opens in front of one.
-  const fenced = losslessBlocks ? maskEmptyLinks(wikiEscaped) : wikiEscaped
+  //
+  // A link whose address no markdown writes back stays text, unless the source
+  // is one an earlier build recorded: that build's document holds the link cut
+  // at its first blank, and the source proves against it only when read the
+  // same way.
+  const fenced = losslessBlocks
+    ? maskEmptyLinks(legacy.html ? wikiEscaped : escapeUnwritableLinks(wikiEscaped), legacy)
+    : wikiEscaped
   // `<details>` markup in a quote stays text, before a break masks the two
   // spaces the writer ends its line with.
   const source = losslessBlocks ? escapePrefixedDetailsMarkup(fenced) : fenced
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
-  const { markdown: breaksMasked, breaks } = maskHardBreaks(source)
+  const { markdown: breaksMasked, breaks } = maskHardBreaks(source, legacy)
   // A link's title and a spaced address live in its `href` (BBF-109).
   const { markdown: masked, destinations } = maskLinkDestinations(breaksMasked)
   // `((mention:…))` and `((date:…))` are opaque payloads the parser will apply
   // intraword emphasis inside.
   const { markdown: tokensMasked, tokens } = maskInlineTokens(masked)
+  // Raw HTML the editor has no node for stays text. After every mask whose
+  // region it must not read (comments, empty links, details markup, breaks,
+  // link addresses and inline tokens), so a hidden tag can hold their
+  // placeholders, and before the cell mask, which reads the text it leaves.
+  const { markdown: htmlMasked, sources: rawHtml } = literalHtml
+    ? maskRawHtml(tokensMasked)
+    : { markdown: tokensMasked, sources: [] }
   // A table cell collapses the whitespace in its code spans, and a row splits
   // on the pipes in them.
-  const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
-    pipes: losslessBlocks
+  const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(htmlMasked, {
+    pipes: losslessBlocks,
+    legacy
   })
   // A row wider than its table's header keeps its extra cells, and an empty
   // list item or heading stays one.
@@ -403,7 +443,7 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const parsed = (await (repaired === null || repaired === html
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
-  repairBlocks(parsed, { breaks, tokens, codeChars, destinations })
+  repairBlocks(parsed, { breaks, tokens, codeChars, destinations, html: rawHtml })
   if (losslessBlocks) {
     dropEmptyBlockPlaceholders(parsed)
     trimBlockEmphasisEdges(parsed)

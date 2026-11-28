@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 449,
+    "exportedCaseCount": 465,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 459,
+    "caseCount": 475,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2910,6 +2910,118 @@
       "canonical": null,
       "pending": null,
       "sha256": "613dfbd57708aaf4cfa9218b6e46e88b8ea8e0a961c9721b5bfd50cf581b23ba"
+    },
+    {
+      "name": "empty-label link across lines",
+      "markdown": "[](u\nv)",
+      "canonical": "[\\](u\nv)",
+      "pending": null,
+      "sha256": "eac2d697f73fb2d6977e9e2210e58f6fd91199fe606efcb45a8506c0203bbeea"
+    },
+    {
+      "name": "empty-label link across lines, with a title",
+      "markdown": "[](u\nv \"t\")",
+      "canonical": "[\\](u\nv \"t\")",
+      "pending": null,
+      "sha256": "a46ffcd8c90bac1cfa5af1f9fdd4efa2d15c2b9a4bfc26d7da2f445a94296b0e"
+    },
+    {
+      "name": "empty-label link across lines, in a line of text",
+      "markdown": "a [](u\nv) b",
+      "canonical": "a [\\](u\nv) b",
+      "pending": null,
+      "sha256": "39077ceabf903ecf20ab07b6343addce82de09e6ba7e2959280a8b840f8f1eec"
+    },
+    {
+      "name": "empty-label link across lines, in a quote",
+      "markdown": "> [](u\n> v)",
+      "canonical": "> [\\](u\n> v)",
+      "pending": null,
+      "sha256": "777ee195f7cb267d904303b837b1c6a96f9fc05a1052e8f2c5344d50566feb10"
+    },
+    {
+      "name": "empty-label link in a link address",
+      "markdown": "[b]([](u\nv))",
+      "canonical": "[b\\]([\\](u\nv))",
+      "pending": null,
+      "sha256": "44c9b708781010d4a0a7ffe634d23e2d4d6af168d122f73351a75453e0143cd6"
+    },
+    {
+      "name": "empty-label link in an image address",
+      "markdown": "![a]([](u\nv))",
+      "canonical": "\\![a\\]([\\](u\nv))",
+      "pending": null,
+      "sha256": "57226c5bec500d5da82872614ea9900b72df6413996b46cd91944a6daa346bc3"
+    },
+    {
+      "name": "link address cut inside a parenthesis",
+      "markdown": "[b](x(y\nz) w)",
+      "canonical": "[b\\](x(y\nz) w)",
+      "pending": null,
+      "sha256": "22494d4cd02296213e0196a4841f3328b4593735c23da611fb8dcfb23a5f89b7"
+    },
+    {
+      "name": "image address cut inside a parenthesis",
+      "markdown": "![i](x(y z) w)",
+      "canonical": "\\![i\\](x(y z) w)",
+      "pending": null,
+      "sha256": "8f0a1ad8d1bd6347362697f6dd252a07c9715e979fe88b605c6775ee9e9b0756"
+    },
+    {
+      "name": "link address with a blank and balanced parentheses",
+      "markdown": "[b](x(y z) w)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "30cd3d7aa4cf5cb7836e1ae7679a46f08b580a6da68a8581387fcc8312865e98"
+    },
+    {
+      "name": "code span across lines holding an unwritable link",
+      "markdown": "`[b](x(y\nz) w)`",
+      "canonical": "`[b](x(y z) w)`",
+      "pending": null,
+      "sha256": "e42e56ac00d3b321ab366c8140ce4cbc379ea11630c3d13dc8af68f117254a6e"
+    },
+    {
+      "name": "code language with a backtick",
+      "markdown": "~~~`` x\nc\n~~~",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9233ac30f0a9e5925d9d6e1d5a4162f1d145fc838f8be4dc22f7a08fc7431d4f"
+    },
+    {
+      "name": "code language with a backtick, in a backtick fence",
+      "markdown": "```  `` x\nc\n```",
+      "canonical": "~~~`` x\nc\n~~~",
+      "pending": null,
+      "sha256": "78b39c61f53b3631d8b32f07718eef1071232769d542cd2f8804a4433b3b007d"
+    },
+    {
+      "name": "code language with backticks, a code line of tildes",
+      "markdown": "~~~~``` x\n~~~\n~~~~",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4ffc56a6e7a5da31110df7cdf2a58a969b29b5e4070acc97deefbf5dd929d99c"
+    },
+    {
+      "name": "code language with a backtick and tildes before it",
+      "markdown": "~~~ ~~~`x`\nc\n~~~",
+      "canonical": null,
+      "pending": null,
+      "sha256": "489c6f7a7c8408aab144fd783e3dd1421802c0e31180b475f423e2ca21077007"
+    },
+    {
+      "name": "code language that is a comment across lines",
+      "markdown": "```%% a`\n`%%\nc\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "05230bf43acab4fd17b87d7adc45736437573717070c2940f597c06a18590ab1"
+    },
+    {
+      "name": "code language with a backtick, under a list item",
+      "markdown": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n~~~`b`\nc\n~~~\n\n<!-- memry:block-nesting-level=0 -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "59014af80e905c4c6698652779f4add32616bcbe4c5219024d2c7a96b0cb9a6a"
     },
     {
       "name": "code span of one space alone",

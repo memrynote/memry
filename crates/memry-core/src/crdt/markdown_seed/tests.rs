@@ -54,10 +54,10 @@ fn a_foreign_details_block_stays_its_text() {
 }
 
 #[test]
-fn raw_html_keeps_its_lines_as_literal_paragraphs() {
-    let plan = plan("<kbd>Ctrl</kbd> raw\n\nafter");
+fn a_tag_the_editor_handles_keeps_its_lines_as_literal_paragraphs() {
+    let plan = plan("<b>Ctrl</b> raw\n\nafter");
     assert_eq!(plan.fallbacks[0].reason, "HTML");
-    assert_eq!(plan.blocks[0], SeedBlock::literal("<kbd>Ctrl</kbd> raw"));
+    assert_eq!(plan.blocks[0], SeedBlock::literal("<b>Ctrl</b> raw"));
     assert_eq!(
         plan.blocks[1],
         SeedBlock::new(SeedKind::Paragraph, vec![text("after")])
@@ -65,31 +65,28 @@ fn raw_html_keeps_its_lines_as_literal_paragraphs() {
 }
 
 #[test]
-fn a_comment_desktop_would_leave_its_word_in_stays_literal_and_whole() {
-    for (markdown, lines) in [
-        ("$$\nx %% y %% z\n$$", vec!["$$", "x %% y %% z", "$$"]),
-        (
-            "![a %% b %% c](https://e.com/i.png)",
-            vec!["![a %% b %% c](https://e.com/i.png)"],
-        ),
-        (
-            "[a](https://e.com/%% b %%)",
-            vec!["[a](https://e.com/%% b %%)"],
-        ),
-    ] {
-        let plan = plan(markdown);
-        assert_eq!(plan.fallbacks.len(), 1, "{markdown}");
-        assert_eq!(plan.fallbacks[0].lines, lines, "{markdown}");
-        assert!(
-            !plan.blocks.iter().any(|block| {
-                block
-                    .content
-                    .iter()
-                    .any(|piece| matches!(piece, SeedInline::HtmlComment { .. }))
-            }),
-            "{markdown}"
-        );
-    }
+fn a_comment_in_a_prop_is_the_bytes_it_was() {
+    let math = plan("$$\nx %% y %% z\n$$");
+    assert!(math.fallbacks.is_empty());
+    assert_eq!(
+        math.blocks[0].kind,
+        SeedKind::Math {
+            latex: "x %% y %% z".to_owned()
+        }
+    );
+    let image = plan("![a %% b %% c](https://e.com/i.png)");
+    assert!(image.fallbacks.is_empty());
+    assert!(matches!(
+        &image.blocks[0].kind,
+        SeedKind::Image { name, .. } if name == "a %% b %% c"
+    ));
+    let link = plan("[a](https://e.com/%% b %%)");
+    assert!(link.fallbacks.is_empty());
+    assert!(matches!(
+        &link.blocks[0].content[0],
+        SeedInline::Text { marks, .. }
+            if marks.link.as_deref() == Some("https://e.com/%% b %%")
+    ));
 }
 
 #[test]
@@ -229,18 +226,19 @@ fn a_refused_token_stays_text_and_an_undecided_one_keeps_its_line() {
 }
 
 #[test]
-fn a_token_in_a_link_address_or_an_image_keeps_its_line() {
-    for markdown in [
-        format!("[a]({LINK})"),
-        format!("![{DATE}](https://a.com/i.png)"),
-    ] {
-        let plan = plan(&markdown);
-        assert_eq!(plan.fallbacks.len(), 1, "{markdown}");
-        assert_eq!(plan.fallbacks[0].lines, [markdown.as_str()]);
-        // The literal line's token is still promoted: a fallback never shows
-        // a payload.
-        assert_eq!(tokens_in(&plan.blocks[0].content).len(), 1, "{markdown}");
-    }
+fn a_token_in_a_link_address_or_an_image_is_its_bytes() {
+    let link = plan(&format!("[a]({LINK})"));
+    assert!(link.fallbacks.is_empty(), "{:?}", link.fallbacks);
+    assert!(matches!(
+        &link.blocks[0].content[0],
+        SeedInline::Text { marks, .. } if marks.link.as_deref() == Some(LINK)
+    ));
+    let image = plan(&format!("![{DATE}](https://a.com/i.png)"));
+    assert!(image.fallbacks.is_empty(), "{:?}", image.fallbacks);
+    assert!(matches!(
+        &image.blocks[0].kind,
+        SeedKind::Image { name, .. } if name == DATE
+    ));
 }
 
 #[test]

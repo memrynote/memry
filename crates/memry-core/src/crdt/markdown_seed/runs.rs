@@ -5,7 +5,7 @@ use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::code_spans::{restore_code_whitespace, space_token, tab_token};
 use super::collapse::collapse_blank_paragraph;
-use super::hard_breaks::unmask_hard_breaks;
+use super::hard_breaks::{restore_hard_break_spelling, unmask_hard_breaks};
 use super::inline::{Html, Tag};
 use super::links::allowed_href;
 use super::media::{Media, alt_width};
@@ -196,7 +196,9 @@ fn flatten(nodes: &[Html], marks: &SeedMarks, in_link: bool, out: &mut Vec<PmNod
             Html::Link { href, children } => {
                 let mut inner = marks.clone();
                 if !href.is_empty() && allowed_href(href) && !inner.code {
-                    inner.link = Some(href.clone());
+                    // A break is no part of an address: with no spelling to
+                    // give back, its token is deleted (`repairRuns`).
+                    inner.link = Some(restore_hard_break_spelling(href, &[]));
                 }
                 flatten(children, &inner, true, out);
             }

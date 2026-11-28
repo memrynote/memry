@@ -4,9 +4,11 @@ import { endsParagraphBefore, opensBlock } from './blocks/block-starts'
 import { escapePrefixedDetailsMarkup } from './blocks/markdown'
 import { spellsRunsWithUnderscores, trimEmphasisEdges } from './inline/emphasis-runs'
 import { maskCellCodeSpans } from './inline/cell-code-spans'
+import { maskCodeAcrossLines } from './inline/code-mask'
 import { maskEmptyLinks } from './inline/empty-links'
 import { maskLinkDestinations } from './inline/link-destinations'
 import { escapeMarkdownText } from './inline/markdown-escapes'
+import { escapeUnwritableLinks } from './inline/unwritable-links'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 import { widenTables } from './table-width'
 
@@ -35,6 +37,19 @@ const cases: Array<[string, () => unknown]> = [
   [
     'the escaper reads a delimiter row',
     () => escapeMarkdownText([{ type: 'text', text: delimiter(50_000), styles: {} }], 'paragraph')
+  ],
+  // Each tag a mark boundary cuts is found once, and each run is split once.
+  [
+    'many runs, each cutting a tag',
+    () =>
+      escapeMarkdownText(
+        Array.from({ length: 20_000 }, (_, index) => ({
+          type: 'text',
+          text: index % 2 === 0 ? '<x a="' : '">',
+          styles: index % 4 === 0 ? { bold: true } : {}
+        })),
+        'paragraph'
+      )
   ],
   ['table widening reads a delimiter row', () => widenTables(`| a |\n${delimiter(50_000)}\n| b |`)],
   [
@@ -66,6 +81,30 @@ const cases: Array<[string, () => unknown]> = [
   [
     'a line of empty-label link openers no paren closes',
     () => maskEmptyLinks('[](a '.repeat(50_000))
+  ],
+  [
+    'a line of links whose address leaves a parenthesis open',
+    () => escapeUnwritableLinks('[a](x(y\nz) '.repeat(20_000))
+  ],
+  [
+    'a line of links no parenthesis closes',
+    () => escapeUnwritableLinks('[a](x(y z '.repeat(30_000))
+  ],
+  [
+    'lines of backtick runs of every length, none closing another',
+    () => maskCodeAcrossLines(Array.from({ length: 1500 }, (_, i) => '`'.repeat(i + 1)).join('\n'))
+  ],
+  ['lines of single backticks in one paragraph', () => maskCodeAcrossLines('a`\n'.repeat(20_000))],
+  // Every tick of a line is a candidate opener, and a line holds no more than one pass of work.
+  ['one line of single backticks', () => maskCodeAcrossLines('a`'.repeat(100_000))],
+  // No run of 2 to 601 backticks has a closer of its length, so each retries against the shorter
+  // runs that follow it on the line: the first of each length, found once for the whole line.
+  [
+    'one line of backtick runs no run closes, then many single backticks',
+    () =>
+      maskCodeAcrossLines(
+        `${Array.from({ length: 600 }, (_, i) => `${'`'.repeat(601 - i)}x `).join('')}${'a ` '.repeat(25_000)}`
+      )
   ],
   [
     'a line of empty-label links in nested parens',

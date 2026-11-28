@@ -21,12 +21,14 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
 import {
   BOOKMARK_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
+  hasDetailsMarkupToken,
   parseFileBlockMarker,
   parseWhiteboardLine,
   parseYoutubeEmbedLine,
   readCalloutRun,
   readMathRun,
   resolveCalloutRun,
+  restoreDetailsMarkup,
   splitMarkdownByToggles,
   type ToggleBlockSegment
 } from './blocks/markdown'
@@ -60,6 +62,11 @@ export interface NoteMarkdownHost<B> {
    * source one of them recorded (`MarkdownSourceRecord.losslessBlocks`).
    */
   legacyBlocks?: boolean
+  /**
+   * Read inline spans as builds before raw HTML stayed text did, for a source
+   * one of them recorded (`MarkdownSourceRecord.literalHtml`).
+   */
+  legacyHtml?: boolean
 }
 
 type NoteBlock<B> = BlockWithChildren<B> & object
@@ -75,28 +82,31 @@ export async function parseNoteMarkdown<B extends NoteBlock<B>>(
 ): Promise<B[]> {
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
-  const { text, spans } = maskInlineColorSpans(separateBlockImages(markdown))
+  const legacy = { html: host.legacyHtml }
+  const { text, spans } = maskInlineColorSpans(separateBlockImages(markdown), legacy)
   const blocks = await parseMaskedMarkdown(host, text)
 
-  const colored = applyInlineColorTokens(blocks, spans)
-  const tokened = hasHtmlCommentToken(JSON.stringify(colored) ?? '')
-  return asBlocks<B>(tokened ? withCommentBytes(colored) : colored)
+  const colored = applyInlineColorTokens(blocks, spans, legacy)
+  const held = JSON.stringify(colored) ?? ''
+  const tokened = hasHtmlCommentToken(held) || hasDetailsMarkupToken(held)
+  return asBlocks<B>(tokened ? withMaskedBytes(colored) : colored)
 }
 
 /**
- * `value` with every HTML comment token left in it turned back into the
- * comment's bytes. The parse turns the tokens in text into `htmlComment`
- * nodes, but a comment inside an image's alt or address, a link's address or
- * a `$$` block lands in a prop. The token's word is drawn per process, so one
- * left there reached the shared doc as text no other process can decode, and
- * a `$$` block wrote it into the vault.
+ * `value` with every HTML comment token and hidden `<details>` markup left in
+ * it turned back into the bytes it stands for. The parse turns the tokens in
+ * text into `htmlComment` nodes, but a comment inside an image's alt or
+ * address, a link's address or a `$$` block lands in a prop, and so does the
+ * markup a `$$` block holds. The word is drawn per process, so a token left
+ * there reached the shared doc as text no other process can decode, and a `$$`
+ * block wrote it into the vault.
  */
-function withCommentBytes(value: unknown): unknown {
-  if (typeof value === 'string') return decodeHtmlCommentTokens(value)
-  if (Array.isArray(value)) return value.map(withCommentBytes)
+function withMaskedBytes(value: unknown): unknown {
+  if (typeof value === 'string') return restoreDetailsMarkup(decodeHtmlCommentTokens(value))
+  if (Array.isArray(value)) return value.map(withMaskedBytes)
   if (typeof value !== 'object' || value === null) return value
   return Object.fromEntries(
-    Object.entries(value).map(([key, inner]) => [key, withCommentBytes(inner)])
+    Object.entries(value).map(([key, inner]) => [key, withMaskedBytes(inner)])
   )
 }
 

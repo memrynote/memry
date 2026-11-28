@@ -7,6 +7,7 @@
  */
 
 import { marked } from 'marked'
+import { maskRawHtmlForExport } from '@memry/editor-schema/html-export'
 import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { maskMarkdownCode, replaceMarkdownComments } from '@memry/shared/markdown-code'
@@ -82,6 +83,11 @@ marked.setOptions({
  * `<!--` that is text, such as the `<!-- b` in `<!-- a --> <!-- b`, is
  * escaped, and so is one that never closes (BBF-98): left raw, the browser
  * would read a comment and hide the rest.
+ *
+ * Raw HTML the editor shows as text (`<script>`, `<kbd>`, `<iframe>`) is
+ * exported as that text, and the tags the editor handles lose any handler or
+ * script address (`maskRawHtmlForExport`). The export is a file the user opens
+ * and hands on, so a pasted `<script>` must not run in it.
  */
 export function markdownToHtml(markdown: string): string {
   const uncommented = replaceMarkdownComments(
@@ -89,10 +95,11 @@ export function markdownToHtml(markdown: string): string {
     (_source, _wholeLine, blockGoesOn) => (blockGoesOn ? '<!---->' : ''),
     '&lt;!--'
   )
-  const { body, notes } = renderFootnotes(replaceProseWikiLinks(uncommented))
+  const { markdown: masked, finish } = maskRawHtmlForExport(uncommented)
+  const { body, notes } = renderFootnotes(replaceProseWikiLinks(masked))
 
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- marked returns string | Promise<string> only when async mode is on, which this module never enables
-  return (marked.parse(body) as string) + notes
+  return finish((marked.parse(body) as string) + notes)
 }
 
 /**

@@ -1645,6 +1645,77 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'empty-label link in a table cell',
     markdown: '| a     |\n| ----- |\n| [](u) |'
   },
+  // A link with no label whose address crosses a line stays the text it was.
+  { name: 'empty-label link across lines', markdown: '[](u\nv)', canonical: '[\\](u\nv)' },
+  {
+    name: 'empty-label link across lines, with a title',
+    markdown: '[](u\nv "t")',
+    canonical: '[\\](u\nv "t")'
+  },
+  {
+    name: 'empty-label link across lines, in a line of text',
+    markdown: 'a [](u\nv) b',
+    canonical: 'a [\\](u\nv) b'
+  },
+  {
+    name: 'empty-label link across lines, in a quote',
+    markdown: '> [](u\n> v)',
+    canonical: '> [\\](u\n> v)'
+  },
+  // An address no markdown writes back as itself keeps the link as text, so the next read finds the same text.
+  {
+    name: 'empty-label link in a link address',
+    markdown: '[b]([](u\nv))',
+    canonical: '[b\\]([\\](u\nv))'
+  },
+  {
+    name: 'empty-label link in an image address',
+    markdown: '![a]([](u\nv))',
+    canonical: '\\![a\\]([\\](u\nv))'
+  },
+  {
+    name: 'link address cut inside a parenthesis',
+    markdown: '[b](x(y\nz) w)',
+    canonical: '[b\\](x(y\nz) w)'
+  },
+  {
+    name: 'image address cut inside a parenthesis',
+    markdown: '![i](x(y z) w)',
+    canonical: '\\![i\\](x(y z) w)'
+  },
+  {
+    name: 'link address with a blank and balanced parentheses',
+    markdown: '[b](x(y z) w)'
+  },
+  {
+    name: 'code span across lines holding an unwritable link',
+    markdown: '`[b](x(y\nz) w)`',
+    canonical: '`[b](x(y z) w)`'
+  },
+  // A language with a backtick cannot follow a fence of backticks, so the block is written with tildes.
+  { name: 'code language with a backtick', markdown: '~~~`` x\nc\n~~~' },
+  {
+    name: 'code language with a backtick, in a backtick fence',
+    markdown: '```  `` x\nc\n```',
+    canonical: '~~~`` x\nc\n~~~'
+  },
+  {
+    name: 'code language with backticks, a code line of tildes',
+    markdown: '~~~~``` x\n~~~\n~~~~'
+  },
+  {
+    name: 'code language with a backtick and tildes before it',
+    markdown: '~~~ ~~~`x`\nc\n~~~'
+  },
+  {
+    name: 'code language that is a comment across lines',
+    markdown: '```%% a`\n`%%\nc\n```'
+  },
+  {
+    name: 'code language with a backtick, under a list item',
+    markdown:
+      '- a\n\n<!-- memry:block-nesting-level=1 -->\n\n~~~`b`\nc\n~~~\n\n<!-- memry:block-nesting-level=0 -->'
+  },
   // A block holding only a code span of spaces lost the span, and with it the block.
   { name: 'code span of one space alone', markdown: '` `' },
   { name: 'code span of spaces alone before a paragraph', markdown: '`  `\n\nb' },

@@ -28,7 +28,9 @@
  * to them keep valid CommonMark flanking (`:*em*:` parses, `x*em*x` does not).
  */
 
+import { isBackslashEscaped } from './hard-breaks.ts'
 import { isObject } from './is-record.ts'
+import type { LegacyReading } from './markdown-code.ts'
 import { MASK_WORD } from './mask-word.ts'
 
 export interface InlineColorStyles {
@@ -310,8 +312,9 @@ export interface MaskedColorSpan {
   source: string
 }
 
-const SPAN_OPEN_REGEX = /<span style="([^"]*)">/g
-const SPAN_CLOSE_REGEX = /<\/span>/g
+// A `<span style="…">` first, which may become a token, then any other `<span>`
+// open (it pairs with a close and stays text), then a close.
+const SPAN_TAG_REGEX = /<span style="([^"]*)">|<span(?=[\s/>])[^<>]*>|<\/span>/g
 /**
  * The inline code spans in `line` as `[start, end)` offsets: a backtick run,
  * non-backtick content, and a run at least as long that closes it, else the
@@ -357,23 +360,37 @@ function parseColorDecls(style: string): InlineColorStyles | null {
   return colors.textColor || colors.backgroundColor || colors.underline ? colors : null
 }
 
-export function maskInlineColorSpans(markdown: string): {
+/**
+ * `legacy.html` reads every `</span>` as closing a coloured span, as builds
+ * before raw HTML stayed text did, whatever span it closes.
+ */
+export function maskInlineColorSpans(
+  markdown: string,
+  legacy: LegacyReading = {}
+): {
   text: string
   spans: MaskedColorSpan[]
 } {
   if (!markdown.includes('</span>')) return { text: markdown, spans: [] }
 
   const spans: MaskedColorSpan[] = []
+  // The `<span>` tags still open across the note, innermost last: whether each
+  // became a token. A `</span>` closes the innermost one, and is a token only
+  // when that one is: a plain span's close, and one that closes nothing, are
+  // text, as the HTML parse reads them. A backslash before the `<` is the
+  // escape the writer spells text that holds a span with: no tag at all.
+  const open: boolean[] = []
 
   const maskSegment = (segment: string): string =>
-    segment
-      .replace(SPAN_OPEN_REGEX, (source, style: string) => {
-        const styles = parseColorDecls(style)
-        if (!styles) return source
-        spans.push({ styles, source })
-        return openToken(spans.length - 1)
-      })
-      .replace(SPAN_CLOSE_REGEX, CLOSE_TOKEN)
+    segment.replace(SPAN_TAG_REGEX, (tag, style: string | undefined, at: number) => {
+      if (!legacy.html && isBackslashEscaped(segment, at)) return tag
+      if (tag === '</span>') return open.pop() || legacy.html ? CLOSE_TOKEN : tag
+      const styles = style === undefined ? null : parseColorDecls(style)
+      if (!tag.endsWith('/>')) open.push(styles !== null)
+      if (!styles) return tag
+      spans.push({ styles, source: tag })
+      return openToken(spans.length - 1)
+    })
 
   const maskLine = (line: string): string => {
     // Skip inline code segments so literal span text inside backticks survives.
@@ -403,8 +420,7 @@ export function maskInlineColorSpans(markdown: string): {
   })
 
   // Close tags only matter paired with a masked open; a document with no
-  // color-span opens keeps its original text (BlockNote drops bare spans the
-  // same way it always has).
+  // color-span opens keeps its original text.
   if (spans.length === 0) return { text: markdown, spans: [] }
 
   return { text: lines.join('\n'), spans }
@@ -440,7 +456,11 @@ function restoreTokensInText(text: string, spans: MaskedColorSpan[]): string {
   })
 }
 
-export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSpan[]): BlockNode[] {
+export function applyInlineColorTokens(
+  blocks: BlockNode[],
+  spans: MaskedColorSpan[],
+  legacy: LegacyReading = {}
+): BlockNode[] {
   const applyInline = (items: InlineNode[], active: InlineColorStyles[]): InlineNode[] => {
     const out: InlineNode[] = []
     for (const item of items) {
@@ -471,6 +491,10 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
           }
         } else if (active.length > 0) {
           active.pop()
+        } else if (!legacy.html) {
+          // Its open is in an earlier block, where the colour ended with the
+          // block: the tag is text.
+          out.push({ ...item, text: '</span>', styles: mergeActive(item.styles, active) })
         }
       }
       const tail = item.text.slice(last)

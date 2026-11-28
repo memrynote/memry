@@ -49,6 +49,10 @@ import {
   createServerBlockSpecs,
   createServerInlineSpecs
 } from '@memry/editor-schema/server'
+import {
+  hideBacktickLanguages,
+  spellBacktickLanguages
+} from '../../../shared/src/code-fence-language.ts'
 import { normalizeSerializedMarkdown } from '../../../shared/src/empty-lines.ts'
 import {
   extractInlineColorRuns,
@@ -85,6 +89,13 @@ function serverEditor(): ServerBlockNoteEditor {
   return editor
 }
 
+const withoutSummaryComment = (text: string): string =>
+  text.replace(/^(<summary>.*?)<!--.*?-->/m, '$1')
+
+/** A handled tag after a backslash is text (`raw_html.rs`): the seed builds it, so it is no layer. */
+const withoutEscapedTags = (text: string): string =>
+  text.replace(/(?<!\\)((?:\\\\)*)\\<(?=[a-z/])/gi, '$1')
+
 /**
  * The markdown shapes that reach a converter layer this generator does not
  * reproduce. A case holding one would pin a document desktop does not build.
@@ -93,11 +104,12 @@ function refuseUnreproduced(name: string, markdown: string): void {
   const layers: Array<[string, RegExp]> = [
     ['CriticMarkup', /\{(\+\+|--|~~|==|>>)/],
     ['link reference definition', /^ {0,3}\[[^\]]+\]:/m],
-    // Toggle markup lines and file markers are reproduced; any other tag,
-    // comment or sidecar marker is not.
+    // Toggle markup lines, file markers and raw HTML the editor has no node for
+    // are reproduced; a tag the editor handles (a mark, a link, an image, a
+    // break, a colour span, a checkbox), a comment and a sidecar marker are not.
     [
-      'HTML, colour span or marker line',
-      /<(?!details[\s>]|\/details>|summary>|\/summary>|!-- file:\{)[A-Za-z/!?]/
+      'handled HTML, colour span or marker line',
+      /<\/?(?:b|strong|i|em|u|s|del|strike|code|a|img|br|span|input)(?![\w-])|<!--(?! file:\{)/i
     ],
     ['wiki embed', /!\[\[/],
     // `blocks/columns.ts` `readColumnRegion`: an MCM start line, or a
@@ -107,8 +119,15 @@ function refuseUnreproduced(name: string, markdown: string): void {
     ['plain checkbox', /\{check\}/],
     ['line terminator', /[\u2028\u2029]/]
   ]
+  // A comment in a `<summary>` line is reproduced: its `<` are hidden, so the
+  // seed builds the comment node there (`markdown_seed/toggles.rs`).
+  let reproduced = withoutEscapedTags(markdown)
+  for (let next = withoutSummaryComment(reproduced); next !== reproduced;) {
+    reproduced = next
+    next = withoutSummaryComment(reproduced)
+  }
   for (const [layer, pattern] of layers) {
-    if (pattern.test(markdown)) {
+    if (pattern.test(reproduced)) {
       throw new Error(`markdown-seed case "${name}" reaches the ${layer} layer`)
     }
   }
@@ -120,8 +139,9 @@ function parse(markdown: string): Promise<SeedBlock[]> {
 
 /** `blocknote-converter.ts` `serializeBlocks`, the callout and quote claims' proof. */
 async function serializeBlocks(blocks: SeedBlock[]): Promise<string> {
+  const { blocks: spelled, languages } = hideBacktickLanguages(blocks)
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
-  const marked = withPlainCheckboxMarkers(blocks as never[])
+  const marked = withPlainCheckboxMarkers(spelled as never[])
   const { blocks: wrapped, replacements } = extractInlineColorRuns(marked)
   const markdown = normalizeSerializedMarkdown(
     await writeHtmlCommentTokens(wrapped, (b) =>
@@ -129,7 +149,7 @@ async function serializeBlocks(blocks: SeedBlock[]): Promise<string> {
       serverEditor().blocksToMarkdownLossy(b as never)
     )
   )
-  return restoreInlineColorTokens(markdown, replacements)
+  return restoreInlineColorTokens(spellBacktickLanguages(markdown, languages), replacements)
 }
 
 /**

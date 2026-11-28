@@ -166,12 +166,17 @@ const RECORD_KEY = 'record'
  * the document's tables kept a code span's pipes and the cells past their
  * header's width, and its quotes and callouts kept the tables, headings and
  * other blocks inside them; a record without it was written by a build that
- * dropped them. Older builds read only the fields they know.
+ * dropped them. `literalHtml` is set when the document kept the raw HTML the
+ * editor has no node for as text, and read a code span and a `</span>` as the
+ * parser does; a record without it was written by a build that dropped those
+ * tags, so its source is read that way. Older builds read only the fields they
+ * know.
  */
 export interface MarkdownSourceRecord {
   source: string
   htmlComments: boolean
   losslessBlocks: boolean
+  literalHtml: boolean
 }
 
 interface YMapLike {
@@ -193,8 +198,15 @@ export function writeMarkdownSourceToYDoc(doc: YDocLike, source: string | null):
     return
   }
   const current = readRecord(map.get(RECORD_KEY))
-  if (current?.source === source && current.htmlComments && current.losslessBlocks) return
-  map.set(RECORD_KEY, { source, htmlComments: true, losslessBlocks: true })
+  if (
+    current?.source === source &&
+    current.htmlComments &&
+    current.losslessBlocks &&
+    current.literalHtml
+  ) {
+    return
+  }
+  map.set(RECORD_KEY, { source, htmlComments: true, losslessBlocks: true, literalHtml: true })
 }
 
 export function readMarkdownSourceFromYDoc(doc: YDocLike): string | null {
@@ -207,9 +219,14 @@ export function readMarkdownSourceRecordFromYDoc(doc: YDocLike): MarkdownSourceR
 
 function readRecord(value: unknown): MarkdownSourceRecord | null {
   if (!isObject(value)) return null
-  const { source, htmlComments, losslessBlocks } = value
+  const { source, htmlComments, losslessBlocks, literalHtml } = value
   return typeof source === 'string'
-    ? { source, htmlComments: htmlComments === true, losslessBlocks: losslessBlocks === true }
+    ? {
+        source,
+        htmlComments: htmlComments === true,
+        losslessBlocks: losslessBlocks === true,
+        literalHtml: literalHtml === true
+      }
     : null
 }
 

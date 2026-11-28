@@ -72,6 +72,34 @@ describe('maskHtmlComments (AF-015)', () => {
     expect(masked(markdown)).toBe(markdown)
   })
 
+  it('masks a comment between backticks a backslash escapes', () => {
+    for (const markdown of [
+      String.raw`\`<!-- c -->\``,
+      String.raw`a \`%%x%%\` b`,
+      String.raw`\\\`<!-- c -->\\\``
+    ]) {
+      const out = masked(markdown)
+      expect(out, markdown).not.toContain('<!--')
+      expect(out, markdown).not.toContain('%%')
+      expect(roundTrip(markdown)).toBe(markdown)
+    }
+  })
+
+  it('leaves a comment in a span after an escaped backslash or backtick alone', () => {
+    for (const markdown of [String.raw`\\` + '`<!-- c -->`', String.raw`\`` + '`<!-- c -->`']) {
+      expect(masked(markdown), markdown).toBe(markdown)
+    }
+  })
+
+  it('reads a span the way the parser does when a run has no closer of its length', () => {
+    // `a``x b`c` is `a`, a span `x b`, then `c`: the comment is in the span.
+    for (const markdown of ['a``%%x%%b`c', 'a``<!-- c -->b`c`', '``%%x%%` y']) {
+      expect(masked(markdown), markdown).toBe(markdown)
+    }
+    expect(masked('a``%%x%%b``c')).toBe('a``%%x%%b``c')
+    expect(masked('a``%%x%%b')).not.toContain('%%')
+  })
+
   it('leaves an unterminated comment alone', () => {
     expect(masked('a <!-- never closed\nb')).toBe('a <!-- never closed\nb')
   })
@@ -122,7 +150,7 @@ describe('maskHtmlComments in a table row', () => {
   })
 
   it('leaves it as text crossing that pipe for a source an older build recorded', () => {
-    expect(maskHtmlComments(row, { losslessTables: false })).toBe(row)
+    expect(maskHtmlComments(row, { legacy: { tables: true } })).toBe(row)
   })
 })
 

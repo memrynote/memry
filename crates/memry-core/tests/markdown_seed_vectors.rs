@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use memry_core::crdt::blocks::extract_blocks;
 use memry_core::crdt::canonical::canonical_fragment;
-use memry_core::crdt::markdown_seed::{plan, seed_document};
+use memry_core::crdt::markdown_seed::{SeedInline, plan, seed_document};
 use memry_core::crdt::registry::{Document, UpdateSink};
 use memry_core::crdt::{DocumentRegistry, extract_text};
 use support::{str_field, vector_file};
@@ -52,17 +52,13 @@ fn without_block_ids(canonical: &str) -> String {
 /// which the core does not build). A
 /// fallback is lossless (every line stays text), so each must fall back, and
 /// the run it keeps literal is checked below.
-const KEPT_LITERAL: [&str; 15] = [
+const KEPT_LITERAL: [&str; 11] = [
     "comment: %% in a callout body and a quote",
     "callout: a body holding a table",
     "quote: a run opening on a table",
     "quote: a line, a blank and a table",
     "lazy quote line: an image on the line after a quote",
     "quote: a quoted fence then a lazy line",
-    "details markup: a quote holding a toggle's lines",
-    "details markup: a one-paragraph quote",
-    "details markup: a callout body",
-    "details markup: a closing tag in a heading",
     "list item child: a callout",
     "list item child: a math block",
     "list item child: a structured quote",
@@ -112,25 +108,38 @@ fn every_case_seeds_the_document_desktop_builds() {
 }
 
 /// Desktop keeps `<details>` markup behind quote markers or a heading's `#`s
-/// as text (`escapePrefixedDetailsMarkup`). The core builds no HTML text, so
-/// each such line keeps its source as literal text.
+/// as text (`escapePrefixedDetailsMarkup`), and raw HTML the editor has no
+/// node for is text anywhere. The core builds the quote, callout or heading
+/// with the tag as its text; a nested quote or a tab after the marker is a
+/// claim it does not prove, so those keep their lines as literal text.
 #[test]
-fn details_markup_behind_quote_markers_or_hashes_stays_literal() {
-    for markdown in [
-        "> <details>",
-        ">> <details open>",
-        ">\t<summary>O</summary>",
-        "# <summary>O</summary>",
-        "### </details>",
-        "> [!tip]\n> <details>",
+fn details_markup_behind_quote_markers_or_hashes_is_text() {
+    use memry_core::crdt::markdown_seed::SeedKind;
+    for (markdown, text) in [
+        ("> <details>", "<details>"),
+        ("# <summary>O</summary>", "<summary>O</summary>"),
+        ("### </details>", "</details>"),
+        ("> [!tip]\n> <details>", "<details>"),
     ] {
+        let planned = plan(markdown);
+        assert!(planned.fallbacks.is_empty(), "{markdown}");
+        let [block] = planned.blocks.as_slice() else {
+            panic!("{markdown}: one block");
+        };
+        assert_ne!(block.kind, SeedKind::Paragraph, "{markdown}");
+        assert!(
+            matches!(block.content.as_slice(), [SeedInline::Text { text: built, .. }] if built == text),
+            "{markdown}"
+        );
+    }
+    for markdown in [">> <details open>", ">\t<summary>O</summary>"] {
         let planned = plan(markdown);
         assert!(!planned.fallbacks.is_empty(), "{markdown}");
         assert!(
             planned
                 .blocks
                 .iter()
-                .all(|block| block.kind == memry_core::crdt::markdown_seed::SeedKind::Paragraph),
+                .all(|block| block.kind == SeedKind::Paragraph),
             "{markdown}"
         );
     }
@@ -233,11 +242,11 @@ fn a_body_with_content_is_never_seeded_again() {
 #[test]
 fn unsupported_constructs_keep_their_text_as_literal_paragraphs() {
     let seeded = plan(
-        "## Log\n<kbd>Ctrl</kbd> raw\n\n- [ ] Call {task:abc}\n\n- item ![photo](a.png)\n\nsee ((mention:n1|Note))",
+        "## Log\n<b>Ctrl</b> raw\n\n- [ ] Call {task:abc}\n\n- item ![photo](a.png)\n\nsee ((mention:n1|Note))",
     );
     let reasons: Vec<&str> = seeded.fallbacks.iter().map(|f| f.reason).collect();
     assert_eq!(reasons, ["HTML", "task block", "image in a list or quote"]);
-    assert_eq!(seeded.fallbacks[0].lines, ["<kbd>Ctrl</kbd> raw"]);
+    assert_eq!(seeded.fallbacks[0].lines, ["<b>Ctrl</b> raw"]);
 
     let document = fresh("fallback");
     seed_document(&document, "<div>html</div>\n\nafter").expect("seed");

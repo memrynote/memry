@@ -1,3 +1,4 @@
+import type { LegacyReading } from '@memry/shared/markdown-code'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { MASK_WORD } from '@memry/shared/mask-word'
 
@@ -35,6 +36,18 @@ import { MASK_WORD } from '@memry/shared/mask-word'
  * `pipes: false` masks whitespace only, as builds before lossless tables did,
  * for reading a source the way an older build read it.
  */
+
+/**
+ * A backtick fence opener whose info string holds a backtick. CommonMark opens
+ * no fence there, so the fence tracker does not skip the line, but BlockNote's
+ * block tokenizer does read it as one, at any depth a list item strips the
+ * indent to, and trims its language: ```` ```  ``` x ````
+ * is the language ```` ``` x ````. Masked, the span of blanks it holds would
+ * keep them in the language, a language no markdown can spell back (a tilde
+ * fence is trimmed too) and one the core's seed, which reads the language as
+ * BlockNote does, never builds.
+ */
+const TICKED_FENCE_OPENER = /^ *`{3,}[^`\n]*`/
 
 const UNSAFE_LINE = /[[\]]|<(?!br\s*\/?>)/i
 const CODE_TOKEN = new RegExp(`MEMRYCSP${MASK_WORD}(\\d+)X`, 'g')
@@ -103,11 +116,12 @@ function firstAfter(indexes: number[] | undefined, after: number): number | unde
 
 /**
  * A backslash skips the character after it. A span opens at a run of
- * backticks and closes on the first later run of exactly its length, which a
+ * backticks, or at a later backtick of it, and closes on the first later run
+ * of exactly its length, which a
  * lookup by length finds in log time, so a line of runs no run closes costs
  * no scan per opener.
  */
-function maskLine(line: string, chars: string[], masked: MaskedChars): string {
+function maskLine(line: string, chars: string[], masked: MaskedChars, retries: boolean): string {
   const runs = backtickRuns(line)
   const byLength = new Map<number, number[]>()
   for (const [index, [, length]] of runs.entries()) {
@@ -131,7 +145,16 @@ function maskLine(line: string, chars: string[], masked: MaskedChars): string {
     }
     while (runs[at][0] + runs[at][1] <= i) at++
     const run = runs[at][0] + runs[at][1] - i
-    const closer = firstAfter(byLength.get(run), at)
+    // The parser retries from each later backtick of a run with no closer of
+    // its length against the shorter run left: `` ``x ` `` is a backtick and
+    // the span `` `x ` ``.
+    let width = run
+    let closer = firstAfter(byLength.get(width), at)
+    const shortest = retries ? 1 : run
+    while (closer === undefined && width > shortest) {
+      width--
+      closer = firstAfter(byLength.get(width), at)
+    }
     if (closer === undefined) {
       out += line.slice(i, i + run)
       i += run
@@ -141,15 +164,20 @@ function maskLine(line: string, chars: string[], masked: MaskedChars): string {
     out +=
       line.slice(i, i + run) +
       maskCodeContent(line.slice(i + run, close), chars, masked) +
-      line.slice(close, close + run)
-    i = close + run
+      line.slice(close, close + width)
+    i = close + width
   }
   return out
 }
 
+/**
+ * `legacy.html` reads a span as builds before raw HTML stayed text did: no
+ * retry from a later backtick of a run, and a fence opener's line holds spans
+ * like any other.
+ */
 export function maskCellCodeSpans(
   markdown: string,
-  { pipes }: { pipes: boolean }
+  { pipes, legacy = {} }: { pipes: boolean; legacy?: LegacyReading }
 ): MaskedCellCodeSpans {
   if (!markdown.includes('`')) return { markdown, chars: [] }
   const chars: string[] = []
@@ -157,12 +185,12 @@ export function maskCellCodeSpans(
   const masked = markdown
     .split('\n')
     .map((line) => {
-      if (fence.consume(line)) return line
+      if (fence.consume(line) || (!legacy.html && TICKED_FENCE_OPENER.test(line))) return line
       if (!line.includes('|')) {
-        return maskLine(line, chars, { spaces: true, pipes: false, blankOnly: true })
+        return maskLine(line, chars, { spaces: true, pipes: false, blankOnly: true }, !legacy.html)
       }
       const spaces = !UNSAFE_LINE.test(line)
-      return spaces || pipes ? maskLine(line, chars, { spaces, pipes }) : line
+      return spaces || pipes ? maskLine(line, chars, { spaces, pipes }, !legacy.html) : line
     })
     .join('\n')
   return chars.length === 0 ? { markdown, chars: [] } : { markdown: masked, chars }

@@ -91,4 +91,24 @@ describe('markdown the renderer reads as main does', () => {
     expect(first.content).toEqual([expect.objectContaining({ type: 'text', text: '[[w|al]]' })])
     expect(second.content).toEqual([expect.objectContaining({ type: 'inlineImage' })])
   })
+
+  it.each([
+    ['an unclosed coloured span', '<span style="color:red">[[w]]', { textColor: 'red' }],
+    [
+      'an unclosed coloured span after text',
+      'x <span style="color:red">[[w]]',
+      { textColor: 'red' }
+    ],
+    ['a bold span', '<span style="font-weight:bold">[[w]]</span>', { bold: true }]
+  ])('keeps the styles of %s that holds a wiki link as text', async (_, markdown, styles) => {
+    // The wiki link's paste rule promotes any element whose text is `[[X]]`,
+    // which would drop the span's styles; main reads the run as styled text.
+    const [block] = await parse(markdown)
+    const link = (block.content as Array<{ type: string; text?: string; styles?: object }>).find(
+      (run) => run.text === '[[w]]'
+    )
+    expect(link, JSON.stringify(block.content)).toBeDefined()
+    expect(link?.styles).toMatchObject(styles)
+    expect(JSON.stringify(block.content)).not.toContain('wikiLink')
+  })
 })

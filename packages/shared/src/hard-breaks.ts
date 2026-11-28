@@ -1,4 +1,5 @@
 import { splitByCodeFences } from './empty-lines.ts'
+import type { LegacyReading } from './markdown-code.ts'
 import { MASK_WORD } from './mask-word.ts'
 
 /**
@@ -108,19 +109,29 @@ export interface MaskedHardBreaks {
  * travel with the token: BlockNote turns that `<pre>` into a code block, and
  * `restoreHardBreakSpelling` is what puts the author's bytes back there.
  */
-export function maskHardBreaks(markdown: string): MaskedHardBreaks {
+export function maskHardBreaks(markdown: string, legacy: LegacyReading = {}): MaskedHardBreaks {
   if (!markdown) return { markdown, breaks: [] }
 
   const regions = splitByCodeFences(markdown)
   const breaks: string[] = []
   let out = ''
   for (const region of regions) {
-    out += region.isCode ? region.text : maskProseHardBreaks(region.text, breaks)
+    out += region.isCode ? region.text : maskProseHardBreaks(region.text, breaks, legacy)
   }
   return { markdown: out, breaks }
 }
 
-function maskProseHardBreaks(text: string, breaks: string[]): string {
+/**
+ * Whether an odd run of backslashes stands before `at`: the character there is
+ * escaped, so `\<br>` is the text `<br>` and `\\<br>` a backslash and a break.
+ */
+export function isBackslashEscaped(text: string, at: number): boolean {
+  let run = 0
+  while (run < at && text[at - 1 - run] === '\\') run++
+  return run % 2 === 1
+}
+
+function maskProseHardBreaks(text: string, breaks: string[], legacy: LegacyReading): string {
   // Cheap reject on the characters a hard break or a link is spelled with. A hard
   // break is a line's own ending, so it is only meaningful once the text is split
   // into lines.
@@ -177,7 +188,11 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
       if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
         // The tag stays for the parser to break on. Its spelling is empty: in a
         // `<pre>` block the tag's own newline is all it ever meant.
-        current = line.replace(HTML_BREAK_MID_LINE, (tag) => `${tokenFor('')}${tag}`)
+        current = line.replace(HTML_BREAK_MID_LINE, (tag, offset: number) =>
+          // `\<br>` is the text `<br>` (`raw-html.ts`), no break to mark; builds
+          // before raw HTML stayed text read a break there.
+          !legacy.html && isBackslashEscaped(line, offset) ? tag : `${tokenFor('')}${tag}`
+        )
       }
       if (at === lines.length) return [...kept, current].join('\n')
       if (next.trim() === '') break
@@ -385,6 +400,17 @@ export function unmaskHardBreaks(text: string): string {
 export function restoreHardBreakSpelling(text: string, breaks: string[]): string {
   if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
   return text.replace(HARD_BREAK_TOKEN, (_whole, index: string) => breaks[Number(index)] ?? '')
+}
+
+/**
+ * `text` with every token deleted, for a string no break is part of: a link's
+ * address. The parser reads an address up to its first whitespace, so
+ * `[a](u  \nv)` is the address `u`, and the token that stood for those two
+ * spaces is not part of it.
+ */
+export function dropHardBreakTokens(text: string): string {
+  if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
+  return text.replace(HARD_BREAK_TOKEN, '')
 }
 
 /** True when the text still carries a token, so callers can skip the walk. */

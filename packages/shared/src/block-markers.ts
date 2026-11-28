@@ -6,9 +6,9 @@ import {
   parseTableCellColorsMarker,
   serializeBlockColorsMarker,
   serializeTableCellColorsMarker
-} from './block-colors'
+} from './block-colors.ts'
 import { isObject, isRecord } from './is-record.ts'
-import { applyLinkCard, parseLinkCardMarker, serializeLinkCardMarker } from './link-card-marker'
+import { applyLinkCard, parseLinkCardMarker, serializeLinkCardMarker } from './link-card-marker.ts'
 
 /**
  * The block a sidecar marker describes, narrowed to the two fields a marker can

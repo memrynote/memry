@@ -7,7 +7,7 @@
 //! the first line with a `-->` and the first line that opens a fence, so
 //! both are found once for the whole text.
 
-use super::backtick_runs::BacktickRuns;
+use super::backtick_runs::{BacktickRuns, next_tick as next_unescaped_tick, opens_fence_line};
 use super::comments::{Close, Form, Next, without_cr};
 use super::markers::FenceTracker;
 
@@ -104,18 +104,16 @@ fn index_outside_code_spans(line: &str, marker: &str) -> Option<usize> {
     let mut i = 0;
     loop {
         let at = next_marker.at(i, || line[i..].find(marker).map(|found| found + i));
-        let tick = next_tick.at(i, || line[i..].find('`').map(|found| found + i));
+        let tick = next_tick.at(i, || next_unescaped_tick(line, i));
         let (Some(found), Some(tick)) = (at, tick) else {
             return at;
         };
         if found < tick {
             return at;
         }
-        let run_end = tick + line[tick..].bytes().take_while(|b| *b == b'`').count();
         let ticks: &BacktickRuns = ticks.get_or_insert_with(|| BacktickRuns::of_bytes(line));
-        i = match ticks.closing(run_end, run_end - tick) {
-            Some(close) => close + (run_end - tick),
-            None => run_end,
-        };
+        i = ticks
+            .span_at(tick, !opens_fence_line(line, tick))
+            .map_or_else(|| ticks.end_of(tick), |(_, end)| end);
     }
 }

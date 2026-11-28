@@ -5,7 +5,7 @@ import {
   TABLE_LAYOUT_LINE_REGEX
 } from './block-markers.ts'
 import { parseLinkCardMarker } from './link-card-marker.ts'
-import { replaceMarkdownComments } from './markdown-code.ts'
+import { type LegacyReading, replaceMarkdownComments } from './markdown-code.ts'
 import { MASK_WORD } from './mask-word.ts'
 
 /**
@@ -110,8 +110,8 @@ function isMemryMarker(comment: string, wholeLine: boolean): boolean {
  * back as the code block's own text (`parseMarkdownToBlocksRepaired`).
  * A `<!--` that never closes and opens an HTML block hides the rest of the
  * note in CommonMark, so only the opener becomes a node and the text after it
- * stays visible (BBF-101). `losslessTables: false` reads a table row the way
- * builds before lossless tables did (`replaceMarkdownComments`).
+ * stays visible (BBF-101). `legacy` reads the note as an earlier build did
+ * (`LegacyReading`).
  */
 /**
  * A `link-card` line is a marker only when it names a valid setting and sits
@@ -167,7 +167,7 @@ function linkParagraphFollows(
 
 export function maskHtmlComments(
   markdown: string,
-  { losslessTables = true }: { losslessTables?: boolean } = {}
+  { legacy = {} }: { legacy?: LegacyReading } = {}
 ): string {
   const follows = new Map<number, boolean>()
   const kept = markdown.replace(LINK_CARD_LINE, (line, offset: number) =>
@@ -181,6 +181,6 @@ export function maskHtmlComments(
       isMemryMarker(source, wholeLine) ? source : encodeHtmlCommentToken(source),
     '<!--',
     encodeHtmlCommentToken('<!--'),
-    !losslessTables
+    legacy
   ).replaceAll(LINK_CARD_KEEP, '<!--')
 }

@@ -57,6 +57,24 @@ impl BacktickRuns {
         start + length
     }
 
+    /// The code span that opens in the run holding the backtick at `tick`:
+    /// where it starts and ends, or none when the run is text. A run closes on
+    /// the next run of exactly its length; with none, the parser retries from
+    /// each later backtick of the run against the shorter run left, so
+    /// ``a``x b`c`` is `a`, a span `x b`, then `c`. The longest wins. With
+    /// `retry` unset the run pairs only with a run of its own length, which is
+    /// how the parser reads the run that opens a fence line, whatever its info
+    /// string holds ([`opens_fence_line`]).
+    pub(super) fn span_at(&self, tick: usize, retry: bool) -> Option<(usize, usize)> {
+        let run_end = self.end_of(tick);
+        let length = run_end - tick;
+        let shortest = if retry { 1 } else { length };
+        (shortest..=length).rev().find_map(|width| {
+            let close = self.closing(run_end, width)?;
+            Some((run_end - width, close + width))
+        })
+    }
+
     /// The start of the first run of exactly `length` backticks that begins
     /// at or after `from`, the end of the run that opens the span.
     pub(super) fn closing(&self, from: usize, length: usize) -> Option<usize> {
@@ -65,6 +83,38 @@ impl BacktickRuns {
             .get(starts.partition_point(|start| *start < from))
             .copied()
     }
+}
+
+/// Whether the backtick at `tick` starts a run of three or more that opens the
+/// line, a fence's, up to three spaces in.
+pub(super) fn opens_fence_line(line: &str, tick: usize) -> bool {
+    tick <= 3
+        && line[..tick].bytes().all(|byte| byte == b' ')
+        && line[tick..]
+            .bytes()
+            .take_while(|byte| *byte == b'`')
+            .count()
+            >= 3
+}
+
+/// Whether an odd run of backslashes comes right before byte `at`.
+pub(super) fn is_escaped(line: &str, at: usize) -> bool {
+    line.as_bytes()[..at]
+        .iter()
+        .rev()
+        .take_while(|b| **b == b'\\')
+        .count()
+        % 2
+        == 1
+}
+
+/// The first backtick at or after `from` that no backslash escapes.
+pub(super) fn next_tick(line: &str, from: usize) -> Option<usize> {
+    let mut at = from + line[from..].find('`')?;
+    while is_escaped(line, at) {
+        at += 1 + line[at + 1..].find('`')?;
+    }
+    Some(at)
 }
 
 #[cfg(test)]
@@ -84,5 +134,24 @@ mod tests {
         assert_eq!(runs.end_of(5), 6);
         assert_eq!(runs.end_of(10), 13);
         assert_eq!(BacktickRuns::of_chars(&['é', '`', '`']).end_of(2), 3);
+    }
+
+    #[test]
+    fn a_run_with_no_closer_retries_from_its_later_backticks() {
+        let line = "a``x b`c";
+        assert_eq!(BacktickRuns::of_bytes(line).span_at(1, true), Some((2, 7)));
+        assert_eq!(BacktickRuns::of_bytes("a``x b").span_at(1, true), None);
+        assert_eq!(
+            BacktickRuns::of_bytes("``a`` `").span_at(0, true),
+            Some((0, 5))
+        );
+    }
+
+    #[test]
+    fn an_escaped_backtick_is_no_opener() {
+        assert_eq!(next_tick("\\`a`", 0), Some(3));
+        assert_eq!(next_tick("\\\\`a", 0), Some(2));
+        assert_eq!(next_tick("\\``a", 0), Some(2));
+        assert_eq!(next_tick("\\`", 0), None);
     }
 }

@@ -8,6 +8,8 @@
  * one that reaches a desktop layer it does not reproduce.
  */
 
+import { MARKDOWN_SEED_HTML_CASES } from './markdown-seed-cases-html'
+import { MARKDOWN_SEED_LEAK_CASES } from './markdown-seed-cases-leaks'
 import { MARKDOWN_SEED_MASK_CASES } from './markdown-seed-cases-masks'
 import { MARKDOWN_SEED_MENTION_CASES } from './markdown-seed-cases-mentions'
 import { MARKDOWN_SEED_MORE_CASES } from './markdown-seed-cases-more'
@@ -619,5 +621,7 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
     },
     ...MARKDOWN_SEED_MORE_CASES,
     ...MARKDOWN_SEED_MASK_CASES,
-    ...MARKDOWN_SEED_MENTION_CASES
+    ...MARKDOWN_SEED_MENTION_CASES,
+    ...MARKDOWN_SEED_HTML_CASES,
+    ...MARKDOWN_SEED_LEAK_CASES
   ]

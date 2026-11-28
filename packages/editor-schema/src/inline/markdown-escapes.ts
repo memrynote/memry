@@ -19,13 +19,19 @@
  *
  * `<`, `$`, `%` and `=` have no backslash escape in the parser, so text that
  * spells an HTML tag, math, an Obsidian comment or a setext underline is
- * written as it is.
+ * written as it is. A tag the editor does not handle, spelled whole on one line,
+ * is read back as the characters it holds (`maskRawHtml`), so nothing inside
+ * it is escaped, and nothing inside it pairs with a mark outside: `<x a="*">`
+ * would gain a backslash each time the note is written and read. A tag the
+ * editor does handle, spelled in text, is written with its `<` escaped
+ * (`\<b>x\</b>`), which the reader takes as the text, so it is not read as a mark.
  */
 
 import { TABLE_DELIMITER, TABLE_ROW } from '../blocks/block-starts'
 import { spellsCalloutMarker } from '../blocks/markdown'
 import { spellsRunsWithUnderscores } from './emphasis-runs'
 import { codeSpanRanges } from './link-code-spans'
+import { spelledTags } from './raw-html'
 
 type Item = {
   type: string
@@ -75,6 +81,10 @@ interface Spelling {
    * a break that ends their run.
    */
   closers: Set<number>
+  /** The offsets inside a tag spelled whole, which are written as they are. */
+  verbatim: Set<number>
+  /** The offsets of the `<` of a tag the editor handles, which is written `\\<`. */
+  tagStarts: Set<number>
 }
 
 /** The block as the writer spells it, near enough to tell markup, and its text runs. */
@@ -83,6 +93,8 @@ function spell(items: Item[]): Spelling {
   const segments: Segment[] = []
   const delimiters = new Set<number>()
   const closers = new Set<number>()
+  const verbatim = new Set<number>()
+  const tagStarts = new Set<number>()
   const delimit = (delimiter: string, closing: boolean): void => {
     for (let i = 0; i < delimiter.length; i++) {
       delimiters.add(spelling.length + i)
@@ -103,7 +115,15 @@ function spell(items: Item[]): Spelling {
         const strike = styles.strike === true ? '~~' : ''
         delimit(bold + italic + strike, false)
         segments.push({ at: spelling.length, text: item.text, inLink })
-        spelling += item.text
+        // A tag is no markup to the characters around it: it stands as nodes do.
+        let last = 0
+        for (const { start, end, escaped } of spelledTags(item.text)) {
+          spelling += item.text.slice(last, start) + NODE.repeat(end - start)
+          for (let i = start; i < end; i++) verbatim.add(spelling.length - (end - i))
+          if (escaped) tagStarts.add(spelling.length - (end - start))
+          last = end
+        }
+        spelling += item.text.slice(last)
         delimit(strike + italic + bold, true)
       } else if (isLink(item)) {
         spelling += '['
@@ -117,7 +137,7 @@ function spell(items: Item[]): Spelling {
     }
   }
   walk(items, false)
-  return { spelling, segments, delimiters, closers }
+  return { spelling, segments, delimiters, closers, verbatim, tagStarts }
 }
 
 const isSpace = (c: string | undefined): boolean => c === undefined || c === ' ' || c === '\t'
@@ -173,8 +193,13 @@ function isMarkup(block: Spelling, at: number, segment: Segment, place: Place): 
   switch (spelling[at]) {
     case '\\':
       // The writer reads a backslash before a newline, or one ending the
-      // block, as a break.
-      return next === undefined || next === '\n' || ESCAPABLE.includes(next)
+      // block, as a break; the reader, one before an escaped tag as its escape.
+      return (
+        next === undefined ||
+        next === '\n' ||
+        ESCAPABLE.includes(next) ||
+        block.tagStarts.has(at + 1)
+      )
     case '`':
       return place.cell || spelling.indexOf('`') !== at || spelling.lastIndexOf('`') !== at
     case '*':
@@ -269,6 +294,8 @@ function escapeSegment(
       char === '\n' &&
       (place.oneLine || (place.lineBlock && unwritableBreak(block, at, place.paragraph)))
     if (tag) out += '<br>'
+    else if (block.tagStarts.has(at)) out += `\\${char}`
+    else if (block.verbatim.has(at)) out += char
     else if (!keep.has(at) && (forced.has(at) || isMarkup(block, at, segment, place))) {
       out += `\\${char}`
     } else out += char
@@ -276,10 +303,85 @@ function escapeSegment(
   return out
 }
 
+const sameStyles = (a: Item, b: Item): boolean => {
+  const left = Object.entries(a.styles ?? {})
+  const right = b.styles ?? {}
+  return (
+    left.length === Object.keys(right).length && left.every(([key, value]) => right[key] === value)
+  )
+}
+
+/**
+ * The runs of `group`, side by side, with the marks taken off the characters of
+ * each tag that a boundary between two of them cuts through. The reader hides a
+ * whole tag and keeps what is inside it as text, so the delimiters the writer
+ * would put inside one (`<x a="**\***">`) became characters of the tag. What
+ * is outside the tag keeps its marks, and the pieces left side by side with the
+ * same marks are one run again, so each tag is whole in a run.
+ */
+function unmarkGroup<T extends Item>(group: T[]): T[] {
+  const starts: number[] = []
+  let plain = ''
+  for (const item of group) {
+    starts.push(plain.length)
+    plain += item.text ?? ''
+  }
+  if (!plain.includes('<')) return group
+  // The run each character of `plain` is in.
+  const owner = new Uint32Array(plain.length)
+  starts.forEach((start, index) => owner.fill(index, start, starts[index + 1] ?? plain.length))
+  const cut = spelledTags(plain).filter(
+    ({ start, end }) => end - start > 1 && owner[start] !== owner[end - 1]
+  )
+  if (cut.length === 0) return group
+  const stripped = new Uint8Array(plain.length)
+  for (const { start, end } of cut) stripped.fill(1, start, end)
+  const out: T[] = []
+  group.forEach((item, index) => {
+    const text = item.text ?? ''
+    for (let from = 0; from < text.length;) {
+      const unmarked = stripped[starts[index] + from] === 1
+      let to = from + 1
+      while (to < text.length && (stripped[starts[index] + to] === 1) === unmarked) to++
+      const piece = { ...item, text: text.slice(from, to), ...(unmarked ? { styles: {} } : {}) }
+      const last = out.at(-1)
+      if (last && sameStyles(last, piece))
+        out[out.length - 1] = { ...last, text: (last.text ?? '') + piece.text }
+      else out.push(piece)
+      from = to
+    }
+  })
+  return out
+}
+
+/**
+ * `items` with the marks off the characters of each tag a mark boundary cuts
+ * through, in runs of text side by side (`unmarkGroup`). A link, a node or an
+ * empty run ends a group.
+ */
+function unmarkCutTags<T extends Item>(items: T[]): T[] {
+  const out: T[] = []
+  let group: T[] = []
+  const flush = (): void => {
+    out.push(...unmarkGroup(group))
+    group = []
+  }
+  for (const item of items) {
+    if (item.type === 'text' && typeof item.text === 'string' && item.text !== '') {
+      group.push(item)
+      continue
+    }
+    flush()
+    out.push(isLink(item) ? { ...item, content: unmarkCutTags(item.content) } : item)
+  }
+  flush()
+  return out
+}
+
 /** `items` of a block of type `blockType` (none for a table cell), escaped for the markdown writer. */
 export function escapeMarkdownText<T extends Item>(list: T[], blockType?: string): T[] {
   if (blockType !== undefined && LITERAL_BLOCKS.has(blockType)) return list
-  const items = codeBreaksApart(list)
+  const items = unmarkCutTags(codeBreaksApart(list))
   const cell = blockType === undefined
   const place: Place = {
     lineBlock: !cell && LINE_BLOCKS.has(blockType),
@@ -302,7 +404,9 @@ export function escapeMarkdownText<T extends Item>(list: T[], blockType?: string
   // An underscore delimiter pairs with any bare `_` in its block.
   if (!spellsRunsWithUnderscores(escaped)) return escaped
   for (const { at, text } of segments) {
-    for (let i = text.indexOf('_'); i !== -1; i = text.indexOf('_', i + 1)) forced.add(at + i)
+    for (let i = text.indexOf('_'); i !== -1; i = text.indexOf('_', i + 1)) {
+      if (!block.verbatim.has(at + i)) forced.add(at + i)
+    }
   }
   return escape()
 }

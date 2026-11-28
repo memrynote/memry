@@ -35,11 +35,14 @@
 //! `linkMention` node, as desktop's seed promotes it (§12.1.1.1, [`mentions`]).
 //! Wiki links, tags and `{{…}}` tokens stay plain text, which is what
 //! desktop's converter does with them too, and so does a `<details>` block
-//! another app wrote.
+//! another app wrote. So is raw HTML the editor has no node for (`<kbd>`,
+//! `<div>`, a `<script>` and its body): its characters stay as text, as desktop
+//! keeps them ([`raw_html`]).
 //!
-//! **Fallback**: a construct outside that set (raw HTML and `<!--` comments, an
-//! image in a list or a quote, a video beside text, a token whose node this
-//! port cannot decide, a task block or plain-checkbox marker, a quote or callout holding a
+//! **Fallback**: a construct outside that set (a tag the editor handles, such as
+//! `<b>` or `<a>`, `<!--` comments, an image in a list or a quote, a video beside
+//! text, a token whose node this port cannot decide, a task block or
+//! plain-checkbox marker, a quote or callout holding a
 //! list or a nested quote, a callout of a user-defined type or with a body
 //! this port cannot serialize back) keeps its block's source lines as literal
 //! text, one paragraph per non-blank line, and is reported in
@@ -68,7 +71,10 @@ mod comments;
 mod emphasis_edges;
 mod empty_blocks;
 mod escapes;
+mod handled;
 mod hard_breaks;
+mod html_nesting;
+mod html_tag;
 mod inline;
 mod items;
 mod lift;
@@ -80,6 +86,8 @@ mod media;
 mod mentions;
 mod nesting;
 mod prepare;
+mod props;
+mod raw_html;
 mod roundtrip;
 mod run_writer;
 mod runs;
@@ -325,7 +333,7 @@ pub fn plan(markdown: &str) -> SeedPlan {
             fallbacks: vec![SeedFallback { reason, lines }],
         };
     }
-    restore_details_markup(&mut out);
+    props::restore_masks(&mut out);
     mentions::promote(&mut out);
     for fallback in &mut fallbacks {
         for line in &mut fallback.lines {
@@ -397,30 +405,6 @@ fn parse_masked(
         }
     }
     Ok(())
-}
-
-/// `restoreDetailsMarkup`, over every text run.
-fn restore_details_markup(blocks: &mut [SeedBlock]) {
-    for block in blocks {
-        let cells = match &mut block.kind {
-            SeedKind::Table { rows } => rows
-                .iter_mut()
-                .flat_map(|row| row.cells.iter_mut())
-                .map(|cell| &mut cell.content)
-                .collect(),
-            _ => Vec::new(),
-        };
-        for content in cells.into_iter().chain([&mut block.content]) {
-            for piece in content {
-                if let SeedInline::Text { text, .. } = piece
-                    && text.contains(toggles::details_lt_token())
-                {
-                    *text = text.replace(toggles::details_lt_token(), "<");
-                }
-            }
-        }
-        restore_details_markup(&mut block.children);
-    }
 }
 
 /// Seeds an **empty** body with the document `markdown` makes, in one write

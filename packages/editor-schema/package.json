@@ -12,6 +12,7 @@
     "./code-block": "./src/code-block.ts",
     "./conformance": "./src/conformance.ts",
     "./conformance-ydoc": "./src/conformance-ydoc.ts",
+    "./html-export": "./src/html-export.ts",
     "./note-markdown": "./src/note-markdown.ts",
     "./note-refs": "./src/blocks/rewrite-note-refs.ts",
     "./parse-markdown": "./src/parse-markdown.ts",

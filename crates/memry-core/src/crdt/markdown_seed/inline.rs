@@ -17,10 +17,9 @@ use crate::domain::journal_rules::js_trim;
 
 use super::closers::Closers;
 use super::code_spans::keep_code_whitespace;
-use super::comment_nodes::has_token;
 use super::comments::encode;
 use super::hard_breaks::JOIN;
-use super::links::{destination_and_title, link};
+use super::links::{destination_and_title, is_unwritable, link};
 use super::media::{self, Media};
 use super::mentions;
 use super::nesting::{MAX_NESTING, TOO_DEEP};
@@ -179,12 +178,19 @@ fn inline_token(
         nodes.push(Html::Code(code));
         return Ok(Some(end));
     }
-    if text[i] == '!'
-        && at(1) == Some('[')
-        && let Some((found, end)) = image(closers, i)?
-    {
-        nodes.push(Html::Media(found));
-        return Ok(Some(end));
+    if text[i] == '!' && at(1) == Some('[') {
+        match image(closers, i)? {
+            Image::Found(found, end) => {
+                nodes.push(Html::Media(found));
+                return Ok(Some(end));
+            }
+            // Desktop escapes its brackets, so no link opens at the `[` either.
+            Image::Text => {
+                push_text(nodes, "![");
+                return Ok(Some(i + 2));
+            }
+            Image::Absent => {}
+        }
     }
     if text[i] == '['
         && let Some((href, inner, end)) = link(closers, i)
@@ -193,19 +199,14 @@ fn inline_token(
         // a comment's token, a node once the blocks exist, as desktop's
         // `maskEmptyLinks` does (`editor-schema/src/inline/empty-links.ts`).
         if inner.iter().all(|c| matches!(c, ' ' | '\t')) {
-            if text[i..end].contains(&'\n') {
-                // Desktop reads the address as it stands on one line only.
-                return Err(Unsupported("empty-label link across lines"));
+            // One whose address crosses a line is text, as desktop reads it with its
+            // brackets escaped.
+            if text[i..end].iter().any(|c| matches!(*c, '\n' | JOIN)) {
+                push_text(nodes, "[");
+                return Ok(Some(i + 1));
             }
             push_text(nodes, &encode(&mentions::restore(&collect(&text[i..end]))));
             return Ok(Some(end));
-        }
-        if has_token(&href) {
-            return Err(Unsupported("comment in a link address"));
-        }
-        if mentions::holds_placeholder(&href) {
-            // Desktop leaves its masked word in the address.
-            return Err(Unsupported("mention or date token in a link address"));
         }
         let children = parse_inline(inner, closers.depth() + 1)?;
         if contains_link(&children) {
@@ -258,28 +259,33 @@ fn inline_token(
     Ok(None)
 }
 
+/// What `![` opens.
+enum Image {
+    Found(Media, usize),
+    /// An address no markdown writes back as itself ([`is_unwritable`]):
+    /// the text it was.
+    Text,
+    Absent,
+}
+
 /// `parseImage`: `![alt](url "title")`, the alt as written.
-fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, Unsupported> {
+fn image(closers: &mut Closers, start: usize) -> Result<Image, Unsupported> {
     let text = closers.text();
     let Some(alt_end) = closers.closing(start + 1, '[', ']') else {
-        return Ok(None);
+        return Ok(Image::Absent);
     };
     if text.get(alt_end + 1) != Some(&'(') {
-        return Ok(None);
+        return Ok(Image::Absent);
     }
     let Some(paren_end) = closers.closing(alt_end + 1, '(', ')') else {
-        return Ok(None);
+        return Ok(Image::Absent);
     };
     let (url, title) = destination_and_title(&text[alt_end + 2..paren_end]);
+    if is_unwritable(&url) {
+        return Ok(Image::Text);
+    }
     let alt = collect(&text[start + 2..alt_end]);
-    if has_token(&alt) || has_token(&url) {
-        // Desktop leaves its masked word in an image's props.
-        return Err(Unsupported("comment in an image"));
-    }
-    if mentions::holds_placeholder(&alt) || mentions::holds_placeholder(&url) {
-        return Err(Unsupported("mention or date token in an image"));
-    }
-    Ok(Some((media::media(url, alt, title)?, paren_end + 1)))
+    Ok(Image::Found(media::media(url, alt, title)?, paren_end + 1))
 }
 
 fn contains_link(nodes: &[Html]) -> bool {
@@ -417,11 +423,32 @@ mod tests {
         );
     }
 
+    /// The link's text, a soft break as the `\n` it is.
+    fn flat(content: &[SeedInline]) -> String {
+        content
+            .iter()
+            .map(|piece| match piece {
+                SeedInline::Text { text, .. } => text.as_str(),
+                SeedInline::HardBreak { .. } => "\n",
+                _ => "<node>",
+            })
+            .collect()
+    }
+
     #[test]
-    fn an_empty_label_link_across_lines_stays_literal_text() {
-        let plan = super::super::plan("[](u\nv)");
-        assert_eq!(plan.fallbacks.len(), 1);
-        assert_eq!(plan.blocks.len(), 2);
+    fn an_empty_label_link_across_lines_is_the_text_it_was() {
+        for source in ["[](u\nv)", "[ ](u\nv \"t\")", "[](<1\nv>)"] {
+            let plan = super::super::plan(source);
+            assert!(
+                plan.fallbacks.is_empty(),
+                "{source:?}: {:?}",
+                plan.fallbacks
+            );
+            assert_eq!(plan.blocks.len(), 1, "{source:?}");
+            assert_eq!(flat(&plan.blocks[0].content), source, "{source:?}");
+        }
+        let plan = super::super::plan("a [](u\nv) b");
+        assert_eq!(flat(&plan.blocks[0].content), "a [](u\nv) b");
     }
 
     /// A paste is planned on the main thread, so a long run of openers no
