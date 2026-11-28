@@ -7,15 +7,12 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
-use async_trait::async_trait;
 use serde::Serialize;
 use serde_json::Value;
 
 use super::turns::{KillBackend, TrackedBackend, Turn, TurnError, Turns};
 use super::write_gate::{AgentWriteGate, GateHost};
-use crate::agent::mcp::{
-    CallContext, ToolError, ToolErrorCode, ToolRegistry, ToolReply, VaultToolHost,
-};
+use crate::agent::mcp::ToolRegistry;
 use crate::session::{OpenVault, Session};
 use crate::shell::shutdown::StepFn;
 
@@ -69,20 +66,6 @@ impl VaultAgent {
     pub fn shutdown(&self) {
         self.turns.shutdown();
         self.registry.set_write_gate(None);
-    }
-}
-
-/// The registry's host until the vault tools land with `DesktopToolHost` (Step 28c4). Nothing
-/// calls the registry before then: no MCP server or turn runs yet.
-pub struct ToolsNotPorted;
-
-#[async_trait]
-impl VaultToolHost for ToolsNotPorted {
-    async fn call(&self, tool: &str, _: Value, _: &CallContext) -> Result<ToolReply, ToolError> {
-        Err(ToolError::new(
-            ToolErrorCode::Internal,
-            format!("{tool} is not available in this build yet."),
-        ))
     }
 }
 
