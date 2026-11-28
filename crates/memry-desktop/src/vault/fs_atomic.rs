@@ -216,9 +216,18 @@ pub(super) fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
 
 #[cfg(windows)]
 fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::{MOVEFILE_WRITE_THROUGH, MoveFileExW};
     use windows::core::PCWSTR;
-    let (from, to) = (wide_verbatim(from)?, wide_verbatim(to)?);
+    // A plain path fails past `MAX_PATH` on a deep vault; `std::fs` adds the prefix itself.
+    let wide = |path: &Path| -> io::Result<Vec<u16>> {
+        Ok(verbatim_path(path)?
+            .as_os_str()
+            .encode_wide()
+            .chain([0])
+            .collect())
+    };
+    let (from, to) = (wide(from)?, wide(to)?);
     // SAFETY: both buffers are NUL-terminated and outlive the call.
     unsafe {
         MoveFileExW(
@@ -230,18 +239,16 @@ fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
     .map_err(crate::shell::file_open::win_io_error)
 }
 
-/// `path` absolute, in the `\\?\` form and NUL-terminated: the form a wide Win32 call takes past
-/// `MAX_PATH` (260 characters). `std::fs` adds the prefix to its own calls; a direct `MoveFileExW`
-/// with a plain path fails on a vault that deep.
+/// `path` absolute in the literal `\\?\` form: `con` joined onto it is that folder, not the console.
 #[cfg(windows)]
-fn wide_verbatim(path: &Path) -> io::Result<Vec<u16>> {
-    use std::os::windows::ffi::OsStrExt;
+pub fn verbatim_path(path: &Path) -> io::Result<PathBuf> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::{Component, Prefix};
     // `GetFullPathNameW`: resolves `.` and `..` and turns `/` into `\`, which the verbatim form
     // takes literally. A path already verbatim comes back as it is.
     let path = std::path::absolute(path)?;
     let full = path.as_os_str().encode_wide();
-    let mut wide: Vec<u16> = match path.components().next() {
+    let wide: Vec<u16> = match path.components().next() {
         Some(Component::Prefix(prefix)) => match prefix.kind() {
             Prefix::Disk(_) => r"\\?\".encode_utf16().chain(full).collect(),
             // `\\server\share\x` is `\\?\UNC\server\share\x`.
@@ -250,8 +257,7 @@ fn wide_verbatim(path: &Path) -> io::Result<Vec<u16>> {
         },
         _ => full.collect(),
     };
-    wide.push(0);
-    Ok(wide)
+    Ok(std::ffi::OsString::from_wide(&wide).into())
 }
 
 /// Renames the file or folder `from` to `to` only while nothing is at `to`: `AlreadyExists`
