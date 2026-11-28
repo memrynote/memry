@@ -96,5 +96,22 @@ export const MARKDOWN_SEED_HTML_CASES: ReadonlyArray<{
     name: 'raw html: an angle bracket inside a token',
     markdown: 'a ((mention:https%3A%2F%2Fexample.com%2F<kbd>x)) b <kbd>y</kbd>',
     pins: 'the angle bracket in a token payload opens no tag, and the tag after the token is text'
+  },
+  {
+    name: 'raw html: a backslash before a tag the editor handles',
+    markdown:
+      'a \\<b>x\\</b> \\<a href="u">y\\</a> \\<br> \\<ul>\\<li>z\\</li>\\</ul> \\<input type=checkbox> \\<kq> \\\\<kq> \\\\\\<i>',
+    pins: 'the backslash escapes the angle bracket of a handled tag, so the tag is text and the backslash is gone; before a tag the editor does not handle it stays text, a pair is one backslash, and a third escapes the tag after them'
+  },
+  {
+    name: 'raw html: an escaped tag in a quote, a list item, a heading and a table cell',
+    markdown:
+      '> kq0 \\<b>x\\</b>\n\n- kq1 \\<i>y\\</i>\n\n# kq2 \\<u>z\\</u>\n\n| a | b |\n| - | - |\n| c \\<s>d\\</s> | e |\n\n**kq3 \\<b>f\\</b>** [g \\<i>h\\</i>](https://e.com)',
+    pins: 'an escaped tag is text wherever the block holds inline content, inside a mark and a link label too'
+  },
+  {
+    name: 'raw html: escaped tags past the nesting cap',
+    markdown: `${'\\<b>'.repeat(150)}x${'\\</b>'.repeat(150)}`,
+    pins: 'an escaped tag opens nothing and counts toward no cap, so a hundred and fifty of them are text'
   }
 ]

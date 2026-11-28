@@ -92,6 +92,10 @@ function serverEditor(): ServerBlockNoteEditor {
 const withoutSummaryComment = (text: string): string =>
   text.replace(/^(<summary>.*?)<!--.*?-->/m, '$1')
 
+/** A handled tag after a backslash is text (`raw_html.rs`): the seed builds it, so it is no layer. */
+const withoutEscapedTags = (text: string): string =>
+  text.replace(/(?<!\\)((?:\\\\)*)\\<(?=[a-z/])/gi, '$1')
+
 /**
  * The markdown shapes that reach a converter layer this generator does not
  * reproduce. A case holding one would pin a document desktop does not build.
@@ -117,7 +121,7 @@ function refuseUnreproduced(name: string, markdown: string): void {
   ]
   // A comment in a `<summary>` line is reproduced: its `<` are hidden, so the
   // seed builds the comment node there (`markdown_seed/toggles.rs`).
-  let reproduced = markdown
+  let reproduced = withoutEscapedTags(markdown)
   for (let next = withoutSummaryComment(reproduced); next !== reproduced;) {
     reproduced = next
     next = withoutSummaryComment(reproduced)

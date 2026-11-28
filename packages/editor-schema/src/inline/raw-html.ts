@@ -45,6 +45,12 @@ export { RAW_HTML_MAX_NESTING }
  * and 8000 overflowed the stack. No text reaches it deeper than the cap.
  * `html-nesting.ts` counts the tags the parse holds open.
  *
+ * A backslash before the `<` of a tag the editor handles (`readsAsMarkup`) escapes
+ * it: the tag is text, the backslash is no part of it, and it counts for nothing
+ * against the cap. The writer spells text that holds such a tag that way, so a
+ * `<b>x</b>` typed, or left as text by the cap, is read back as the characters
+ * it was. A backslash before a tag the editor does not handle is text, as ever.
+ *
  * The core's seed hides the same `<` the same way
  * (`crates/memry-core/src/crdt/markdown_seed/raw_html.rs`); chapter 12 states
  * the rule.
@@ -149,6 +155,12 @@ const placeholder = (index: number): string => `${PLACEHOLDER_PREFIX}${index};`
 export interface RawHtmlSpan {
   start: number
   end: number
+  /**
+   * A tag the editor handles that the text spells literally: its `<` is
+   * escaped. In a note a backslash stands at `start - 1`, and is no part of the
+   * text; in the text of a run, the writer puts one there.
+   */
+  escaped?: boolean
 }
 
 const isLetter = (c: string | undefined): boolean =>
@@ -366,6 +378,21 @@ function handlesSpan(tag: Tag, scan: Scan, styled: boolean): boolean {
   return false
 }
 
+/**
+ * Whether the text `\\<tag>` is a literal tag the editor would otherwise read:
+ * a tag of `HANDLED_TAGS`, a checkbox. A `<span>` is left to its own rules
+ * (`inline-colors.ts`), and so is a toggle's `<details>`, which pairs with its
+ * `</details>` across lines, so that an unterminated one stays the text it is.
+ */
+function readsAsMarkup(tag: Tag): boolean {
+  if (tag.name === 'input') {
+    return (
+      !tag.closing && tag.attrs.some(([a, v]) => a === 'type' && v.toLowerCase() === 'checkbox')
+    )
+  }
+  return HANDLED_TAGS.has(tag.name)
+}
+
 /** Whether a tag that closes on a later line is within the cap. */
 function opensWithinCap(named: { name: string; closing: boolean }, scan: Scan): boolean {
   const { model } = scan
@@ -411,6 +438,13 @@ function scanLine(
         continue
       }
       if (found.tag !== null && isHandled(found.tag, scan)) {
+        if (!markdown && readsAsMarkup(found.tag)) {
+          // The writer escapes it. A row splits at a pipe before it reads a tag.
+          const whole = !line.slice(at, found.end).includes('|')
+          spans.push({ start: base + at, end: base + (whole ? found.end : at + 1), escaped: true })
+          if (whole) at = found.end - 1
+          continue
+        }
         at = found.end - 1
         continue
       }
@@ -424,7 +458,19 @@ function scanLine(
     } else if (!markdown) {
       continue
     } else if (ch === '\\') {
-      if (at + 1 < line.length && ESCAPABLE.includes(line[at + 1])) at++
+      if (line[at + 1] === '<') {
+        const tag = at + 1 !== address && opensConstruct(line, at + 1)
+        const found = tag ? readConstruct(line, at + 1, closers) : null
+        if (found?.tag != null && readsAsMarkup(found.tag)) {
+          const whole = !line.slice(at + 1, found.end).includes('|')
+          spans.push({
+            start: base + at + 1,
+            end: base + (whole ? found.end : at + 2),
+            escaped: true
+          })
+          at = whole ? found.end - 1 : at + 1
+        }
+      } else if (at + 1 < line.length && ESCAPABLE.includes(line[at + 1])) at++
     } else if (ch === '`') {
       let run = at
       while (line[run] === '`') run++
@@ -488,9 +534,12 @@ function startsHtmlBlock(line: string): boolean {
   return isLetter(line[start]) && ends && HTML_BLOCK_TAGS.has(line.slice(start, at).toLowerCase())
 }
 
-/** The tags `text` spells whole, which the writer must leave as they are. */
+/**
+ * The tags `text` spells whole, which the writer must leave as they are, and
+ * the `<` of each one the editor handles, which it escapes.
+ */
 export function spelledTags(text: string): RawHtmlSpan[] {
-  return scanRawHtml(text, false).filter((span) => span.end - span.start > 1)
+  return scanRawHtml(text, false).filter((span) => span.end - span.start > 1 || span.escaped)
 }
 
 export interface MaskedRawHtml {
@@ -506,8 +555,11 @@ export function maskRawHtml(markdown: string): MaskedRawHtml {
   const sources: string[] = []
   let out = ''
   let last = 0
-  for (const { start, end } of spans) {
-    out += markdown.slice(last, start) + placeholder(sources.push(markdown.slice(start, end)) - 1)
+  for (const { start, end, escaped } of spans) {
+    // An escaped tag's backslash goes with it: the text is the tag.
+    out +=
+      markdown.slice(last, escaped ? start - 1 : start) +
+      placeholder(sources.push(markdown.slice(start, end)) - 1)
     last = end
   }
   return { markdown: out + markdown.slice(last), sources }

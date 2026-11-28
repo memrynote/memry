@@ -204,8 +204,15 @@ describe('the nesting cap', () => {
     expect(hidden(`${'</b>'.repeat(5 * CAP)}<b>`)).toEqual([])
   })
 
-  it('counts nothing in text read as a run, which the writer spells', () => {
-    expect(scanRawHtml('<b>'.repeat(5 * CAP), false)).toEqual([])
+  it('counts nothing in text read as a run, which the writer spells, and escapes each', () => {
+    const spans = scanRawHtml('<b>'.repeat(5 * CAP), false)
+    expect(spans).toHaveLength(5 * CAP)
+    expect(spans.every((span) => span.escaped)).toBe(true)
+  })
+
+  it('counts no escaped tag in a note', () => {
+    expect(scanRawHtml('\\<b>'.repeat(5 * CAP), true).every((span) => span.escaped)).toBe(true)
+    expect(hidden(`${'\\<b>'.repeat(5 * CAP)}<b>x</b>`)).toHaveLength(5 * CAP)
   })
 })
 
@@ -227,7 +234,50 @@ describe('spelledTags', () => {
   })
 })
 
+describe('a backslash before a handled tag', () => {
+  /** What each hidden range of `markdown` is, and whether it is escaped. */
+  const ranges = (markdown: string): Array<[string, boolean]> =>
+    scanRawHtml(markdown, true).map(({ start, end, escaped }) => [
+      markdown.slice(start, end),
+      escaped === true
+    ])
+
+  it.each([
+    [
+      '\\<b>x\\</b>',
+      [
+        ['<b>', true],
+        ['</b>', true]
+      ]
+    ],
+    ['\\<a href="u">', [['<a href="u">', true]]],
+    ['\\<br/>', [['<br/>', true]]],
+    ['\\<details data-memry-toggle>', []],
+    ['\\<input type=checkbox>', [['<input type=checkbox>', true]]],
+    ['\\\\<b>', []],
+    ['\\\\\\<b>', [['<b>', true]]],
+    ['\\<kq>', [['<kq>', false]]],
+    ['\\</details>', [['</details>', false]]],
+    ['\\<input type=text>', [['<input type=text>', false]]],
+    ['\\<b x', []],
+    ['\\<kq x', [['<', false]]],
+    ['\\<b a="|">', [['<', true]]],
+    ['`\\<b>`', []],
+    ['```\n\\<b>\n```', []]
+  ] as Array<[string, Array<[string, boolean]>]>)('hides the tag in %j', (markdown, expected) => {
+    expect(ranges(markdown)).toEqual(expected)
+  })
+})
+
 describe('maskRawHtml and restoreRawHtml', () => {
+  it('takes the backslash of an escaped tag and gives the tag back as text', () => {
+    const { markdown, sources } = maskRawHtml('a \\<b>x\\</b> \\\\ \\<kq>')
+    expect(markdown).toMatch(
+      /^a ;MEMRYRAW[A-Z]{12}0;x;MEMRYRAW[A-Z]{12}1; \\\\ \\;MEMRYRAW[A-Z]{12}2;$/
+    )
+    expect(sources).toEqual(['<b>', '</b>', '<kq>'])
+  })
+
   it('hides every tag and gives it back', () => {
     const markdown = 'a <kbd>Ctrl</kbd> and <x a="*b*"> or <div and <script>kq9</script>'
     const { markdown: masked, sources } = maskRawHtml(markdown)

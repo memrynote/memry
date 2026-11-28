@@ -400,7 +400,7 @@ mod tests {
         let chars: Vec<char> = markdown.chars().collect();
         scan(markdown, true)
             .into_iter()
-            .map(|(start, end)| chars[start..end].iter().collect())
+            .map(|span| chars[span.start..span.end].iter().collect())
             .collect()
     }
 

@@ -22,7 +22,9 @@
  * written as it is. A tag the editor does not handle, spelled whole on one line,
  * is read back as the characters it holds (`maskRawHtml`), so nothing inside
  * it is escaped, and nothing inside it pairs with a mark outside: `<x a="*">`
- * would gain a backslash each time the note is written and read.
+ * would gain a backslash each time the note is written and read. A tag the
+ * editor does handle, spelled in text, is written with its `<` escaped
+ * (`\<b>x\</b>`), which the reader takes as the text, so it is not read as a mark.
  */
 
 import { TABLE_DELIMITER, TABLE_ROW } from '../blocks/block-starts'
@@ -81,6 +83,8 @@ interface Spelling {
   closers: Set<number>
   /** The offsets inside a tag spelled whole, which are written as they are. */
   verbatim: Set<number>
+  /** The offsets of the `<` of a tag the editor handles, which is written `\\<`. */
+  tagStarts: Set<number>
 }
 
 /** The block as the writer spells it, near enough to tell markup, and its text runs. */
@@ -90,6 +94,7 @@ function spell(items: Item[]): Spelling {
   const delimiters = new Set<number>()
   const closers = new Set<number>()
   const verbatim = new Set<number>()
+  const tagStarts = new Set<number>()
   const delimit = (delimiter: string, closing: boolean): void => {
     for (let i = 0; i < delimiter.length; i++) {
       delimiters.add(spelling.length + i)
@@ -112,9 +117,10 @@ function spell(items: Item[]): Spelling {
         segments.push({ at: spelling.length, text: item.text, inLink })
         // A tag is no markup to the characters around it: it stands as nodes do.
         let last = 0
-        for (const { start, end } of spelledTags(item.text)) {
+        for (const { start, end, escaped } of spelledTags(item.text)) {
           spelling += item.text.slice(last, start) + NODE.repeat(end - start)
           for (let i = start; i < end; i++) verbatim.add(spelling.length - (end - i))
+          if (escaped) tagStarts.add(spelling.length - (end - start))
           last = end
         }
         spelling += item.text.slice(last)
@@ -131,7 +137,7 @@ function spell(items: Item[]): Spelling {
     }
   }
   walk(items, false)
-  return { spelling, segments, delimiters, closers, verbatim }
+  return { spelling, segments, delimiters, closers, verbatim, tagStarts }
 }
 
 const isSpace = (c: string | undefined): boolean => c === undefined || c === ' ' || c === '\t'
@@ -187,8 +193,13 @@ function isMarkup(block: Spelling, at: number, segment: Segment, place: Place): 
   switch (spelling[at]) {
     case '\\':
       // The writer reads a backslash before a newline, or one ending the
-      // block, as a break.
-      return next === undefined || next === '\n' || ESCAPABLE.includes(next)
+      // block, as a break; the reader, one before an escaped tag as its escape.
+      return (
+        next === undefined ||
+        next === '\n' ||
+        ESCAPABLE.includes(next) ||
+        block.tagStarts.has(at + 1)
+      )
     case '`':
       return place.cell || spelling.indexOf('`') !== at || spelling.lastIndexOf('`') !== at
     case '*':
@@ -283,6 +294,7 @@ function escapeSegment(
       char === '\n' &&
       (place.oneLine || (place.lineBlock && unwritableBreak(block, at, place.paragraph)))
     if (tag) out += '<br>'
+    else if (block.tagStarts.has(at)) out += `\\${char}`
     else if (block.verbatim.has(at)) out += char
     else if (!keep.has(at) && (forced.has(at) || isMarkup(block, at, segment, place))) {
       out += `\\${char}`

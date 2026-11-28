@@ -7,6 +7,7 @@
  * broke the same way: `` **`a` x `c`** `` became `` `a`** x** `c` `` (BBF-62).
  */
 
+import { isBackslashEscaped } from '@memry/shared/hard-breaks'
 import { codeSpanRanges } from './link-code-spans'
 
 type Styles = Record<string, unknown>
@@ -76,7 +77,7 @@ function splitEdges(text: string): [before: string, content: string, after: stri
   for (let at = text.length - 1; at >= start; at--) {
     edge[at] =
       (SPACE.test(text[at]) && edge[at + 1]) ||
-      (text.startsWith('<br>', at) && edge[at + 4]) ||
+      (text.startsWith('<br>', at) && !isBackslashEscaped(text, at) && edge[at + 4]) ||
       (text.startsWith('\\\n', at) && quoteMarkerStops(text, at + 2).some((stop) => edge[stop]))
   }
   let end = start

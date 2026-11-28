@@ -120,6 +120,16 @@ export function maskHardBreaks(markdown: string): MaskedHardBreaks {
   return { markdown: out, breaks }
 }
 
+/**
+ * Whether an odd run of backslashes stands before `at`: the character there is
+ * escaped, so `\<br>` is the text `<br>` and `\\<br>` a backslash and a break.
+ */
+export function isBackslashEscaped(text: string, at: number): boolean {
+  let run = 0
+  while (run < at && text[at - 1 - run] === '\\') run++
+  return run % 2 === 1
+}
+
 function maskProseHardBreaks(text: string, breaks: string[]): string {
   // Cheap reject on the characters a hard break or a link is spelled with. A hard
   // break is a line's own ending, so it is only meaningful once the text is split
@@ -177,7 +187,10 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
       if (hasBr && !inOtherBlock && !LINK_SYNTAX.test(line)) {
         // The tag stays for the parser to break on. Its spelling is empty: in a
         // `<pre>` block the tag's own newline is all it ever meant.
-        current = line.replace(HTML_BREAK_MID_LINE, (tag) => `${tokenFor('')}${tag}`)
+        current = line.replace(HTML_BREAK_MID_LINE, (tag, offset: number) =>
+          // `\<br>` is the text `<br>` (`raw-html.ts`), no break to mark.
+          isBackslashEscaped(line, offset) ? tag : `${tokenFor('')}${tag}`
+        )
       }
       if (at === lines.length) return [...kept, current].join('\n')
       if (next.trim() === '') break

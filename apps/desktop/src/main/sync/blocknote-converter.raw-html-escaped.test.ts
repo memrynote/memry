@@ -77,7 +77,6 @@ const HANDLED_SPELLINGS = [
   '<ul><li>x</li></ul>',
   '<ol><li>x</li></ol>',
   '<table><tr><td>x</td></tr></table>',
-  '<details data-memry-toggle>x',
   '<input type="checkbox">'
 ]
 

@@ -35,12 +35,12 @@ impl RunWriter {
     /// `restoreEmphasisRuns`: a mark's run, `run` spelled with `delimiter`
     /// unless its edges say otherwise.
     pub(super) fn emphasis(&mut self, run: &str, delimiter: &str) {
-        let lead = edge_prefix(run, false);
+        let lead = edge_prefix(run, 0, false);
         let trail = run[lead..]
             .char_indices()
             .map(|(at, _)| lead + at)
             .chain([run.len()])
-            .find(|&at| edge_prefix(&run[at..], true) == run.len() - at)
+            .find(|&at| edge_prefix(run, at, true) == run.len() - at)
             .unwrap_or(run.len());
         if lead >= trail {
             self.out.push_str(run);
@@ -267,11 +267,18 @@ impl TokenView {
     }
 }
 
+/// `isBackslashEscaped`: whether an odd run of backslashes stands before `at`.
+fn is_backslash_escaped(text: &str, at: usize) -> bool {
+    text[..at].bytes().rev().take_while(|b| *b == b'\\').count() % 2 == 1
+}
+
 /// The length of the longest prefix of `text` matching
 /// `/(?:\\\n(?:[^\S\n]*>)*|\s)*/`: a break (with the `>` prefixes a quote
 /// carries onto the next line) or whitespace. At a run's end (`trailing`) a
-/// `<br>` is one too: the break the escaper spelled for a heading's line.
-fn edge_prefix(text: &str, trailing: bool) -> usize {
+/// `<br>` is one too, unless a backslash escapes it (`\<br>` is the text): the
+/// break the escaper spelled for a heading's line. `text` is `run` from `from`.
+fn edge_prefix(run: &str, from: usize, trailing: bool) -> usize {
+    let text = &run[from..];
     let mut at = 0;
     loop {
         let rest = &text[at..];
@@ -289,7 +296,7 @@ fn edge_prefix(text: &str, trailing: bool) -> usize {
                     break;
                 }
             }
-        } else if trailing && rest.starts_with("<br>") {
+        } else if trailing && rest.starts_with("<br>") && !is_backslash_escaped(run, from + at) {
             at += "<br>".len();
         } else if let Some(c) = rest.chars().next().filter(|c| is_js_whitespace(*c)) {
             at += c.len_utf8();

@@ -172,6 +172,23 @@ pub(super) fn names_handled_tag(line: &Line, at: usize) -> Option<(String, bool)
     .then_some((name, closing))
 }
 
+/// `readsAsMarkup`: whether the text `\<tag>` is a literal tag the editor would
+/// otherwise read: a tag of [`HANDLED`], a checkbox. A `<span>` is left to its
+/// own rules, and so is a toggle's `<details>`, which pairs with its
+/// `</details>` across lines, so that an unterminated one stays the text it is.
+pub(super) fn reads_as_markup(tag: &Tag) -> bool {
+    match tag.name.as_str() {
+        "input" => {
+            !tag.closing
+                && tag
+                    .attrs
+                    .iter()
+                    .any(|(attr, value)| attr == "type" && value.eq_ignore_ascii_case("checkbox"))
+        }
+        name => HANDLED.contains(&name),
+    }
+}
+
 /// Whether a handled tag that closes on a later line is within the cap.
 pub(super) fn opens_within_cap(name: &str, closing: bool, scan: &mut Scan) -> bool {
     let Some(model) = scan.model.as_mut() else {

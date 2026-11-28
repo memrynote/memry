@@ -30,10 +30,6 @@ fn an_escaped_handled_tag_is_text_in_its_paragraph() {
         ("\\<ul>\\<li>x\\</li>\\</ul>", "<ul><li>x</li></ul>"),
         ("\\<table>\\<tr>\\<td>x", "<table><tr><td>x"),
         (
-            "a \\<details data-memry-toggle> b",
-            "a <details data-memry-toggle> b",
-        ),
-        (
             "a \\<input type=\"checkbox\"> b",
             "a <input type=\"checkbox\"> b",
         ),

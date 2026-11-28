@@ -108,6 +108,9 @@ fn escape_pass(
                 return Err(UNSERIALIZED);
             } else if ch == '\n' && place.one_line {
                 out.push_str("<br>");
+            } else if block.tag_starts[at] {
+                out.push('\\');
+                out.push(ch);
             } else if block.verbatim[at] {
                 out.push(ch);
             } else if forced[at] || is_markup(block, pairing, at, segment.in_link) {
@@ -141,6 +144,8 @@ struct Spelling {
     closers: Vec<bool>,
     /// Per character: inside a tag spelled whole, which is written as it is.
     verbatim: Vec<bool>,
+    /// Per character: the `<` of a tag the editor handles, written `\<`.
+    tag_starts: Vec<bool>,
     /// Where each escapable text run starts.
     segments: Vec<Segment>,
 }
@@ -152,6 +157,7 @@ impl Spelling {
             self.delimiters.push(delimiter);
             self.closers.push(closer);
             self.verbatim.push(false);
+            self.tag_starts.push(false);
         }
     }
 
@@ -160,11 +166,12 @@ impl Spelling {
     fn push_text(&mut self, text: &str) {
         let at = self.spelling.len();
         self.push(text.chars(), false, false);
-        for (start, end) in spelled_tags(text) {
-            for i in at + start..at + end {
+        for span in spelled_tags(text) {
+            for i in at + span.start..at + span.end {
                 self.spelling[i] = NODE;
                 self.verbatim[i] = true;
             }
+            self.tag_starts[at + span.start] = span.escaped;
         }
     }
 }
@@ -176,6 +183,7 @@ fn spell(items: &[Item]) -> Spelling {
         delimiters: Vec::new(),
         closers: Vec::new(),
         verbatim: Vec::new(),
+        tag_starts: Vec::new(),
         segments: Vec::new(),
     };
     for (index, item) in items.iter().enumerate() {
@@ -259,7 +267,11 @@ fn is_markup(block: &Spelling, pairing: &Pairing, at: usize, in_link: bool) -> b
     let spelling = &block.spelling;
     let next = spelling.get(at + 1).copied();
     match spelling[at] {
-        '\\' => next.is_none_or(|c| c == '\n' || ESCAPABLE.contains(c)),
+        // The reader takes a backslash before an escaped tag as its escape.
+        '\\' => {
+            next.is_none_or(|c| c == '\n' || ESCAPABLE.contains(c))
+                || block.tag_starts.get(at + 1) == Some(&true)
+        }
         '`' => spelling.iter().filter(|c| **c == '`').count() > 1,
         '*' | '_' => pairing.paired[at],
         '~' => (at > 0 && spelling[at - 1] == '~') || next == Some('~'),
@@ -512,5 +524,24 @@ mod tests {
             escaped_items(vec![plain("!"), marked("x", link)]),
             ["\\!", "x"]
         );
+    }
+
+    #[test]
+    fn the_angle_bracket_of_a_tag_the_editor_handles_is_escaped() {
+        assert_eq!(escaped("a <b>x</b> b"), "a \\<b>x\\</b> b");
+        assert_eq!(escaped("<a href=\"u*\">"), "\\<a href=\"u*\">");
+        assert_eq!(
+            escaped("<input type=checkbox> <details data-memry-toggle>"),
+            "\\<input type=checkbox> <details data-memry-toggle>"
+        );
+        // A backslash before one is a backslash, so it is escaped too.
+        assert_eq!(escaped("\\<b>"), "\\\\\\<b>");
+        // A tag the editor does not handle, and text that is no whole tag, are as they were.
+        assert_eq!(
+            escaped("a <kbd>x</kbd> <x a=\"*\"> </details>"),
+            "a <kbd>x</kbd> <x a=\"*\"> </details>"
+        );
+        assert_eq!(escaped("a <b x, <b and 1 <"), "a <b x, <b and 1 <");
+        assert_eq!(escaped("<b a=\"|\">"), "\\<b a=\"|\">");
     }
 }
