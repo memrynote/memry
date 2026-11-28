@@ -1,3 +1,8 @@
+import {
+  encodeHtmlCommentToken,
+  hasHtmlCommentToken,
+  splitHtmlCommentTokens
+} from '@memry/shared/html-comments'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { MASK_WORD } from '@memry/shared/mask-word'
 import { HtmlNesting, RAW_HTML_MAX_NESTING } from './html-nesting'
@@ -44,6 +49,14 @@ export { RAW_HTML_MAX_NESTING }
  * recurses once per open one: 4000 unclosed `<b>` took 5 s, 4000 `<ul><li>` 50 s,
  * and 8000 overflowed the stack. No text reaches it deeper than the cap.
  * `html-nesting.ts` counts the tags the parse holds open.
+ *
+ * A `<!--` comment on one line inside a hidden tag is part of the tag: the
+ * comments come off a note first, so the tag holds the comment's token, and
+ * `maskRawHtml` writes the comment back into the tag's characters
+ * (`commentsAsText`). The tag is one text run, which a mark around it does not
+ * cut in three, and is written as it was. A comment that crosses lines stays a
+ * node: a line break in a text run is written as a hard break, which would
+ * change the comment's bytes. An Obsidian `%%` comment stays a node as well.
  *
  * A backslash before the `<` of a tag the editor handles (`readsAsMarkup`) escapes
  * it: the tag is text, the backslash is no part of it, and it counts for nothing
@@ -542,6 +555,21 @@ export function spelledTags(text: string): RawHtmlSpan[] {
   return scanRawHtml(text, false).filter((span) => span.end - span.start > 1 || span.escaped)
 }
 
+/**
+ * `source` with each `<!--` comment token on one line replaced by the comment:
+ * the characters of the tag it sits in.
+ */
+function commentsAsText(source: string): string {
+  if (!hasHtmlCommentToken(source)) return source
+  return splitHtmlCommentTokens(source)
+    .map((part) => {
+      if (part.kind === 'text') return part.text
+      const oneLine = part.source.startsWith('<!--') && !part.source.includes('\n')
+      return oneLine ? part.source : encodeHtmlCommentToken(part.source)
+    })
+    .join('')
+}
+
 export interface MaskedRawHtml {
   markdown: string
   /** The characters each token replaced, by index. Empty when nothing was masked. */
@@ -559,7 +587,7 @@ export function maskRawHtml(markdown: string): MaskedRawHtml {
     // An escaped tag's backslash goes with it: the text is the tag.
     out +=
       markdown.slice(last, escaped ? start - 1 : start) +
-      placeholder(sources.push(markdown.slice(start, end)) - 1)
+      placeholder(sources.push(commentsAsText(markdown.slice(start, end))) - 1)
     last = end
   }
   return { markdown: out + markdown.slice(last), sources }

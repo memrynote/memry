@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
 import {
   RAW_HTML_BOUND,
   RAW_HTML_MAX_NESTING as CAP,
@@ -266,6 +267,21 @@ describe('a backslash before a handled tag', () => {
     ['```\n\\<b>\n```', []]
   ] as Array<[string, Array<[string, boolean]>]>)('hides the tag in %j', (markdown, expected) => {
     expect(ranges(markdown)).toEqual(expected)
+  })
+})
+
+describe('a comment token inside a hidden tag', () => {
+  it('is written back as the comment when it is on one line, and stays a token otherwise', () => {
+    const one = encodeHtmlCommentToken('<!-- c -->')
+    const lines = encodeHtmlCommentToken('<!-- m\nn -->')
+    const obsidian = encodeHtmlCommentToken('%% o %%')
+    const { sources } = maskRawHtml(`<kq a="${one}"> <kq a="${lines}"> <kq a="${obsidian}"> <kq>`)
+    expect(sources).toEqual([
+      '<kq a="<!-- c -->">',
+      `<kq a="${lines}">`,
+      `<kq a="${obsidian}">`,
+      '<kq>'
+    ])
   })
 })
 

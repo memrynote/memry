@@ -18,6 +18,10 @@
 //! cap. The writer spells text that holds such a tag that way
 //! ([`super::escapes`]). A backslash before any other tag is text, as ever.
 //!
+//! A tag that holds a `<!--` comment is left alone too: desktop reads the comment
+//! as one token inside the tag (and keeps a comment on one line as the tag's own
+//! characters), which this port cannot size, so its block goes to the fallback.
+//!
 //! A tag left alone still sends its block to the fallback
 //! ([`fallback`]): this port builds no mark for it.
 
@@ -145,6 +149,17 @@ fn scan_line(chars: &[char], base: usize, markdown: bool, scan: &mut Scan, spans
                                 }
                                 continue;
                             }
+                            at = found.end;
+                            continue;
+                        }
+                        // Desktop reads the comment inside it as one token, so
+                        // where the tag ends depends on a length and on quotes
+                        // this port does not see: the line falls back.
+                        if markdown
+                            && chars[at..found.end]
+                                .windows(4)
+                                .any(|w| w == ['<', '!', '-', '-'])
+                        {
                             at = found.end;
                             continue;
                         }

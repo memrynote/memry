@@ -223,6 +223,19 @@ fn a_tag_in_code_does_not_send_its_line_to_the_fallback() {
 }
 
 #[test]
+fn a_tag_that_holds_a_comment_is_left_for_the_fallback() {
+    for markdown in [
+        "<kq a=\"<!-- c -->\">",
+        "<?x <!-- c -->?>",
+        "<![CDATA[ <!-- c --> ]]>",
+        "<!x <!-- c --> >",
+    ] {
+        assert_eq!(hidden(markdown), Vec::<String>::new(), "{markdown:?}");
+    }
+    assert_eq!(hidden("<kq a=\"%% c %%\">"), ["<kq a=\"%% c %%\">"]);
+}
+
+#[test]
 fn a_backslash_before_a_handled_tag_hides_the_tag_as_escaped() {
     let escaped = |markdown: &str| -> Vec<(String, bool)> {
         let chars: Vec<char> = markdown.chars().collect();
