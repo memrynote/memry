@@ -15,6 +15,11 @@
 //! | a revival reupload waits for its vault                       | `uploadFileState`                    |
 //! | a revoked device stops the drain, no attempt counted         | `drainOutboxWith` (#3414)            |
 //! | an upload clears its queue row in either path form           | `onSaved` `clearUploadQueue`         |
+//! | an empty file is not offered again until it has bytes        | `queueUploadIfAbsent` (#5606)        |
+//! | a file over the limit is refused once until it changes       | `refuseUpload` (#5606)               |
+//! | a revived note queues only its file that was not refused     | `reuploadFreedAttachments` (#5606)   |
+//! | a sign-out keeps refusals, so the file is not offered again  | `device-local-state.ts:63` (#5756)   |
+//! | a file written before its refusal lands is offered again     | REVIEW-5908 refuse race              |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -40,7 +45,7 @@ use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::storage::Db;
 use memry_core::sync::attachments::download::DownloadTarget;
 use memry_core::sync::attachments::holds::{NOTE_PROBE_DOMAIN, canvas_asset_holder_id, holder_id};
-use memry_core::sync::attachments::outbox::drain_uploads;
+use memry_core::sync::attachments::outbox::{UploadDrain, drain_uploads};
 use memry_core::sync::attachments::plan::RELEASE_GRACE_MS;
 use memry_core::sync::attachments::queue::{
     DownloadFn, DownloadQueue, DownloadRequest, DownloadSource, QueueCleared, VaultFiles,
@@ -52,6 +57,7 @@ use memry_core::sync::attachments::server::AttachmentServer;
 use memry_core::sync::attachments::store::releases::{self, ItemType};
 use memry_core::sync::attachments::store::{files, upload_queue};
 use memry_core::sync::attachments::transfer::{AttachmentTransfer, TransferError};
+use memry_core::sync::attachments::upload::MAX_ATTACHMENT_SIZE;
 use rusqlite::Connection;
 use serde_json::json;
 use support::{ScratchDb, hex_field, scratch_data_db, scratch_dir, str_field, vector_file};
@@ -78,6 +84,17 @@ impl TempVault {
 
     fn abs(&self, rel: &str) -> String {
         self.0.path().join(rel).to_string_lossy().into_owned()
+    }
+
+    /// A sparse file `extra` bytes over the upload limit: nothing reads it.
+    fn write_oversized(&self, rel: &str, extra: u64) {
+        self.write(rel, b"");
+        File::options()
+            .write(true)
+            .open(self.0.path().join(rel))
+            .unwrap()
+            .set_len(MAX_ATTACHMENT_SIZE + extra)
+            .unwrap();
     }
 
     /// Unmounts (`true`) or remounts the vault, as a removable or network
@@ -626,6 +643,8 @@ async fn a_deleted_note_is_freed_on_day_30_and_never_a_live_reference() {
 #[cfg(feature = "markdown")]
 mod backfill {
     use super::*;
+    use memry_core::storage::open_data;
+    use memry_core::sync::account_binding;
     use memry_core::sync::attachments::backfill::{backfill, embedded_files};
     use proptest::prelude::*;
 
@@ -682,6 +701,125 @@ mod backfill {
             ]
         );
         assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 0);
+    }
+
+    #[tokio::test]
+    async fn an_empty_file_is_not_offered_again_until_it_has_bytes() {
+        let db = scratch_data_db("backfill-empty");
+        let vault = Arc::new(TempVault::new());
+        note(&db, "n1", "n1.md", &[]);
+        note(&db, "f1", "scan.pdf", &[]);
+        sql(&db, "UPDATE notes SET file_type = 'pdf' WHERE id = 'f1';");
+        vault.write("n1.md", b"text");
+        vault.write("attachments/n1/a.png", b"");
+        vault.write("scan.pdf", b"");
+        let server = Server::new();
+
+        for pass in 0..3 {
+            let offered = backfill(&db, vault.clone()).await.unwrap();
+            let drained = drain_once(&db, &server, &vault).await;
+            assert_eq!(
+                (offered.queued, drained.dropped.len()),
+                (0, 0),
+                "pass {pass}: {offered:?} {drained:?}"
+            );
+        }
+        assert!(queued(&db).is_empty());
+
+        vault.write("attachments/n1/a.png", b"picture");
+        vault.write("scan.pdf", b"%PDF-1.7");
+        assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 2);
+        for _ in 0..2 {
+            server
+                .transport
+                .push(error_response(400, "BAD_REQUEST", "refused"));
+        }
+        let drained = drain_once(&db, &server, &vault).await;
+        assert_eq!(drained.failed, 2, "{drained:?}");
+        let initiated = server
+            .paths()
+            .iter()
+            .filter(|path| path.ends_with("/sync/attachments/upload/initiate"))
+            .count();
+        assert_eq!(initiated, 2, "both files went to the uploader");
+    }
+
+    #[tokio::test]
+    async fn a_file_over_the_limit_is_refused_once_until_it_changes() {
+        let dir = scratch_dir("backfill-too-large");
+        let path = dir.path().join("data.db");
+        let db = open_data(&path).unwrap();
+        let vault = Arc::new(TempVault::new());
+        note(&db, "n1", "n1.md", &[]);
+        vault.write("n1.md", b"text");
+        vault.write_oversized("attachments/n1/big.mov", 1);
+        let server = Server::new();
+
+        assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 1);
+        let drained = drain_once(&db, &server, &vault).await;
+        assert_eq!(drained.dropped.len(), 1, "{drained:?}");
+        for _ in 0..2 {
+            assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 0);
+        }
+
+        drop(db);
+        let db = open_data(&path).unwrap();
+        assert_eq!(
+            backfill(&db, vault.clone()).await.unwrap().queued,
+            0,
+            "the refusal survives a reopen"
+        );
+
+        vault.write_oversized("attachments/n1/big.mov", 2);
+        assert_eq!(
+            backfill(&db, vault.clone()).await.unwrap().queued,
+            1,
+            "a changed file is offered again"
+        );
+        assert!(server.paths().is_empty(), "{:?}", server.paths());
+    }
+
+    /// The uploader refused the file, then a save rewrote it before the
+    /// refusal landed: the refusal must not hold back the good bytes.
+    #[tokio::test]
+    async fn a_file_written_before_its_refusal_lands_is_offered_again() {
+        let db = scratch_data_db("backfill-refusal-race");
+        let vault = Arc::new(TempVault::new());
+        note(&db, "n1", "n1.md", &[]);
+        vault.write("n1.md", b"text");
+        vault.write("attachments/n1/a.png", b"picture");
+        let path = vault.abs("attachments/n1/a.png");
+        let files = vault.clone();
+        with(&db, move |conn| {
+            upload_queue::refuse(conn, files.as_ref(), "n1", &path)
+        });
+
+        assert_eq!(
+            backfill(&db, vault.clone()).await.unwrap().queued,
+            1,
+            "a file the uploader would take is never held back"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_sign_out_keeps_refusals_so_the_file_is_not_offered_again() {
+        let db = scratch_data_db("backfill-refusal-sign-out");
+        let vault = Arc::new(TempVault::new());
+        note(&db, "n1", "n1.md", &[]);
+        vault.write("n1.md", b"text");
+        vault.write_oversized("attachments/n1/big.mov", 1);
+        let server = Server::new();
+        assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 1);
+        assert_eq!(drain_once(&db, &server, &vault).await.dropped.len(), 1);
+        assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 0);
+
+        with(&db, account_binding::clear_session_state);
+
+        assert_eq!(
+            backfill(&db, vault.clone()).await.unwrap().queued,
+            0,
+            "the refusal describes this device's file and outlives the session"
+        );
     }
 
     fn row_path(conn: &Connection) -> String {
@@ -741,6 +879,44 @@ fn transfer(server: &Server) -> Arc<AttachmentTransfer> {
         Arc::new(signers),
         |name| name.to_owned(),
     ))
+}
+
+async fn drain_once(db: &Db, server: &Server, vault: &Arc<TempVault>) -> UploadDrain {
+    drain_uploads(db.clone(), transfer(server), vault.clone(), DEVICE.into())
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn a_revived_note_queues_only_its_file_that_was_not_refused() {
+    let db = scratch_data_db("revival-refused");
+    let vault = Arc::new(TempVault::new());
+    note(&db, "n1", "n1.md", &["att-a", "att-big"]);
+    vault.write("attachments/n1/abc123-a.png", b"picture");
+    vault.write_oversized("attachments/n1/abc123-big.mov", 1);
+    // An earlier build's absolute row: its refusal still holds the relative re-offer.
+    let big = vault.abs("attachments/n1/abc123-big.mov");
+    with(&db, move |conn| {
+        files::record(conn, "n1", "attachments/n1/abc123-a.png", "att-a", NOW)?;
+        files::record(conn, "n1", "attachments/n1/abc123-big.mov", "att-big", NOW)?;
+        upload_queue::enqueue(conn, "n1", &big, NOW)
+    });
+    let server = Server::new();
+    let drained = drain_once(&db, &server, &vault).await;
+    assert_eq!(drained.dropped.len(), 1, "{drained:?}");
+
+    with(&db, |conn| mark_revived(conn, "n1", NOW));
+    server.not_found();
+    server.not_found();
+    let report = settle_revived(&db, server.view(), vault.clone(), DEVICE)
+        .await
+        .unwrap();
+
+    assert_eq!((report.queued, report.freed), (1, 2), "{report:?}");
+    assert_eq!(
+        queued(&db),
+        vec![("n1".to_owned(), "attachments/n1/abc123-a.png".to_owned())]
+    );
 }
 
 /// Every queued row with its attempts.
