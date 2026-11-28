@@ -79,6 +79,29 @@ async fn a_refresh_held_by_the_rejection_latch_reports_the_wait_not_signed_out()
     );
 }
 
+/// A refresh token past its own `exp` is refused `AUTH_TOKEN_EXPIRED` and can
+/// never succeed again. Latching it for a window told the user to wait, and
+/// the window reset on every launch, so the phone never asked for a sign-in.
+#[tokio::test(start_paused = true)]
+async fn an_expired_refresh_token_reports_signed_out_at_once() {
+    let transport = FakeTransport::new(vec![
+        error_response(401, "AUTH_TOKEN_EXPIRED", "expired"),
+        error_response(401, "AUTH_TOKEN_EXPIRED", "Refresh token has expired"),
+        error_response(401, "AUTH_TOKEN_EXPIRED", "expired"),
+    ]);
+    let client = session_client(transport.clone());
+
+    let first = client.send(changes()).await.unwrap_err();
+    let second = client.send(changes()).await.unwrap_err();
+
+    assert!(matches!(first, ApiError::Unauthorized { .. }), "{first:?}");
+    assert!(
+        matches!(second, ApiError::Unauthorized { .. }),
+        "{second:?}"
+    );
+    assert_eq!(transport.calls_to("/auth/refresh").len(), 1);
+}
+
 #[tokio::test(start_paused = true)]
 async fn a_permanently_refused_refresh_still_reports_signed_out() {
     let transport = FakeTransport::new(vec![]);

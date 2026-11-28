@@ -496,7 +496,8 @@ above all a token whose successor was already used. A used successor means two
 holders, so reuse after it is theft, and the server ends the device's session.
 
 **A client that retries a refresh naively locks itself out.** This is why the
-client side treats a 401 on refresh as terminal after three attempts (§2.10).
+client side treats a 401 on refresh as terminal after three attempts, or at
+once when the token itself expired (§2.10).
 
 ## 2.10 Client-side token lifecycle
 
@@ -522,10 +523,19 @@ failure forces a new sign-in that the session never needed.
 **A 401 on refresh is never retried inline** and the rejection latches: the
 window blocks all refresh traffic without touching the network, and after three
 rejections the latch is permanent and the user must sign in again
-(`apps/desktop/src/main/sync/token-manager.ts:20-35`, `:128-160`). The reason is
+(`apps/desktop/src/main/sync/token-manager.ts:20-35`, `:135-173`). The reason is
 on record: roughly fifteen demand-driven callers each re-entered the refresh
 path once the access token was permanently expired, producing 58 server requests
 in 47 minutes from one install.
+
+**A refresh answered `401 AUTH_TOKEN_EXPIRED` latches permanently at once.**
+The server sends that code only when the refresh token's own `exp` has passed
+(`apps/sync-server/src/routes/auth.ts:941-943`), which no later attempt can
+undo. The backoff windows exist to give a transient 401 room to clear, and on
+a phone they restart with every launch, so spending them on an expired token
+kept the user waiting for a sign-in prompt that never came
+(`apps/desktop/src/main/sync/token-manager.ts:142-146`,
+`crates/memry-core/src/protocol/auth.rs:417-425`).
 
 **Refresh MUST be single-flighted across concurrent callers**
 (`apps/desktop/src/main/sync/token-manager.ts:227-243`). A conforming client that
