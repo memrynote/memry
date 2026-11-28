@@ -93,12 +93,14 @@ final class WebSocketConnection: NSObject, SocketHandle, @unchecked Sendable {
     private let task: URLSessionWebSocketTask
     private let listener: SocketListener
     private let emitter: CoreEventEmitter
+    private let log: Log
     private let state = Mutex(State())
 
-    init(task: URLSessionWebSocketTask, listener: SocketListener, emitter: CoreEventEmitter) {
+    init(task: URLSessionWebSocketTask, listener: SocketListener, emitter: CoreEventEmitter, log: Log) {
         self.task = task
         self.listener = listener
         self.emitter = emitter
+        self.log = log
         super.init()
         receiveNext()
     }
@@ -170,14 +172,14 @@ final class WebSocketConnection: NSObject, SocketHandle, @unchecked Sendable {
             return true
         }
         guard first else { return }
-        Log.transport.info("realtime socket opened")
+        log.info("realtime socket opened")
         listener.onOpen()
         emitter.emit(CoreEvent(.realtimeSocket))
     }
 
     func reportClosed(code: UInt16, reason: String) {
         guard finish() else { return }
-        Log.transport.notice("realtime socket closed", .status(Int(code)))
+        log.notice("realtime socket closed", .status(Int(code)))
         listener.onClosed(code: code, reason: reason)
         emitter.emit(CoreEvent(.realtimeSocket))
     }
@@ -215,9 +217,26 @@ final class WebSocketConnection: NSObject, SocketHandle, @unchecked Sendable {
         } else {
             TransportErrorMapping.map(error, elapsedMs: 0)
         }
-        Log.transport.error("realtime socket failed", .status(status ?? 0))
+        // §9.10's ladder reconnects a socket the network or the server
+        // dropped, and the next pull catches up, so a drop is not an error.
+        if Self.isDrop(mapped, error) {
+            log.notice("realtime socket dropped", .status(status ?? 0))
+        } else {
+            log.error("realtime socket failed", .status(status ?? 0))
+        }
         listener.onError(error: mapped)
         emitter.emit(CoreEvent(.realtimeSocket))
+    }
+
+    /// Offline, a timeout, or a connection reset under an open socket. A
+    /// handshake the server answered, a TLS failure and an unreadable frame
+    /// are not drops.
+    private static func isDrop(_ mapped: TransportError, _ error: any Error) -> Bool {
+        switch mapped {
+        case .Offline, .Timeout, .Cancelled: true
+        case .Failed: (error as NSError).domain == NSPOSIXErrorDomain
+        default: false
+        }
     }
 
     /// Latches. Returns whether this call is the one that gets to report.
