@@ -175,6 +175,30 @@ fn a_list_item_whose_link_text_spans_many_lines_plans_in_linear_time() {
     });
 }
 
+#[test]
+fn a_list_item_over_many_lines_before_a_link_they_do_not_open_plans_in_linear_time() {
+    scales_linearly("lines before a link they do not open", 500, |n| {
+        format!("- a\n{}x](u) y", "b\n".repeat(n))
+    });
+}
+
+/// Every line leaves link text open, so each asks whether the rest of the
+/// paragraph closes it, and the title on the last line says no.
+#[test]
+fn a_list_item_whose_lines_each_open_link_text_plans_in_linear_time() {
+    scales_linearly("lines each opening link text", 250, |n| {
+        format!("- [a\n{}](u \"t\")", "[b\n".repeat(n))
+    });
+}
+
+/// Each address starts inside the one before it on the same line.
+#[test]
+fn a_list_item_with_nested_addresses_after_its_link_text_plans_in_linear_time() {
+    scales_linearly("link text before nested addresses", 1000, |n| {
+        format!("- [x\n{}{}", "](a".repeat(n), ")".repeat(n + 1))
+    });
+}
+
 /// A recursive pass over nested input must stop at a depth the stack holds.
 /// `planned` runs on 2 MB, and a stack overflow aborts the whole process.
 #[test]

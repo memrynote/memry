@@ -72,6 +72,7 @@ mod hard_breaks;
 mod inline;
 mod items;
 mod lift;
+mod link_join;
 mod links;
 mod markers;
 mod mask_word;
