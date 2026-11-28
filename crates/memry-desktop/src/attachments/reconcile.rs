@@ -10,7 +10,8 @@
 //!
 //! It is not a pass that makes the folder match the body. A file renamed outside the app has no
 //! body change, so it keeps its name and is served through self-heal. Electron's other half,
-//! `reconcileDownloadedAttachmentName`, runs when sync downloads a file (Step 18).
+//! `reconcileDownloadedAttachmentName`, is [`reconcile_downloaded_name`], which the download
+//! runner calls on a file sync just put in the folder.
 //!
 //! Nothing here may lose a file or a reference:
 //! - The move is `rename_no_replace`: a file at the new name stays, and so does the old one. On a
@@ -154,6 +155,54 @@ pub fn reconcile_renames(
         );
     }
     applied
+}
+
+/// `reconcileDownloadedAttachmentName`: the manifest froze the file's name at upload, so a file
+/// sync just put in `attachments/<note_id>/` under `name` after an in-app rename takes the name
+/// `markdown` (the note's body) asks for: the one name it gives the folder with the same `<6>-`
+/// prefix. Answers the name the file has now. A name the body holds, an ambiguous prefix or a
+/// taken name leaves the file as it landed; a failed move is logged.
+pub fn reconcile_downloaded_name(root: &Path, note_id: &str, name: &str, markdown: &str) -> String {
+    if !is_note_id(note_id) || !is_stored_name(name) {
+        return name.to_owned();
+    }
+    let refs = filenames(note_id, markdown);
+    if refs.contains(name) {
+        return name.to_owned();
+    }
+    let prefix = &name[..STORED_PREFIX_LEN];
+    let candidates: Vec<&String> = refs.iter().filter(|r| r.starts_with(prefix)).collect();
+    let [to] = candidates.as_slice() else {
+        return name.to_owned();
+    };
+    if !is_stored_name(to) {
+        return name.to_owned();
+    }
+    let plan = PlannedRename {
+        from: name.to_owned(),
+        to: (*to).clone(),
+    };
+    let folder = root.join(ATTACHMENTS_DIR).join(note_id);
+    match apply(root, note_id, &folder, &plan) {
+        Ok(true) => {
+            sync_dir(&folder);
+            tracing::info!(
+                scope = SCOPE,
+                note_id,
+                "renamed a downloaded attachment to its synced name"
+            );
+            plan.to
+        }
+        Ok(false) => plan.from,
+        Err(error) => {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "a downloaded attachment kept the name it landed under: {error}"
+            );
+            plan.from
+        }
+    }
 }
 
 /// Moves one file; `Ok(false)` when there is nothing to move or the new name is taken.

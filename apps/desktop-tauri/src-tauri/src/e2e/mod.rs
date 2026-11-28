@@ -11,6 +11,7 @@ mod crash;
 mod debug;
 mod dialog;
 mod editor;
+pub mod migration;
 mod os_drag;
 mod reveal;
 mod shell;

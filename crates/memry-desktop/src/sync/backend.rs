@@ -21,7 +21,9 @@ use memry_core::sync::state::PassTrigger;
 use zeroize::Zeroizing;
 
 use crate::session::at_rest_key::{AtRestKeyGuard, AtRestKeys};
+use crate::vault::paths::sanitize_filename;
 
+use super::attachments::AttachmentSync;
 use super::first_sync_running::FirstSyncRunning;
 use super::gate::AuthFacts;
 use super::realtime::{CoreSocket, PinWatch, RealtimeSocket};
@@ -181,6 +183,9 @@ pub struct VaultSyncBackend {
     /// Bumped by each close, under this lock: a key hold that a close overtook (the pass was
     /// aborted, its blocking acquire was not) is released at once.
     closes: Arc<Mutex<u64>>,
+    /// The vault's attachment drivers: they hear every driver this backend opens, and run while
+    /// it is open.
+    attachments: Option<AttachmentSync>,
 }
 
 impl VaultSyncBackend {
@@ -209,7 +214,13 @@ impl VaultSyncBackend {
             keys,
             guard: Arc::default(),
             closes: Arc::default(),
+            attachments: None,
         }
+    }
+
+    pub fn with_attachments(mut self, attachments: AttachmentSync) -> Self {
+        self.attachments = Some(attachments);
+        self
     }
 
     /// The open vault's folder, for every driver this backend opens: a pulled delete over a body
@@ -278,8 +289,11 @@ impl SyncBackend for VaultSyncBackend {
 
     async fn open(
         &self,
-        observers: Vec<Arc<dyn ApplyObserver>>,
+        mut observers: Vec<Arc<dyn ApplyObserver>>,
     ) -> Result<Arc<dyn SyncPasses>, SyncError> {
+        if let Some(attachments) = &self.attachments {
+            observers.push(attachments.observer());
+        }
         let vault = Arc::clone(&self.vault);
         let keys = Arc::clone(&self.keys);
         let held = Arc::clone(&self.guard);
@@ -321,7 +335,23 @@ impl SyncBackend for VaultSyncBackend {
             )
             .await
             .inspect_err(|_| self.close())?;
-        Ok(Arc::new(driver))
+        let Some(attachments) = &self.attachments else {
+            return Ok(Arc::new(driver));
+        };
+        // Sync runs without them: a transfer that cannot be built is logged, never fatal.
+        match driver.attachment_transfer(&self.session, sanitize_filename) {
+            Ok(transfer) => match self.session.local_device_id() {
+                Ok(device_id) => {
+                    attachments.start(transfer, &device_id, Arc::clone(&self.session));
+                }
+                Err(error) => attachments.not_started(&format!("no device id: {error}")),
+            },
+            Err(error) => attachments.not_started(&error),
+        }
+        Ok(Arc::new(Tracked {
+            driver,
+            attachments: attachments.clone(),
+        }))
     }
 
     fn refresh_refused(&self) -> bool {
@@ -333,10 +363,81 @@ impl SyncBackend for VaultSyncBackend {
     }
 
     fn close(&self) {
+        if let Some(attachments) = &self.attachments {
+            attachments.stop();
+        }
         let mut closes = crate::session::lock(&self.closes);
         *closes += 1;
         let guard = crate::session::lock(&self.guard).take();
         drop(closes);
         drop(guard);
+    }
+}
+
+/// The driver, telling the attachment drivers every pass's result and every pause: the release
+/// trusts the local view only while caught up with the server (`isCaughtUpWithServer`).
+struct Tracked {
+    driver: SyncDriver,
+    attachments: AttachmentSync,
+}
+
+impl Tracked {
+    fn heard(&self, pass: Option<PassReport>) -> Option<PassReport> {
+        self.attachments.heard(pass.as_ref());
+        pass
+    }
+}
+
+#[async_trait::async_trait]
+impl SyncPasses for Tracked {
+    async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport> {
+        self.heard(SyncPasses::run_pass(&self.driver, trigger).await)
+    }
+    async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
+        self.heard(SyncPasses::wake(&self.driver, cursor).await)
+    }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        SyncPasses::needs_first_sync(&self.driver).await
+    }
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        let pass = SyncPasses::first_sync(&self.driver, progress).await;
+        // A failed first sync is a pass that did not catch up.
+        self.attachments
+            .heard(pass.as_ref().ok().and_then(Option::as_ref));
+        pass
+    }
+    fn realtime(
+        &self,
+        sink: Arc<dyn HintSink>,
+        latch: Arc<TerminalLatch>,
+        on_connected: Arc<dyn Fn() + Send + Sync>,
+    ) -> Arc<dyn RealtimeSocket> {
+        SyncPasses::realtime(&self.driver, sink, latch, on_connected)
+    }
+    fn pause(&self) {
+        self.attachments.set_paused(true);
+        SyncPasses::pause(&self.driver);
+    }
+    fn resume(&self) {
+        self.attachments.set_paused(false);
+        SyncPasses::resume(&self.driver);
+    }
+    fn set_entitled(&self, entitled: bool) {
+        SyncPasses::set_entitled(&self.driver, entitled);
+    }
+    fn server_clock(&self) -> Option<ServerClock> {
+        SyncPasses::server_clock(&self.driver)
+    }
+    fn snapshots_due(&self, now_ms: i64) -> bool {
+        SyncPasses::snapshots_due(&self.driver, now_ms)
+    }
+    async fn push_due_snapshots(&self, now_ms: i64) {
+        SyncPasses::push_due_snapshots(&self.driver, now_ms).await;
+    }
+    async fn final_snapshots(&self, deadline: tokio::time::Instant) {
+        SyncPasses::final_snapshots(&self.driver, deadline).await;
     }
 }

@@ -1,5 +1,6 @@
-//! `templates` and `custom_icons`, whose handlers push the drizzle row itself
-//! (`template-handler.ts:150-159`, `custom-icon-handler.ts:156-165`: `JSON.stringify(row)`):
+//! `templates`, `custom_icons`, `sticky_drafts` and `home_pages`, whose handlers push the
+//! drizzle row itself (`template-handler.ts:150-159`, `custom-icon-handler.ts:156-165`:
+//! `JSON.stringify(row)`):
 //! every column in schema order under its drizzle key, `mode: 'json'` columns parsed, `clock`
 //! present even when null, and the device-local `id` and `syncedAt` included. Also the column
 //! reads the other importers of this stage share.
@@ -108,6 +109,29 @@ const CUSTOM_ICON_COLUMNS: Columns = &[
     ("syncedAt", "synced_at", false),
 ];
 
+const STICKY_DRAFT_COLUMNS: Columns = &[
+    ("id", "id", false),
+    ("content", "content", false),
+    ("kind", "kind", false),
+    ("createdAt", "created_at", false),
+    ("modifiedAt", "modified_at", false),
+    ("clock", "clock", true),
+    ("syncedAt", "synced_at", false),
+];
+
+const HOME_PAGE_COLUMNS: Columns = &[
+    ("id", "id", false),
+    ("name", "name", false),
+    ("icon", "icon", false),
+    ("position", "position", false),
+    ("widgets", "widgets", false),
+    ("cover", "cover", true),
+    ("createdAt", "created_at", false),
+    ("updatedAt", "updated_at", false),
+    ("clock", "clock", true),
+    ("syncedAt", "synced_at", false),
+];
+
 fn row_dump(
     ctx: &mut TableCtx<'_>,
     table: &'static str,
@@ -143,4 +167,14 @@ pub fn templates(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
 /// and the `.memry/icons/` files stay as they are.
 pub fn custom_icons(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
     row_dump(ctx, "custom_icons", "custom_icon", CUSTOM_ICON_COLUMNS)
+}
+
+/// `sticky-draft-handler.ts:104-113`.
+pub fn sticky_drafts(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
+    row_dump(ctx, "sticky_drafts", "sticky_draft", STICKY_DRAFT_COLUMNS)
+}
+
+/// `sync-client/item-handlers/home-page-handler.ts:144-153`.
+pub fn home_pages(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
+    row_dump(ctx, "home_pages", "home_page", HOME_PAGE_COLUMNS)
 }

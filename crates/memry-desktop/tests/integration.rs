@@ -76,6 +76,8 @@ mod app_edit;
 mod article_constants;
 #[path = "article_dom.rs"]
 mod article_dom;
+#[path = "article_guards.rs"]
+mod article_guards;
 #[path = "article_map.rs"]
 mod article_map;
 #[path = "article_markdown.rs"]
@@ -136,10 +138,14 @@ mod calendar_feeds;
 mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "canvas_assets.rs"]
+mod canvas_assets;
 #[path = "canvas_files.rs"]
 mod canvas_files;
 #[path = "canvas_folders.rs"]
 mod canvas_folders;
+#[path = "canvas_reconcile.rs"]
+mod canvas_reconcile;
 #[path = "canvas_service.rs"]
 mod canvas_service;
 #[path = "canvas_vault_id.rs"]
@@ -171,6 +177,8 @@ mod editor_host;
 mod editor_readonly;
 #[path = "electron_profile_fixture.rs"]
 mod electron_profile_fixture;
+#[path = "electron_vault_prep.rs"]
+mod electron_vault_prep;
 #[path = "electron_yjs_journal.rs"]
 mod electron_yjs_journal;
 #[path = "embedding_file_text.rs"]
@@ -225,6 +233,8 @@ mod import_runner;
 mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
+#[path = "importer_html_fetch.rs"]
+mod importer_html_fetch;
 #[path = "importer_noteplan.rs"]
 mod importer_noteplan;
 #[path = "importer_raindrop.rs"]
@@ -239,8 +249,14 @@ mod importer_ticktick_dates;
 mod importer_todoist;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
+#[path = "importer_untrusted_html.rs"]
+mod importer_untrusted_html;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
+#[path = "inbox_jobs.rs"]
+mod inbox_jobs;
+#[path = "inbox_review.rs"]
+mod inbox_review;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
@@ -427,6 +443,10 @@ mod property_definitions_seed;
 mod property_definitions_sync;
 #[path = "property_usage.rs"]
 mod property_usage;
+#[path = "reminder_commands.rs"]
+mod reminder_commands;
+#[path = "reminder_scheduler.rs"]
+mod reminder_scheduler;
 #[path = "sanitize_svg_inert.rs"]
 mod sanitize_svg_inert;
 #[path = "sanitize_svg_untrusted.rs"]
@@ -443,6 +463,8 @@ mod search_reasons;
 mod settings_service;
 #[path = "sticky_drafts.rs"]
 mod sticky_drafts;
+#[path = "sticky_send.rs"]
+mod sticky_send;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
@@ -480,6 +502,8 @@ mod templates_legacy;
 #[cfg(windows)]
 #[path = "trash_held.rs"]
 mod trash_held;
+#[path = "turndown_guards.rs"]
+mod turndown_guards;
 #[path = "typing_barrier.rs"]
 mod typing_barrier;
 #[path = "unsplash.rs"]

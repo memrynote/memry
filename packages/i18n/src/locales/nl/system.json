@@ -90,5 +90,53 @@
     },
     "logFolder": "Logbestanden: {path}",
     "reloaded": "MemryNote is opnieuw geladen na een crash. Recente wijzigingen zijn mogelijk verloren gegaan."
+  },
+  "migration": {
+    "running": {
+      "title": "Je gegevens worden verplaatst",
+      "note": "Dit gebeurt maar één keer. Laat MemryNote open tot het klaar is."
+    },
+    "phase": {
+      "preparing": "Voorbereiden…",
+      "secrets": "Je geheimen worden verplaatst…",
+      "vault": "Kluis {current} van {total} wordt verplaatst…",
+      "checking": "Je gegevens worden gecontroleerd…"
+    },
+    "failed": {
+      "title": "Je gegevens zijn niet verplaatst",
+      "note": "Er is niets verloren. De vorige MemryNote-app en zijn gegevens zijn ongewijzigd.",
+      "check": "Mislukte controle: {check}",
+      "electronRunning": "De vorige MemryNote-app is nog open. Sluit hem af en probeer het opnieuw.",
+      "diskSpace": "Er is niet genoeg vrije schijfruimte om je gegevens te verplaatsen. Maak ruimte vrij en probeer het opnieuw.",
+      "electronSchema": "De vorige MemryNote-app heeft een kluis nog niet helemaal bijgewerkt. Werk die app bij, open de kluis er één keer in, sluit hem af en probeer het opnieuw.",
+      "sharedStore": "Sommige kluizen delen één synchronisatiegeschiedenis en kunnen daarom niet worden verplaatst. Blijf de vorige MemryNote-app voor deze kluizen gebruiken.",
+      "vaultUnreachable": "Een kluis kan nu niet worden gelezen. Controleer of de schijf ervan is aangesloten en probeer het opnieuw.",
+      "secrets": "Sommige opgeslagen inloggegevens konden niet worden gelezen. Probeer het opnieuw. Blijft het gebeuren, controleer dan of je sleutelhanger ontgrendeld is.",
+      "verification": "Een controle van je verplaatste gegevens is niet geslaagd, dus MemryNote heeft alles gelaten zoals het was.",
+      "notReady": "Deze versie van MemryNote kan de gegevens van deze kluis nog niet verplaatsen. Je gegevens staan nog in de vorige MemryNote-app. Blijf die gebruiken en werk MemryNote bij om het opnieuw te proberen.",
+      "io": "Een bestand kon niet worden gelezen of geschreven tijdens het verplaatsen van je gegevens. Controleer of er vrije ruimte op de schijf is en of je kluismappen beschrijfbaar zijn, en probeer het opnieuw.",
+      "sourceChanged": "De vorige MemryNote-app heeft zijn gegevens tijdens het verplaatsen gewijzigd. Sluit hem af en probeer het opnieuw.",
+      "coreFileExists": "Een kluis bevat al gegevens van deze versie van MemryNote en is daarom niet vervangen. Blijf de vorige app gebruiken en stuur het rapport onder Details tonen naar support.",
+      "malformedRow": "Een deel van de gegevens van de vorige app heeft een vorm die niet kan worden verplaatst. Blijf de vorige app gebruiken en stuur het rapport onder Details tonen naar support.",
+      "deleteWithoutDevice": "Een verwijdering in een kluis is nog niet gesynchroniseerd. Open de vorige MemryNote-app, laat hem de synchronisatie afronden, sluit hem af en probeer het opnieuw.",
+      "deviceKeyMismatch": "De apparaatsleutel van de vorige app komt niet overeen met de synchronisatieregistratie van dit apparaat, dus je aanmelding is niet verplaatst. Blijf de vorige app gebruiken en stuur het rapport onder Details tonen naar support.",
+      "keyVerifierMismatch": "De versleutelingssleutel van de vorige app komt niet overeen met je account, dus je aanmelding is niet verplaatst. Blijf de vorige app gebruiken en stuur het rapport onder Details tonen naar support.",
+      "targetOccupied": "Deze versie van MemryNote is al aangemeld, dus de aanmelding van de vorige app is er niet overheen gezet. Blijf de vorige app gebruiken en stuur het rapport onder Details tonen naar support."
+    },
+    "done": {
+      "title": "Je gegevens zijn klaar",
+      "body": "MemryNote wordt geopend…"
+    },
+    "retry": "Opnieuw proberen",
+    "showDetails": "Details tonen",
+    "reportMissing": "Er is nog geen rapport.",
+    "completed": {
+      "title": "Je gegevens staan in deze versie",
+      "body": "Je notities, instellingen en aanmelding staan nu in deze versie van MemryNote. De gegevens van de vorige app blijven onaangeroerd in {path}."
+    },
+    "notice": {
+      "title": "Wijzigingen in de vorige app",
+      "body": "Een kluis is in de vorige MemryNote-app gewijzigd nadat hij naar deze versie is verplaatst. Die wijzigingen staan hier niet: ze blijven in de gegevens van de vorige app in {path}. Gesynchroniseerde wijzigingen komen binnen via synchronisatie."
+    }
   }
 }

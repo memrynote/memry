@@ -1,0 +1,653 @@
+{
+  "source": "html",
+  "cases": [
+    {
+      "name": "sample",
+      "sources": [
+        "site/page-one.html",
+        "site/page-two.htm",
+        "site/notes.txt"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.html.scanning",
+            "message": "Scanning HTML files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.html.scanning",
+            "message": "Scanning HTML files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.html.scanning",
+            "message": "Scanning HTML files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "doc.pdf",
+          "size": 14,
+          "sha256": "5ddc8e031f4a5acf14286d3d181725fbc4bdf49a1e426363648a4806e99d3fa9"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "local.png",
+          "size": 70,
+          "sha256": "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "my image.png",
+          "size": 70,
+          "sha256": "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 7,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "tool.exe",
+          "refused": true
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 10,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Page One & Co",
+          "folder": "HTML",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": "# Heading *one*\n\nText with **bold**, **b**, *i*, ~~gone~~, ==hi==, `x < y` and 10:00.\nNext line\n\nloose text inline span [external](https://example.com/a?b=1) [mail](mailto:me@example.com)\n\nWiki: [[page-two]] and [[page-two]] and [pdf link](doc.pdf) and empty [missing.md](missing.md)\n\n- plain\n  - [x] child done\n  - [ ] child open\n- [ ] class todo\n- [x] notion style\n\n1. first\n2. second\n   1. inner\n\n> quoted\n>\n> twice\n\n> bare quote\n\n```rust\nfn main() {}\n```\n\n```js\nlet a = 1\n```\n\n---\n\n| A | B |  |\n| --- | --- | --- |\n| 1 |  |  |\n| x y | 2 | 3 |\n\n> Callout body\n\n![Fig](attachments/note-1/local.png)\n\n![spaced](attachments/note-1/my%20image.png)\n\n![inline](data:image/png;base64,iVBORw0KGgo=)\n\n![insecure](http://example.com/insecure.png)\n\n![loop](https://localhost/x.png)\n\n![ip](https://127.0.0.1/x.png)\n\n![v6](https://[::1]/x.png)\n\n![outside](../outside.png)\n\n![missing](nothere.png)\n\n<!-- file:{\"url\":\"attachments/note-1/doc.pdf\",\"name\":\"doc.pdf\",\"size\":14,\"mimeType\":\"application/pdf\"} -->\n\n![refused](tool.exe)\n\n![bad escape](bad%zz.png)\n\n![no src]()\n\n## Deep\n\n###### six"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 10,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Page One & Co",
+            "params": {
+              "title": "Page One & Co"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 10,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing page-two",
+            "params": {
+              "title": "page-two"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 10,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "page-two",
+          "folder": "HTML",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": "Back to [[Page One & Co]]."
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing page-two",
+            "params": {
+              "title": "page-two"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 10,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing page-two",
+            "params": {
+              "title": "page-two"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 10,
+          "failed": 0,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 2,
+        "attachments": 3,
+        "skipped": 10,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "not found",
+            "count": 4
+          },
+          {
+            "reason": "unsafe URL",
+            "count": 4
+          },
+          {
+            "reason": "unsafe path",
+            "count": 1
+          },
+          {
+            "reason": "unsupported attachment type .exe",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-body",
+      "sources": [
+        "site/empty.html"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.html.scanning",
+            "message": "Scanning HTML files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.html.scanning",
+            "message": "Scanning HTML files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.html.scanning",
+            "message": "Scanning HTML files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Empty",
+            "params": {
+              "title": "Empty"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Empty",
+          "folder": "HTML",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Empty",
+            "params": {
+              "title": "Empty"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Empty",
+            "params": {
+              "title": "Empty"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 1,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 1,
+        "attachments": 0,
+        "skipped": 0,
+        "failed": []
+      }
+    }
+  ]
+}

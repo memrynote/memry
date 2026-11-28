@@ -60,14 +60,14 @@ pub fn create_clean_math_el(
     doc.set_attribute(clean, "display", if is_block { "block" } else { "inline" });
     doc.set_attribute(clean, "data-latex", latex.unwrap_or(""));
     if let Some(data) = math_data.filter(|d| !d.mathml.is_empty()) {
-        let fragment = doc.parse_fragment(&data.mathml);
+        let fragment = doc.parse_fragment(&data.mathml)?;
         if let Some(content) = doc.query_selector(fragment, "math")? {
             transfer_content(doc, content, clean)?;
         }
     } else if let Some(latex) = latex.filter(|l| !l.is_empty()) {
         match convert::temml_render(latex, is_block) {
             Ok(mathml) => {
-                let fragment = doc.parse_fragment(&mathml);
+                let fragment = doc.parse_fragment(&mathml)?;
                 match doc.query_selector(fragment, "math")? {
                     Some(content) => {
                         while let Some(child) = doc.first_child(content) {

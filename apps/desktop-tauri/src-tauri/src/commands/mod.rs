@@ -1,5 +1,5 @@
 //! Tauri commands, one module per domain. A domain step adds its module here and its command
-//! paths to `registry.rs`.
+//! paths to `registry/<area>.rs`.
 
 pub mod account;
 pub mod agent;
@@ -9,6 +9,8 @@ pub mod app;
 pub mod attachment_sources;
 pub mod attachments;
 pub mod billing;
+pub mod bookmarks;
+pub mod calendar;
 pub mod calendar_eventkit;
 pub mod calendar_ics;
 pub mod calendar_providers;
@@ -25,6 +27,7 @@ pub mod export;
 pub mod fold;
 pub mod folder_view;
 pub mod folders;
+pub mod graph;
 pub mod home_pages;
 pub mod ios_beta;
 pub mod journal;
@@ -33,6 +36,7 @@ pub mod launch;
 pub mod linking;
 pub mod locale;
 pub mod logging;
+pub mod migration;
 pub mod notes;
 pub mod notes_import;
 pub mod notes_similarity;
@@ -43,6 +47,8 @@ pub mod portals;
 pub mod properties;
 pub mod property_definitions;
 pub mod readwise;
+pub mod recents;
+pub mod reminders;
 pub mod search;
 pub mod settings;
 pub mod shell;
@@ -50,6 +56,7 @@ pub mod shell_integrations;
 pub mod shortcuts;
 pub mod spell;
 pub mod stickies;
+pub mod sticky_send;
 pub mod sync;
 pub mod sync_account;
 pub mod tag_schema;

@@ -1,7 +1,7 @@
 //! The app-command ACL: the permissions in `permissions/` name exactly the registered commands,
 //! and Tauri's own IPC check, on the ACL that `tauri-build` resolves from this crate's
-//! capabilities, lets the main window call every command, the sticky window exactly its own
-//! commands, and refuses every other window.
+//! capabilities, lets the main window call every command, the sticky and edge tab windows exactly
+//! their own commands, and refuses every other window.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -150,7 +150,7 @@ fn every_permission_names_a_registered_command() {
 fn only_main_sticky_and_e2e_builds_get_capabilities_with_app_commands() {
     let set = |names: &[&str]| names.iter().map(|name| (*name).to_owned()).collect();
     let enabled = strings(&read_json("tauri.conf.json")["app"]["security"]["capabilities"]);
-    assert_eq!(enabled, set(&["main", "sticky"]));
+    assert_eq!(enabled, set(&["main", "sticky", "sticky-tab"]));
     let main = read_json("capabilities/main.json");
     assert_eq!(strings(&main["windows"]), set(&["main"]));
     assert!(strings(&main["permissions"]).contains("app-all"));
@@ -167,6 +167,13 @@ fn only_main_sticky_and_e2e_builds_get_capabilities_with_app_commands() {
     );
     assert_eq!(permissions()["boot"], set(&BOOT));
     assert_eq!(permissions()["sticky"], set(&STICKY));
+    let tab = read_json("capabilities/sticky-tab.json");
+    assert_eq!(strings(&tab["windows"]), set(&["sticky-tab"]));
+    assert_eq!(
+        strings(&tab["permissions"]),
+        set(&["core:default", "boot", "sticky-tab"])
+    );
+    assert_eq!(permissions()["sticky-tab"], set(&STICKY_TAB));
 
     let e2e = read_json("tauri.e2e.conf.json");
     let granted: BTreeSet<String> = e2e["app"]["security"]["capabilities"]
@@ -229,7 +236,7 @@ const BOOT: [&str; 7] = [
 ];
 
 /// The `sticky` permission: what the sticky renderer calls besides `boot`.
-const STICKY: [&str; 10] = [
+const STICKY: [&str; 13] = [
     "flush_done",
     "flush_ready",
     "settings_get_ai",
@@ -237,19 +244,25 @@ const STICKY: [&str; 10] = [
     "sticky_delete_draft",
     "sticky_get_session",
     "sticky_list_drafts",
+    "sticky_open_target",
     "sticky_resize",
     "sticky_save_draft",
+    "sticky_send",
     "sticky_tuck",
+    "sticky_undo_send",
+];
+
+/// The `sticky-tab` permission: what the edge tab renderer calls besides `boot`.
+const STICKY_TAB: [&str; 5] = [
+    "settings_get_ai",
+    "settings_get_path",
+    "sticky_list_drafts",
+    "sticky_peek",
+    "sticky_unfold",
 ];
 
 /// Labels no capability names in either config.
-const NO_CAPABILITY: [&str; 5] = [
-    "preboot",
-    "pdf-print-1",
-    "sticky-tab",
-    "quick-capture",
-    "unknown",
-];
+const NO_CAPABILITY: [&str; 4] = ["preboot", "pdf-print-1", "quick-capture", "unknown"];
 
 /// Each window label with the commands it must reach and the commands it must be refused.
 fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
@@ -271,6 +284,14 @@ fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
         .filter(|command| !sticky.contains(*command))
         .cloned()
         .collect();
+    // The edge tab reaches exactly `boot` + `sticky-tab`.
+    let tab: BTreeSet<String> = names(&BOOT).into_iter().chain(names(&STICKY_TAB)).collect();
+    let tab_reaches: Vec<String> = tab.iter().cloned().collect();
+    let tab_refused: Vec<String> = app_all
+        .iter()
+        .filter(|command| !tab.contains(*command))
+        .cloned()
+        .collect();
     let mut rows = if e2e {
         let everything = [app_all, e2e_all.clone()].concat();
         vec![
@@ -279,7 +300,13 @@ fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
             // `startup-recovery.e2e.ts` drives the startup-error window through `e2e_*` calls.
             ("startup-error", e2e_all.clone(), names(&APP_SAMPLE)),
             // `sticky.e2e.ts` calls `e2e_*` with the sticky window selected.
-            ("sticky", [sticky_reaches, e2e_all].concat(), sticky_refused),
+            (
+                "sticky",
+                [sticky_reaches, e2e_all.clone()].concat(),
+                sticky_refused,
+            ),
+            // `tauri.e2e.conf.json` gives the tab window the e2e capability, as it does the sticky.
+            ("sticky-tab", [tab_reaches, e2e_all].concat(), tab_refused),
         ]
     } else {
         vec![
@@ -294,6 +321,11 @@ fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
                 "sticky",
                 sticky_reaches,
                 [sticky_refused, names(&["e2e_app_info"])].concat(),
+            ),
+            (
+                "sticky-tab",
+                tab_reaches,
+                [tab_refused, names(&["e2e_app_info"])].concat(),
             ),
         ]
     };

@@ -16,6 +16,36 @@ import {
   cleanupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
 
+const service = vi.hoisted(() => ({
+  bookmarksService: {
+    list: vi.fn(),
+    toggle: vi.fn(),
+    isBookmarked: vi.fn(),
+    delete: vi.fn(),
+    reorder: vi.fn()
+  },
+  onBookmarkCreated: vi.fn(),
+  onBookmarkDeleted: vi.fn(),
+  onBookmarksReordered: vi.fn()
+}))
+
+vi.mock('@/services/bookmarks-service', () => service)
+
+/** Fresh mocks per test, with an empty list and an unbookmarked item. */
+function resetService(): void {
+  for (const fn of Object.values(service.bookmarksService)) fn.mockReset()
+  service.bookmarksService.list.mockResolvedValue({ bookmarks: [], total: 0, hasMore: false })
+  service.bookmarksService.isBookmarked.mockResolvedValue(false)
+  for (const subscribe of [
+    service.onBookmarkCreated,
+    service.onBookmarkDeleted,
+    service.onBookmarksReordered
+  ]) {
+    subscribe.mockReset()
+    subscribe.mockReturnValue(() => {})
+  }
+}
+
 // ============================================================================
 // Test Setup
 // ============================================================================
@@ -25,6 +55,7 @@ describe('useBookmarks', () => {
 
   beforeEach(() => {
     setupHookTestEnvironment()
+    resetService()
     queryClient = createTestQueryClient()
   })
 
@@ -49,7 +80,7 @@ describe('useBookmarks', () => {
         createMockBookmark({ id: 'bm-2', itemTitle: 'Note 2' })
       ]
 
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: mockBookmarks,
         total: 2,
         hasMore: false
@@ -65,11 +96,11 @@ describe('useBookmarks', () => {
 
       expect(result.current.bookmarks).toHaveLength(2)
       expect(result.current.total).toBe(2)
-      expect(window.api.bookmarks.list).toHaveBeenCalled()
+      expect(service.bookmarksService.list).toHaveBeenCalled()
     })
 
     it('keeps the loaded rows on screen while a later load runs', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [createMockBookmark({ id: 'bm-1' })],
         total: 1,
         hasMore: false
@@ -78,7 +109,7 @@ describe('useBookmarks', () => {
       await waitFor(() => expect(result.current.bookmarks).toHaveLength(1))
 
       let finish: (value: unknown) => void = () => {}
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockReturnValue(
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockReturnValue(
         new Promise((resolve) => {
           finish = resolve
         })
@@ -103,11 +134,11 @@ describe('useBookmarks', () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(result.current.bookmarks).toHaveLength(0)
-      expect(window.api.bookmarks.list).not.toHaveBeenCalled()
+      expect(service.bookmarksService.list).not.toHaveBeenCalled()
     })
 
     it('should load bookmarks filtered by item type', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [createMockBookmark({ id: 'bm-1', itemType: 'note' })],
         total: 1,
         hasMore: false
@@ -119,7 +150,7 @@ describe('useBookmarks', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      expect(window.api.bookmarks.list).toHaveBeenCalledWith(
+      expect(service.bookmarksService.list).toHaveBeenCalledWith(
         expect.objectContaining({
           itemType: 'note'
         })
@@ -127,7 +158,7 @@ describe('useBookmarks', () => {
     })
 
     it('should handle loading errors gracefully', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Failed to load bookmarks')
       )
 
@@ -145,7 +176,7 @@ describe('useBookmarks', () => {
       const initialBookmarks = [createMockBookmark({ id: 'bm-1' })]
       const moreBookmarks = [createMockBookmark({ id: 'bm-2' })]
 
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>)
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce({ bookmarks: initialBookmarks, total: 2, hasMore: true })
         .mockResolvedValueOnce({ bookmarks: moreBookmarks, total: 2, hasMore: false })
 
@@ -172,12 +203,12 @@ describe('useBookmarks', () => {
     it('should toggle bookmark on (create)', async () => {
       const newBookmark = createMockBookmark({ id: 'bm-new', itemId: 'note-1' })
 
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [],
         total: 0,
         hasMore: false
       })
-      ;(window.api.bookmarks.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,
         isBookmarked: true,
         bookmark: newBookmark
@@ -195,7 +226,7 @@ describe('useBookmarks', () => {
 
       expect(toggleResult.success).toBe(true)
       expect(toggleResult.isBookmarked).toBe(true)
-      expect(window.api.bookmarks.toggle).toHaveBeenCalledWith({
+      expect(service.bookmarksService.toggle).toHaveBeenCalledWith({
         itemType: 'note',
         itemId: 'note-1'
       })
@@ -208,12 +239,12 @@ describe('useBookmarks', () => {
         itemType: 'note'
       })
 
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [existingBookmark],
         total: 1,
         hasMore: false
       })
-      ;(window.api.bookmarks.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,
         isBookmarked: false,
         bookmark: null
@@ -234,12 +265,12 @@ describe('useBookmarks', () => {
     })
 
     it('should handle toggle errors', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [],
         total: 0,
         hasMore: false
       })
-      ;(window.api.bookmarks.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: false,
         isBookmarked: false,
         bookmark: null,
@@ -269,12 +300,12 @@ describe('useBookmarks', () => {
     it('should remove a bookmark by ID', async () => {
       const bookmark = createMockBookmark({ id: 'bm-1' })
 
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [bookmark],
         total: 1,
         hasMore: false
       })
-      ;(window.api.bookmarks.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true
       })
 
@@ -304,12 +335,12 @@ describe('useBookmarks', () => {
         createMockBookmark({ id: 'bm-2', position: 1 })
       ]
 
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks,
         total: 2,
         hasMore: false
       })
-      ;(window.api.bookmarks.reorder as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.reorder as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true
       })
 
@@ -324,7 +355,7 @@ describe('useBookmarks', () => {
       })
 
       expect(success).toBe(true)
-      expect(window.api.bookmarks.reorder).toHaveBeenCalledWith(['bm-2', 'bm-1'])
+      expect(service.bookmarksService.reorder).toHaveBeenCalledWith(['bm-2', 'bm-1'])
     })
   })
 
@@ -334,12 +365,12 @@ describe('useBookmarks', () => {
 
   describe('utility functions', () => {
     it('should check if an item is bookmarked', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [],
         total: 0,
         hasMore: false
       })
-      ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(true)
+      ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(true)
 
       const { result } = renderHook(() => useBookmarks(), { wrapper })
 
@@ -352,14 +383,14 @@ describe('useBookmarks', () => {
       })
 
       expect(isBookmarked).toBe(true)
-      expect(window.api.bookmarks.isBookmarked).toHaveBeenCalledWith({
+      expect(service.bookmarksService.isBookmarked).toHaveBeenCalledWith({
         itemType: 'note',
         itemId: 'note-1'
       })
     })
 
     it('should clear error state', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockRejectedValue(
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Test error')
       )
 
@@ -377,7 +408,7 @@ describe('useBookmarks', () => {
     })
 
     it('should refresh bookmarks', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [],
         total: 0,
         hasMore: false
@@ -389,13 +420,13 @@ describe('useBookmarks', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      expect(window.api.bookmarks.list).toHaveBeenCalledTimes(1)
+      expect(service.bookmarksService.list).toHaveBeenCalledTimes(1)
 
       await act(async () => {
         await result.current.refresh()
       })
 
-      expect(window.api.bookmarks.list).toHaveBeenCalledTimes(2)
+      expect(service.bookmarksService.list).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -409,7 +440,7 @@ describe('useBookmarks', () => {
 
   describe('sync-emitted events', () => {
     it('should refresh the list on a bookmarks:updated event', async () => {
-      ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ;(service.bookmarksService.list as ReturnType<typeof vi.fn>).mockResolvedValue({
         bookmarks: [createMockBookmark({ id: 'bm-1' })],
         total: 1,
         hasMore: false
@@ -420,7 +451,7 @@ describe('useBookmarks', () => {
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
-      expect(window.api.bookmarks.list).toHaveBeenCalledTimes(1)
+      expect(service.bookmarksService.list).toHaveBeenCalledTimes(1)
 
       const calls = (window.api.onBookmarkUpdated as ReturnType<typeof vi.fn>).mock.calls
       const emitUpdated = calls[calls.length - 1][0] as (event: { id: string }) => void
@@ -430,7 +461,7 @@ describe('useBookmarks', () => {
       })
 
       await waitFor(() => {
-        expect(window.api.bookmarks.list).toHaveBeenCalledTimes(2)
+        expect(service.bookmarksService.list).toHaveBeenCalledTimes(2)
       })
     })
   })
@@ -445,6 +476,7 @@ describe('useIsBookmarked', () => {
 
   beforeEach(() => {
     setupHookTestEnvironment()
+    resetService()
     queryClient = createTestQueryClient()
   })
 
@@ -459,7 +491,7 @@ describe('useIsBookmarked', () => {
   )
 
   it('should check bookmark status on mount', async () => {
-    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(true)
+    ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(true)
 
     const { result } = renderHook(() => useIsBookmarked('note', 'note-1'), { wrapper })
 
@@ -480,12 +512,12 @@ describe('useIsBookmarked', () => {
     })
 
     expect(result.current.isBookmarked).toBe(false)
-    expect(window.api.bookmarks.isBookmarked).not.toHaveBeenCalled()
+    expect(service.bookmarksService.isBookmarked).not.toHaveBeenCalled()
   })
 
   it('should toggle bookmark and update state', async () => {
-    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
-    ;(window.api.bookmarks.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
+    ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
+    ;(service.bookmarksService.toggle as ReturnType<typeof vi.fn>).mockResolvedValue({
       success: true,
       isBookmarked: true,
       bookmark: createMockBookmark({ id: 'new-bm' })
@@ -508,7 +540,7 @@ describe('useIsBookmarked', () => {
   })
 
   it('should refresh bookmark status', async () => {
-    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>)
+    ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true)
 
@@ -538,7 +570,7 @@ describe('useIsBookmarked', () => {
   }
 
   it('should flip on for a {id}-shaped created event', async () => {
-    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>)
+    ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(false)
       .mockResolvedValue(true)
 
@@ -548,7 +580,7 @@ describe('useIsBookmarked', () => {
       expect(result.current.isBookmarked).toBe(false)
     })
 
-    const emitCreated = lastSubscriber(window.api.onBookmarkCreated)
+    const emitCreated = lastSubscriber(service.onBookmarkCreated)
 
     await act(async () => {
       emitCreated({ id: 'bm-remote' })
@@ -560,7 +592,7 @@ describe('useIsBookmarked', () => {
   })
 
   it('should flip off for a {id}-shaped deleted event', async () => {
-    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>)
+    ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(true)
       .mockResolvedValue(false)
 
@@ -570,7 +602,7 @@ describe('useIsBookmarked', () => {
       expect(result.current.isBookmarked).toBe(true)
     })
 
-    const emitDeleted = lastSubscriber(window.api.onBookmarkDeleted)
+    const emitDeleted = lastSubscriber(service.onBookmarkDeleted)
 
     await act(async () => {
       emitDeleted({ id: 'bm-remote' })
@@ -582,27 +614,27 @@ describe('useIsBookmarked', () => {
   })
 
   it('should still match locally-emitted events without an extra IPC round-trip', async () => {
-    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
+    ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
 
     const { result } = renderHook(() => useIsBookmarked('note', 'note-1'), { wrapper })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
     })
-    expect(window.api.bookmarks.isBookmarked).toHaveBeenCalledTimes(1)
+    expect(service.bookmarksService.isBookmarked).toHaveBeenCalledTimes(1)
 
-    const emitCreated = lastSubscriber(window.api.onBookmarkCreated)
+    const emitCreated = lastSubscriber(service.onBookmarkCreated)
 
     await act(async () => {
       emitCreated({ bookmark: createMockBookmark({ itemType: 'note', itemId: 'note-1' }) })
     })
 
     expect(result.current.isBookmarked).toBe(true)
-    expect(window.api.bookmarks.isBookmarked).toHaveBeenCalledTimes(1)
+    expect(service.bookmarksService.isBookmarked).toHaveBeenCalledTimes(1)
   })
 
   it('should ignore a locally-emitted event for a different item', async () => {
-    ;(window.api.bookmarks.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
+    ;(service.bookmarksService.isBookmarked as ReturnType<typeof vi.fn>).mockResolvedValue(false)
 
     const { result } = renderHook(() => useIsBookmarked('note', 'note-1'), { wrapper })
 
@@ -610,13 +642,13 @@ describe('useIsBookmarked', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    const emitCreated = lastSubscriber(window.api.onBookmarkCreated)
+    const emitCreated = lastSubscriber(service.onBookmarkCreated)
 
     await act(async () => {
       emitCreated({ bookmark: createMockBookmark({ itemType: 'note', itemId: 'other-note' }) })
     })
 
     expect(result.current.isBookmarked).toBe(false)
-    expect(window.api.bookmarks.isBookmarked).toHaveBeenCalledTimes(1)
+    expect(service.bookmarksService.isBookmarked).toHaveBeenCalledTimes(1)
   })
 })

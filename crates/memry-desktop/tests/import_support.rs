@@ -44,6 +44,8 @@ pub struct RecordingSink {
     pub fail_reminder: bool,
     /// The statuses `getStatusesByProject` returns: the Inbox's, then each created project's.
     statuses: Mutex<HashMap<String, Vec<ProjectStatus>>>,
+    /// Record `created` as written instead of only its presence (the case's `exactCreated`).
+    pub exact_created: bool,
 }
 
 /// The TickTick tests' `INBOX_STATUSES`.
@@ -80,6 +82,7 @@ impl RecordingSink {
             fail_complete: false,
             fail_reminder: false,
             statuses: Mutex::new(HashMap::from([("inbox".to_owned(), inbox_statuses())])),
+            exact_created: false,
         }
     }
 
@@ -137,12 +140,12 @@ impl ImportSink for RecordingSink {
     }
 
     fn create_note(&self, note: ImportedNote) -> Result<(), SinkError> {
-        self.push(note_record("createNote", note));
+        self.push(note_record("createNote", note, self.exact_created));
         Ok(())
     }
 
     fn create_note_as_written(&self, note: ImportedNote) -> Result<(), SinkError> {
-        self.push(note_record("createNoteAsWritten", note));
+        self.push(note_record("createNoteAsWritten", note, self.exact_created));
         Ok(())
     }
 
@@ -415,8 +418,8 @@ fn repeat_record(repeat: ImportedRepeat) -> Value {
     record
 }
 
-/// The generator's `noteRecord`.
-fn note_record(op: &str, note: ImportedNote) -> Value {
+/// The generator's `noteRecord`; `exact_created` records `created` as written.
+fn note_record(op: &str, note: ImportedNote, exact_created: bool) -> Value {
     json!({
             "op": op,
             "id": note.id,
@@ -424,7 +427,9 @@ fn note_record(op: &str, note: ImportedNote) -> Value {
             "folder": note.folder,
             "tags": note.tags,
             "properties": properties_record(&note.properties),
-            "created": note.created.map(|_| "<birthtime>"),
+            "created": note.created.map(|created| {
+                if exact_created { created } else { "<birthtime>".to_owned() }
+            }),
             "modified": note.modified,
             "content": note.content,
     })

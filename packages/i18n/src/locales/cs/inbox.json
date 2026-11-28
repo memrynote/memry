@@ -579,7 +579,10 @@
       "journalOff": "Deník je vypnutý v Nastavení.",
       "sendFailed": "Lístek se nepodařilo odeslat.",
       "undoExpired": "Vrátit to zpět už je pozdě.",
-      "undoFailed": "Odeslání se nepodařilo vrátit zpět."
+      "undoFailed": "Odeslání se nepodařilo vrátit zpět.",
+      "journalBusy": "Dnešní záznam v deníku se stále ukládá. Zkuste to za chvíli znovu.",
+      "folderExcluded": "Složka Sticky je vyloučená. Odeberte ji z vyloučených složek v Nastavení, abyste mohli odesílat poznámky.",
+      "projectMissing": "Projekt tohoto úkolu neexistuje. Vyberte výchozí projekt v Nastavení, nebo to odešlete jako poznámku."
     },
     "inputLabel": "Text lístku",
     "dismissError": "Zavřít"

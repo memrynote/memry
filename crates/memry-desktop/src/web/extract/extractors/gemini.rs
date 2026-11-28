@@ -80,7 +80,7 @@ impl Conversation for GeminiExtractor {
                 if let Some(element) = extended.or(regular) {
                     let content = cx.doc.inner_html(element);
                     let temp = cx.doc.create_element("div");
-                    let fragment = cx.doc.parse_fragment(&content);
+                    let fragment = cx.doc.parse_fragment(&content)?;
                     cx.doc.append_child(temp, fragment)?;
                     // `table-content` is a partial selector in Defuddle (a table of contents,
                     // removed), but a real table in Gemini.

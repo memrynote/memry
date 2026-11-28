@@ -55,13 +55,14 @@ pub fn plugin() -> TauriPlugin<Wry> {
 }
 
 /// The page of window `label` started a new document or its window closed: it lets go of its
-/// large-file leases and ends its attachment uploads and AI provider calls. Generic so a mock
+/// large-file leases, ends its attachment uploads and AI provider calls, and owns no live canvas. Generic so a mock
 /// app can drive it; the plugin's hooks themselves cannot be (`RunEvent` is non-exhaustive and
 /// `PageLoadPayload` has no public constructor).
 pub fn release_page_resources<R: Runtime>(app: &AppHandle<R>, label: &str) {
     crate::commands::large_file::release_page(app, label);
     crate::commands::attachments::release_page(app, label);
     crate::commands::ai::release_page(app, label);
+    crate::commands::canvas::release_page(app, label);
 }
 
 /// The reload budget of each window, and the windows reloaded since their page last asked.

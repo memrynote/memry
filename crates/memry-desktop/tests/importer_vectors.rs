@@ -102,6 +102,7 @@ fn run_case(source: &str, importer: &dyn Importer, case: &Value) -> Value {
     );
     let mut sink = RecordingSink::new(Arc::clone(&timeline));
     configure_tasks(&mut sink, case);
+    sink.exact_created = case["exactCreated"].as_bool().unwrap_or(false);
     importer.run(&input, &mut ctx, &sink).unwrap();
 
     let unroot_summary = |summary: &mut Value| {
@@ -242,6 +243,21 @@ fn todoist_importer_matches_the_typescript_importer() {
         ..TodoistImporter::default()
     };
     assert_importer("todoist", &importer);
+}
+
+#[test]
+fn html_importer_matches_the_typescript_importer() {
+    assert_source("html");
+}
+
+#[test]
+fn evernote_importer_matches_the_typescript_importer() {
+    assert_source("evernote");
+}
+
+#[test]
+fn apple_journal_importer_matches_the_typescript_importer() {
+    assert_source("apple-journal");
 }
 
 #[test]

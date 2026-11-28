@@ -1,9 +1,32 @@
-//! Every Electron `sync_state` key and where it goes. Like `TABLE_MAP`, the list is exhaustive:
-//! a source key it does not match fails the import with [`super::ImportError::UnmappedSyncStateKey`]
-//! before anything is written. Keys come from `SYNC_STATE_KEYS` (`sync/engine/sync-context.ts`)
-//! over Electron's history, plus the per-item prefixes written outside it.
+//! Every Electron `sync_state` key and where it goes. Keys come from `SYNC_STATE_KEYS`
+//! (`sync/engine/sync-context.ts`) over Electron's history, plus the keys and per-item prefixes
+//! written outside it; a test pins the list against Electron's current writers. A key the list
+//! does not match is reported (`unknownSyncStateKeys`) and the import carries on, as Electron
+//! ignores a key it does not read: it can come from a newer Electron, or from a writer the list
+//! missed.
+//!
+//! The `sync_state` table's importer ([`import`]) reads every row: a carried key's handler
+//! parses its value as Electron reads it into [`ImportSyncState`], which the core writes in one
+//! transaction (`storage::import::sync_state` names each key's core owner). Stage check 5
+//! re-plans the source and compares the staged state ([`mismatches`]).
 
-use super::{ImportError, TableCtx};
+use std::collections::BTreeMap;
+
+use memry_core::protocol::types::Declaration;
+use memry_core::storage::import::{
+    ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState, ImportWriter,
+};
+use rusqlite::types::ValueRef;
+use rusqlite::{Connection, OptionalExtension};
+use serde::Deserialize;
+use serde_json::Value;
+
+use super::journal_day_merges::journal_day_merge;
+
+use super::source::source_error;
+use super::tables::records::malformed;
+use super::tables::{SourceDb, TableStats};
+use super::{ImportError, TableCtx, read_source_id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyMatch {
@@ -12,21 +35,23 @@ pub enum KeyMatch {
     Prefix(&'static str),
 }
 
-/// Carries one key's `value` to its core destination.
-pub type KeyFn = fn(&mut TableCtx<'_>, &str, &str) -> Result<(), ImportError>;
+/// What a handler did with its key's row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Carried {
+    Written,
+    /// Not carried, for the named reason; the core reads the key's state as absent.
+    Dropped(&'static str),
+}
 
-/// What the import does with a key. A key that carries data names its handler, or the stage that
-/// writes it, so a carried key without either cannot be written.
+/// Parses one key's value into the plan, as Electron reads it.
+pub type KeyFn = fn(&mut SyncStatePlan, &str) -> Carried;
+
+/// What the import does with a key. A key that carries data names its handler, so a carried key
+/// without one cannot be written.
 #[derive(Debug, Clone, Copy)]
 pub enum KeyRule {
     /// Dropped into the report.
     Skip { reason: &'static str },
-    /// Carried by a handler the named stage writes; a source holding the key fails the import
-    /// with [`ImportError::NotReady`].
-    Pending {
-        stage: &'static str,
-        reason: &'static str,
-    },
     /// Carried by `handler`, which the `sync_state` table's importer runs per key.
     Convert {
         handler: KeyFn,
@@ -49,27 +74,17 @@ impl SyncStateKey {
     }
 
     /// The report line a dropped key counts under: the key, or the prefix of a prefixed key.
-    pub fn report_name(&self) -> String {
+    pub fn report_name(&self) -> &'static str {
         match self.key {
-            KeyMatch::Exact(key) | KeyMatch::Prefix(key) => format!("syncState.{key}"),
+            KeyMatch::Exact(key) | KeyMatch::Prefix(key) => key,
         }
     }
 }
 
-/// A key carried to the core once stage 36c3 writes its handler.
-const fn convert(key: KeyMatch, reason: &'static str) -> SyncStateKey {
-    pending("36c3", key, reason)
-}
-
-/// A key the documents carry (36c4).
-const fn document(key: KeyMatch, reason: &'static str) -> SyncStateKey {
-    pending("36c4", key, reason)
-}
-
-const fn pending(stage: &'static str, key: KeyMatch, reason: &'static str) -> SyncStateKey {
+const fn convert(key: KeyMatch, handler: KeyFn, reason: &'static str) -> SyncStateKey {
     SyncStateKey {
         key,
-        rule: KeyRule::Pending { stage, reason },
+        rule: KeyRule::Convert { handler, reason },
     }
 }
 
@@ -85,7 +100,8 @@ use KeyMatch::{Exact, Prefix};
 pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
     convert(
         Exact("lastCursor"),
-        "sync_cursors scope record, cursor text copied",
+        last_cursor,
+        "sync_cursors scope record, with the desktop declaration and first_sync.completed",
     ),
     skip(
         Exact("lastSyncAt"),
@@ -93,20 +109,28 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
     ),
     convert(
         Exact("syncPaused"),
-        "Step 17 pause state: a paused vault stays paused",
+        sync_paused,
+        "Step 17 pause state (meta sync.paused): a paused vault stays paused",
+    ),
+    skip(
+        Exact("initialSeedDone"),
+        "gates nothing: Electron's runInitialSeed seeds every unclocked row whatever the flag \
+         (initial-seed.ts:23-31), and so does the import's runtime-start seed (36c2)",
     ),
     convert(
-        Exact("initialSeedDone"),
-        "Step 17 seed rule: clock-less syncable rows get an upsert",
+        Exact("quarantinedItems"),
+        quarantined_items,
+        "Step 17 sync_quarantine ledger, reasons kept",
     ),
-    convert(Exact("quarantinedItems"), "Step 17 sync_quarantine ledger"),
     convert(
         Exact("schemaInvalidItems"),
-        "Step 17 refused items; non-empty means lastCursor is not copied",
+        schema_invalid_items,
+        "Step 17 sync_refused_items; refetched on the first pull, kind kept",
     ),
     convert(
         Exact("cursorSkipRepair"),
-        "Step 17 cursor repair; non-empty means lastCursor is not copied",
+        cursor_skip_repair,
+        "meta sync.cursor_skip_repair, the same three states",
     ),
     skip(
         Exact("noteBodyFeedCursor"),
@@ -116,9 +140,10 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
         Exact("noteBodyLegacySweep"),
         "core pulls per document and runs no legacy note body sweep",
     ),
-    convert(
+    skip(
         Exact("packsAppliedThroughCursor"),
-        "Step 17 pack_bootstrap applied-through cursor",
+        "the core keeps no pack watermark since #5339: a vault holding a cursor is past its \
+         first sync and runs no pack bootstrap",
     ),
     skip(
         Exact("packSeedSettlePending"),
@@ -138,23 +163,32 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
     ),
     skip(
         Exact("crdtBodyDebtMirrorAt"),
-        "store and database come from one snapshot, nothing left to mismatch",
+        "read with crdtUnmergedDebt: the time of the debt Electron already converted",
     ),
-    document(
+    convert(
         Exact("crdtUnmergedDebt"),
-        "marks every document owed as a core body debt",
+        unmerged_debt,
+        "not yet converted: a core body debt for every live markdown note and journal day",
     ),
     skip(
         Exact("lastCrdtSweepAt"),
         "retired in #2421; the row stays only for older Electron builds",
     ),
-    document(
-        Prefix("journalDayMerge:"),
-        "an owed journal day merge (sync/journal-day-merge.ts); destination set by 36c4",
+    skip(
+        Exact("declinedSyncRefs"),
+        "server items Electron declined as duplicates of a local row \
+         (packages/sync-client/src/declined-refs.ts); the core keeps no decline set yet, so its \
+         manifest check pulls them again (follow-up on #3553)",
     ),
-    document(
+    convert(
+        Prefix("journalDayMerge:"),
+        journal_day_merge,
+        "the core's owed merge of the same foreign id, this device's day text kept",
+    ),
+    skip(
         Prefix("note-cover:"),
-        "an owed note cover sync marker (item-handlers/note-cover-sync.ts); destination set by 36c4",
+        "read by the note_metadata importer: a removal rides in the note payload as cover null, \
+         and the core then tells a removal from the frontmatter it edits",
     ),
 ];
 
@@ -162,35 +196,296 @@ pub fn classify(key: &str) -> Option<&'static SyncStateKey> {
     SYNC_STATE_KEYS.iter().find(|rule| rule.matches(key))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// The cap on a carried value, checked before it is parsed.
+pub const MAX_VALUE_BYTES: usize = 8 * 1024 * 1024;
 
-    #[test]
-    fn prefixes_need_an_id_and_exact_keys_match_exactly() {
-        assert!(classify("packSeeded:").is_none());
-        assert!(classify("packSeeded:-0QKFMSbJ-18").is_some());
-        assert!(classify("lastCursor").is_some());
-        assert!(classify("lastCursor ").is_none());
-        assert!(classify("LASTCURSOR").is_none());
-        assert!(matches!(
-            classify("note-cover:x").unwrap().rule,
-            KeyRule::Pending { .. }
-        ));
-    }
+/// The sync state the source holds and the row counts of the `sync_state` table.
+#[derive(Debug, Default)]
+pub struct SyncStatePlan {
+    pub state: ImportSyncState,
+    pub stats: TableStats,
+    /// Foreign ids of the `journalDayMerge:` rows whose fold needs this device's holder text,
+    /// tags or attachment references: the import refuses them.
+    pub local_folds: Vec<String>,
+}
 
-    #[test]
-    fn no_key_matches_two_rules() {
-        for rule in SYNC_STATE_KEYS {
-            let sample = match rule.key {
-                KeyMatch::Exact(key) => key.to_owned(),
-                KeyMatch::Prefix(prefix) => format!("{prefix}id"),
-            };
-            let hits = SYNC_STATE_KEYS
-                .iter()
-                .filter(|r| r.matches(&sample))
-                .count();
-            assert_eq!(hits, 1, "{sample}");
+const TABLE: &str = "sync_state";
+
+/// Reads every `sync_state` row. Pure: stage check 5 runs it again.
+pub fn plan(source: &Connection) -> Result<SyncStatePlan, ImportError> {
+    let db = SourceDb::Data;
+    let mut plan = SyncStatePlan::default();
+    let mut stmt = source
+        .prepare("SELECT rowid, key, value FROM sync_state ORDER BY key")
+        .map_err(|e| source_error(db, e))?;
+    let mut rows = stmt.query([]).map_err(|e| source_error(db, e))?;
+    while let Some(row) = rows.next().map_err(|e| source_error(db, e))? {
+        let rowid: i64 = row.get("rowid").map_err(|e| source_error(db, e))?;
+        let key = read_source_id(row, db, TABLE, "key")?;
+        let carried = match classify(&key) {
+            None => {
+                // A newer Electron's key. The name before any `:` only: a prefixed key ends in
+                // an item id.
+                let name = key.split(':').next().unwrap_or_default();
+                tracing::warn!(
+                    key = name,
+                    "the vault import does not know a sync_state key"
+                );
+                Carried::Dropped("unknownSyncStateKeys")
+            }
+            Some(rule) => match rule.rule {
+                KeyRule::Skip { .. } => Carried::Dropped(rule.report_name()),
+                KeyRule::Convert { handler, .. } => {
+                    let value = match row.get_ref("value").map_err(|e| source_error(db, e))? {
+                        ValueRef::Text(bytes) => std::str::from_utf8(bytes)
+                            .map_err(|_| malformed(TABLE, rowid, "a value that is not UTF-8"))?,
+                        _ => return Err(malformed(TABLE, rowid, "a value that is not text")),
+                    };
+                    if value.len() > MAX_VALUE_BYTES {
+                        return Err(malformed(TABLE, rowid, "a value is over 8 MiB"));
+                    }
+                    handler(&mut plan, value)
+                }
+            },
+        };
+        match carried {
+            Carried::Written => plan.stats.written += 1,
+            Carried::Dropped(reason) => plan.stats.dropped.push((reason, 1)),
         }
     }
+    // Electron writes the debt on every vault open with an unmarked store but converts it only
+    // at sync start (`crdt-store-epoch.ts:56-73`, `engine.ts:292`), so a vault that never synced
+    // (free, signed out, held) keeps a dormant one. Without a record cursor the core's first
+    // sync owes every live document itself (`first_sync_store::owe_live_documents`); owing them
+    // here would freeze write-back and outside edits until a sync that may never run.
+    plan.state.owe_every_body = plan.state.record_cursor.is_some() && unconverted_debt(source)?;
+    plan.state
+        .journal_merges
+        .sort_by(|a, b| a.foreign_id.cmp(&b.foreign_id));
+    Ok(plan)
 }
+
+/// The `sync_state` table's importer.
+pub fn import(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
+    let plan = plan(ctx.source)?;
+    ctx.writer.put_sync_state(&plan.state, ctx.now_ms)?;
+    Ok(plan.stats)
+}
+
+/// Stage check 5's part: what differs between the staged sync state and the source's, by field.
+pub fn mismatches(source: &Connection, writer: &ImportWriter) -> Result<Vec<String>, ImportError> {
+    let planned = plan(source)?.state;
+    let staged = writer.staged_sync_state()?;
+    let differ = [
+        ("cursor", planned.record_cursor != staged.record_cursor),
+        (
+            "cursor repair",
+            planned.cursor_skip_repair != staged.cursor_skip_repair,
+        ),
+        ("pause", planned.paused != staged.paused),
+        ("quarantine", planned.quarantined != staged.quarantined),
+        ("refused items", planned.refused != staged.refused),
+        (
+            "body debts",
+            planned.owe_every_body && !staged.owe_every_body,
+        ),
+        (
+            "journal day merges",
+            planned.journal_merges != staged.journal_merges,
+        ),
+    ];
+    Ok(differ
+        .into_iter()
+        .filter(|(_, differs)| *differs)
+        .map(|(field, _)| format!("sync_state: the staged {field} differs from the source"))
+        .collect())
+}
+
+/// Electron reads `Number(lastCursor)`; a value that is no non-negative integer is not carried,
+/// so the core reads the feed from the start.
+fn last_cursor(plan: &mut SyncStatePlan, value: &str) -> Carried {
+    if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
+        return Carried::Dropped("unreadableLastCursor");
+    }
+    let Ok(cursor) = value.parse::<i64>() else {
+        return Carried::Dropped("unreadableLastCursor");
+    };
+    plan.state.record_cursor = Some(ImportRecordCursor {
+        cursor: cursor.to_string(),
+        // Electron advanced the cursor under `SYNC_TYPES_HEADER_VALUE`, which is byte for byte
+        // the desktop declaration (`protocol/types.rs`).
+        declaration: Declaration::desktop().header_value(),
+    });
+    Carried::Written
+}
+
+/// `setPaused` writes `'true'` or `'false'`; `isPaused` is `=== 'true'`.
+fn sync_paused(plan: &mut SyncStatePlan, value: &str) -> Carried {
+    plan.state.paused = value == "true";
+    Carried::Written
+}
+
+/// `done` and `pending:<cursor>` carry; anything else Electron reads as not started, which the
+/// core does for an absent key.
+fn cursor_skip_repair(plan: &mut SyncStatePlan, value: &str) -> Carried {
+    let pending = value
+        .strip_prefix("pending:")
+        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+    if value != "done" && !pending {
+        return Carried::Dropped("unreadableCursorSkipRepair");
+    }
+    plan.state.cursor_skip_repair = Some(value.to_owned());
+    Carried::Written
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct QuarantineEntry {
+    item_id: String,
+    item_type: String,
+    signer_device_id: String,
+    failed_at: i64,
+    attempt_count: i64,
+    last_error: String,
+}
+
+/// `QuarantineManager.loadState`: `{v, entries}`; the id-keyed v1 array is discarded. A later
+/// entry of the same `(type, id)` replaces an earlier one, as the map does. Expired entries are
+/// carried: the core expires them by `failed_at` as Electron's load does.
+fn quarantined_items(plan: &mut SyncStatePlan, value: &str) -> Carried {
+    let entries = match serde_json::from_str::<Value>(value) {
+        Ok(Value::Array(_)) => return Carried::Dropped("legacyQuarantineState"),
+        Ok(Value::Object(mut state)) => match state.remove("entries") {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::Array(entries)) => entries,
+            Some(_) => return Carried::Dropped("unreadableQuarantineState"),
+        },
+        _ => return Carried::Dropped("unreadableQuarantineState"),
+    };
+    let mut kept = BTreeMap::new();
+    let mut unreadable: u64 = 0;
+    for entry in entries {
+        match serde_json::from_value::<QuarantineEntry>(entry) {
+            Ok(e) => {
+                kept.insert(
+                    (e.item_type.clone(), e.item_id.clone()),
+                    ImportQuarantined {
+                        item_type: e.item_type,
+                        item_id: e.item_id,
+                        signer_device_id: e.signer_device_id,
+                        failed_at: e.failed_at,
+                        attempt_count: e.attempt_count,
+                        last_error: e.last_error,
+                    },
+                );
+            }
+            Err(_) => unreadable += 1,
+        }
+    }
+    if unreadable > 0 {
+        plan.stats
+            .notices
+            .push(("unreadableQuarantineEntries", unreadable));
+    }
+    plan.state.quarantined = kept.into_values().collect();
+    Carried::Written
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LedgerEntry {
+    id: String,
+    #[serde(rename = "type")]
+    item_type: String,
+    #[serde(default)]
+    kind: Value,
+    last_refused_by_version: String,
+    /// Required, as Electron's schema requires it; the core's cooldown does not read it.
+    #[serde(rename = "failedAt")]
+    _failed_at: i64,
+}
+
+/// `SchemaInvalidLedger.read`: a JSON object of entries; one that does not parse is dropped, and
+/// a kind it does not know reads as `payload`. The refusing version names Electron's app and the
+/// kind, so the core build never matches it. `refused_at` is 0, so the core's cooldown never
+/// holds an entry back: the first pull refetches every one before the first push, as
+/// Electron's `retryable` does at the next pull start for entries another app version wrote.
+/// A `note_body` entry is dropped: Electron's `refuse` also owes the note a body debt
+/// (`note-body-feed.ts`), imported with `crdt_body_debts`, and the core refetches records only.
+fn schema_invalid_items(plan: &mut SyncStatePlan, value: &str) -> Carried {
+    let Ok(Value::Object(entries)) = serde_json::from_str::<Value>(value) else {
+        return Carried::Dropped("unreadableSchemaInvalidState");
+    };
+    let mut kept = BTreeMap::new();
+    let (mut unreadable, mut note_bodies): (u64, u64) = (0, 0);
+    for (_, entry) in entries {
+        let Ok(e) = serde_json::from_value::<LedgerEntry>(entry) else {
+            unreadable += 1;
+            continue;
+        };
+        if e.item_type == "note_body" {
+            note_bodies += 1;
+            continue;
+        }
+        let kind = e
+            .kind
+            .as_str()
+            .filter(|kind| ["payload", "envelope", "blob_missing", "pending_intent"].contains(kind))
+            .unwrap_or("payload");
+        kept.insert(
+            (e.item_type.clone(), e.id.clone()),
+            ImportRefused {
+                item_type: e.item_type,
+                item_id: e.id,
+                refused_by_version: format!("electron {} {kind}", e.last_refused_by_version),
+                refused_at: 0,
+            },
+        );
+    }
+    for (notice, count) in [
+        ("unreadableSchemaInvalidEntries", unreadable),
+        ("schemaInvalidNoteBodies", note_bodies),
+    ] {
+        if count > 0 {
+            plan.stats.notices.push((notice, count));
+        }
+    }
+    plan.state.refused = kept.into_values().collect();
+    Carried::Written
+}
+
+/// `convertUnmergedDebtMirror` reads only `'1'` as a debt. Whether Electron converted it
+/// already is read with the row's time ([`unconverted_debt`]).
+fn unmerged_debt(_: &mut SyncStatePlan, value: &str) -> Carried {
+    match value {
+        "1" => Carried::Written,
+        _ => Carried::Dropped("crdtUnmergedDebt"),
+    }
+}
+
+/// `convertUnmergedDebtMirror` (`crdt-body-debts.ts:465-482`): a `crdtUnmergedDebt = '1'` is
+/// converted at engine start unless `crdtBodyDebtMirrorAt` holds the row's `updated_at` as
+/// `Date#getTime`. Drizzle's `timestamp` mode stores seconds. A time that is not an integer
+/// counts as not converted: an owed body costs one pull.
+fn unconverted_debt(source: &Connection) -> Result<bool, ImportError> {
+    let row: Option<(Option<i64>, Option<String>)> = source
+        .query_row(
+            "SELECT CASE WHEN typeof(d.updated_at) = 'integer' THEN d.updated_at END,
+                    (SELECT value FROM sync_state WHERE key = 'crdtBodyDebtMirrorAt')
+             FROM sync_state d WHERE d.key = 'crdtUnmergedDebt' AND d.value = '1'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|e| source_error(SourceDb::Data, e))?;
+    Ok(row.is_some_and(|(at, mirror_at)| {
+        let row_at = at
+            .and_then(|s| s.checked_mul(1000))
+            .map(|ms| ms.to_string());
+        row_at.is_none() || row_at != mirror_at
+    }))
+}
+
+#[cfg(test)]
+#[path = "sync_state_tests.rs"]
+mod tests;
