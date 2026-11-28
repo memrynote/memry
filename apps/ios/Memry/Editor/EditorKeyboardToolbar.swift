@@ -90,9 +90,6 @@ struct EditorKeyboardToolbar: View {
                 }
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { rowTop = $0 }
             }
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(AccessoryStrip.space)) } action: {
-                session.accessory.column = $0
-            }
             .measuredColumn(Tokens.Size.reading)
             .padding(.horizontal, Tokens.Space.small)
             .padding(.top, Tokens.Space.small)
