@@ -105,6 +105,7 @@ const crdtProvider = vi.hoisted(() => ({
   closeIfInactive: vi.fn(async () => true),
   // A store: these tests read a persisted doc back.
   hasPersistence: vi.fn(() => true),
+  isAwaitingMerge: vi.fn(() => false),
   isNoteLocalOnly: vi.fn(() => false)
 }))
 
