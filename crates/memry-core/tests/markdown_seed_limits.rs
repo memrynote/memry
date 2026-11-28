@@ -166,3 +166,43 @@ fn deeply_nested_lists_plan_without_overflowing_the_stack() {
         .collect();
     within("nested lists", text, Duration::from_secs(30));
 }
+
+#[test]
+fn a_heading_with_a_long_whitespace_run_plans_in_linear_time() {
+    let spaces = " ".repeat(20_000);
+    let plan = within("heading, whitespace run", format!("# a{spaces}x"), BOUND);
+    assert_eq!(plan.blocks.len(), 1);
+    within(
+        "heading, whitespace runs around a mark",
+        format!("# a{spaces}#{spaces}x"),
+        BOUND,
+    );
+}
+
+/// A toggle's lines are parsed too, so the linear pass costs more per byte
+/// than the other cases; the quadratic one still takes seconds.
+const TOGGLE_BOUND: Duration = Duration::from_secs(1);
+
+#[test]
+fn many_unclosed_toggles_plan_in_linear_time() {
+    let open = "<details data-memry-toggle>\n<summary>s</summary>\n";
+    within("unclosed toggles", open.repeat(3000), TOGGLE_BOUND);
+    within(
+        "unclosed toggles, one closer",
+        format!("{}</details>\n", open.repeat(3000)),
+        TOGGLE_BOUND,
+    );
+}
+
+#[test]
+fn many_unclosed_toggles_between_fences_plan_in_linear_time() {
+    let open = "<details data-memry-toggle>\n<summary>s</summary>\n```\n";
+    within("unclosed toggles, fenced", open.repeat(3000), TOGGLE_BOUND);
+}
+
+#[test]
+fn a_list_item_over_many_whitespace_lines_plans_in_linear_time() {
+    let text = format!("- a\n{}  b", " \n".repeat(8000));
+    let plan = within("whitespace lines in a list item", text, BOUND);
+    assert_eq!(plan.blocks.len(), 1);
+}
