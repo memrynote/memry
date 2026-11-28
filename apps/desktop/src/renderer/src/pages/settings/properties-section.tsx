@@ -34,6 +34,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError, trackRendererLog } from '@/lib/telemetry-diagnostics'
 import {
   getTagColors,
+  tagLabelColor,
   withAlpha,
   COLOR_ROWS,
   TAG_COLORS,
@@ -644,7 +645,7 @@ function OptionRow({
           className="text-[13px]/4 text-foreground flex-1 truncate rounded-[10px] px-2 py-0.5"
           style={{
             backgroundColor: withAlpha(colors.text, 0.12),
-            color: colors.text
+            color: tagLabelColor(colors.text)
           }}
         >
           {option.value}

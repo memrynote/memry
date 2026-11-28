@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Categorienaam",
     "tagNamePlaceholder": "Tagnaam",
     "uncategorized": "Zonder categorie",
+    "view": {
+      "label": "Tagweergave",
+      "categories": "Categorieën",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Alle tags",
+      "empty": "Nog geen tags"
+    },
     "search": {
       "placeholder": "Categorieën en tags zoeken",
       "empty": "Geen categorieën of tags gevonden voor je zoekopdracht"

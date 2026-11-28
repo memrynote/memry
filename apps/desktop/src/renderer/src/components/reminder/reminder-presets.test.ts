@@ -134,16 +134,18 @@ const STANDARD_EXPECTATIONS: PresetExpectation[] = [
     id: 'tomorrow',
     labelKey: 'reminder.presets.tomorrow.label',
     label: 'Tomorrow',
-    descriptionKey: 'reminder.presets.tomorrow.description',
-    description: 'Tomorrow at 9 AM',
+    descriptionKey: 'reminder.dateTime.tomorrowAt',
+    descriptionOptions: { time: '9:00 AM' },
+    description: 'Tomorrow at 9:00 AM',
     date: new Date(2026, 4, 7, 9, 0, 0, 0)
   },
   {
     id: 'next-week',
     labelKey: 'reminder.presets.nextWeek.label',
     label: 'Next Week',
-    descriptionKey: 'reminder.presets.nextWeek.description',
-    description: 'Monday at 9 AM',
+    descriptionKey: 'reminder.dateTime.dateAt',
+    descriptionOptions: { date: 'Monday', time: '9:00 AM' },
+    description: 'Monday at 9:00 AM',
     date: new Date(2026, 4, 11, 9, 0, 0, 0)
   },
   {
@@ -273,7 +275,7 @@ describe('reminder preset labels and offsets', () => {
       ])
 
       calls.length = 0
-      expect(preset.description).toBe(expected.description)
+      expect(preset.description?.('12h')).toBe(expected.description)
       expect(calls).toEqual(
         expected.descriptionKey
           ? [{ ns: 'inbox', key: expected.descriptionKey, options: expected.descriptionOptions }]
@@ -294,6 +296,15 @@ describe('reminder preset labels and offsets', () => {
 
   it('resolves snooze preset labels and lands on the promised time', () => {
     assertPresets(snoozePresets, SNOOZE_EXPECTATIONS)
+  })
+
+  it('names the preset time in the clock format the user chose', () => {
+    const [, tomorrow, nextWeek] = standardPresets
+
+    expect(tomorrow.description?.('24h')).toBe('Tomorrow at 09:00')
+    expect(nextWeek.description?.('24h')).toBe('Monday at 09:00')
+    expect(tomorrow.description?.('12h')).toBe('Tomorrow at 9:00 AM')
+    expect(nextWeek.description?.('12h')).toBe('Monday at 9:00 AM')
   })
 
   it('offsets snooze presets from the moment they are read, not from import time', () => {
@@ -331,7 +342,7 @@ describe('reminder preset labels follow the active language', () => {
 
     // Same getters, no re-import: the labels must follow the switch.
     expect(standardPresets[0].label).toBe('Später heute')
-    expect(standardPresets[0].description).toBe('In 4 Stunden')
+    expect(standardPresets[0].description?.('12h')).toBe('In 4 Stunden')
     expect(snoozePresets[0].label).toBe('In 15 Minuten')
     expect(snoozePresets[1].label).toBe('In 1 Stunde')
     expect(snoozePresets[2].label).toBe('In 3 Stunden')

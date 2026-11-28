@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "اسم الفئة",
     "tagNamePlaceholder": "اسم الوسم",
     "uncategorized": "غير مصنّفة",
+    "view": {
+      "label": "عرض الوسوم",
+      "categories": "الفئات",
+      "az": "أ–ي"
+    },
+    "azList": {
+      "heading": "كل الوسوم",
+      "empty": "لا توجد وسوم بعد"
+    },
     "search": {
       "placeholder": "البحث في الفئات والوسوم",
       "empty": "لا توجد فئات أو وسوم تطابق بحثك"

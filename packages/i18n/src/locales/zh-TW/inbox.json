@@ -279,12 +279,10 @@
         "description": "{count, plural, other {# 小時後}}"
       },
       "tomorrow": {
-        "label": "明天",
-        "description": "明天上午 9 點"
+        "label": "明天"
       },
       "nextWeek": {
-        "label": "下週",
-        "description": "週一上午 9 點"
+        "label": "下週"
       },
       "inMinutes": {
         "label": "{count, plural, other {# 分鐘後}}"

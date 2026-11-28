@@ -4,7 +4,7 @@ import { foldTag } from '@memry/shared/tag-fold'
 import { type Block } from '@blocknote/core'
 import { createHashTagSpec } from '@memry/editor-schema/inline'
 import { findInlineTags } from '@memry/shared/inline-tags'
-import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, tagLabelColor, withAlpha } from '@/components/note/tags-row/tag-colors'
 import {
   isCustomIconValue,
   isIconValue,
@@ -111,7 +111,7 @@ export const HashTag = createHashTagSpec((inlineContent) => {
   if (icon) prependTagIcon(dom, icon, colors.text)
 
   dom.style.backgroundColor = withAlpha(colors.text, 0.12)
-  dom.style.setProperty('--hash-tag-color', colors.text)
+  dom.style.setProperty('--hash-tag-color', tagLabelColor(colors.text))
   dom.style.padding = '1px 8px'
   dom.style.borderRadius = '10px'
   dom.style.fontSize = '0.9em'

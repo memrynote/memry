@@ -33,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { getTagColors } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { useT } from '@memry/i18n/renderer'
 import { useTagSearches } from '@/hooks/use-tag-searches'
 import { fullTagSelection, sameTagSelection } from '@/lib/tag-filter-selection'
@@ -65,7 +65,7 @@ function TagChip({
       className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium leading-4"
       style={
         colors
-          ? { backgroundColor: `${colors.text}1A`, color: colors.text }
+          ? { backgroundColor: `${colors.text}1A`, color: tagLabelColor(colors.text) }
           : { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }
       }
     >

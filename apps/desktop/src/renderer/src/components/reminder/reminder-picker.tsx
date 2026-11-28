@@ -240,7 +240,7 @@ export function ReminderPicker({
                     trailing={
                       preset.description ? (
                         <span className="text-[11px] text-muted-foreground/70">
-                          {preset.description}
+                          {preset.description(clockFormat)}
                         </span>
                       ) : undefined
                     }

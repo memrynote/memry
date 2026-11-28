@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Kategorinavn",
     "tagNamePlaceholder": "Tagnavn",
     "uncategorized": "Ukategoriseret",
+    "view": {
+      "label": "Tag-visning",
+      "categories": "Kategorier",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Alle tags",
+      "empty": "Ingen tags endnu"
+    },
     "search": {
       "placeholder": "Søg i kategorier og tags",
       "empty": "Ingen kategorier eller tags matcher din søgning"

@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Kategorinamn",
     "tagNamePlaceholder": "Taggnamn",
     "uncategorized": "Okategoriserade",
+    "view": {
+      "label": "Taggvy",
+      "categories": "Kategorier",
+      "az": "A–Ö"
+    },
+    "azList": {
+      "heading": "Alla taggar",
+      "empty": "Inga taggar ännu"
+    },
     "search": {
       "placeholder": "Sök kategorier och taggar",
       "empty": "Inga kategorier eller taggar matchar din sökning"

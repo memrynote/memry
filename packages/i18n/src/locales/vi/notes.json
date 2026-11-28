@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Tên danh mục",
     "tagNamePlaceholder": "Tên thẻ",
     "uncategorized": "Chưa phân loại",
+    "view": {
+      "label": "Chế độ xem thẻ",
+      "categories": "Danh mục",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Tất cả thẻ",
+      "empty": "Chưa có thẻ nào"
+    },
     "search": {
       "placeholder": "Tìm kiếm danh mục và thẻ",
       "empty": "Không có danh mục hoặc thẻ nào khớp với tìm kiếm"

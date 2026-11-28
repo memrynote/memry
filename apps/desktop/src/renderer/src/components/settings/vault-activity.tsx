@@ -45,6 +45,7 @@ import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 import { useVaultActivity, vaultActivityKeys } from '@/hooks/use-vault-activity'
 import { COMPACT_SELECT, SettingsGroup, SettingRow } from './settings-primitives'
 import { describeVaultActivity, type VaultActivityTone } from './vault-activity-describe'
+import { isHour12 } from '@/lib/time-format'
 
 const KIND_ICONS: Record<VaultActivityEntry['kind'], AppIcon> = {
   added: FilePlus,
@@ -100,7 +101,12 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
   )
 
   const dateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(getActiveLocale(), { dateStyle: 'medium', timeStyle: 'short' }),
+    () =>
+      new Intl.DateTimeFormat(getActiveLocale(), {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        hour12: isHour12()
+      }),
     []
   )
 

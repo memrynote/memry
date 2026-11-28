@@ -360,7 +360,8 @@
     "createFailed": "無法建立範本",
     "updateFailed": "無法更新範本",
     "deleteFailed": "無法刪除範本",
-    "duplicateFailed": "無法製作範本副本"
+    "duplicateFailed": "無法製作範本副本",
+    "nameTaken": "已有名為「{name}」的範本，請換一個名稱。"
   },
   "customIcon": {
     "unreadableImage": "無法讀取這張圖片。請改用 PNG、JPG、GIF、WEBP 或 SVG 檔案。",

@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "שם הקטגוריה",
     "tagNamePlaceholder": "שם התגית",
     "uncategorized": "ללא קטגוריה",
+    "view": {
+      "label": "תצוגת תגיות",
+      "categories": "קטגוריות",
+      "az": "א–ת"
+    },
+    "azList": {
+      "heading": "כל התגיות",
+      "empty": "עדיין אין תגיות"
+    },
     "search": {
       "placeholder": "חיפוש קטגוריות ותגיות",
       "empty": "לא נמצאו קטגוריות או תגיות שתואמות לחיפוש"

@@ -360,7 +360,8 @@
     "createFailed": "Failed to create template",
     "updateFailed": "Failed to update template",
     "deleteFailed": "Failed to delete template",
-    "duplicateFailed": "Failed to duplicate template"
+    "duplicateFailed": "Failed to duplicate template",
+    "nameTaken": "A template named “{name}” already exists. Choose a different name."
   },
   "customIcon": {
     "unreadableImage": "That image could not be read. Try a PNG, JPG, GIF, WEBP or SVG file.",

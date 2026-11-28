@@ -6,7 +6,7 @@ import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useToggleTagOnActiveTagTab } from '@/hooks/use-tag-and-tags'
 import { useTagCategories, type HubTag } from '@/hooks/use-tag-categories'
-import { getTagColors } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { Button } from '@/components/ui/button'
@@ -261,7 +261,7 @@ function TagTreeItem({
               )}
               style={
                 colors
-                  ? { backgroundColor: `${colors.text}1A`, color: colors.text }
+                  ? { backgroundColor: `${colors.text}1A`, color: tagLabelColor(colors.text) }
                   : { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }
               }
             >

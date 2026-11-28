@@ -360,7 +360,8 @@
     "createFailed": "Không thể tạo mẫu",
     "updateFailed": "Không thể cập nhật mẫu",
     "deleteFailed": "Không thể xóa mẫu",
-    "duplicateFailed": "Không thể nhân bản mẫu"
+    "duplicateFailed": "Không thể nhân bản mẫu",
+    "nameTaken": "Đã có mẫu tên “{name}”. Hãy chọn tên khác."
   },
   "customIcon": {
     "unreadableImage": "Không thể đọc ảnh đó. Thử tệp PNG, JPG, GIF, WEBP hoặc SVG.",

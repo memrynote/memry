@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
 import { createPortal } from 'react-dom'
 import type { WikiLinkPreview } from '@/services/notes-service'
-import { getTagColors, withAlpha } from '../tags-row/tag-colors'
+import { getTagColors, tagLabelColor, withAlpha } from '../tags-row/tag-colors'
 import { formatDate } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
 import { BookOpen, FileText } from '@/lib/icons'
@@ -160,7 +160,7 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
                   className="inline-flex items-center rounded-[10px] py-0.5 px-2 text-[11px]/3.5 font-medium cursor-pointer transition-opacity duration-150 hover:opacity-80"
                   style={{
                     backgroundColor: withAlpha(colors.text, 0.12),
-                    color: colors.text
+                    color: tagLabelColor(colors.text)
                   }}
                 >
                   {tag.name}

@@ -1,11 +1,12 @@
 //! Template list, duplicate, update and delete (spec 006 ST18), after desktop
 //! `vault/templates.ts`.
 //!
-//! **Built-ins live in code on desktop** (`vault/built-in-templates.ts`) and
-//! never sync, so they are ported here verbatim and are read-only: update and
-//! delete refuse them, duplicate copies one into a synced template. A remote
-//! template whose id collides with a built-in is ignored, as desktop's
-//! `template-handler.ts` ignores it.
+//! **Built-ins live in code on desktop and the CLI**
+//! (`packages/app-core/src/built-in-templates.ts`) and never sync, so they
+//! are ported here verbatim and are read-only: update and delete refuse them,
+//! duplicate copies one into a synced template. A remote template whose id
+//! collides with a built-in is ignored, as desktop's `template-handler.ts`
+//! ignores it.
 //!
 //! Desktop templates have no folder field; the Paper "Folder" pill has no data
 //! behind it (spec 006 §6).

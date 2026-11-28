@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { IpcFailureError } from '@/lib/ipc-error'
 import { useTemplateDraft } from './use-template-draft'
 
 const createTemplate = vi.fn()
@@ -158,6 +159,47 @@ describe('useTemplateDraft', () => {
     expect(saved).toBe(false)
     expect(result.current.isDirty).toBe(true)
     expect(toastError).toHaveBeenCalled()
+  })
+
+  it('keeps a refused name as an inline error instead of a toast, and clears it on the next keystroke', async () => {
+    updateTemplate.mockRejectedValue(
+      new IpcFailureError('A template named “Retro” already exists.', 'template-name-taken')
+    )
+    const { result } = renderHook(() =>
+      useTemplateDraft({
+        templateId: 'tpl-1',
+        initial: { ...emptyFields, name: 'Meeting' }
+      })
+    )
+
+    act(() => result.current.setFields({ name: 'Retro' }))
+    let saved: boolean | undefined
+    await act(async () => {
+      saved = await result.current.save()
+    })
+
+    expect(saved).toBe(false)
+    expect(result.current.nameError).toBe('A template named “Retro” already exists.')
+    expect(result.current.isDirty).toBe(true)
+    expect(toastError).not.toHaveBeenCalled()
+
+    act(() => result.current.setFields({ name: 'Retro 2' }))
+    expect(result.current.nameError).toBeNull()
+  })
+
+  it('shows a refused name when creating a draft', async () => {
+    createTemplate.mockRejectedValue(
+      new IpcFailureError('A template named “Meeting” already exists.', 'template-name-taken')
+    )
+    const { result } = renderHook(() => useTemplateDraft({ initial: emptyFields }))
+
+    act(() => result.current.setFields({ name: 'Meeting' }))
+    await act(async () => {
+      await result.current.save()
+    })
+
+    expect(result.current.nameError).toBe('A template named “Meeting” already exists.')
+    expect(result.current.templateId).toBeUndefined()
   })
 
   it('reports each successful update through onSaved', async () => {

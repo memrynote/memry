@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Luokan nimi",
     "tagNamePlaceholder": "Tunnisteen nimi",
     "uncategorized": "Luokittelemattomat",
+    "view": {
+      "label": "Tunnisteiden näkymä",
+      "categories": "Luokat",
+      "az": "A–Ö"
+    },
+    "azList": {
+      "heading": "Kaikki tunnisteet",
+      "empty": "Ei vielä tunnisteita"
+    },
     "search": {
       "placeholder": "Hae luokkia ja tunnisteita",
       "empty": "Mikään luokka tai tunniste ei vastaa hakuasi"

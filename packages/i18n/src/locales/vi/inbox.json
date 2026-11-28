@@ -279,12 +279,10 @@
         "description": "{count, plural, other {Sau # giờ}}"
       },
       "tomorrow": {
-        "label": "Ngày mai",
-        "description": "Ngày mai lúc 9 giờ sáng"
+        "label": "Ngày mai"
       },
       "nextWeek": {
-        "label": "Tuần tới",
-        "description": "Thứ Hai lúc 9 giờ sáng"
+        "label": "Tuần tới"
       },
       "inMinutes": {
         "label": "{count, plural, other {Sau # phút}}"

@@ -279,12 +279,10 @@
         "description": "Peste {count, plural, one {# oră} few {# ore} other {# de ore}}"
       },
       "tomorrow": {
-        "label": "Mâine",
-        "description": "Mâine la ora 9:00"
+        "label": "Mâine"
       },
       "nextWeek": {
-        "label": "Săptămâna viitoare",
-        "description": "Luni la ora 9:00"
+        "label": "Săptămâna viitoare"
       },
       "inMinutes": {
         "label": "Peste {count, plural, one {# minut} few {# minute} other {# de minute}}"

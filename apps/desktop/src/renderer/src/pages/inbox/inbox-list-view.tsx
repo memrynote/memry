@@ -44,6 +44,7 @@ import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
 import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
+import { isHour12 } from '@/lib/time-format'
 
 const log = createLogger('Page:InboxListView')
 
@@ -543,7 +544,8 @@ export function InboxListView({
                 month: 'short',
                 day: 'numeric',
                 hour: 'numeric',
-                minute: '2-digit'
+                minute: '2-digit',
+                hour12: isHour12()
               })
               toast.success(t('toast.snoozedUntil', { time: timeString }))
             } else {
@@ -738,7 +740,8 @@ export function InboxListView({
                 month: 'short',
                 day: 'numeric',
                 hour: 'numeric',
-                minute: '2-digit'
+                minute: '2-digit',
+                hour12: isHour12()
               })
               toast.success(
                 t('toast.snoozedItemsUntil', { count: result.processedCount, time: timeString })

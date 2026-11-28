@@ -360,7 +360,8 @@
     "createFailed": "Hindi makagawa ng template",
     "updateFailed": "Hindi ma-update ang template",
     "deleteFailed": "Hindi matanggal ang template",
-    "duplicateFailed": "Hindi ma-duplicate ang template"
+    "duplicateFailed": "Hindi ma-duplicate ang template",
+    "nameTaken": "May template na na pinangalanang “{name}”. Pumili ng ibang pangalan."
   },
   "customIcon": {
     "unreadableImage": "Hindi mabasa ang larawang iyon. Subukan ang PNG, JPG, GIF, WEBP o SVG na file.",

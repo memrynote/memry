@@ -279,12 +279,10 @@
         "description": "Za {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodin}}"
       },
       "tomorrow": {
-        "label": "Zítra",
-        "description": "Zítra v 9:00"
+        "label": "Zítra"
       },
       "nextWeek": {
-        "label": "Příští týden",
-        "description": "V pondělí v 9:00"
+        "label": "Příští týden"
       },
       "inMinutes": {
         "label": "Za {count, plural, one {# minutu} few {# minuty} many {# minuty} other {# minut}}"

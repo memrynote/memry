@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import type { WikiLinkPreview } from '@/services/notes-service'
-import { getTagColors, withAlpha } from '../note/tags-row/tag-colors'
+import { getTagColors, withAlpha, tagLabelColor } from '../note/tags-row/tag-colors'
 import { formatDate } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
 import { FileText } from '@/lib/icons'
@@ -76,7 +76,7 @@ export const TabPreviewCard = memo(function TabPreviewCard({
                 className="inline-flex items-center rounded-[10px] py-0.5 px-2 text-[11px]/3.5 font-medium"
                 style={{
                   backgroundColor: withAlpha(colors.text, 0.12),
-                  color: colors.text
+                  color: tagLabelColor(colors.text)
                 }}
               >
                 {tag.name}

@@ -279,12 +279,10 @@
         "description": "{count, plural, one {# tunnin kuluttua} other {# tunnin kuluttua}}"
       },
       "tomorrow": {
-        "label": "Huomenna",
-        "description": "Huomenna klo 9.00"
+        "label": "Huomenna"
       },
       "nextWeek": {
-        "label": "Ensi viikolla",
-        "description": "Maanantaina klo 9.00"
+        "label": "Ensi viikolla"
       },
       "inMinutes": {
         "label": "{count, plural, one {# minuutin kuluttua} other {# minuutin kuluttua}}"

@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Nome della categoria",
     "tagNamePlaceholder": "Nome tag",
     "uncategorized": "Senza categoria",
+    "view": {
+      "label": "Vista dei tag",
+      "categories": "Categorie",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Tutti i tag",
+      "empty": "Ancora nessun tag"
+    },
     "search": {
       "placeholder": "Cerca categorie e tag",
       "empty": "Nessuna categoria o tag corrisponde alla ricerca"

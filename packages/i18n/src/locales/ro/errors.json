@@ -360,7 +360,8 @@
     "createFailed": "Nu s-a putut crea șablonul",
     "updateFailed": "Nu s-a putut actualiza șablonul",
     "deleteFailed": "Nu s-a putut șterge șablonul",
-    "duplicateFailed": "Nu s-a putut duplica șablonul"
+    "duplicateFailed": "Nu s-a putut duplica șablonul",
+    "nameTaken": "Există deja un șablon numit „{name}”. Alege un alt nume."
   },
   "customIcon": {
     "unreadableImage": "Imaginea nu a putut fi citită. Încercați un fișier PNG, JPG, GIF, WEBP sau SVG.",

@@ -163,10 +163,17 @@ export type TemplateDuplicateInput = z.infer<typeof TemplateDuplicateSchema>
 // Response Types
 // ============================================================================
 
+/**
+ * `errorCode` of a create or update refused because another template, built-in
+ * ones included, already has the name. `error` is then the message to show.
+ */
+export const TEMPLATE_NAME_TAKEN = 'template-name-taken'
+
 export interface TemplateCreateResponse {
   success: boolean
   template: Template | null
   error?: string
+  errorCode?: typeof TEMPLATE_NAME_TAKEN
 }
 
 export interface TemplateListResponse {

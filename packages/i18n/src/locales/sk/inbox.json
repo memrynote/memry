@@ -279,12 +279,10 @@
         "description": "O {count, plural, one {# hodinu} few {# hodiny} many {# hodiny} other {# hodín}}"
       },
       "tomorrow": {
-        "label": "Zajtra",
-        "description": "Zajtra o 9:00"
+        "label": "Zajtra"
       },
       "nextWeek": {
-        "label": "Budúci týždeň",
-        "description": "V pondelok o 9:00"
+        "label": "Budúci týždeň"
       },
       "inMinutes": {
         "label": "O {count, plural, one {# minútu} few {# minúty} many {# minúty} other {# minút}}"

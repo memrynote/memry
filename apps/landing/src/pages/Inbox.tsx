@@ -291,8 +291,8 @@ function HotkeyOmniboxMock() {
   return (
     <SurfaceCard
       label="Hotkey omnibox"
-      title="Press ⌘⇧I. Anywhere."
-      body="A global capture window over whatever you're looking at. No app switch, no lost context."
+      title="One hotkey. Anywhere."
+      body="⌘⇧Space on Mac, Ctrl+Shift+Space on Windows and Linux: a global capture window over whatever you're looking at. No app switch, no lost context."
     >
       <div className="rounded-xl border border-border/60 bg-paper p-1.5 shadow-inner">
         <div className="flex items-center gap-2 px-3 pb-2 pt-2">
@@ -1059,7 +1059,7 @@ function FinalCta() {
 
           <div className="mt-10 flex items-center justify-center gap-2 font-mono-accent text-[11px] uppercase tracking-[0.22em] text-muted">
             <Keyboard className="h-3.5 w-3.5" strokeWidth={1.8} />
-            <span>⌘ ⇧ I anywhere</span>
+            <span>⌘ ⇧ Space / Ctrl ⇧ Space anywhere</span>
           </div>
         </motion.div>
       </Container>

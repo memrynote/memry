@@ -360,7 +360,8 @@
     "createFailed": "Не вдалося створити шаблон",
     "updateFailed": "Не вдалося оновити шаблон",
     "deleteFailed": "Не вдалося видалити шаблон",
-    "duplicateFailed": "Не вдалося дублювати шаблон"
+    "duplicateFailed": "Не вдалося дублювати шаблон",
+    "nameTaken": "Шаблон із назвою «{name}» уже існує. Виберіть іншу назву."
   },
   "customIcon": {
     "unreadableImage": "Не вдалося прочитати зображення. Спробуйте файл PNG, JPG, GIF, WEBP або SVG.",

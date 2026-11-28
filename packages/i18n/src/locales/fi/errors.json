@@ -360,7 +360,8 @@
     "createFailed": "Pohjan luominen epäonnistui",
     "updateFailed": "Pohjan päivittäminen epäonnistui",
     "deleteFailed": "Pohjan poistaminen epäonnistui",
-    "duplicateFailed": "Pohjan monistaminen epäonnistui"
+    "duplicateFailed": "Pohjan monistaminen epäonnistui",
+    "nameTaken": "Pohja nimeltä ”{name}” on jo olemassa. Valitse toinen nimi."
   },
   "customIcon": {
     "unreadableImage": "Kuvan lukeminen epäonnistui. Kokeile PNG-, JPG-, GIF-, WEBP- tai SVG-tiedostoa.",

@@ -1511,6 +1511,15 @@
     "categoryNamePlaceholder": "Numele categoriei",
     "tagNamePlaceholder": "Numele etichetei",
     "uncategorized": "Fără categorie",
+    "view": {
+      "label": "Vizualizare etichete",
+      "categories": "Categorii",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Toate etichetele",
+      "empty": "Încă nu există etichete"
+    },
     "search": {
       "placeholder": "Caută categorii și etichete",
       "empty": "Nicio categorie și nicio etichetă nu corespund căutării"

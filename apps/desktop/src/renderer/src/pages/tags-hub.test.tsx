@@ -730,4 +730,50 @@ describe('TagsHubPage', () => {
 
     expect(reorder).not.toHaveBeenCalled()
   })
+
+  it('never fires reorder() from a drag end event while the A–Z view is shown', async () => {
+    const reorder = vi.fn().mockResolvedValue(undefined)
+    mockUseTagCategories.mockReturnValue({
+      categories: [
+        {
+          id: 'cat-1',
+          name: 'Work',
+          sortOrder: 0,
+          tags: [{ tag: 'meetings', color: 'blue', icon: null, count: 3, sortOrder: 0 }]
+        },
+        {
+          id: 'cat-2',
+          name: 'Personal',
+          sortOrder: 1,
+          tags: [{ tag: 'personal', color: 'green', icon: null, count: 1, sortOrder: 0 }]
+        }
+      ],
+      uncategorized: [],
+      isLoading: false,
+      error: null,
+      createCategory: vi.fn(),
+      renameCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+      createTag: vi.fn(),
+      reorder
+    })
+
+    render(<TagsHubPage />)
+    await userEvent.click(screen.getByRole('radio', { name: /a–z/i }))
+
+    await act(async () => {
+      dndMocks.onDragEnd?.({
+        active: {
+          id: 'meetings',
+          data: { current: { type: 'tag', tag: 'meetings', categoryId: 'cat-1' } }
+        },
+        over: {
+          id: 'personal',
+          data: { current: { type: 'tag', tag: 'personal', categoryId: 'cat-2' } }
+        }
+      } as DragEndEvent)
+    })
+
+    expect(reorder).not.toHaveBeenCalled()
+  })
 })
