@@ -250,9 +250,12 @@ final class EditorSession {
             }
         }
         let moves = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification]
-        keyboardObservers += moves.map {
-            NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.syncToolbar() }
+        keyboardObservers += moves.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.syncToolbar()
+                    if name == UIResponder.keyboardDidChangeFrameNotification { DispatchQueue.main.async { self?.revealCaret() } }
+                }
             }
         }
         // #2820: typing is committed when editing ends, and leaving the app
@@ -296,6 +299,30 @@ final class EditorSession {
         // Common modes, so it also looks during a sheet's swipe-down drag.
         RunLoop.main.add(watch, forMode: .common)
         coveredWatch = watch
+    }
+
+    /// Scrolls the page until the line with the caret clears the toolbar.
+    /// The page's bottom inset counts the keys and not the toolbar above
+    /// them, so the reveals UIKit runs for each keyboard change leave a line
+    /// under the toolbar: on an iPad mini in landscape, a new note's first
+    /// line after Return in the title. This one runs after them, a turn
+    /// later: one of them still reveals the title's caret.
+    private func revealCaret() {
+        guard let textView = field?.textView, textView.isFirstResponder, accessory.window != nil,
+              let caret = textView.selectedTextRange?.end
+        else { return }
+        var ancestor = textView.superview
+        while let view = ancestor, !Self.scrollsVertically(view) { ancestor = view.superview }
+        guard let page = ancestor as? UIScrollView else { return }
+        var line = textView.convert(textView.caretRect(for: caret), to: page)
+        let toolbarTop = accessory.convert(accessory.bounds, to: page).minY
+        line.size.height += max(0, page.bounds.maxY - page.adjustedContentInset.bottom - toolbarTop)
+        page.scrollRectToVisible(line, animated: true)
+    }
+
+    private static func scrollsVertically(_ view: UIView) -> Bool {
+        guard let scrollView = view as? UIScrollView else { return false }
+        return scrollView.alwaysBounceVertical || scrollView.contentSize.height > scrollView.bounds.height
     }
 
     private func stopWatchingCover() {
