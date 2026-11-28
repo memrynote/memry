@@ -128,7 +128,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   as text and a code span's pipe as part of the cell, `:320`), and again on each chunk it parses.
   The core walks the text the same way and masks each `%%` comment to one word, then turns the
   word into a node once the blocks exist, in the block's marks, and back into its bytes inside a
-  code span, a link label and a code block
+  code span, a link label and a code block, and in a prop
   (`crates/memry-core/src/crdt/markdown_seed/comments.rs:101`, `:275`;
   `crates/memry-core/src/crdt/markdown_seed/comment_nodes.rs:84`;
   `packages/editor-schema/src/parse-markdown.ts:220`, `:290`, `:300`). A `%%` that never closes,
@@ -139,19 +139,29 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
 - **A link with no label is an `htmlComment` node (§12.7).** Desktop masks `[](u)`, a blank label
   and a title included, to a comment's token after the pipe escape, outside code, an image and an
   escape, and only when the whole link is on one line
-  (`packages/editor-schema/src/inline/empty-links.ts:42`,
-  `packages/editor-schema/src/parse-markdown.ts:380`). The core reads the link where its parse
-  finds it and writes the same node; one whose address crosses a line keeps its lines as literal
-  text (`crates/memry-core/src/crdt/markdown_seed/inline.rs:198`, `:200`).
+  (`packages/editor-schema/src/inline/empty-links.ts:82`,
+  `packages/editor-schema/src/parse-markdown.ts:379`). The core reads the link where its parse
+  finds it and writes the same node. One whose address crosses a line is no node: it stays the
+  text it was, a soft break in it included, in every block that holds text. Desktop escapes the
+  `[` and `]` of such a link so the parse reads no link there, and leaves it alone inside a
+  link's address or an image, where the parse reads the text as written, and on a fence's info
+  line (`packages/editor-schema/src/inline/empty-links.ts:133`); the core builds the same text
+  where its inline parse finds the link (`crates/memry-core/src/crdt/markdown_seed/inline.rs:194-198`).
 - **A `<!--` comment is not built.** It keeps the block-level fallback above, and a `<!--`
   comment that spans lines sends every line to it, because desktop reads the lines around it
   as one word (`crates/memry-core/src/crdt/markdown_seed/comments.rs:252`).
-- **Desktop leaves its masked word in a few props, so those fall back.** A comment inside a
-  `$$` math block, an image's alt or address, a link's address or a marker line reaches the
-  document as a word drawn once per process (`MEMRYCMT…X`, §12.7), which no seed can
-  reproduce; the core keeps those lines as literal text
-  (`crates/memry-core/src/crdt/markdown_seed/markers.rs:150`, `:160`;
-  `crates/memry-core/src/crdt/markdown_seed/inline.rs:204`, `:277`).
+- **A mask's word never reaches a document.** The read path hides a construct behind a word drawn
+  once per process (`MEMRYCMT…X`, `MEMRYHBK…;`, a code span's blanks, a `<details>` tag, a spaced
+  address, a `((mention:…))` token) and swaps it back in every string a block carries: a run's
+  text, a link's address, and every prop, a code fence's language, an image's alt and address, a
+  `$$` block's formula and a marker line's address among them. A comment there is its bytes. A
+  hard break is no part of an address, so `[a](u  \nv)` is the address `u`, the one the parser
+  reads with no mask. The core restores the same strings in one pass over the plan
+  (`crates/memry-core/src/crdt/markdown_seed/props.rs:22`, `:34`;
+  `crates/memry-core/src/crdt/markdown_seed/runs.rs:200`), as desktop does
+  (`packages/editor-schema/src/parse-markdown.ts:128`, `:168`;
+  `packages/editor-schema/src/note-markdown.ts:98`; `packages/shared/src/hard-breaks.ts:298`).
+  A word left in a document would be written into the vault as text no other process can decode.
 - **A `((date:…))` or `((mention:…))` token is its node, as desktop's seed makes it (§12.1.1.1,
   §12.1.1.2).** Desktop hides each token outside a fence behind a placeholder before the parse,
   so no `_` or `*` in a payload reads as emphasis, and puts it back in every run
@@ -178,10 +188,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   `crates/memry-core/src/crdt/inline_tokens/link.rs:35`, `:44`); a date that only salvage
   accepts and whose `dateISO` is not in the ECMAScript date-time format
   (`crates/memry-core/src/crdt/inline_tokens/date.rs:117`, `:136`); and a date payload whose
-  JSON holds a `\u` escape serde refuses (`:66`). A token in a link's address or in an image
-  keeps its line literal, because desktop leaves its placeholder there, and so does a placeholder
-  left in any other prop (`crates/memry-core/src/crdt/markdown_seed/inline.rs:206-208`,
-  `:279-281`; `crates/memry-core/src/crdt/markdown_seed/blocks.rs:95-102`). The `date mention:`
+  JSON holds a `\u` escape serde refuses (`:66`). A token in a link's address, an image or any other prop is put back as it is in a run, after the raw-HTML tag that held it (`crates/memry-core/src/crdt/markdown_seed/props.rs:22`, `crates/memry-core/src/crdt/markdown_seed/raw_html.rs:304`). The `date mention:`
   and `link mention:` cases of the `markdown-seed` vectors pin the document
   (`packages/contracts/scripts/vectors/markdown-seed-cases-mentions.ts:40-121`).
 - **An image's `url` is the DOM's `img.src`.** An absolute address is written in the WHATWG
@@ -241,7 +248,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   ends (a heading, fence, quote, rule other than dashes, list item, table row or `<!--`), not
   only at a blank line, and the space after a `>` is optional: `>more` is a quote line
   (`packages/editor-schema/src/blocks/block-starts.ts:46`, `:71`,
-  `packages/editor-schema/src/note-markdown.ts:292`, `packages/editor-schema/src/blocks/markdown.ts:579`,
+  `packages/editor-schema/src/note-markdown.ts:296`, `packages/editor-schema/src/blocks/markdown.ts:579`,
   `packages/editor-schema/src/blocks/quote.ts:105`;
   `crates/memry-core/src/crdt/markdown_seed/block_starts.rs:66`, `:85`,
   `crates/memry-core/src/crdt/markdown_seed/markers.rs:54`,
@@ -254,7 +261,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   holding the line's bytes. The core decides a JSON text only where `JSON.parse` surely fails
   too (not with a `\u` escape, a `[` or a digit), and keeps the line literal otherwise; an
   address it cannot judge keeps the run literal
-  (`packages/editor-schema/src/note-markdown.ts:265`, `:379`, `:484`;
+  (`packages/editor-schema/src/note-markdown.ts:269`, `:383`, `:488`;
   `crates/memry-core/src/crdt/markdown_seed/media.rs:145`, `:157`,
   `crates/memry-core/src/crdt/markdown_seed/markers.rs:42`, `:98`).
 - **Raw HTML the editor has no node for is text.** A lossless parse hides each such tag from
@@ -323,7 +330,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
   not under a deeper item, and only after a blank line), sends every line to the fallback
   (`packages/shared/src/block-nesting.ts:10`,
   `packages/editor-schema/src/blocks/item-children.ts:27`,
-  `packages/editor-schema/src/note-markdown.ts:274`;
+  `packages/editor-schema/src/note-markdown.ts:278`;
   `crates/memry-core/src/crdt/markdown_seed/prepare.rs:43`, `:55`, `:71`, `:101`).
 - **The writer spells an emphasis run that would meet three stars with underscores.** An
   italic run whose content starts or ends with `*`, or a bold run whose content ends with one,
@@ -1094,7 +1101,7 @@ are not plain CommonMark:
   holding a math block. A deeper item's run, a run with no blank line above and
   a line in a code fence stay as BlockNote reads them
   (`packages/editor-schema/src/blocks/item-children.ts:27`,
-  `packages/editor-schema/src/note-markdown.ts:274`);
+  `packages/editor-schema/src/note-markdown.ts:278`);
 - **a nesting marker's level holds until the next marker.** The text after a
   block claimed under `<!-- memry:block-nesting-level=1 -->` stays at that level,
   so an item holding a math block and then a paragraph reads back that way.
@@ -1328,8 +1335,9 @@ chip-only and reaches disk through inline-colour span masking instead (§12.8).
 for byte. Since BBF-26 it also holds an Obsidian `%% … %%` comment, both `%%`
 included, and it holds a link with no label, `[](u)` or `[ ](u "t")`, as written: a link is a mark
 on text, and a document has no text to hold the address of one without a label
-(`packages/editor-schema/src/inline/empty-links.ts:42`); the boundaries of both forms come from `replaceMarkdownComments`
-(`packages/shared/src/markdown-code.ts`). A client built before BBF-26 reads a
+(`packages/editor-schema/src/inline/empty-links.ts:82`). A label-less link whose address
+crosses a line is not this node: it is text, as written. The boundaries of both forms come from
+`replaceMarkdownComments` (`packages/shared/src/markdown-code.ts`). A client built before BBF-26 reads a
 `%%` comment as paragraph text and still writes a node it receives back as its
 `source`. A comment on a line of its own is a paragraph holding only this node;
 one inside a line of text, or glued to the line above or below, is a node in
