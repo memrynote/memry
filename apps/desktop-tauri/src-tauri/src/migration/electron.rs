@@ -2,7 +2,7 @@
 //! machine, and its `migrate_vault` as the session's open hook. Electron has no such import;
 //! this app's first launch after it is the only place the previous app's data moves.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use memry_desktop::e2e::E2eGate;
@@ -12,12 +12,12 @@ use memry_desktop::electron_import::orchestrator::{
     FirstLaunch, FirstLaunchInput, ImportContext, MigrationEvent, MigrationEventName,
     MigrationTelemetry, preflight, run_first_launch, vault_migrator, wall_clock_ms,
 };
-use memry_desktop::electron_import::profile::{PROFILE_DIR_VAR, locate_profile};
+use memry_desktop::electron_import::profile::{LEGACY_APP_NAME, PROFILE_DIR_VAR, locate_profile};
 use memry_desktop::electron_import::progress::ProgressSink;
 use memry_desktop::electron_import::secrets::{Guarded, OsKeySource, OsKeytar};
 use memry_desktop::electron_import::secrets_import::SecretsMode;
 use memry_desktop::launch_env::LaunchEnv;
-use memry_desktop::paths::{AppPaths, DEVICE_VAR};
+use memry_desktop::paths::{AppPaths, DEVICE_VAR, device_id};
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::session::Session;
@@ -49,7 +49,7 @@ impl ElectronBackend {
     pub fn new(app: &AppHandle<Wry>) -> Self {
         let launch = app.state::<LaunchEnv>();
         Self {
-            env: profile_env(&launch),
+            env: launch_profile(&launch),
             data_dir: app.state::<AppPaths>().data_dir.clone(),
             config: app.state::<Arc<AppConfig>>().inner().clone(),
             device: launch.get(DEVICE_VAR).map(str::to_owned),
@@ -62,15 +62,37 @@ impl ElectronBackend {
     }
 }
 
+fn launch_profile(launch: &LaunchEnv) -> Option<ProfileEnv> {
+    // Electron's unpackaged `app.getAppPath()`, the `apps/desktop` beside this app.
+    let electron_app_dir = Path::new(env!("MEMRY_CHECKOUT_DIR")).with_file_name("desktop");
+    profile_env(
+        launch,
+        !tauri::is_dev(),
+        &electron_app_dir.to_string_lossy(),
+    )
+}
+
 /// The Electron profile this launch reads. A test run (an open e2e gate) reads only the profile
-/// `MEMRY_ELECTRON_PROFILE_DIR` names, never the host user's.
-fn profile_env(launch: &LaunchEnv) -> Option<ProfileEnv> {
+/// `MEMRY_ELECTRON_PROFILE_DIR` names, never the host user's. A device run reads only the
+/// device's own profile, `<appData>/@memry/desktop-<device>`: Electron skips
+/// `applyMemrynoteIdentity` for a device and suffixes its default userData with the device
+/// (`apps/desktop/src/main/index.ts` `resolveDeviceId` and the `if (deviceId)` block), so a dev
+/// or A/B/C run never imports the production `memrynote` profile.
+fn profile_env(launch: &LaunchEnv, packaged: bool, electron_app_dir: &str) -> Option<ProfileEnv> {
     // An empty value is no override (`ProfileEnv::from_host`), so it must not pass either.
     let override_set = launch.get(PROFILE_DIR_VAR).is_some_and(|v| !v.is_empty());
     if E2eGate::from_env(launch).is_open() && !override_set {
         return None;
     }
-    ProfileEnv::from_host(launch)
+    let mut env = ProfileEnv::from_host(launch)?;
+    if !override_set && let Some(device) = device_id(launch, packaged, electron_app_dir) {
+        if env.app_data.as_os_str().is_empty() {
+            return None;
+        }
+        let (scope, name) = LEGACY_APP_NAME.split_once('/')?;
+        env.override_dir = Some(env.app_data.join(scope).join(format!("{name}-{device}")));
+    }
+    Some(env)
 }
 
 impl Backend for ElectronBackend {
@@ -169,7 +191,7 @@ pub fn install_vault_migrator(app: &AppHandle<Wry>, session: &Session) {
         return;
     }
     let launch = app.state::<LaunchEnv>();
-    let Some(env) = profile_env(&launch) else {
+    let Some(env) = launch_profile(&launch) else {
         return;
     };
     let started = app.clone();
@@ -220,5 +242,137 @@ struct Owned(Arc<dyn TelemetrySink>);
 impl MigrationTelemetry for Owned {
     fn record(&self, event: MigrationEvent) {
         self.0.record(telemetry_event(&event));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    use memry_desktop::e2e::E2E_VAR;
+    use memry_desktop::electron_import::profile::{PROFILE_DIR_VAR, locate_profile};
+    use memry_desktop::launch_env::LaunchEnv;
+    use memry_desktop::paths::DEVICE_VAR;
+
+    use super::profile_env;
+
+    const APP_DIR: &str = "/checkout/apps/desktop";
+
+    /// A launch whose app-data root, on every OS, sits in `home`.
+    fn launch(home: &Path, vars: &[(&str, &str)]) -> LaunchEnv {
+        let mut env = LaunchEnv::default();
+        env.set("HOME", &home.to_string_lossy());
+        env.set("APPDATA", &home.join("AppData").to_string_lossy());
+        env.set("XDG_CONFIG_HOME", &home.join(".config").to_string_lossy());
+        for (key, value) in vars {
+            env.set(key, value);
+        }
+        env
+    }
+
+    fn write_profile(dir: &Path) {
+        fs::create_dir_all(dir).unwrap();
+        fs::write(dir.join("memry-config.json"), "{}").unwrap();
+    }
+
+    fn located(launch: &LaunchEnv, packaged: bool) -> Option<PathBuf> {
+        let env = profile_env(launch, packaged, APP_DIR)?;
+        locate_profile(&env).unwrap().map(|profile| profile.dir)
+    }
+
+    #[test]
+    fn a_device_run_never_reads_the_production_profile() {
+        let home = tempfile::tempdir().unwrap();
+        let app_data = profile_env(&launch(home.path(), &[]), true, APP_DIR)
+            .unwrap()
+            .app_data;
+        let production = app_data.join("memrynote");
+        write_profile(&production);
+        // The fixture is a profile the default run finds.
+        let found = located(&launch(home.path(), &[]), true).unwrap();
+        assert_eq!(
+            fs::canonicalize(found).unwrap(),
+            fs::canonicalize(&production).unwrap()
+        );
+
+        for (device, packaged) in [("dev", false), ("dev", true), ("A", true), ("B", false)] {
+            let launch = launch(home.path(), &[(DEVICE_VAR, device)]);
+            assert_eq!(
+                located(&launch, packaged),
+                None,
+                "{device} packaged={packaged}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_device_run_reads_its_own_electron_profile() {
+        let home = tempfile::tempdir().unwrap();
+        let app_data = profile_env(&launch(home.path(), &[]), true, APP_DIR)
+            .unwrap()
+            .app_data;
+        write_profile(&app_data.join("memrynote"));
+        let device_a = app_data.join("@memry").join("desktop-A");
+        write_profile(&device_a);
+        let found = located(&launch(home.path(), &[(DEVICE_VAR, "A")]), true).unwrap();
+        assert_eq!(
+            fs::canonicalize(found).unwrap(),
+            fs::canonicalize(&device_a).unwrap()
+        );
+
+        // An unpackaged dev run uses Electron's per-checkout `dev-<hash>` profile.
+        let dev = launch(home.path(), &[(DEVICE_VAR, "dev")]);
+        let hashed = memry_desktop::paths::device_id(&dev, false, APP_DIR).unwrap();
+        assert!(hashed.starts_with("dev-") && hashed.len() == 12, "{hashed}");
+        let dev_dir = app_data.join("@memry").join(format!("desktop-{hashed}"));
+        write_profile(&dev_dir);
+        let found = located(&dev, false).unwrap();
+        assert_eq!(
+            fs::canonicalize(found).unwrap(),
+            fs::canonicalize(&dev_dir).unwrap()
+        );
+    }
+
+    #[test]
+    fn an_explicit_profile_dir_wins_over_the_device_profile() {
+        let home = tempfile::tempdir().unwrap();
+        let chosen = home.path().join("chosen");
+        let launch = launch(
+            home.path(),
+            &[
+                (DEVICE_VAR, "A"),
+                (PROFILE_DIR_VAR, &chosen.to_string_lossy()),
+            ],
+        );
+        let env = profile_env(&launch, true, APP_DIR).unwrap();
+        assert_eq!(env.override_dir, Some(chosen));
+    }
+
+    #[test]
+    fn an_e2e_run_reads_only_the_profile_dir_it_names() {
+        let home = tempfile::tempdir().unwrap();
+        write_profile(
+            &profile_env(&launch(home.path(), &[]), true, APP_DIR)
+                .unwrap()
+                .app_data
+                .join("memrynote"),
+        );
+        for vars in [
+            vec![(E2E_VAR, "1")],
+            vec![(E2E_VAR, "1"), (PROFILE_DIR_VAR, "")],
+        ] {
+            assert!(
+                profile_env(&launch(home.path(), &vars), true, APP_DIR).is_none(),
+                "{vars:?}"
+            );
+        }
+        let chosen = home.path().join("chosen");
+        let launch = launch(
+            home.path(),
+            &[(E2E_VAR, "1"), (PROFILE_DIR_VAR, &chosen.to_string_lossy())],
+        );
+        let env = profile_env(&launch, true, APP_DIR).unwrap();
+        assert_eq!(env.override_dir, Some(chosen));
     }
 }

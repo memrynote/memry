@@ -72,15 +72,22 @@ pub fn profile_identifier(
     packaged: bool,
     checkout_dir: &str,
 ) -> String {
-    let device = match env.get(DEVICE_VAR) {
-        Some(device) if !device.is_empty() => device,
-        _ => return base.to_owned(),
-    };
-    if device == "dev" && !packaged {
-        let digest = Sha256::digest(normalize(checkout_dir).as_bytes());
-        return format!("{base}.dev-{}", &hex::encode(digest)[..8]);
+    match device_id(env, packaged, checkout_dir) {
+        Some(device) => format!("{base}.{device}"),
+        None => base.to_owned(),
     }
-    format!("{base}.{device}")
+}
+
+/// The device of this run as `resolveDeviceId` in `apps/desktop/src/main/index.ts` resolves it:
+/// `None` without a non-empty `MEMRY_DEVICE`, `dev-<first 8 hex of sha256(app_dir)>` for an
+/// unpackaged `dev`, the variable itself otherwise.
+pub fn device_id(env: &LaunchEnv, packaged: bool, app_dir: &str) -> Option<String> {
+    let device = env.get(DEVICE_VAR).filter(|device| !device.is_empty())?;
+    if device == "dev" && !packaged {
+        let digest = Sha256::digest(normalize(app_dir).as_bytes());
+        return Some(format!("dev-{}", &hex::encode(digest)[..8]));
+    }
+    Some(device.to_owned())
 }
 
 /// Lexical path normalization, the equivalent of Node's `path.normalize` for the hash input.
