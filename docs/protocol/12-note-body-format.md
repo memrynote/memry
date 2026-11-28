@@ -201,7 +201,7 @@ takes the tilde fence as it takes any other.
   (`crates/memry-core/src/crdt/markdown_seed/props.rs:25`, `:37`;
   `crates/memry-core/src/crdt/markdown_seed/runs.rs:201`), as desktop does
   (`packages/editor-schema/src/parse-markdown.ts:133`, `:177`, `:296`;
-  `packages/editor-schema/src/note-markdown.ts:104`; `packages/shared/src/hard-breaks.ts:325`).
+  `packages/editor-schema/src/note-markdown.ts:104`; `packages/shared/src/hard-breaks.ts:411`).
   A word left in a document would be written into the vault as text no other process can decode.
 - **A token an older build left in a document never reaches the file.** A build that missed one
   of those strings stored its placeholder in the document, and the word went with the process
@@ -458,7 +458,7 @@ takes the tilde fence as it takes any other.
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
-  (`packages/shared/src/hard-breaks.ts:91`, `:157-159`, `:205`;
+  (`packages/shared/src/hard-breaks.ts:91`, `:167-169`, `:235`;
   `crates/memry-core/src/crdt/markdown_seed/hard_breaks.rs:76`, `:119`).
 - **Text that spells a placeholder stays text.** The read path hides hard breaks, code span
   whitespace, table probes, `<details>` markup, colour spans, inline tokens, link cards, empty
