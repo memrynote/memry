@@ -123,7 +123,7 @@ final class AccountModel {
     func load() async {
         failure = nil
         await refreshPending()
-        guard let session else { return }
+        guard let session = signedIn else { return }
         do {
             billing = try await session.billing()
             isOffline = false
@@ -159,13 +159,13 @@ final class AccountModel {
     /// to be unpaid, so that account is not asked (desktop gates it the same
     /// way). An unknown plan still asks.
     func loadStorage() async {
-        guard let session else { return }
+        guard let session = signedIn else { return }
         if BillingFacts.isKnownUnpaid(billing) { return }
         do { storage = try await session.storage() } catch { record(error) }
     }
 
     func loadDevices() async {
-        guard let session else { return }
+        guard let session = signedIn else { return }
         do { devices = try await session.devices() } catch { record(error) }
     }
 
@@ -220,6 +220,14 @@ final class AccountModel {
     func approver() -> DeviceApprover? { session?.deviceApprover() }
 
     func clearFailure() { failure = nil }
+
+    /// The session, while it is signed in. A sign-out tears the vault's pages
+    /// down, and SwiftUI runs a pushed page's `.task` once more on the way out:
+    /// its reads then went out with no session (401, `auth.invalidState`).
+    private var signedIn: (any AuthSessionProtocol)? {
+        guard let session, session.state() == .registered else { return nil }
+        return session
+    }
 
     private func record(_ error: any Error) {
         let mapped = mapped(error)
