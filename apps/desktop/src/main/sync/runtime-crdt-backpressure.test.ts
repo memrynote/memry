@@ -40,6 +40,8 @@ const fixture = vi.hoisted(() => ({
     pushSnapshotForNote: vi.fn(async () => false),
     pushSnapshotsForNotes: vi.fn<(ids: string[]) => Promise<Map<string, boolean>>>(),
     pushAllSnapshots: vi.fn<(signal?: AbortSignal) => Promise<number>>(),
+    resumeWaitingEditorDocs: vi.fn(async () => {}),
+    clearSyncStartFailure: vi.fn(),
     destroy: vi.fn(async () => undefined)
   }
 }))

@@ -1,5 +1,9 @@
 import { importPKCS8, SignJWT } from 'jose'
 
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('IosBeta')
+
 const ASC_API_BASE_URL = 'https://api.appstoreconnect.apple.com'
 const RESEND_API_BASE_URL = 'https://api.resend.com'
 
@@ -146,6 +150,28 @@ export const addToIosBetaSegment = async (
     }
   }
   return { ok: true }
+}
+
+/**
+ * Files a new account into the iOS beta segment, whichever app it signed up from (landing,
+ * desktop, or iOS). Production only, so staging and local test accounts stay off the list.
+ * A Resend failure is logged and never fails the sign-in.
+ */
+export const addSignupToIosBetaSegment = async (
+  env: { ENVIRONMENT: string; RESEND_API_KEY: string },
+  email: string
+): Promise<void> => {
+  if (env.ENVIRONMENT !== 'production') return
+  const result = await addToIosBetaSegment(env.RESEND_API_KEY, email).catch(
+    (error: unknown): ExternalCallResult => ({
+      ok: false,
+      status: 0,
+      detail: error instanceof Error ? error.message : String(error)
+    })
+  )
+  if (!result.ok) {
+    logger.error('Resend signup segment error', { status: result.status, detail: result.detail })
+  }
 }
 
 /**

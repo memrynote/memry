@@ -476,6 +476,14 @@ describe('vault read-only locks (#2606)', () => {
 
   const modeOf = (absolutePath: string): number => fs.statSync(absolutePath).mode & 0o777
 
+  /**
+   * How long a file added outside may stay writable before the attachment
+   * watch hears it. The watch has no deadline of its own: macOS reports a
+   * folder's changes through FSEvents, which fseventsd delivers up to 30 s
+   * late when other processes keep it busy.
+   */
+  const ATTACHMENT_WATCH_TIMEOUT_MS = 45_000
+
   it.skipIf(isWindows)(
     'unlocking gives every file the exact mode it had before the lock, after app writes too',
     async () => {
@@ -574,10 +582,11 @@ describe('vault read-only locks (#2606)', () => {
 
       await vi.waitFor(
         () => expect([existing, added, firstOfNote].map(modeOf)).toEqual([0o444, 0o444, 0o444]),
-        { timeout: 5000 }
+        { timeout: ATTACHMENT_WATCH_TIMEOUT_MS }
       )
       expect([unlocked, partial].map(modeOf)).toEqual([0o644, 0o644])
-    }
+    },
+    60_000
   )
 
   it.skipIf(isWindows)(
@@ -591,8 +600,11 @@ describe('vault read-only locks (#2606)', () => {
       fs.writeFileSync(added, 'bytes')
       fs.chmodSync(added, 0o644)
 
-      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), { timeout: 5000 })
-    }
+      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), {
+        timeout: ATTACHMENT_WATCH_TIMEOUT_MS
+      })
+    },
+    60_000
   )
 
   it('watching the attachments of a vault folder that went away does not recreate it', async () => {
@@ -642,7 +654,7 @@ describe('vault read-only locks (#2606)', () => {
         fs.writeFileSync(file, 'new')
         fs.chmodSync(file, 0o600)
       }
-      await protectLockedFile(seenLive)
+      protectLockedFile(seenLive)
       await checkLockedFilesAtOpen()
       expect([seenLive, seenAtOpen].map(modeOf)).toEqual([0o400, 0o400])
 
@@ -673,7 +685,7 @@ describe('vault read-only locks (#2606)', () => {
         fs.writeFileSync(file, 'new')
         fs.chmodSync(file, mode)
       }
-      await protectLockedFile(ownerOnly)
+      protectLockedFile(ownerOnly)
       await checkLockedFilesAtOpen()
       await setVaultLock({ kind: 'folder', target: 'shared', locked: false })
       await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
@@ -736,6 +748,27 @@ describe('vault read-only locks (#2606)', () => {
     expect(isWritable(moved)).toBe(true)
     expect(getBaseline(asClientDb(data.db), 'note-a')).toBeUndefined()
   })
+
+  // The watcher protects a locked file made writable outside the app, and a
+  // pulled unlock releases it before that protect has changed the mode.
+  it.skipIf(isWindows)(
+    'a protect in flight when the lock lifts leaves the file writable',
+    async () => {
+      const file = addNote('note-a', 'archive/a.md', 'a\n')
+      fs.chmodSync(file, 0o664)
+      writeRemoteLock('folder', 'archive', true)
+      settleRemoteNoteFileSync('note-a', file, 'archive/a.md', 'pulled\n')
+      fs.chmodSync(file, 0o664)
+
+      // Settled after the unlock, as an asynchronous protect would be.
+      const protecting: unknown = protectLockedFile(file)
+      writeRemoteLock('folder', 'archive', false)
+      settleRemoteNoteFileSync('note-a', file, 'archive/a.md', null)
+      await protecting
+
+      expect(modeOf(file)).toBe(0o664)
+    }
+  )
 })
 
 /**

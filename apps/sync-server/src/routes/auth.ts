@@ -58,6 +58,7 @@ import {
   getSyncEntitlement
 } from '../services/entitlements'
 import { captureBusinessEvent, captureServerError, safeWaitUntil } from '../services/analytics'
+import { addSignupToIosBetaSegment } from '../services/ios-beta'
 import { deleteUserData } from '../services/account-deletion'
 import type { AppContext, Bindings } from '../types'
 
@@ -280,6 +281,7 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
       auth_method: 'otp'
     })
   )
+  if (isNewUser) safeWaitUntil(c, addSignupToIosBetaSegment(c.env, user.email))
 
   return c.json({
     success: true,
@@ -396,6 +398,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
       auth_provider: 'google'
     })
   )
+  if (isNewUser) safeWaitUntil(c, addSignupToIosBetaSegment(c.env, user.email))
 
   return c.json({
     success: true,
@@ -466,6 +469,7 @@ auth.post('/oauth/:provider/native', async (c) => {
       surface: 'mobile'
     })
   )
+  if (isNewUser) safeWaitUntil(c, addSignupToIosBetaSegment(c.env, user.email))
 
   return c.json({
     success: true,

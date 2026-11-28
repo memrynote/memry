@@ -1745,6 +1745,140 @@ describe('vault watcher', () => {
     expect(trackMainError).toHaveBeenCalledWith('vault', 'file_add', failing)
   })
 
+  // On macOS a file's own watcher (kqueue) names the new name of a rename at
+  // once, before the folder reports the renamed file (gotchas.md).
+  describe("a rename the file's own watcher names", () => {
+    function readyWatcher(): any {
+      const watcher = new VaultWatcher() as any
+      watcher.vaultPath = vault.path
+      watcher.isReady = true
+      return watcher
+    }
+
+    /** The raw event of `filePath`'s own watcher naming `name`. A write's identity lands a tick later. */
+    async function rawEvent(watcher: any, filePath: string, name: string): Promise<void> {
+      watcher.recordRawEvent(name, { watchedPath: filePath })
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+
+    async function indexNote(watcher: any, title: string, content: string, mtime?: Date) {
+      const notePath = createTestNote(vault, { title, content })
+      if (mtime) fs.utimesSync(notePath, mtime, mtime)
+      await watcher.handleFileAdd(notePath)
+      await drainIngestBackfill()
+      const id = rowAt(`notes/${title}.md`)!.id
+      return { notePath, id }
+    }
+
+    const rowAt = (relativePath: string) =>
+      indexDb.db.select().from(noteCache).where(eq(noteCache.path, relativePath)).get()
+    const pathOf = (id: string) =>
+      indexDb.db.select().from(noteCache).where(eq(noteCache.id, id)).get()?.path
+
+    const updatedFor = (id: string) =>
+      window.webContents.send.mock.calls.some(
+        ([channel, payload]) =>
+          channel === NotesChannels.events.UPDATED && (payload as { id?: string })?.id === id
+      )
+
+    it('drops the late add of an unread note in a whole-second mtime, but not a same-size edit', async () => {
+      const watcher = readyWatcher()
+      // HFS+, FAT and some network shares keep whole seconds; the index has
+      // not read the body, so the rename matches by size and mtime.
+      const second = new Date('2026-01-12T00:00:00.000Z')
+      const { notePath, id } = await indexNote(watcher, 'unread', 'Body', second)
+      indexDb.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, id)).run()
+
+      const renamed = path.join(vault.notesDir, 'renamed.md')
+      fs.renameSync(notePath, renamed)
+      await rawEvent(watcher, notePath, 'renamed.md')
+      watcher.handleFileDelete(notePath)
+      await vi.waitFor(() => expect(pathOf(id)).toBe('notes/renamed.md'))
+
+      // The folder's late add of the file the unlink already added.
+      window.webContents.send.mockClear()
+      await watcher.handleFileAdd(renamed)
+      expect(updatedFor(id)).toBe(false)
+
+      // A same-size edit inside that second keeps the file's size and mtime.
+      fs.writeFileSync(renamed, fs.readFileSync(renamed, 'utf8').replace('Body', 'Bodx'))
+      fs.utimesSync(renamed, second, second)
+      await watcher.handleFileAdd(renamed)
+      expect(updatedFor(id)).toBe(true)
+    })
+
+    it('runs the change of a renamed note whose hash check fails', async () => {
+      const watcher = readyWatcher()
+      watcher.debouncedChange = (filePath: string) => void watcher.handleFileChange(filePath)
+      const second = new Date('2026-01-12T00:00:00.000Z')
+      const { notePath, id } = await indexNote(watcher, 'unread', 'Body', second)
+      indexDb.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, id)).run()
+      const renamed = path.join(vault.notesDir, 'renamed.md')
+      fs.renameSync(notePath, renamed)
+      await rawEvent(watcher, notePath, 'renamed.md')
+      watcher.handleFileDelete(notePath)
+      await vi.waitFor(() => expect(pathOf(id)).toBe('notes/renamed.md'))
+      await watcher.handleFileAdd(renamed)
+
+      fs.writeFileSync(renamed, fs.readFileSync(renamed, 'utf8').replace('Body', 'Bodx'))
+      fs.utimesSync(renamed, second, second)
+      window.webContents.send.mockClear()
+      vi.mocked(scanMarkdownFile).mockRejectedValueOnce(
+        Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' })
+      )
+      await watcher.handleRawChange(renamed, fs.statSync(renamed))
+
+      await vi.waitFor(() => expect(updatedFor(id)).toBe(true))
+    })
+
+    it('matches a write folded into the rename event by the identity at the new name', async () => {
+      const watcher = readyWatcher()
+      const { notePath, id } = await indexNote(watcher, 'apple', 'Apple body')
+      fs.writeFileSync(notePath, fs.readFileSync(notePath, 'utf8') + '\nheard edit\n')
+      await rawEvent(watcher, notePath, 'apple.md')
+
+      // kqueue folds a second write and the rename into one event.
+      fs.writeFileSync(notePath, fs.readFileSync(notePath, 'utf8') + '\nfolded edit\n')
+      fs.renameSync(notePath, path.join(vault.notesDir, 'pear.md'))
+      await rawEvent(watcher, notePath, 'pear.md')
+      watcher.handleFileDelete(notePath)
+
+      await vi.waitFor(() => expect(pathOf(id)).toBe('notes/pear.md'))
+    })
+
+    it('keeps the note id at the moved file when an unindexed file of its new name sits beside it', async () => {
+      const watcher = readyWatcher()
+      const { notePath, id } = await indexNote(watcher, 'apple', 'Apple body')
+      await rawEvent(watcher, notePath, 'apple.md')
+      const unindexed = path.join(vault.notesDir, 'pear.md')
+      fs.writeFileSync(unindexed, '# pear\n\nother\n')
+      fs.mkdirSync(path.join(vault.path, 'Other'))
+      const moved = path.join(vault.path, 'Other', 'pear.md')
+
+      // A move to another folder names its new name in the old folder too.
+      fs.renameSync(notePath, moved)
+      await rawEvent(watcher, notePath, 'pear.md')
+      watcher.handleFileDelete(notePath)
+      await vi.waitFor(() => expect(rowAt('notes/pear.md')).toBeDefined())
+      await watcher.handleFileAdd(moved)
+
+      expect(pathOf(id)).toBe('Other/pear.md')
+      expect(rowAt('notes/pear.md')?.id).not.toBe(id)
+    })
+
+    it('takes a rename to another case as an ordinary rename on a disk that tells case apart', async (ctx) => {
+      const watcher = readyWatcher()
+      const { notePath, id } = await indexNote(watcher, 'apple', 'Apple body')
+      if (fs.existsSync(path.join(vault.notesDir, 'APPLE.md'))) ctx.skip()
+
+      fs.renameSync(notePath, path.join(vault.notesDir, 'Apple.md'))
+      await rawEvent(watcher, notePath, 'Apple.md')
+      watcher.handleFileDelete(notePath)
+
+      await vi.waitFor(() => expect(pathOf(id)).toBe('notes/Apple.md'))
+    })
+  })
+
   describe('a move across the journal folder boundary', () => {
     async function indexJournal(watcher: any, name: string): Promise<string> {
       const journalPath = path.join(vault.journalDir, name)

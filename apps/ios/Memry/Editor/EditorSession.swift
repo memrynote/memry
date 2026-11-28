@@ -250,11 +250,19 @@ final class EditorSession {
             }
         }
         let moves = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification]
-        keyboardObservers += moves.map {
-            NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] _ in
+        keyboardObservers += moves.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                let screen = note.object as? UIScreen
+                let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
                 MainActor.assumeIsolated {
-                    self?.syncToolbar()
-                    self?.placeToolbar()
+                    guard let self else { return }
+                    self.syncToolbar()
+                    self.placeToolbar()
+                    // #4344, as for the keys showing: only this window's keys.
+                    guard name == UIResponder.keyboardDidChangeFrameNotification, isLocal, self.panel == .none,
+                          let screen, screen === self.field?.textView.window?.windowScene?.screen
+                    else { return }
+                    DispatchQueue.main.async { [weak self] in self?.revealCaret() }
                 }
             }
         }
@@ -299,6 +307,34 @@ final class EditorSession {
         // Common modes, so it also looks during a sheet's swipe-down drag.
         RunLoop.main.add(watch, forMode: .common)
         coveredWatch = watch
+    }
+
+    /// Scrolls the page until the line with the caret clears the toolbar.
+    /// The page's bottom inset counts the keys and not the toolbar above
+    /// them, so the reveals UIKit runs for each keyboard change leave a line
+    /// under the toolbar: on an iPad mini in landscape, a new note's first
+    /// line after Return in the title. This one runs after them, a turn
+    /// later: one of them still reveals the title's caret. Only a line on
+    /// screen that the toolbar covers moves: a page the user scrolled away
+    /// from the caret stays where it is as the keys change.
+    private func revealCaret() {
+        guard let textView = field?.textView, textView.isFirstResponder, accessory.window != nil,
+              let caret = textView.selectedTextRange?.end
+        else { return }
+        var ancestor = textView.superview
+        while let view = ancestor, !Self.scrollsVertically(view) { ancestor = view.superview }
+        guard let page = ancestor as? UIScrollView else { return }
+        var line = textView.convert(textView.caretRect(for: caret), to: page)
+        let toolbarTop = accessory.convert(accessory.bounds, to: page).minY
+        let visible = page.bounds.inset(by: page.adjustedContentInset)
+        guard visible.minY <= line.minY, line.maxY <= visible.maxY, line.maxY > toolbarTop else { return }
+        line.size.height += visible.maxY - toolbarTop
+        page.scrollRectToVisible(line, animated: true)
+    }
+
+    private static func scrollsVertically(_ view: UIView) -> Bool {
+        guard let scrollView = view as? UIScrollView else { return false }
+        return scrollView.alwaysBounceVertical || scrollView.contentSize.height > scrollView.bounds.height
     }
 
     private func stopWatchingCover() {
@@ -385,6 +421,8 @@ final class EditorSession {
         .margins(.all, 0)
         .makeContentView()
         hosted = view
+        // The strip as a whole, padding included, for UI tests.
+        view.accessibilityIdentifier = "editor.keyboardToolbar"
         view.backgroundColor = .clear
         view.translatesAutoresizingMaskIntoConstraints = false
         let accessory = AccessoryStrip(toolbar: view)
