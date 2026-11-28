@@ -20,6 +20,7 @@ pub mod otp_clipboard;
 mod recovery;
 mod repair;
 pub mod session_events;
+pub mod sync_attach;
 mod teardown;
 pub mod vault_directory;
 pub mod vault_sync;

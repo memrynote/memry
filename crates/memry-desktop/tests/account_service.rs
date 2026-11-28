@@ -129,6 +129,9 @@ impl Script {
 pub(crate) struct Keychain {
     items: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     master_locked: bool,
+    /// The master key read errs (a keychain that does not answer) while set.
+    pub(crate) master_unreadable: AtomicBool,
+    pub(crate) master_reads: std::sync::atomic::AtomicUsize,
     pub(crate) access_locked: AtomicBool,
     pub(crate) undeletable: Mutex<Vec<SecureStoreKey>>,
     unsettable: Mutex<Vec<SecureStoreKey>>,
@@ -138,7 +141,11 @@ pub(crate) struct Keychain {
 
 impl SecureStore for Keychain {
     fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        if (self.master_locked && key == SecureStoreKey::MasterKey)
+        if key == SecureStoreKey::MasterKey {
+            self.master_reads.fetch_add(1, Ordering::SeqCst);
+        }
+        if (key == SecureStoreKey::MasterKey
+            && (self.master_locked || self.master_unreadable.load(Ordering::SeqCst)))
             || (key == SecureStoreKey::AccessToken && self.access_locked.load(Ordering::SeqCst))
         {
             return Err(SecureStoreError::Locked);

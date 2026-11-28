@@ -6,7 +6,8 @@
 //! A master key that does not match the account can never decrypt its data, and sync with it
 //! would brand every pulled item corrupt and push data no other device can read. A confirmed
 //! mismatch sends the user to recovery (`SyncVaultRecoveryNeededEvent`) and signs out the
-//! `integrity` way, which keeps the master key and the queue; an uncertain read never acts.
+//! `integrity` way, which keeps the master key and the queue; an uncertain read never acts, and
+//! never lets sync attach either (`account::sync_attach` holds it until the read can be made).
 //!
 //! Departure: Electron stands down for 2 minutes after a flow touched key material
 //! (`KEY_MATERIAL_ACTIVITY_WINDOW_MS`). Here every key-changing flow holds `key_op` from its first
@@ -35,7 +36,14 @@ pub enum AccountKeyCheck {
     Mismatch,
     /// A key-changing flow runs now; its key may be mid-swap.
     Transition,
-    /// Cannot tell now (no readable key, offline with no cached verifier): proceed, never act.
+    /// The keychain did not answer the master key read: hold sync until it does. Electron's vault
+    /// key read pauses the runtime the same way (`pauseForKeychain`, `sync/runtime.ts:457`).
+    KeychainUnreadable,
+    /// No cached verifier and the server's could not be read now (offline, a server error): hold
+    /// sync until it can be. Electron proceeds here behind its vault verifier, which Tauri has not.
+    VerifierUnreachable,
+    /// Nothing to check against (no master key, no session, no verifier on the account): proceed,
+    /// never act.
     Unknown,
 }
 
@@ -130,16 +138,33 @@ impl AccountService {
         self.compare_local_key().await
     }
 
-    /// The account step of `checkSyncIntegrity`, run before sync attaches: after any key-changing
-    /// flow in flight, a registered device whose master key is confirmed not the account's asks
-    /// for recovery and signs out the `integrity` way. Returns what the check found.
+    /// The account check of `startSyncRuntime` (`sync/runtime.ts:470-483`), run before sync
+    /// attaches after a sign-in, a phrase, a link or a repair: after any key-changing flow in
+    /// flight, a master key confirmed not the account's asks for recovery and keeps the session.
+    pub async fn check_sync_start(&self) -> AccountKeyCheck {
+        let _op = self.key_op.lock().await;
+        let check = self.compare_local_key().await;
+        if check == AccountKeyCheck::Mismatch {
+            tracing::error!(
+                scope = "Sync",
+                "sync not started: the master key does not match the account, recovery required"
+            );
+            self.emit_vault_recovery_needed(VaultRecoveryReason::VaultKeyMismatch);
+        }
+        check
+    }
+
+    /// The account step of `checkSyncIntegrity` (launch only): after any key-changing flow in
+    /// flight, a registered device whose master key is confirmed not the account's asks for
+    /// recovery and signs out the `integrity` way. Without `sync.deviceId` Electron's integrity
+    /// check returns (no current-device row) and its runtime check still runs: that is
+    /// [`Self::check_sync_start`].
     pub async fn check_sync_integrity(
         &self,
         session: &Session,
     ) -> Result<AccountKeyCheck, AccountError> {
-        // `sync_devices` holds no current-device row: nothing is registered to check.
         if self.device_id().is_none() {
-            return Ok(AccountKeyCheck::Unknown);
+            return Ok(self.check_sync_start().await);
         }
         let op = self.key_op.lock().await;
         let check = self.compare_local_key().await;
@@ -164,19 +189,21 @@ impl AccountService {
     async fn compare_local_key(&self) -> AccountKeyCheck {
         let store = Arc::clone(&self.store);
         // The keychain can block on an access prompt: off the async workers. A failed read is
-        // never an absent key, so it is `Unknown` too.
+        // never an absent key.
         let local = tokio::task::spawn_blocking(move || {
-            let key = Zeroizing::new(store.get(SecureStoreKey::MasterKey).ok()??);
-            keys::account_key_verifier(&key).ok()
+            let key = store.get(SecureStoreKey::MasterKey).map_err(|_| ())?;
+            Ok(key.and_then(|key| keys::account_key_verifier(&Zeroizing::new(key)).ok()))
         })
-        .await
-        .ok()
-        .flatten();
-        let Some(local) = local else {
-            return AccountKeyCheck::Unknown;
+        .await;
+        let local = match local {
+            Ok(Ok(Some(local))) => local,
+            Ok(Ok(None)) => return AccountKeyCheck::Unknown,
+            Ok(Err(())) | Err(_) => return AccountKeyCheck::KeychainUnreadable,
         };
-        let Some(account) = self.account_key_verifier().await else {
-            return AccountKeyCheck::Unknown;
+        let account = match self.account_key_verifier().await {
+            Verifier::Known(account) => account,
+            Verifier::None => return AccountKeyCheck::Unknown,
+            Verifier::Unreachable => return AccountKeyCheck::VerifierUnreachable,
         };
         if keys::account_key_verifier_matches(&local, &account) {
             AccountKeyCheck::Match
@@ -186,8 +213,8 @@ impl AccountService {
     }
 
     /// `resolveAccountKeyVerifier`: `sync.accountKeyVerifier`, else `GET /auth/key-verifier`
-    /// cached there for offline checks; `None` when it cannot be known now.
-    async fn account_key_verifier(&self) -> Option<String> {
+    /// cached there for offline checks.
+    async fn account_key_verifier(&self) -> Verifier {
         let cached = self.config.read(|config| {
             config
                 .get("sync")
@@ -196,24 +223,26 @@ impl AccountService {
                 .filter(|verifier| !verifier.is_empty())
                 .map(str::to_owned)
         });
-        if cached.is_some() {
-            return cached;
+        if let Some(cached) = cached {
+            return Verifier::Known(cached);
         }
-        let term = self.term()?;
+        let Some(term) = self.term() else {
+            return Verifier::None;
+        };
         match self.session.valid_access_token().await {
             Ok(Some(_)) => {}
-            Ok(None) | Err(AuthError::SessionExpired) => return None,
+            Ok(None) | Err(AuthError::SessionExpired) => return Verifier::None,
             Err(error) => {
                 tracing::debug!(scope = "Sync", "no token for the key verifier: {error}");
-                return None;
+                return Verifier::Unreachable;
             }
         }
         let verifier = match self.session.key_material().await {
             Ok(material) if !material.key_verifier.is_empty() => material.key_verifier,
-            Ok(_) => return None,
+            Ok(_) => return Verifier::None,
             Err(error) => {
                 tracing::debug!(scope = "Sync", "account key verifier unavailable: {error}");
-                return None;
+                return Verifier::Unreachable;
             }
         };
         let cache = self.write_in_term(term, || {
@@ -222,16 +251,26 @@ impl AccountService {
             })
         });
         match cache {
-            // Signed out meanwhile: the verifier belongs to an account this install left.
-            None => return None,
+            // Signed out meanwhile: the verifier belongs to an account this install left, and
+            // nothing may attach on it.
+            None => return Verifier::Unreachable,
             Some(Err(error)) => tracing::warn!(
                 scope = "Sync",
                 "the account key verifier could not be cached: {error}"
             ),
             Some(Ok(())) => {}
         }
-        Some(verifier)
+        Verifier::Known(verifier)
     }
+}
+
+/// The account's verifier, or why it is not known.
+enum Verifier {
+    Known(String),
+    /// The account has none to read (no session, an empty answer).
+    None,
+    /// It exists or may, and cannot be read now.
+    Unreachable,
 }
 
 #[cfg(test)]
