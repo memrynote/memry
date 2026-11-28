@@ -22,6 +22,7 @@ mod projects;
 mod reminders;
 #[macro_use]
 mod tasks;
+mod canvas;
 mod dispatch;
 mod graph;
 mod permission;
@@ -97,17 +98,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::calendar_providers::calendar_disconnect_provider,
             crate::commands::calendar_providers::calendar_discover_provider_calendars,
             crate::commands::calendar_providers::calendar_refresh_provider,
-            // canvas (the asset and live-canvas commands are not ported yet)
-            crate::commands::canvas::canvas_create::<Wry>,
-            crate::commands::canvas::canvas_delete::<Wry>,
-            crate::commands::canvas::canvas_duplicate::<Wry>,
-            crate::commands::canvas::canvas_get::<Wry>,
-            crate::commands::canvas::canvas_library_list::<Wry>,
-            crate::commands::canvas::canvas_library_save::<Wry>,
-            crate::commands::canvas::canvas_list::<Wry>,
-            crate::commands::canvas::canvas_open_external,
-            crate::commands::canvas::canvas_reveal_in_finder,
-            crate::commands::canvas::canvas_update::<Wry>,
+            // canvas (the canvas commands themselves are in `registry/canvas.rs`)
             crate::commands::canvas_folders::canvas_folder_create::<Wry>,
             crate::commands::canvas_folders::canvas_folder_delete::<Wry>,
             crate::commands::canvas_folders::canvas_folder_list::<Wry>,

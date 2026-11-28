@@ -1,9 +1,7 @@
 /**
  * Canvas Service
  *
- * The canvas commands of Step 30e1 (`commands/canvas.rs`) in the shapes of Electron's `canvas:*`
- * channels. The asset and live-canvas calls are not ported yet (30e3): they still reach
- * `window.api.canvas`.
+ * The canvas commands (`commands/canvas.rs`) in the shapes of Electron's `canvas:*` channels.
  */
 
 import type {
@@ -21,7 +19,6 @@ import type {
 } from '@memry/rpc/canvas'
 import { commands, events, type CanvasView, type Value } from '../../../generated/bindings'
 import { subscribeToEvent } from './tauri-event'
-import { createWindowApiForwarder } from './window-api-forwarder'
 
 export type { CanvasSummary }
 
@@ -46,7 +43,7 @@ function toCanvas({ unreadable, ...canvas }: CanvasView): Canvas {
   return unreadable ? { ...canvas, unreadable } : canvas
 }
 
-const ported = {
+export const canvasService: CanvasApi = {
   create: async (input = {}) => toCanvas(await commands.canvasCreate(input)),
   get: async (id) => {
     const view = await commands.canvasGet(id)
@@ -69,13 +66,16 @@ const ported = {
     (await commands.canvasLibraryList()) as CanvasLibraryListResponse,
   librarySave: (libraryItems) =>
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an item is JSON the command carries as is
-    commands.canvasLibrarySave({ libraryItems: libraryItems as Value[] })
-} satisfies Partial<CanvasApi>
-
-export const canvasService: CanvasApi = createWindowApiForwarder<CanvasApi, keyof typeof ported>(
-  () => window.api.canvas,
-  ported
-)
+    commands.canvasLibrarySave({ libraryItems: libraryItems as Value[] }),
+  // Electron's invoke shape: the image bytes as a number array.
+  uploadAsset: ({ data, ...input }) =>
+    commands.canvasUploadAsset({ ...input, data: Array.from(new Uint8Array(data)) }),
+  canUploadAsset: () => commands.canvasCanUploadAsset(),
+  getAsset: (canvasId, fileId) => commands.canvasGetAsset(canvasId, fileId),
+  listAssets: (canvasId) => commands.canvasListAssets(canvasId),
+  liveOpened: (canvasId) => commands.canvasLiveOpened(canvasId),
+  liveClosed: (canvasId) => commands.canvasLiveClosed(canvasId)
+} satisfies CanvasApi
 
 export function onCanvasCreated(callback: (event: CanvasCreatedEvent) => void): () => void {
   return subscribeToEvent(events.canvasCreatedEvent, callback)
