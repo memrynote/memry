@@ -29,6 +29,7 @@ use std::sync::LazyLock;
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::link_join::LinkParagraphs;
 use super::mask_word::mask_word;
 use super::prepare::split_by_code_fences;
 use super::shapes::is_table_separator;
@@ -74,6 +75,7 @@ fn mask_prose(text: &str, breaks: &mut Vec<String>) -> String {
     let mut out: Vec<String> = Vec::with_capacity(lines.len());
     let mut in_list_item = false;
     let mut in_table = false;
+    let mut paragraphs = LinkParagraphs::default();
     let mut at = 0;
     while at < lines.len() {
         let mut line = std::mem::take(&mut lines[at]);
@@ -105,7 +107,8 @@ fn mask_prose(text: &str, breaks: &mut Vec<String>) -> String {
             if in_list_item && spelling.is_none() && !block_start(&lines[next]) {
                 let end = match open.link_end {
                     Some(end) => (open.depth > 0 && next < end).then_some(end),
-                    None => ends_inside_link_text(open.depth, &line, &lines[next..])
+                    None => paragraphs
+                        .ends_inside_link_text(open.depth, &line, &lines, next)
                         .map(|len| next + len),
                 };
                 if let Some(end) = end {
@@ -164,7 +167,7 @@ struct OpenLine {
     unclean: bool,
     /// Set after a join over link text: where the paragraph that holds the
     /// text ends. Each such join leaves the rest of the paragraph's lines out
-    /// of what [`ends_inside_link_text`] refuses on, and adds to the line only
+    /// of what [`LinkParagraphs::ends_inside_link_text`] refuses on, and adds to the line only
     /// what it already accepted, so the next join over the same text is
     /// decided by `depth` and the lines left alone.
     link_end: Option<usize>,
@@ -206,22 +209,22 @@ impl OpenLine {
 }
 
 /// `line.trim() === ''`.
-fn is_blank(line: &str) -> bool {
+pub(super) fn is_blank(line: &str) -> bool {
     js_trim(line).is_empty()
 }
 
 /// `[^\S\n]`.
-fn is_inline_space(c: char) -> bool {
+pub(super) fn is_inline_space(c: char) -> bool {
     c != '\n' && is_js_whitespace(c)
 }
 
 /// A line as desktop's regexes see it: each [`JOIN`] is the `<br>` it stands for.
-fn seen(line: &str) -> String {
+pub(super) fn seen(line: &str) -> String {
     line.replace(JOIN, "<br>")
 }
 
 /// `HARD_BREAK_LINE`, `/(?:[ \t]{2,}|\\)$/`: the spelling the line ends in.
-fn hard_break_spelling(line: &str) -> Option<&str> {
+pub(super) fn hard_break_spelling(line: &str) -> Option<&str> {
     let trailing = line.len() - line.trim_end_matches([' ', '\t']).len();
     if trailing >= 2 {
         Some(&line[line.len() - trailing..])
@@ -266,7 +269,7 @@ fn list_item_start(line: &str) -> bool {
 
 /// `BLOCK_START`: a line that opens a block of its own rather than continuing
 /// a paragraph.
-fn block_start(line: &str) -> bool {
+pub(super) fn block_start(line: &str) -> bool {
     let rest = line.trim_start_matches([' ', '\t']);
     if list_item_start(line)
         || rest.starts_with(['>', '|'])
@@ -290,109 +293,6 @@ fn block_start(line: &str) -> bool {
             .chars()
             .all(|c| matches!(c, '-' | '*' | '_' | '=' | ' ' | '\t'))
         && rest.chars().filter(|c| !matches!(c, ' ' | '\t')).count() >= 3
-}
-
-/// `endsInsideLinkText`: when `line` ends inside link text that the last
-/// line of its paragraph closes, how many of `after`'s lines that paragraph
-/// holds. An image, a code span, an escaped bracket, a link title, an address
-/// the writer cannot spell back ([`address_keeps_split`]), a tag other than
-/// `<br>`, a `<br>` against a line end or a hard break on a later line keeps
-/// the old split. `depth` is how many `[` the line leaves open.
-fn ends_inside_link_text(depth: usize, line: &str, after: &[String]) -> Option<usize> {
-    // The depth test only reads `line`, and the rest only refuses, so asking it
-    // first keeps a long lazy paragraph from being scanned per line.
-    if depth == 0 {
-        return None;
-    }
-    let line = seen(line);
-    let end = after
-        .iter()
-        .position(|next| is_blank(next) || block_start(next));
-    let rest = &after[..end.unwrap_or(after.len())];
-    let last = rest.last()?;
-    if !last.contains("](") {
-        return None;
-    }
-    let paragraph = std::iter::once(line.as_str())
-        .chain(rest.iter().map(String::as_str))
-        .map(seen)
-        .collect::<Vec<_>>()
-        .join("\n");
-    let rest_text = rest
-        .iter()
-        .map(|next| seen(next))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let refused = blocks_link_join(&paragraph)
-        || address_keeps_split(&paragraph)
-        || rest_text.to_ascii_lowercase().contains("<br")
-        || rest[..rest.len() - 1]
-            .iter()
-            .any(|next| hard_break_spelling(next).is_some());
-    (!refused).then_some(rest.len())
-}
-
-/// `/<br>/i` at the start of `chars`.
-fn is_br_tag(chars: &[char]) -> bool {
-    chars.len() >= 4
-        && chars[0] == '<'
-        && chars[1].eq_ignore_ascii_case(&'b')
-        && chars[2].eq_ignore_ascii_case(&'r')
-        && chars[3] == '>'
-}
-
-/// `/`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*\n|\n[^\S\n]*<br>/i` on a paragraph.
-fn blocks_link_join(paragraph: &str) -> bool {
-    let chars: Vec<char> = paragraph.chars().collect();
-    let skip_blanks = |from: usize| {
-        from + chars[from..]
-            .iter()
-            .take_while(|c| is_inline_space(**c))
-            .count()
-    };
-    chars.iter().enumerate().any(|(i, c)| match c {
-        '`' => true,
-        '<' if !is_br_tag(&chars[i..]) => true,
-        '<' => chars.get(skip_blanks(i + 4)) == Some(&'\n'),
-        '!' => chars.get(i + 1) == Some(&'['),
-        '\\' => matches!(chars.get(i + 1), Some('[' | ']')),
-        '\n' => is_br_tag(&chars[skip_blanks(i + 1)..]),
-        _ => false,
-    })
-}
-
-/// `addressKeepsSplit`: true when an address in `paragraph` holds a title or a
-/// space, or holds a parenthesis that is unbalanced or next to a backslash,
-/// which the writer escapes again on every save (BBF-107).
-fn address_keeps_split(paragraph: &str) -> bool {
-    for (open, _) in paragraph.match_indices("](") {
-        let mut depth = 0i64;
-        let (mut paren, mut backslash, mut closed) = (false, false, false);
-        for c in paragraph[open + 2..].chars() {
-            if is_js_whitespace(c) {
-                return true;
-            }
-            match c {
-                '\\' => backslash = true,
-                '(' => {
-                    paren = true;
-                    depth += 1;
-                }
-                ')' => {
-                    depth -= 1;
-                    if depth < 0 {
-                        closed = true;
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-        if paren && (!closed || backslash) {
-            return true;
-        }
-    }
-    false
 }
 
 /// The token's `MEMRYHBK<digits>;` at the start of `text`: its length and index.
