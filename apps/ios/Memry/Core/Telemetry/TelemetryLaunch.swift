@@ -18,7 +18,10 @@ enum TelemetryLaunch {
             installId = UUID().uuidString.lowercased()
             defaults.set(installId, forKey: installIdKey)
         }
-        let appVersion = (bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0"
+        let appVersion = TelemetryContext.appVersion(
+            marketing: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            build: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        )
         let previousVersion = defaults.string(forKey: lastRunVersionKey)
         defaults.set(appVersion, forKey: lastRunVersionKey)
 
@@ -29,7 +32,7 @@ enum TelemetryLaunch {
         let context = TelemetryContext(
             installId: installId,
             sessionId: UUID().uuidString.lowercased(),
-            appVersion: String(appVersion.prefix(32)),
+            appVersion: appVersion,
             buildChannel: channel,
             locale: String(Locale.current.identifier(.bcp47).prefix(16)),
             timezoneOffsetMinutes: TimeZone.current.secondsFromGMT() / 60

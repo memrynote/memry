@@ -170,6 +170,17 @@ struct TelemetryContext: Sendable, Equatable {
     let buildChannel: String
     let locale: String
     let timezoneOffsetMinutes: Int
+
+    /// `0.1.0+1017`: the marketing version plus the build number. Every
+    /// TestFlight build shares one marketing version and differs only in
+    /// `CFBundleVersion`, so without the build PostHog sees one release and
+    /// `app_update_installed` never fires. The contract allows any string of
+    /// 1 to 32 characters.
+    static func appVersion(marketing: String?, build: String?) -> String {
+        let marketing = marketing.flatMap { $0.isEmpty ? nil : $0 } ?? "0"
+        guard let build, !build.isEmpty else { return String(marketing.prefix(32)) }
+        return String("\(marketing)+\(build)".prefix(32))
+    }
 }
 
 struct TelemetryBatch: Encodable {
