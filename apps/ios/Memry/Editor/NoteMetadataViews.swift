@@ -1044,6 +1044,10 @@ struct NotePropertyEditor: View {
     /// Picks or unpicks a project by name; `nil` leaves the value read-only.
     var toggleProject: ((String) -> Void)?
     var removeProject: ((String) -> Void)?
+    /// A property just added: its field takes the caret as the row first
+    /// shows, as desktop's `autoFocus` does, and calls `tookCaret`.
+    var takesCaret = false
+    var tookCaret: () -> Void = {}
 
     @State private var draft: String = ""
     @State private var loaded = false
@@ -1094,6 +1098,10 @@ struct NotePropertyEditor: View {
             guard !loaded else { return }
             draft = NotePropertyJSON.decode(property)
             loaded = true
+            if takesCaret {
+                valueFocused = true
+                tookCaret()
+            }
         }
         // A write from elsewhere (a Clear, the other copy of this row, sync)
         // shows here unless the field holds a value typed in it.
@@ -1594,6 +1602,8 @@ struct NoteMetadataEditors: View {
     @State private var editingTags = false
     /// Types chosen in this session, for values that cannot carry theirs.
     @State private var chosenKinds: [String: NotePropertyKind] = [:]
+    /// The property just added, whose field takes the caret as it shows.
+    @State private var added: String?
     /// The order shown while a drag is moving rows, before it is written.
     @State private var dragOrder: [String]?
     @State private var draggedName: String?
@@ -1719,6 +1729,7 @@ struct NoteMetadataEditors: View {
                     if let added = await model.addProperty(named: typed, kind: kind, existing: names) {
                         chosenKinds[added] = kind
                         showsProperties = true
+                        self.added = added
                     }
                     await reload()
                 }
@@ -1887,7 +1898,9 @@ struct NoteMetadataEditors: View {
                     await model.removeProject(name, from: NoteProjectValue.names(property.valueJson))
                     await reload()
                 }
-            }
+            },
+            takesCaret: added == property.name,
+            tookCaret: { added = nil }
         )
     }
 }

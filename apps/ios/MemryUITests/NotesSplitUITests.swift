@@ -261,7 +261,61 @@ final class NotesSplitUITests: XCTestCase {
             matches(NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}"), block),
             "the drop left no link: \(block.value as? String ?? "")"
         )
+        assertUndoTakesBackTheLink(block)
         deleteNotes([source, target])
+    }
+
+    /// The whole page takes a dropped note, not only the line under the
+    /// finger: a drop beside the lines links at the caret.
+    func testANoteDroppedBesideTheLinesLinksAtTheCaret() throws {
+        try openNotes()
+        let target = "[agent] \(run) beside"
+        let source = "[agent] \(run) page"
+        makeNote(target)
+        let block = makeNote(source)
+        // The page's margin, level with the line and clear of its text view.
+        let margin = block.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: -10, dy: 0))
+        row(target).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+            forDuration: 1,
+            thenDragTo: margin,
+            withVelocity: .slow,
+            thenHoldForDuration: 1
+        )
+        attach("dropped-beside-the-lines")
+        XCTAssertTrue(
+            matches(NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}"), block),
+            "a drop beside the lines left no link: \(block.value as? String ?? "")"
+        )
+        assertUndoTakesBackTheLink(block)
+        deleteNotes([source, target])
+    }
+
+    /// A property added while the body holds the caret takes the caret, as
+    /// on desktop, and shows above the keys and the keyboard toolbar. On an
+    /// iPad mini in landscape the new row landed under the toolbar, where a
+    /// tap reached the toolbar and not the field.
+    func testANewPropertyTakesTheCaretAboveTheKeyboardToolbar() throws {
+        try openNotes()
+        let title = "[agent] \(run) new property"
+        makeNote(title)
+        XCTAssertTrue(keyboardToolbar.waitForExistence(timeout: 10), "the body has no keyboard toolbar")
+        let addProperty = app.buttons["Add a property"].firstMatch
+        XCTAssertTrue(addProperty.waitForExistence(timeout: 10))
+        addProperty.tap()
+        let name = app.textFields["Property name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("status")
+        app.buttons["Text"].firstMatch.tap()
+        let value = app.textFields["status"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the property has no field")
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), value), "the new property did not take the caret")
+        attach("new-property")
+        XCTAssertTrue(
+            waitUntilShown(value),
+            "the new property at \(value.frame) is under the keyboard toolbar at \(keyboardToolbar.frame)"
+        )
+        deleteNotes([title])
     }
 
     /// The line the caret lands on stays above the keyboard and its toolbar.
@@ -849,6 +903,17 @@ final class NotesSplitUITests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// ⌘Z takes a dropped link back out of `block`.
+    private func assertUndoTakesBackTheLink(_ block: XCUIElement, line: UInt = #line) {
+        app.primeCommandKeys()
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(
+            matches(NSPredicate(format: "NOT (value CONTAINS %@)", "\u{FFFC}"), block),
+            "⌘Z left the dropped link: \(block.value as? String ?? "")",
+            line: line
+        )
+    }
 
     private var inspectorToggle: XCUIElement { app.buttons["note.inspector.toggle"].firstMatch }
 

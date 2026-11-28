@@ -157,6 +157,8 @@ final class BlockTextView: UITextView {
     var backspaceAtStart: (() -> Void)?
     /// The view moved into a window, or out of one (#4457).
     var movedToWindow: ((UIWindow?) -> Void)?
+    /// The view was laid out again, as when the page beside a list changes width.
+    var laidOut: (() -> Void)?
     /// The editor's hardware keys (#4354): which apply now, and the handler.
     var editorKeys: (() -> [EditorKeyCommand])?
     var editorKeyPressed: ((EditorKeyCommand) -> Void)?
@@ -196,6 +198,11 @@ final class BlockTextView: UITextView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         movedToWindow?(window)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        laidOut?()
     }
 
     /// Ahead of the text view's own, so Tab nests instead of typing a tab
@@ -360,6 +367,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         textView.movedToWindow = { [weak self] window in
             guard let self else { return }
             self.session?.field(self, movedInto: window)
+        }
+        textView.laidOut = { [weak self] in
+            guard let self, self.session?.field === self else { return }
+            self.session?.placeToolbar()
         }
         textView.editorKeys = { [weak self] in
             EditorKeyCommand.active(menuOpen: self?.session?.menuOpen ?? false)
