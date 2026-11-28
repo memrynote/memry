@@ -143,7 +143,8 @@ describe('checkPayload', () => {
     const errors = check('windows', payload('windows'), { links: () => '' })
     assert.deepEqual(errors, [
       'Memrynote.exe: the link listing names no system C library',
-      'memry-ml-worker.exe: the link listing names no system C library'
+      'memry-ml-worker.exe: the link listing names no system C library',
+      'memrynote-cli.exe: the link listing names no system C library'
     ])
   })
 })
@@ -157,17 +158,19 @@ describe('manifestDrift', () => {
 
   it('fails a sidecar the config bundles and the manifest does not list', () => {
     const config = mergePatch(readReleaseConfig('linux'), {
-      bundle: { externalBin: ['binaries/memry-ml-worker', 'binaries/memrynote-cli'] }
+      bundle: {
+        externalBin: ['binaries/memry-ml-worker', 'binaries/memrynote-cli', 'binaries/memry-extra']
+      }
     })
     assert.deepEqual(manifestDrift('linux', MANIFEST, config), [
-      'linux: the manifest lacks executables memrynote-cli'
+      'linux: the manifest lacks executables memry-extra'
     ])
   })
 
   it('fails a sidecar the manifest lists and the config does not bundle', () => {
     const config = mergePatch(readReleaseConfig('windows'), { bundle: { externalBin: [] } })
     assert.deepEqual(manifestDrift('windows', MANIFEST, config), [
-      'windows: the config bundles no executables memry-ml-worker.exe'
+      'windows: the config bundles no executables memry-ml-worker.exe,memrynote-cli.exe'
     ])
   })
 
@@ -198,13 +201,24 @@ describe('readReleaseConfig', () => {
     assert.equal(config.bundle.macOS.minimumSystemVersion, '13.0')
   })
 
-  it('bundles the worker on every platform and the EventKit helper beside it on macOS only', () => {
+  it('bundles the worker and the CLI on every platform and the EventKit helper on macOS only', () => {
     assert.deepEqual(readReleaseConfig('macos').bundle.externalBin, [
       'binaries/memry-ml-worker',
+      'binaries/memrynote-cli',
       '../eventkit/bin/memry-eventkit'
     ])
     for (const platform of ['windows', 'linux']) {
-      assert.deepEqual(readReleaseConfig(platform).bundle.externalBin, ['binaries/memry-ml-worker'])
+      assert.deepEqual(readReleaseConfig(platform).bundle.externalBin, [
+        'binaries/memry-ml-worker',
+        'binaries/memrynote-cli'
+      ])
+    }
+  })
+
+  it('lists the CLI the terminal command shim runs in every payload manifest', () => {
+    for (const platform of PLATFORMS) {
+      const cli = platform === 'windows' ? 'memrynote-cli.exe' : 'memrynote-cli'
+      assert.ok(MANIFEST.platforms[platform].executables.includes(cli), platform)
     }
   })
 

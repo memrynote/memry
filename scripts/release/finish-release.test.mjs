@@ -541,6 +541,7 @@ describe('PE files and signers', () => {
     assert.deepEqual(requiredWindowsBinaries(), [
       'Memrynote.exe',
       'memry-ml-worker.exe',
+      'memrynote-cli.exe',
       'pdfium/pdfium.dll',
       'webview2/MicrosoftEdgeWebview2Setup.exe'
     ])

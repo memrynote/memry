@@ -1,6 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
-    "externalBin": ["binaries/memry-ml-worker", "../eventkit/bin/memry-eventkit"]
+    "externalBin": [
+      "binaries/memry-ml-worker",
+      "binaries/memrynote-cli",
+      "../eventkit/bin/memry-eventkit"
+    ]
   }
 }
