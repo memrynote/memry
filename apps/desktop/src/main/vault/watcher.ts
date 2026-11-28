@@ -60,6 +60,7 @@ import {
 } from './rename-tracker'
 import { RecentFileIdentities } from './recent-file-identities'
 import { RenameTargets } from './rename-targets'
+import { AddedFileKeys } from './added-file-keys'
 import { probeBirthtime } from './birthtime-probe'
 import {
   folderExistsExactCase,
@@ -252,8 +253,7 @@ export class VaultWatcher {
   private recentIdentities = new RecentFileIdentities()
   private renameTargets = new RenameTargets()
   private addsInFlight = new Map<string, Promise<void>>()
-  /** Each file the unlink added for its rename, with its identity then. */
-  private renamedFileKeys = new Map<string, string>()
+  private addedFileKeys = new AddedFileKeys()
   private rawWrites = new Set<string>()
   private rawWritesFlush: NodeJS.Immediate | null = null
 
@@ -321,7 +321,8 @@ export class VaultWatcher {
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath, stats?: Stats) => {
-        this.renamedFileKeys.delete(filePath)
+        if (this.addedFileKeys.unchanged(filePath, this.identityKeyOf(filePath))) return
+        this.addedFileKeys.forget(filePath)
         this.recentIdentities.recordChange(filePath, stats)
         this.debouncedChange?.(filePath)
       })
@@ -412,7 +413,7 @@ export class VaultWatcher {
     this.rawWrites.clear()
     this.recentIdentities.clear()
     this.renameTargets.clear()
-    this.renamedFileKeys.clear()
+    this.addedFileKeys.clear()
     this.isReady = false
   }
 
@@ -712,23 +713,17 @@ export class VaultWatcher {
    * A renamed file's add comes from the unlink (`addRenamedFile`) and can come
    * from chokidar too, at once or seconds later. The second add of a path
    * waits for the first: run together, both missed the row, and the one that
-   * lost the rename match listed the file again under a new id. chokidar's add
-   * of the file the unlink added, unchanged since, is the same add and is
-   * dropped; run, it found the row, read the whole body again and fed a body
-   * the index had not read to the note's doc. After a failed add it runs.
+   * lost the rename match listed the file again under a new id. An add of a
+   * file unchanged since an add read it is dropped (`AddedFileKeys`).
    */
   private handleFileAdd(eventPath: string, renamedFile = false): Promise<void> {
     const prior = this.addsInFlight.get(eventPath)
     const add = async (): Promise<void> => {
-      const addedKey = this.renamedFileKeys.get(eventPath)
-      this.renamedFileKeys.delete(eventPath)
-      if (!renamedFile && addedKey !== undefined && addedKey === this.identityKeyOf(eventPath)) {
-        return
-      }
-      // Taken before the add reads the file, so a write while it runs, which
-      // chokidar's add can fold in, changes the key.
-      const key = renamedFile ? this.identityKeyOf(eventPath) : null
-      if ((await this.addFile(eventPath)) && key !== null) this.renamedFileKeys.set(eventPath, key)
+      const key = this.identityKeyOf(eventPath)
+      if (!renamedFile && this.addedFileKeys.unchanged(eventPath, key)) return
+      // A failed add leaves no key, so chokidar's add of the file retries it.
+      this.addedFileKeys.forget(eventPath)
+      if ((await this.addFile(eventPath)) && key !== null) this.addedFileKeys.record(eventPath, key)
     }
     const run = prior ? prior.then(add, add) : add()
     this.addsInFlight.set(eventPath, run)
@@ -1543,7 +1538,7 @@ export class VaultWatcher {
   ): void {
     const lastChangeKey = this.recentIdentities.take(absolutePath)
     const renamedTo = this.renameTargets.take(absolutePath) ?? caseRenamedTo
-    this.renamedFileKeys.delete(absolutePath)
+    this.addedFileKeys.forget(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {
