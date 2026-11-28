@@ -31,7 +31,7 @@ macro_rules! areas {
             app
             billing
             calendar_sources
-            canvas
+            canvas_folders
             editor
             custom_icons
             devices
@@ -81,6 +81,7 @@ macro_rules! areas {
             reminders
             stickies
             graph
+            canvas
         )
     };
 }

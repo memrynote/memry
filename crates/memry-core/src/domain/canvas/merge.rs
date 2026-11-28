@@ -34,6 +34,10 @@
 //! is a new item no peer has; the merged original is re-queued beside it
 //! (§6.5.2 P3, [`crate::sync::hardening::requeue`]).
 //!
+//! - **An applied scene's asset sidecar is recorded** for the canvas
+//!   (`recordSceneAssets`), in the same transaction, so the shell's next save
+//!   rebuilds the sidecar instead of pushing it empty.
+//!
 //! Deletes are not here. [`crate::sync::apply`]'s tombstone path already lets
 //! only a local clock strictly after the delete keep the item (#2198, #2409).
 
@@ -55,6 +59,7 @@ use crate::sync::hardening::requeue;
 use crate::sync::{outbox, server_vault};
 
 use super::ITEM_TYPE;
+use super::scene_assets::record_scene_assets;
 
 /// The schema keys `CanvasSyncPayloadSchema` refuses `null` for
 /// (`packages/contracts/src/sync-payloads.ts:187-207`).
@@ -163,6 +168,7 @@ fn kept_changes(
 
 /// `createConflictCopy`: the losing local drawing as a new canvas, queued, in the merge's vault:
 /// a copy on the stored pre-bind id would be hidden on every fresh device (#5784, desktop #5788).
+/// Its sidecar's images are recorded for the copy (`recordSceneAssets`).
 fn write_conflict_copy(
     tx: &Connection,
     local: &Object,
@@ -187,6 +193,12 @@ fn write_conflict_copy(
         "deletedAt": null,
     }));
     insert_local(tx, ITEM_TYPE, &copy_id, payload, now_ms)?;
+    if let (Some(vault_id), Some(scene)) = (
+        local.get("vaultId").and_then(Value::as_str),
+        local.get("scene").and_then(Value::as_str),
+    ) {
+        record_scene_assets(tx, vault_id, &copy_id, scene, now_ms)?;
+    }
     outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &copy_id), now_ms)?;
     Ok(())
 }
@@ -208,6 +220,16 @@ fn finish(
         record
     };
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
+    if outcome == ApplyOutcome::Applied && record.deleted_at.is_none() {
+        let applied =
+            StoredPayload::parse(&record.payload_json).map_err(|error| StorageError::Failed {
+                what: format!("canvas {}: {error}", record.item_id),
+            })?;
+        let text = |key| applied.object().get(key).and_then(Value::as_str);
+        if let (Some(vault_id), Some(scene)) = (text("vaultId"), text("scene")) {
+            record_scene_assets(&tx, vault_id, &record.item_id, scene, now_ms)?;
+        }
+    }
     if merged && outcome == ApplyOutcome::Applied {
         requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;
     }

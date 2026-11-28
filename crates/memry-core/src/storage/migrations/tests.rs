@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 45);
+    assert_eq!(version, 46);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -286,6 +286,23 @@ fn a_database_at_0044_gains_attachment_revivals_at_0045() {
             .iter()
             .any(|n| n == "attachment_revived_notes")
     );
+}
+
+#[test]
+fn a_database_at_0045_gains_note_pulled_marks_at_0046() {
+    let db = Db::open_in_memory().expect("open");
+    let at_45 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..45]))
+        .expect("migrate to 45");
+    assert_eq!(at_45, 45);
+    assert!(!table_names(&db).iter().any(|n| n == "note_pulled_marks"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..46]))
+        .expect("step forward");
+
+    assert_eq!(version, 46);
+    assert!(table_names(&db).iter().any(|n| n == "note_pulled_marks"));
 }
 
 #[test]
