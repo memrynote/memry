@@ -9,9 +9,10 @@
  * The hole itself narrowed sharply with BlockNote 0.51, whose rewritten
  * markdown parser converts much of the HTML the old one discarded: `<img>`,
  * `<video>`, `<hr>`, `<a href>` and `<table>` now come back as their markdown
- * equivalents instead of as nothing, and a `<div>` keeps its inner text rather
- * than taking the note's whole body with it. What is left below is the
- * genuinely unmappable remainder — `<iframe>`, `<script>`.
+ * equivalents instead of as nothing. What the editor has no node for (`<div>`,
+ * `<p>`, `<kbd>`, `<sup>`, `<mark>`, `<iframe>`, `<script>`) is hidden from that
+ * parser and kept as the text it was written with (`inline/raw-html.ts`), so
+ * the hole is closed for it: the tag and its text come back as written.
  * The values here were re-measured against 0.54, not adjusted by hand.
  *
  * Nothing in this file is a promise: it is still a record of what the pipeline
@@ -66,19 +67,16 @@ interface Probe {
 }
 
 /**
- * A note whose body is ONLY an HTML block. Most of these now keep their
- * content: 0.51's parser maps the tag onto a block where it can, so the
- * wrapper goes and the text, image or table stays.
- *
- * The three that still empty have nothing to map onto. For those, pass 1
- * leaves three newlines where the block was, pass 2 turns those into the empty
- * string, and `yDocToMarkdown`'s empty-conversion guard never fires because
- * the fragment really does hold the (empty) paragraphs it converted.
+ * A note whose body is ONLY an HTML block. The tags the editor maps onto a
+ * block (a table, an image, a video, a rule) come back as that block. Every
+ * other tag stays as the text it was written with, wrapper and body, where the
+ * parser used to drop the wrapper and, for `<iframe>` and `<script>`, the body
+ * with it, which emptied the note.
  */
 const HTML_ONLY_BODY: Probe[] = [
-  { name: '<div> on one line', markdown: '<div class="x">Body</div>', pass1: 'Body' },
-  { name: '<p> paragraph', markdown: '<p>Body</p>', pass1: 'Body' },
-  { name: '<center> block', markdown: '<center>Body</center>', pass1: 'Body' },
+  { name: '<div> on one line', markdown: '<div class="x">Body</div>', pass1: null },
+  { name: '<p> paragraph', markdown: '<p>Body</p>', pass1: null },
+  { name: '<center> block', markdown: '<center>Body</center>', pass1: null },
   {
     // Kept verbatim: the parser has no figure block, and the whole thing is
     // one inline HTML run rather than a block it would drop.
@@ -95,44 +93,43 @@ const HTML_ONLY_BODY: Probe[] = [
   {
     name: '<iframe> embed',
     markdown: '<iframe src="https://example.com"></iframe>',
-    pass1: '\n\n',
-    pass2: ''
+    pass1: null
   },
   { name: '<video> embed', markdown: '<video src="a.mp4" controls></video>', pass1: '![](a.mp4)' },
   { name: 'raw <img>', markdown: '<img src="a.png" alt="A">', pass1: '![A](a.png)' },
   { name: '<hr /> self-closing', markdown: '<hr />', pass1: '***' },
-  { name: '<script> block', markdown: '<script>alert(1)</script>', pass1: '\n\n', pass2: '' }
+  { name: '<script> block', markdown: '<script>alert(1)</script>', pass1: null }
 ]
 
-/** With markdown around it, the tags go and the inner text stays. */
+/** With markdown around it, the tags and the inner text both stay. */
 const BLOCK_LEVEL_IN_CONTEXT: Probe[] = [
   {
     name: '<div> wrapper around a blank-line-separated body',
     markdown: '<div class="x">\n\nBody\n\n</div>',
-    pass1: 'Body'
+    pass1: null
   },
   {
     // The inner text used to go with the wrapper, taking a paragraph out of
-    // the middle of the note; it stays now.
+    // the middle of the note; both stay now.
     name: 'html block between two paragraphs',
     markdown: 'Before\n\n<div class="x">Body</div>\n\nAfter',
-    pass1: 'Before\n\nBody\n\nAfter'
+    pass1: null
   },
   {
     name: 'blockquote whose only content is html',
     markdown: '> <div>Body</div>',
-    pass1: '> Body'
+    pass1: null
   }
 ]
 
 /**
- * An inline tag with no equivalent loses its markup and keeps its text. The
- * ones the editor does model — `<a href>`, `<u>`, `<br>` — now survive as the
+ * An inline tag with no equivalent keeps its markup and its text as written.
+ * The ones the editor does model — `<a href>`, `<u>`, `<br>` — survive as the
  * link, the underline and the line break they always meant.
  */
 const INLINE_LEVEL: Probe[] = [
-  { name: '<kbd>', markdown: 'Press <kbd>Cmd</kbd> now.', pass1: 'Press Cmd now.' },
-  { name: '<sup>', markdown: 'Text<sup>1</sup> here.', pass1: 'Text1 here.' },
+  { name: '<kbd>', markdown: 'Press <kbd>Cmd</kbd> now.', pass1: null },
+  { name: '<sup>', markdown: 'Text<sup>1</sup> here.', pass1: null },
   {
     // Underline is a real style in the schema, and the span is the spelling
     // Memry already writes for it.
@@ -140,11 +137,11 @@ const INLINE_LEVEL: Probe[] = [
     markdown: 'An <u>underlined</u> word.',
     pass1: 'An <span style="text-decoration:underline">underlined</span> word.'
   },
-  { name: '<mark>', markdown: 'A <mark>marked</mark> word.', pass1: 'A marked word.' },
+  { name: '<mark>', markdown: 'A <mark>marked</mark> word.', pass1: null },
   {
     name: '<abbr title>',
     markdown: 'Use <abbr title="HyperText">HTML</abbr>.',
-    pass1: 'Use HTML.'
+    pass1: null
   },
   {
     name: '<a href> keeps the destination',
@@ -152,8 +149,8 @@ const INLINE_LEVEL: Probe[] = [
     pass1: 'See [this](https://example.com).'
   },
   { name: '<br> mid-paragraph', markdown: 'One<br>Two', pass1: 'One  \nTwo' },
-  { name: 'in a list item', markdown: '- <kbd>A</kbd> item', pass1: '- A item' },
-  { name: 'in a heading', markdown: '# Title <sup>x</sup>', pass1: '# Title x' },
+  { name: 'in a list item', markdown: '- <kbd>A</kbd> item', pass1: null },
+  { name: 'in a heading', markdown: '# Title <sup>x</sup>', pass1: null },
   // The entity is no longer decoded on the way through, so the author's bytes
   // come back exactly as written.
   { name: 'an HTML entity is left alone', markdown: 'A &amp; B', pass1: null }
@@ -237,9 +234,9 @@ function run(title: string, probes: Probe[]): void {
 }
 
 describe('raw HTML through the write-back round-trip', () => {
-  run('an HTML-only body is emptied outright', HTML_ONLY_BODY)
-  run('a block-level tag is dropped, its inner text kept', BLOCK_LEVEL_IN_CONTEXT)
-  run('an inline tag is dropped, its text kept', INLINE_LEVEL)
+  run('an HTML-only body keeps its content', HTML_ONLY_BODY)
+  run('a block-level tag stays, with its inner text', BLOCK_LEVEL_IN_CONTEXT)
+  run('an inline tag stays, with its text', INLINE_LEVEL)
   run('what survives', SURVIVORS)
 })
 

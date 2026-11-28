@@ -19,13 +19,17 @@
  *
  * `<`, `$`, `%` and `=` have no backslash escape in the parser, so text that
  * spells an HTML tag, math, an Obsidian comment or a setext underline is
- * written as it is.
+ * written as it is. A tag the editor does not handle, spelled whole on one line,
+ * is read back as the characters it holds (`maskRawHtml`), so nothing inside
+ * it is escaped, and nothing inside it pairs with a mark outside: `<x a="*">`
+ * would gain a backslash each time the note is written and read.
  */
 
 import { TABLE_DELIMITER, TABLE_ROW } from '../blocks/block-starts'
 import { spellsCalloutMarker } from '../blocks/markdown'
 import { spellsRunsWithUnderscores } from './emphasis-runs'
 import { codeSpanRanges } from './link-code-spans'
+import { spelledTags } from './raw-html'
 
 type Item = {
   type: string
@@ -75,6 +79,8 @@ interface Spelling {
    * a break that ends their run.
    */
   closers: Set<number>
+  /** The offsets inside a tag spelled whole, which are written as they are. */
+  verbatim: Set<number>
 }
 
 /** The block as the writer spells it, near enough to tell markup, and its text runs. */
@@ -83,6 +89,7 @@ function spell(items: Item[]): Spelling {
   const segments: Segment[] = []
   const delimiters = new Set<number>()
   const closers = new Set<number>()
+  const verbatim = new Set<number>()
   const delimit = (delimiter: string, closing: boolean): void => {
     for (let i = 0; i < delimiter.length; i++) {
       delimiters.add(spelling.length + i)
@@ -103,7 +110,14 @@ function spell(items: Item[]): Spelling {
         const strike = styles.strike === true ? '~~' : ''
         delimit(bold + italic + strike, false)
         segments.push({ at: spelling.length, text: item.text, inLink })
-        spelling += item.text
+        // A tag is no markup to the characters around it: it stands as nodes do.
+        let last = 0
+        for (const { start, end } of spelledTags(item.text)) {
+          spelling += item.text.slice(last, start) + NODE.repeat(end - start)
+          for (let i = start; i < end; i++) verbatim.add(spelling.length - (end - i))
+          last = end
+        }
+        spelling += item.text.slice(last)
         delimit(strike + italic + bold, true)
       } else if (isLink(item)) {
         spelling += '['
@@ -117,7 +131,7 @@ function spell(items: Item[]): Spelling {
     }
   }
   walk(items, false)
-  return { spelling, segments, delimiters, closers }
+  return { spelling, segments, delimiters, closers, verbatim }
 }
 
 const isSpace = (c: string | undefined): boolean => c === undefined || c === ' ' || c === '\t'
@@ -269,6 +283,7 @@ function escapeSegment(
       char === '\n' &&
       (place.oneLine || (place.lineBlock && unwritableBreak(block, at, place.paragraph)))
     if (tag) out += '<br>'
+    else if (block.verbatim.has(at)) out += char
     else if (!keep.has(at) && (forced.has(at) || isMarkup(block, at, segment, place))) {
       out += `\\${char}`
     } else out += char
@@ -302,7 +317,9 @@ export function escapeMarkdownText<T extends Item>(list: T[], blockType?: string
   // An underscore delimiter pairs with any bare `_` in its block.
   if (!spellsRunsWithUnderscores(escaped)) return escaped
   for (const { at, text } of segments) {
-    for (let i = text.indexOf('_'); i !== -1; i = text.indexOf('_', i + 1)) forced.add(at + i)
+    for (let i = text.indexOf('_'); i !== -1; i = text.indexOf('_', i + 1)) {
+      if (!block.verbatim.has(at + i)) forced.add(at + i)
+    }
   }
   return escape()
 }

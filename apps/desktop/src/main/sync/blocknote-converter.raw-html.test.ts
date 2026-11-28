@@ -78,8 +78,6 @@ const UNHANDLED = [
   '<script>kq9</script>',
   '<style>kq9</style>',
   '\\<kq>',
-  '<pre>',
-  '<table>',
   '<kq a="1 2">',
   '<div class="x">',
   '<input type=text>',
@@ -199,6 +197,25 @@ describe('raw HTML the editor does not handle', () => {
     const blocks = await blocksOf(await seed('kq0 <b>bold</b> <code>c</code> kq1'))
     expect(runsOf(blocks).some((run) => run.styles?.bold === true)).toBe(true)
     expect(runsOf(blocks).some((run) => run.styles?.code === true)).toBe(true)
+  })
+
+  it('keeps the tags the editor converts to a node', async () => {
+    const types = async (markdown: string): Promise<string[]> =>
+      (await blocksOf(await seed(markdown))).map((block) => block.type)
+    expect(await types('<h2>t</h2>')).toEqual(['heading'])
+    expect(await types('<blockquote>q</blockquote>')).toEqual(['quote'])
+    expect(await types('<ul><li>a</li><li>b</li></ul>')).toEqual([
+      'bulletListItem',
+      'bulletListItem'
+    ])
+    expect(await types('<table>\n<tr><td>a</td></tr>\n</table>')).toEqual(['table'])
+    expect(await types('<pre><code>a  \nb</code></pre>')).toEqual(['codeBlock'])
+    expect(await types('a\n\n<hr />\n\nb')).toContain('divider')
+    expect(
+      await types(
+        '<figure><img alt="|320" src="https://e.com/i.png"><figcaption>c</figcaption></figure>'
+      )
+    ).toEqual(['image'])
   })
 
   it('keeps a closing span that closes a plain span, or nothing, as text', async () => {

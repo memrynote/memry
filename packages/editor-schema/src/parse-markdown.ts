@@ -18,6 +18,7 @@ import { maskEmptyLinks } from './inline/empty-links'
 import { type InlineItem, trimEmphasisEdges } from './inline/emphasis-runs'
 import { linkCodeAsText } from './inline/link-code-spans'
 import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
+import { maskRawHtml, restoreRawHtml } from './inline/raw-html'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 import { widenTables } from './table-width'
@@ -117,6 +118,8 @@ interface Masks {
   codeChars: string[]
   /** The spaced link destinations, by placeholder index. */
   destinations: string[]
+  /** The raw HTML the editor has no node for, by placeholder index. */
+  html: string[]
 }
 
 /**
@@ -147,13 +150,17 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     const link = run as StyledRun | undefined
     if (link?.href) {
       link.href = restoreLinkDestinations(
-        restoreCellCodeSpans(link.href, masks.codeChars),
+        restoreCellCodeSpans(restoreRawHtml(link.href, masks.html), masks.codeChars),
         masks.destinations
       )
     }
     // An inline node's props: an image in a table cell keeps its address and
     // alt here, and a masked pipe can sit in either.
-    if (run) restoreStringProps(run, (value) => restoreCellCodeSpans(value, masks.codeChars))
+    if (run) {
+      restoreStringProps(run, (value) =>
+        restoreCellCodeSpans(restoreRawHtml(value, masks.html), masks.codeChars)
+      )
+    }
     // A leading space in link text is the author's: CommonMark keeps it.
     if (Array.isArray(linkContent)) repairRuns(linkContent, code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
@@ -176,10 +183,14 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     // literal, so two trailing spaces mean two trailing spaces there.
     const unmasked = unmaskRun(stripped, code, masks.breaks)
     // Every restore is unconditional: a placeholder that survives into a block
-    // is written into the vault as literal text.
+    // is written into the vault as literal text. Raw HTML comes first: a hidden
+    // tag holds the placeholders of the masks that ran before it.
     run.text = restoreLinkDestinations(
       restoreCellCodeSpans(
-        restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
+        restoreInlineTokens(
+          restoreDetailsMarkup(restoreRawHtml(unmasked, masks.html)),
+          masks.tokens
+        ),
         masks.codeChars
       ),
       masks.destinations
@@ -267,12 +278,13 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   for (const block of blocks) {
     const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
     // An image's alt text is a prop, not a run: it gets the author's spelling back.
-    restoreStringProps(block, (value) =>
-      restoreCellCodeSpans(
-        masks.breaks.length > 0 ? restoreHardBreakSpelling(value, masks.breaks) : value,
+    restoreStringProps(block, (value) => {
+      const html = restoreRawHtml(value, masks.html)
+      return restoreCellCodeSpans(
+        masks.breaks.length > 0 ? restoreHardBreakSpelling(html, masks.breaks) : html,
         masks.codeChars
       )
-    )
+    })
     if (Array.isArray(block.content)) {
       repairRuns(block.content, code, masks)
       block.content = withHtmlCommentNodes(block.content, code)
@@ -377,9 +389,16 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // `((mention:…))` and `((date:…))` are opaque payloads the parser will apply
   // intraword emphasis inside.
   const { markdown: tokensMasked, tokens } = maskInlineTokens(masked)
+  // Raw HTML the editor has no node for stays text. After every mask whose
+  // region it must not read (comments, empty links, details markup, breaks,
+  // link addresses and inline tokens), so a hidden tag can hold their
+  // placeholders, and before the cell mask, which reads the text it leaves.
+  const { markdown: htmlMasked, sources: rawHtml } = losslessBlocks
+    ? maskRawHtml(tokensMasked)
+    : { markdown: tokensMasked, sources: [] }
   // A table cell collapses the whitespace in its code spans, and a row splits
   // on the pipes in them.
-  const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
+  const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(htmlMasked, {
     pipes: losslessBlocks
   })
   // A row wider than its table's header keeps its extra cells, and an empty
@@ -403,7 +422,7 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const parsed = (await (repaired === null || repaired === html
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
-  repairBlocks(parsed, { breaks, tokens, codeChars, destinations })
+  repairBlocks(parsed, { breaks, tokens, codeChars, destinations, html: rawHtml })
   if (losslessBlocks) {
     dropEmptyBlockPlaceholders(parsed)
     trimBlockEmphasisEdges(parsed)
