@@ -382,7 +382,7 @@ fn extract_oembed(cx: &mut Cx, fetcher: &dyn Fetcher) -> Result<Extracted, Extra
     let data = get(fetcher, url, Vec::new()).map_err(ExtractError::Js)?;
     let html = text_prop(&data, "html");
     let div = cx.doc.create_element("div");
-    let fragment = cx.doc.parse_fragment(&html);
+    let fragment = cx.doc.parse_fragment(&html)?;
     cx.doc.append_child(div, fragment)?;
     let paragraphs = match cx.doc.query_selector(div, "blockquote")? {
         Some(q) => cx.doc.query_selector_all(q, "p")?,
