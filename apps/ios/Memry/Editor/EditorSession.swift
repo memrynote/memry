@@ -405,6 +405,8 @@ final class EditorSession {
         .margins(.all, 0)
         .makeContentView()
         hosted = view
+        // The strip as a whole, padding included, for UI tests.
+        view.accessibilityIdentifier = "editor.keyboardToolbar"
         view.backgroundColor = .clear
         view.translatesAutoresizingMaskIntoConstraints = false
         return view

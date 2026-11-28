@@ -272,7 +272,7 @@ final class NotesSplitUITests: XCTestCase {
         let title = "[agent] \(run) caret"
         let block = makeNote(title)
         XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), block), "Return in the title did not move to the body")
-        let toolbar = app.buttons["Insert a block"].firstMatch
+        let toolbar = keyboardToolbar
         XCTAssertTrue(toolbar.waitForExistence(timeout: 10), "the body has no keyboard toolbar")
         attach("caret-line")
         XCTAssertLessThanOrEqual(block.frame.maxY, toolbar.frame.minY, "the line with the caret is under the keyboard toolbar")
@@ -879,8 +879,14 @@ final class NotesSplitUITests: XCTestCase {
         app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS %@", text)).firstMatch
     }
 
-    /// Waits up to 5 s for `element` to sit inside the window and clear of the
-    /// on-screen keyboard. After the outline scrolls the page to the note's last
+    /// The editor's keyboard toolbar: its strip, padding included.
+    private var keyboardToolbar: XCUIElement {
+        app.descendants(matching: .any)["editor.keyboardToolbar"].firstMatch
+    }
+
+    /// Waits up to 5 s for `element` to sit inside the window, below the
+    /// navigation bar over its column and above the keyboard toolbar and the
+    /// on-screen keys. After the outline scrolls the page to the note's last
     /// heading on a simulator with the software keyboard up, `isHittable`
     /// throws "Activation point invalid" for every block on screen, a heading in
     /// plain view included, so visibility is read off the frame.
@@ -888,11 +894,19 @@ final class NotesSplitUITests: XCTestCase {
         let deadline = Date().addingTimeInterval(5)
         repeat {
             if element.exists {
-                var visible = app.windows.firstMatch.frame
-                let keyboard = app.keyboards.firstMatch
-                if keyboard.exists { visible.size.height = min(visible.height, keyboard.frame.minY - visible.minY) }
                 let frame = element.frame
-                if !frame.isEmpty, visible.contains(frame) { return true }
+                let window = app.windows.firstMatch.frame
+                var top = window.minY
+                var bottom = window.maxY
+                for bar in app.navigationBars.allElementsBoundByIndex
+                where bar.frame.minX < frame.maxX && frame.minX < bar.frame.maxX {
+                    top = max(top, bar.frame.maxY)
+                }
+                for cover in [keyboardToolbar, app.keyboards.firstMatch] where cover.exists {
+                    bottom = min(bottom, cover.frame.minY)
+                }
+                if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom,
+                   frame.minX >= window.minX, frame.maxX <= window.maxX { return true }
             }
             Thread.sleep(forTimeInterval: 0.25)
         } while Date() < deadline
