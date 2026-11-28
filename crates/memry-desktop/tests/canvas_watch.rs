@@ -49,7 +49,7 @@ fn a_document_unlinked_outside_the_app_deletes_its_canvas() {
         .unwrap();
 
     assert_eq!(deleted, vec![id.clone()]);
-    assert!(w.canvases.get(&id, LATER).unwrap().is_none());
+    assert!(w.canvases.get(&id).unwrap().is_none());
     assert!(w.core.canvas(id).unwrap().is_none(), "tombstoned for sync");
 }
 
@@ -70,7 +70,7 @@ fn a_document_moved_outside_the_app_keeps_its_canvas() {
         .unwrap();
 
     assert!(deleted.is_empty());
-    assert!(w.canvases.get(&id, LATER).unwrap().is_some());
+    assert!(w.canvases.get(&id).unwrap().is_some());
 }
 
 #[test]
@@ -273,5 +273,5 @@ fn an_unlink_outside_the_app_reaches_the_canvas_through_the_tier() {
     fs::remove_file(e.vault.join("canvases/Plan.excalidraw")).unwrap();
 
     assert_eq!(rx.recv_timeout(Duration::from_secs(20)).unwrap(), id);
-    assert!(canvases.get(&id, LATER).unwrap().is_none());
+    assert!(canvases.get(&id).unwrap().is_none());
 }
