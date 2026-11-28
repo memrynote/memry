@@ -4,7 +4,6 @@
 // billing routes that call Paddle (reconcile, portal session, plan change) cannot run in the
 // local Worker, so the sync proxy answers them with the body the Worker would send.
 import { bootstrapSyncDevice, expect, test } from '../../fixtures/sync-proxy-fixtures'
-import { openSettingsView } from '../../harness/app-helpers'
 import type { Page } from '../../harness/pw-compat/page'
 import type { SharedSyncBootstrap } from '../../harness/sync-backend'
 import type { SyncProxy } from '../../harness/sync-proxy'
@@ -118,6 +117,13 @@ async function signIn(app: TauriApp, page: Page, bootstrap: SharedSyncBootstrap)
   return lastSyncAt
 }
 
+/** Settings > Account. `openSettingsView` goes through `window.api.quickCapture`, which this port lacks. */
+async function openAccountSettings(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'Account', exact: true }).click()
+  await expect(page.getByTestId('account-stats-strip')).toBeVisible({ timeout: 15_000 })
+}
+
 function toast(page: Page, text: string) {
   return page.locator('[data-sonner-toast]').filter({ hasText: text })
 }
@@ -136,7 +142,7 @@ test.describe('Billing entitlement', () => {
     const firstPassAt = await signIn(app, page, syncBootstrap)
 
     await grant(syncBootstrap, FREE)
-    await openSettingsView(page, 'account')
+    await openAccountSettings(page)
     const upsell = page.getByText('Your notes live only on this device')
     await expect(upsell).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: 'Unlock Sync' }).first()).toBeVisible()
@@ -183,7 +189,7 @@ test.describe('Billing entitlement', () => {
   }) => {
     await signIn(app, page, syncBootstrap)
     await grant(syncBootstrap, PRO_ANNUAL)
-    await openSettingsView(page, 'account')
+    await openAccountSettings(page)
 
     const manage = page.getByRole('button', { name: 'Manage billing' })
     await expect(manage).toBeEnabled({ timeout: 15_000 })
@@ -215,7 +221,7 @@ test.describe('Billing entitlement', () => {
   }) => {
     await signIn(app, page, syncBootstrap)
     await grant(syncBootstrap, PRO_MONTHLY)
-    await openSettingsView(page, 'account')
+    await openAccountSettings(page)
 
     const switchRow = page.getByText('Switch to yearly billing')
     await expect(switchRow).toBeVisible({ timeout: 15_000 })
