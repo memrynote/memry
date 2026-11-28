@@ -433,6 +433,33 @@ describe('an outside edit followed by a rename inside the change debounce', () =
 
   // macOS can deliver one write's FSEvents in two batches, which chokidar
   // reports as the file's add and then a change.
+  // HFS+ keeps whole seconds of mtime, FAT and exFAT two: a same-size edit
+  // inside the second the add read keeps the file's size and mtime.
+  it('a same-size edit inside the mtime second of its add reaches the note', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Docs'))
+    await watch()
+    const file = path.join(vault.path, 'Docs/n.md')
+    lostAdds.add(file)
+    lostChanges.add(file)
+    const second = new Date(Math.floor(Date.now() / 1000) * 1000)
+    const write = (body: string) => {
+      fs.writeFileSync(file, body)
+      fs.utimesSync(file, second, second)
+    }
+    write('# n\n\n[ ] task\n')
+    changeHeard.watcher?.emit('add', file)
+    await settleOn(() => expect(metadataRows().map((row) => row.path)).toContain('Docs/n.md'))
+
+    write('# n\n\n[x] task\n')
+    changeHeard.watcher?.emit('change', file)
+
+    await settleOn(() =>
+      expect(
+        vi.mocked(feedExternalEditToCrdt).mock.calls.some(([, body]) => body.includes('[x] task'))
+      ).toBe(true)
+    )
+  }, 80_000)
+
   it('a change of a file unchanged since its add pushes nothing', async () => {
     fs.mkdirSync(path.join(vault.path, 'Pictures'))
     await watch()
