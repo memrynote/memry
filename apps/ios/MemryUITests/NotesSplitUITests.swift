@@ -290,6 +290,34 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([source, target])
     }
 
+    /// A property added while the body holds the caret takes the caret, as
+    /// on desktop, and shows above the keys and the keyboard toolbar. On an
+    /// iPad mini in landscape the new row landed under the toolbar, where a
+    /// tap reached the toolbar and not the field.
+    func testANewPropertyTakesTheCaretAboveTheKeyboardToolbar() throws {
+        try openNotes()
+        let title = "[agent] \(run) new property"
+        makeNote(title)
+        XCTAssertTrue(keyboardToolbar.waitForExistence(timeout: 10), "the body has no keyboard toolbar")
+        let addProperty = app.buttons["Add a property"].firstMatch
+        XCTAssertTrue(addProperty.waitForExistence(timeout: 10))
+        addProperty.tap()
+        let name = app.textFields["Property name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("status")
+        app.buttons["Text"].firstMatch.tap()
+        let value = app.textFields["status"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the property has no field")
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), value), "the new property did not take the caret")
+        attach("new-property")
+        XCTAssertTrue(
+            waitUntilShown(value),
+            "the new property at \(value.frame) is under the keyboard toolbar at \(keyboardToolbar.frame)"
+        )
+        deleteNotes([title])
+    }
+
     /// The line the caret lands on stays above the keyboard and its toolbar.
     /// On an iPad mini in landscape the on-screen keys and the toolbar take
     /// the window's lower two thirds, a new note's first line included.
