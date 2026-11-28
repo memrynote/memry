@@ -18,6 +18,12 @@ export const MARKDOWN_SEED_LEAK_CASES: ReadonlyArray<{
     pins: 'the language is the info string as written, comment included, in a fence at the top level and in one under a list item'
   },
   {
+    name: 'fence info string: a code span of blanks holds its blanks, any other blank at the edge is trimmed',
+    markdown:
+      '```  ``` x\na\n```\n\n``` ```  y\nb\n```\n\n```  `` z\nc\n```\n\n~~~  ``` w\nd\n~~~\n\n```  ```|\ne\n```',
+    pins: 'a backtick fence whose info string holds a backtick is no fence to the parse that hides code-span blanks, so the blanks of a span of blanks in it stay in the language, and any other leading or trailing blank is trimmed as BlockNote trims it; a tilde fence is a fence there, so its blanks are trimmed'
+  },
+  {
     name: 'mask in a prop: a comment in an address, an alt and a formula',
     markdown:
       '[a](https://e.com/%% b %%)\n\n![a %% b %% c](https://e.com/i.png)\n\n$$\nx %% y %% z\n$$',

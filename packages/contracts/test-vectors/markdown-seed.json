@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 216
+    "caseCount": 217
   },
   "cases": [
     {
@@ -1283,6 +1283,12 @@
       "pins": "the language is the info string as written, comment included, in a fence at the top level and in one under a list item",
       "markdown": "```%% c %%`\nx\n```\n\n- a\n    ```js %% c %%\n    x\n    ```",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"%% c %%`\"\n3 text \"x\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"js %% c %%\"\n5 text \"  x\""
+    },
+    {
+      "name": "fence info string: a code span of blanks holds its blanks, any other blank at the edge is trimmed",
+      "pins": "a backtick fence whose info string holds a backtick is no fence to the parse that hides code-span blanks, so the blanks of a span of blanks in it stay in the language, and any other leading or trailing blank is trimmed as BlockNote trims it; a tilde fence is a fence there, so its blanks are trimmed",
+      "markdown": "```  ``` x\na\n```\n\n``` ```  y\nb\n```\n\n```  `` z\nc\n```\n\n~~~  ``` w\nd\n~~~\n\n```  ```|\ne\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"  ``` x\"\n3 text \"a\"\n1 element blockContainer\n2 element codeBlock language=\"```  y\"\n3 text \"b\"\n1 element blockContainer\n2 element codeBlock language=\"`` z\"\n3 text \"c\"\n1 element blockContainer\n2 element codeBlock language=\"``` w\"\n3 text \"d\"\n1 element blockContainer\n2 element codeBlock language=\"```|\"\n3 text \"e\""
     },
     {
       "name": "mask in a prop: a comment in an address, an alt and a formula",
