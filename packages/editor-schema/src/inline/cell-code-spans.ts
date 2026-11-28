@@ -1,3 +1,4 @@
+import type { LegacyReading } from '@memry/shared/markdown-code'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { MASK_WORD } from '@memry/shared/mask-word'
 
@@ -120,7 +121,7 @@ function firstAfter(indexes: number[] | undefined, after: number): number | unde
  * lookup by length finds in log time, so a line of runs no run closes costs
  * no scan per opener.
  */
-function maskLine(line: string, chars: string[], masked: MaskedChars): string {
+function maskLine(line: string, chars: string[], masked: MaskedChars, retries: boolean): string {
   const runs = backtickRuns(line)
   const byLength = new Map<number, number[]>()
   for (const [index, [, length]] of runs.entries()) {
@@ -149,7 +150,8 @@ function maskLine(line: string, chars: string[], masked: MaskedChars): string {
     // the span `` `x ` ``.
     let width = run
     let closer = firstAfter(byLength.get(width), at)
-    while (closer === undefined && width > 1) {
+    const shortest = retries ? 1 : run
+    while (closer === undefined && width > shortest) {
       width--
       closer = firstAfter(byLength.get(width), at)
     }
@@ -168,9 +170,14 @@ function maskLine(line: string, chars: string[], masked: MaskedChars): string {
   return out
 }
 
+/**
+ * `legacy.html` reads a span as builds before raw HTML stayed text did: no
+ * retry from a later backtick of a run, and a fence opener's line holds spans
+ * like any other.
+ */
 export function maskCellCodeSpans(
   markdown: string,
-  { pipes }: { pipes: boolean }
+  { pipes, legacy = {} }: { pipes: boolean; legacy?: LegacyReading }
 ): MaskedCellCodeSpans {
   if (!markdown.includes('`')) return { markdown, chars: [] }
   const chars: string[] = []
@@ -178,12 +185,12 @@ export function maskCellCodeSpans(
   const masked = markdown
     .split('\n')
     .map((line) => {
-      if (fence.consume(line) || TICKED_FENCE_OPENER.test(line)) return line
+      if (fence.consume(line) || (!legacy.html && TICKED_FENCE_OPENER.test(line))) return line
       if (!line.includes('|')) {
-        return maskLine(line, chars, { spaces: true, pipes: false, blankOnly: true })
+        return maskLine(line, chars, { spaces: true, pipes: false, blankOnly: true }, !legacy.html)
       }
       const spaces = !UNSAFE_LINE.test(line)
-      return spaces || pipes ? maskLine(line, chars, { spaces, pipes }) : line
+      return spaces || pipes ? maskLine(line, chars, { spaces, pipes }, !legacy.html) : line
     })
     .join('\n')
   return chars.length === 0 ? { markdown, chars: [] } : { markdown: masked, chars }

@@ -17,12 +17,16 @@ import { createFenceTracker } from './markdown-fences.ts'
  */
 export function blankMarkdownCode(markdown: string): string {
   if (!mayHoldCode(markdown)) return markdown
-  return walkMarkdown(markdown, false, {
-    codeLine: () => '',
-    textOpen: (open) => open,
-    codeSpan: () => ' ',
-    comment: (source) => source
-  })
+  return walkMarkdown(
+    markdown,
+    {},
+    {
+      codeLine: () => '',
+      textOpen: (open) => open,
+      codeSpan: () => ' ',
+      comment: (source) => source
+    }
+  )
 }
 
 /**
@@ -32,13 +36,32 @@ export function blankMarkdownCode(markdown: string): string {
  */
 export function maskMarkdownCode(markdown: string): string {
   if (!mayHoldCode(markdown)) return markdown
-  return walkMarkdown(markdown, false, {
-    codeLine: (line) => ' '.repeat(line.length),
-    textOpen: (open) => open,
-    codeSpan: (source) => ' '.repeat(source.length),
-    skippedTicks: (ticks) => ' '.repeat(ticks.length),
-    comment: (source) => source
-  })
+  return walkMarkdown(
+    markdown,
+    {},
+    {
+      codeLine: (line) => ' '.repeat(line.length),
+      textOpen: (open) => open,
+      codeSpan: (source) => ' '.repeat(source.length),
+      skippedTicks: (ticks) => ' '.repeat(ticks.length),
+      comment: (source) => source
+    }
+  )
+}
+
+/**
+ * How an earlier build read the note, for a source recorded beside a document
+ * that build made (`MarkdownSourceRecord`). `tables`: a table row's cells split
+ * on a code span's pipe (`cellPipe`), as builds before lossless blocks did.
+ * `html`: as builds before raw HTML stayed text did. A code span is a run
+ * closed by the next run of exactly its length and no other, a backslash does
+ * not stop a backtick opening one, and a fence opener's line holds spans like
+ * any other, where the parser reads them its own way; every `</span>` closes a
+ * coloured span; and the tags the editor has no node for are dropped.
+ */
+export interface LegacyReading {
+  tables?: boolean
+  html?: boolean
 }
 
 /**
@@ -59,18 +82,18 @@ export function stripMarkdownComments(markdown: string): string {
  * text is part of the block, not a paragraph. Code stays as written. A `<!--`
  * read as text, or one that never closes, becomes `textOpen`, except one that
  * never closes and opens an HTML block, which becomes `unclosedOpen`. The text
- * after it stays. `legacyTables` reads a table row's cells as builds before
- * lossless tables did, splitting them on a code span's pipe (`cellPipe`).
+ * after it stays. `legacy` reads the note as an earlier build did, for a source
+ * recorded beside a document that build made (`LegacyReading`).
  */
 export function replaceMarkdownComments(
   markdown: string,
   replace: (source: string, wholeLine: boolean, blockGoesOn: boolean) => string,
   textOpen = '<!--',
   unclosedOpen = textOpen,
-  legacyTables = false
+  legacy: LegacyReading = {}
 ): string {
   if (!markdown.includes('<!--') && !markdown.includes('%%')) return markdown
-  return walkMarkdown(markdown, legacyTables, {
+  return walkMarkdown(markdown, legacy, {
     codeLine: (line) => line,
     textOpen: (open) => (open === '<!--' ? textOpen : open),
     codeSpan: (source) => source,
@@ -148,7 +171,7 @@ interface Visitor {
  * (BBF-68). It is text when it continues a paragraph, and inside a list item
  * or footnote definition, where indent marks the item's own content.
  */
-function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): string {
+function walkMarkdown(markdown: string, legacy: LegacyReading, visit: Visitor): string {
   const lines = markdown.split('\n')
   const fence = createFenceTracker()
   const out: string[] = []
@@ -210,7 +233,7 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
     let ticks: TickRuns | null = null
     let i = 0
     while (i < line.length) {
-      const tick = nextTick(line, i)
+      const tick = nextTick(line, i, legacy.html)
       const opened = opens(i)
       if (tick === -1 && !opened) break
 
@@ -219,7 +242,7 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
         const close = line.indexOf(form.close, at + form.open.length)
         // GFM splits a row into cells before it reads inline syntax, so a
         // comment in a cell ends in that cell or is text (BBF-51).
-        if (tableRow && (close === -1 || close > cellPipe(line, at, legacyTables))) {
+        if (tableRow && (close === -1 || close > cellPipe(line, at, legacy))) {
           result += line.slice(i, at) + visit.textOpen(form.open)
           i = at + form.open.length
           continue
@@ -240,7 +263,7 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
         const reopened: boolean = htmlBlock && !form.proseOnly && (closesComment || i > 0)
         const later: CommentClose | 'text' | null = reopened
           ? 'text'
-          : findLaterClose(lines, index, form, inline)
+          : findLaterClose(lines, index, form, inline, legacy.html)
         if (later === 'text' || (form.proseOnly && !later)) {
           result += line.slice(i, at) + visit.textOpen(form.open)
           i = at + form.open.length
@@ -256,7 +279,7 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
         break
       }
 
-      ticks ??= new TickRuns(line)
+      ticks ??= new TickRuns(line, legacy.html)
       const span = ticks.spanAt(tick)
       if (!span) {
         const runEnd = tickRunEnd(line, tick)
@@ -321,16 +344,16 @@ const TABLE_ROW_LINE = /^\s*\|.*\|\s*$/
  * (`maskCellCodeSpans`), a comment's text included: otherwise a comment
  * holding `` `x|y` `` read as crossing its cell, stayed raw HTML, and the
  * parser dropped it from the cell. Builds before lossless tables split on
- * that pipe, so a `legacyTables` read does too.
+ * that pipe, so a `legacy.tables` read does too.
  */
-function cellPipe(line: string, from: number, legacyTables: boolean): number {
+function cellPipe(line: string, from: number, legacy: LegacyReading): number {
   let depth = 0
   let ticks: TickRuns | null = null
   for (let i = from; i < line.length; i++) {
     if (line[i] === '\\') {
       i++
-    } else if (line[i] === '`' && !legacyTables) {
-      ticks ??= new TickRuns(line)
+    } else if (line[i] === '`' && !legacy.tables) {
+      ticks ??= new TickRuns(line, legacy.html)
       const span = ticks.spanAt(i)
       i = (span ? span.end : tickRunEnd(line, i)) - 1
     } else if (line.startsWith('[[', i)) {
@@ -361,7 +384,8 @@ function findLaterClose(
   lines: readonly string[],
   index: number,
   form: CommentForm,
-  inline: boolean
+  inline: boolean,
+  legacyHtml = false
 ): CommentClose | 'text' | null {
   const fence = createFenceTracker()
   for (let next = index + 1; next < lines.length; next++) {
@@ -370,20 +394,22 @@ function findLaterClose(
       if (form.proseOnly) continue
       if (inline) return 'text'
     }
-    const at = form.proseOnly ? indexOutsideCodeSpans(line, form.close) : line.indexOf(form.close)
+    const at = form.proseOnly
+      ? indexOutsideCodeSpans(line, form.close, legacyHtml)
+      : line.indexOf(form.close)
     if (at !== -1) return { line: next, end: at + form.close.length }
   }
   return null
 }
 
-function indexOutsideCodeSpans(line: string, marker: string): number {
+function indexOutsideCodeSpans(line: string, marker: string, legacyHtml: boolean): number {
   let ticks: TickRuns | null = null
   let i = 0
   for (;;) {
     const at = line.indexOf(marker, i)
-    const tick = nextTick(line, i)
+    const tick = nextTick(line, i, legacyHtml)
     if (at === -1 || tick === -1 || at < tick) return at
-    ticks ??= new TickRuns(line)
+    ticks ??= new TickRuns(line, legacyHtml)
     const span = ticks.spanAt(tick)
     i = span ? span.end : tickRunEnd(line, tick)
   }
@@ -394,9 +420,13 @@ function withoutCr(line: string): string {
   return line.endsWith('\r') ? line.slice(0, -1) : line
 }
 
-/** The first backtick at or after `from` that no backslash escapes, or -1. */
-function nextTick(line: string, from: number): number {
+/**
+ * The first backtick at or after `from` that no backslash escapes, or -1. A
+ * `legacy` read takes every backtick, as builds before the parser's reading did.
+ */
+function nextTick(line: string, from: number, legacy = false): number {
   let at = line.indexOf('`', from)
+  if (legacy) return at
   while (at !== -1) {
     let slashes = 0
     while (line[at - 1 - slashes] === '\\') slashes++
@@ -422,7 +452,10 @@ class TickRuns {
   /** The runs of each width, as indexes into `starts`. */
   private readonly byWidth = new Map<number, number[]>()
 
-  constructor(private readonly line: string) {
+  constructor(
+    private readonly line: string,
+    private readonly legacy = false
+  ) {
     for (
       let at = line.indexOf('`');
       at !== -1;
@@ -478,6 +511,10 @@ class TickRuns {
     const k = this.runAt(tick)
     const runEnd = this.ends[k]
     const length = runEnd - tick
+    if (this.legacy) {
+      const close = this.firstAfter(length, k)
+      return close === -1 ? null : { start: tick, end: this.starts[close] + length }
+    }
     const fenceOpener = length >= 3 && tick <= 3 && /^ *$/.test(this.line.slice(0, tick))
     for (let width = length; width >= (fenceOpener ? length : 1); width--) {
       const close = this.firstAfter(width, k)

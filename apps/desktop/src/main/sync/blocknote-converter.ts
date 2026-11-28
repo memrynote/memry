@@ -53,10 +53,13 @@ import {
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
+  legacyReading,
   parseDroppingHtmlComments,
   parseWithLegacyBlocks,
+  parseWithLegacyHtml,
   parseMarkdownToBlocks,
   parsesHtmlComments,
+  readsLiteralHtml,
   readsLosslessBlocks
 } from './blocknote-parse-breaks'
 import { createBlockNestingMarker } from '@memry/shared/block-nesting'
@@ -204,10 +207,13 @@ export async function yDocToMarkdown(
   // the comments from the source like any other unchanged region (BBF-29).
   // A record from before lossless blocks sits beside tables cut and quotes
   // flattened the old way: read the same way, a cut row or a flat quote is
-  // unchanged and keeps the file's bytes.
+  // unchanged and keeps the file's bytes. One from before raw HTML stayed text
+  // sits beside a document that dropped `<kbd>` and `<sup>`, so the source is
+  // read as text only if the document kept it so.
   const canonicalize = (markdown: string): Promise<string | null> => {
     const parse = (): Promise<string | null> => canonicalMarkdown(markdown, options.notePath)
-    const blocks = record.losslessBlocks ? parse : () => parseWithLegacyBlocks(parse)
+    const html = record.literalHtml ? parse : () => parseWithLegacyHtml(parse)
+    const blocks = record.losslessBlocks ? html : () => parseWithLegacyBlocks(html)
     return record.htmlComments ? blocks() : parseDroppingHtmlComments(blocks)
   }
   try {
@@ -472,7 +478,7 @@ export async function markdownToBlocks(
     // multi-line comment holding blank lines or a fence stays one comment
     // (AF-015).
     const masked = parsesHtmlComments()
-      ? maskHtmlComments(markdown, { losslessTables: readsLosslessBlocks() })
+      ? maskHtmlComments(markdown, { legacy: legacyReading() })
       : markdown
     return await markdownToBlocksPreserving(editor, masked, notePath)
   } catch (err) {
@@ -971,7 +977,8 @@ async function markdownToBlocksPreserving(
     {
       parse: (md) => parseMarkdownToBlocks(editor, md),
       serialize: (blocks) => serializeBlocks(editor, blocks),
-      legacyBlocks: !readsLosslessBlocks()
+      legacyBlocks: !readsLosslessBlocks(),
+      legacyHtml: !readsLiteralHtml()
     },
     withEmbeds
   )

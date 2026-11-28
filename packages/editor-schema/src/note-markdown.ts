@@ -62,6 +62,11 @@ export interface NoteMarkdownHost<B> {
    * source one of them recorded (`MarkdownSourceRecord.losslessBlocks`).
    */
   legacyBlocks?: boolean
+  /**
+   * Read inline spans as builds before raw HTML stayed text did, for a source
+   * one of them recorded (`MarkdownSourceRecord.literalHtml`).
+   */
+  legacyHtml?: boolean
 }
 
 type NoteBlock<B> = BlockWithChildren<B> & object
@@ -77,10 +82,11 @@ export async function parseNoteMarkdown<B extends NoteBlock<B>>(
 ): Promise<B[]> {
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
-  const { text, spans } = maskInlineColorSpans(separateBlockImages(markdown))
+  const legacy = { html: host.legacyHtml }
+  const { text, spans } = maskInlineColorSpans(separateBlockImages(markdown), legacy)
   const blocks = await parseMaskedMarkdown(host, text)
 
-  const colored = applyInlineColorTokens(blocks, spans)
+  const colored = applyInlineColorTokens(blocks, spans, legacy)
   const held = JSON.stringify(colored) ?? ''
   const tokened = hasHtmlCommentToken(held) || hasDetailsMarkupToken(held)
   return asBlocks<B>(tokened ? withMaskedBytes(colored) : colored)

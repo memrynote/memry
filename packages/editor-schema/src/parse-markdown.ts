@@ -12,6 +12,7 @@ import {
   maskHtmlComments,
   splitHtmlCommentTokens
 } from '@memry/shared/html-comments'
+import type { LegacyReading } from '@memry/shared/markdown-code'
 import { escapePrefixedDetailsMarkup, restoreDetailsMarkup } from './blocks/markdown'
 import { dropEmptyBlockPlaceholders, maskEmptyBlockLines } from './empty-blocks'
 import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
@@ -364,25 +365,27 @@ function restoreStringProps(node: BlockLike, restore: (value: string) => string)
  * comment, and `losslessBlocks: false` as builds before lossless blocks did,
  * splitting a table row on a code span's pipe, cutting it to its header's
  * width, dropping a list item's images and reading an empty list item or
- * heading as text, for reading a source the way an older build read it.
+ * heading as text, and `literalHtml: false` as builds before raw HTML stayed
+ * text did, dropping the tags the editor has no node for, for reading a source
+ * the way an older build read it.
  */
 export async function parseMarkdownToBlocksRepaired<T>(
   editor: MarkdownParsingEditor,
   markdown: string,
   {
     htmlComments = true,
-    losslessBlocks = true
-  }: { htmlComments?: boolean; losslessBlocks?: boolean } = {}
+    losslessBlocks = true,
+    literalHtml = true
+  }: { htmlComments?: boolean; losslessBlocks?: boolean; literalHtml?: boolean } = {}
 ): Promise<T[]> {
+  const legacy: LegacyReading = { tables: !losslessBlocks, html: !literalHtml }
   // A `[[target|alias]]` already in a vault table has to be escaped before the
   // parse or 0.51's table parser splits the row on it and drops the alias.
   //
   // HTML comments come off first, as one token each (AF-015). The callers that
   // split a note into blocks before this mask them already; a caller that
   // hands in raw markdown (paste, a template) gets the same treatment here.
-  const commentsMasked = htmlComments
-    ? maskHtmlComments(markdown, { losslessTables: losslessBlocks })
-    : markdown
+  const commentsMasked = htmlComments ? maskHtmlComments(markdown, { legacy }) : markdown
   const wikiEscaped = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
   // A link with no label has no text to hold its address, so it travels as a
   // comment's token too. After the pipe escape, which still reads a `[[` that
@@ -393,7 +396,7 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const source = losslessBlocks ? escapePrefixedDetailsMarkup(fenced) : fenced
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
-  const { markdown: breaksMasked, breaks } = maskHardBreaks(source)
+  const { markdown: breaksMasked, breaks } = maskHardBreaks(source, legacy)
   // A link's title and a spaced address live in its `href` (BBF-109).
   const { markdown: masked, destinations } = maskLinkDestinations(breaksMasked)
   // `((mention:…))` and `((date:…))` are opaque payloads the parser will apply
@@ -403,13 +406,14 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // region it must not read (comments, empty links, details markup, breaks,
   // link addresses and inline tokens), so a hidden tag can hold their
   // placeholders, and before the cell mask, which reads the text it leaves.
-  const { markdown: htmlMasked, sources: rawHtml } = losslessBlocks
+  const { markdown: htmlMasked, sources: rawHtml } = literalHtml
     ? maskRawHtml(tokensMasked)
     : { markdown: tokensMasked, sources: [] }
   // A table cell collapses the whitespace in its code spans, and a row splits
   // on the pipes in them.
   const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(htmlMasked, {
-    pipes: losslessBlocks
+    pipes: losslessBlocks,
+    legacy
   })
   // A row wider than its table's header keeps its extra cells, and an empty
   // list item or heading stays one.

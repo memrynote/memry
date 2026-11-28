@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import type { ServerBlockNoteEditor } from '@blocknote/server-util'
 import type { Block } from '@blocknote/core'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
+import type { LegacyReading } from '@memry/shared/markdown-code'
 
 /**
  * Markdown to blocks on the main process.
@@ -17,7 +18,8 @@ export async function parseMarkdownToBlocks(
 ): Promise<Block[]> {
   return parseMarkdownToBlocksRepaired<Block>(editor, markdown, {
     htmlComments: parsesHtmlComments(),
-    losslessBlocks: readsLosslessBlocks()
+    losslessBlocks: readsLosslessBlocks(),
+    literalHtml: readsLiteralHtml()
   })
 }
 
@@ -54,4 +56,26 @@ export function parseWithLegacyBlocks<T>(parse: () => Promise<T>): Promise<T> {
 
 export function readsLosslessBlocks(): boolean {
   return legacyBlocks.getStore() !== true
+}
+
+const legacyHtml = new AsyncLocalStorage<true>()
+
+/**
+ * Runs `parse` with raw HTML read as builds before it stayed text did: the
+ * tags the editor has no node for dropped, a code span and a `</span>` read the
+ * way those builds did. A source one of them recorded is read that way, so the
+ * `<kbd>`, `<sup>` and `<div>` its document never held do not read as text the
+ * user deleted, and the file keeps them.
+ */
+export function parseWithLegacyHtml<T>(parse: () => Promise<T>): Promise<T> {
+  return legacyHtml.run(true, parse)
+}
+
+export function readsLiteralHtml(): boolean {
+  return legacyHtml.getStore() !== true
+}
+
+/** How the scopes above read a comment's code spans, for `maskHtmlComments`. */
+export function legacyReading(): LegacyReading {
+  return { tables: !readsLosslessBlocks(), html: !readsLiteralHtml() }
 }

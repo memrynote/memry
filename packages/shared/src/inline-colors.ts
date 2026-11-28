@@ -29,6 +29,7 @@
  */
 
 import { isObject } from './is-record.ts'
+import type { LegacyReading } from './markdown-code.ts'
 import { MASK_WORD } from './mask-word.ts'
 
 export interface InlineColorStyles {
@@ -358,7 +359,14 @@ function parseColorDecls(style: string): InlineColorStyles | null {
   return colors.textColor || colors.backgroundColor || colors.underline ? colors : null
 }
 
-export function maskInlineColorSpans(markdown: string): {
+/**
+ * `legacy.html` reads every `</span>` as closing a coloured span, as builds
+ * before raw HTML stayed text did, whatever span it closes.
+ */
+export function maskInlineColorSpans(
+  markdown: string,
+  legacy: LegacyReading = {}
+): {
   text: string
   spans: MaskedColorSpan[]
 } {
@@ -373,7 +381,7 @@ export function maskInlineColorSpans(markdown: string): {
 
   const maskSegment = (segment: string): string =>
     segment.replace(SPAN_TAG_REGEX, (tag, style: string | undefined) => {
-      if (tag === '</span>') return open.pop() ? CLOSE_TOKEN : tag
+      if (tag === '</span>') return open.pop() || legacy.html ? CLOSE_TOKEN : tag
       const styles = style === undefined ? null : parseColorDecls(style)
       if (!tag.endsWith('/>')) open.push(styles !== null)
       if (!styles) return tag
@@ -445,7 +453,11 @@ function restoreTokensInText(text: string, spans: MaskedColorSpan[]): string {
   })
 }
 
-export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSpan[]): BlockNode[] {
+export function applyInlineColorTokens(
+  blocks: BlockNode[],
+  spans: MaskedColorSpan[],
+  legacy: LegacyReading = {}
+): BlockNode[] {
   const applyInline = (items: InlineNode[], active: InlineColorStyles[]): InlineNode[] => {
     const out: InlineNode[] = []
     for (const item of items) {
@@ -476,7 +488,7 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
           }
         } else if (active.length > 0) {
           active.pop()
-        } else {
+        } else if (!legacy.html) {
           // Its open is in an earlier block, where the colour ended with the
           // block: the tag is text.
           out.push({ ...item, text: '</span>', styles: mergeActive(item.styles, active) })

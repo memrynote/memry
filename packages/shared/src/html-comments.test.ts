@@ -150,7 +150,7 @@ describe('maskHtmlComments in a table row', () => {
   })
 
   it('leaves it as text crossing that pipe for a source an older build recorded', () => {
-    expect(maskHtmlComments(row, { losslessTables: false })).toBe(row)
+    expect(maskHtmlComments(row, { legacy: { tables: true } })).toBe(row)
   })
 })
 
