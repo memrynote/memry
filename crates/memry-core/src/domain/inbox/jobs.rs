@@ -26,7 +26,7 @@ pub enum InboxJobType {
 }
 
 impl InboxJobType {
-    const ALL: [Self; 3] = [
+    pub(crate) const ALL: [Self; 3] = [
         Self::MetadataScrape,
         Self::ArticleExtract,
         Self::Transcription,

@@ -18,13 +18,10 @@ impl Inbox {
         self.write(move |conn, _, now| jobs::enqueue(conn, &item_id, job_type, now))
     }
 
-    /// The earliest due job of `job_types`, now `running` under a new
-    /// `run_id`; `nil` when none is due. Jobs of other types stay pending.
-    pub fn claim_next_job(
-        &self,
-        job_types: Vec<InboxJobType>,
-    ) -> Result<Option<InboxJob>, StorageError> {
-        self.write(move |conn, _, now| jobs::claim_next(conn, now, &job_types))
+    /// The earliest due job, now `running` under a new `run_id`; `nil` when
+    /// none is due.
+    pub fn claim_next_job(&self) -> Result<Option<InboxJob>, StorageError> {
+        self.claim_next_job_of(&InboxJobType::ALL)
     }
 
     /// Marks run `run_id` of a job complete; `nil` when the job was queued
@@ -69,10 +66,29 @@ impl Inbox {
         self.write(|conn, _, now| jobs::resume(conn, now))
     }
 
-    /// When the next pending job of `job_types` is due (epoch ms); `nil` when
+    /// When the next pending job is due (epoch ms); `nil` when none is.
+    pub fn next_job_due(&self) -> Result<Option<i64>, StorageError> {
+        self.next_job_due_of(&InboxJobType::ALL)
+    }
+}
+
+/// Typed queue reads for the desktop runner, kept off the UniFFI surface so
+/// the generated Swift bindings stay as they are.
+impl Inbox {
+    /// The earliest due job of `job_types`, now `running` under a new
+    /// `run_id`; `None` when none is due. Jobs of other types stay pending.
+    pub fn claim_next_job_of(
+        &self,
+        job_types: &[InboxJobType],
+    ) -> Result<Option<InboxJob>, StorageError> {
+        let job_types = job_types.to_vec();
+        self.write(move |conn, _, now| jobs::claim_next(conn, now, &job_types))
+    }
+
+    /// When the next pending job of `job_types` is due (epoch ms); `None` when
     /// none is.
-    pub fn next_job_due(&self, job_types: Vec<InboxJobType>) -> Result<Option<i64>, StorageError> {
+    pub fn next_job_due_of(&self, job_types: &[InboxJobType]) -> Result<Option<i64>, StorageError> {
         self.db
-            .read_blocking(move |conn| jobs::next_due(conn, &job_types))
+            .read_blocking(|conn| jobs::next_due(conn, job_types))
     }
 }

@@ -1,7 +1,7 @@
 //! The Inbox's background jobs (`apps/desktop/src/main/inbox/jobs.ts`): a link's metadata and
 //! its readable article, fetched and written back onto the capture (Step 27, #3544).
 //!
-//! Core owns the queue (`Inbox::{claim_next_job, finish_job, fail_job, ..}`, local only); this
+//! Core owns the queue (`Inbox::{claim_next_job_of, finish_job, fail_job, ..}`, local only); this
 //! service owns time and the work. Each open (an open hook) resumes interrupted jobs and queues
 //! links an older build left unfetched before it returns. Then one runner thread per open vault
 //! (a session background task) claims the next due job, runs it and finishes or fails that run,

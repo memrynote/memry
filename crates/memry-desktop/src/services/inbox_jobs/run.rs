@@ -193,9 +193,9 @@ pub(super) fn run(
         cancel,
     };
     while !ctx.stopping() {
-        match inbox.claim_next_job(RUNS.to_vec()) {
+        match inbox.claim_next_job_of(&RUNS) {
             Ok(Some(job)) => process(&ctx, &job),
-            Ok(None) => match inbox.next_job_due(RUNS.to_vec()) {
+            Ok(None) => match inbox.next_job_due_of(&RUNS) {
                 Ok(due) => wait(&ctx, due),
                 Err(error) => {
                     tracing::warn!(scope = "Inbox:Jobs", %error, "the next job time was not read");
