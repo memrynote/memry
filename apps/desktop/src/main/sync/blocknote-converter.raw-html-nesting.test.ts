@@ -25,18 +25,31 @@ function cpuMs(): number {
 
 /** The depth past which a handled tag is text (`MAX_NESTING` of the core's seed). */
 const CAP = 100
-const LIMIT_MS = 500
-/** A block tag also builds blocks, which take longer than a mark. */
-const BLOCK_LIMIT_MS = 1000
 /**
- * Past the cap `<ul><li>` is a flat list of `depth - 48` items, which a note may
- * be and which BlockNote builds and writes at about half a millisecond an item:
- * 1.1, 1.2, 2.2 and 4.6 s of CPU at 1000, 2000, 4000 and 8000 levels, within a
- * third of the 3.5 s a plain `- x` list of as many items takes. The bound is on
- * the nesting, which took 50 s at 4000 levels before the cap, so only a stack
- * overflow or the better part of a minute fails.
+ * How much longer a nested read may take than a flat read of the same tags.
+ *
+ * The bound is relative because CI runs these under coverage, which makes every
+ * read several times slower, and a loaded machine stretches CPU time too. Before
+ * the cap the nested read cost 50x its flat twin (4000 `<b>` took 5 s, 4000
+ * `<ul><li>` 50 s) or overflowed the stack; with it the two read alike.
  */
-const LIST_LIMIT_MS = 20_000
+const RATIO = 4
+/** Absolute slack, so a flat read of a few ms leaves room for timer noise. */
+const SLACK_MS = 100
+
+/** The same tags at depth one: each opened, given its text and closed in turn. */
+const flat = (open: string, close: string, depth: number): string =>
+  (open + 'x' + close).repeat(depth)
+
+async function expectBoundedAgainstFlat(
+  nestedMs: number,
+  open: string,
+  close: string,
+  depth: number
+) {
+  const { ms: flatMs } = await seed(flat(open, close, depth))
+  expect(nestedMs).toBeLessThan(RATIO * flatMs + SLACK_MS)
+}
 
 interface Run {
   text?: string
@@ -100,7 +113,7 @@ describe.each([4000, 8000])('%i nested handled tags', (depth) => {
   ])('%s', (open, close) => {
     it.each([true, false])('is read in a bounded time (closed: %s)', async (closed) => {
       const { blocks, ms } = await seed(nested(open, close, depth, closed))
-      expect(ms).toBeLessThan(LIMIT_MS)
+      await expectBoundedAgainstFlat(ms, open, close, depth)
       // Only the spans no color token took are left for the parse.
       if (open === SPAN && closed) return
       const text = textOf(blocks)
@@ -110,24 +123,33 @@ describe.each([4000, 8000])('%i nested handled tags', (depth) => {
       expect(count(text, close)).toBe(nests && closed ? depth - CAP : 0)
     })
   })
+})
 
+/**
+ * A block tag builds a block per level, so the shapes run at one depth, 20 times
+ * the cap: deep enough that the uncapped parse cost a minute or overflowed, and
+ * a list past the cap is still a list of hundreds of items BlockNote builds.
+ */
+const BLOCK_DEPTH = 2000
+
+describe(`${BLOCK_DEPTH} nested block tags`, () => {
   it.each([
-    ['a list', '<ul><li>', '</li></ul>', LIST_LIMIT_MS],
-    ['a quote', '<blockquote>', '</blockquote>', BLOCK_LIMIT_MS],
-    ['a table', '<table><tr><td>', '</td></tr></table>', BLOCK_LIMIT_MS],
-    ['a figure', '<figure>', '</figure>', BLOCK_LIMIT_MS],
-    ['a toggle', '<details data-memry-toggle>', '</details>', BLOCK_LIMIT_MS],
-    ['a code block', '<pre>', '</pre>', BLOCK_LIMIT_MS]
+    ['a list', '<ul><li>', '</li></ul>'],
+    ['a quote', '<blockquote>', '</blockquote>'],
+    ['a table', '<table><tr><td>', '</td></tr></table>'],
+    ['a figure', '<figure>', '</figure>'],
+    ['a toggle', '<details data-memry-toggle>', '</details>'],
+    ['a code block', '<pre>', '</pre>']
   ])(
     '%s is read in a bounded time',
-    async (_label, open, close, limit) => {
+    async (_label, open, close) => {
       for (const closed of [true, false]) {
-        const { ms } = await seed(nested(open, close, depth, closed))
-        expect(ms).toBeLessThan(limit)
+        const { ms } = await seed(nested(open, close, BLOCK_DEPTH, closed))
+        await expectBoundedAgainstFlat(ms, open, close, BLOCK_DEPTH)
       }
     },
-    // Each seed runs twice, and a loaded machine stretches the wall time of a list's seconds of CPU.
-    120_000
+    // Each read runs twice, beside its flat twin, under coverage on CI.
+    300_000
   )
 })
 

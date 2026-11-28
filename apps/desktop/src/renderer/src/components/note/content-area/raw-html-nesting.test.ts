@@ -44,7 +44,26 @@ function cpuMs(): number {
 const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } as never)
 
 const CAP = 100
-const LIMIT_MS = 500
+/**
+ * How much longer a nested read may take than a flat read of the same tags. The
+ * bound is relative because CI runs under coverage, which slows every read
+ * several times; before the cap the nested read cost 50x its flat twin.
+ */
+const RATIO = 4
+/** Absolute slack, so a flat read of a few ms leaves room for timer noise. */
+const SLACK_MS = 100
+
+/** CPU ms of the faster of two parses: load on the machine only ever adds to a run. */
+async function timedParse(markdown: string): Promise<{ blocks: Block[]; ms: number }> {
+  let ms = Infinity
+  let blocks: Block[] = []
+  for (let run = 0; run < 2; run++) {
+    const start = cpuMs()
+    blocks = await parseMarkdownPreservingBlanks(editor, markdown)
+    ms = Math.min(ms, cpuMs() - start)
+  }
+  return { blocks, ms }
+}
 
 interface Run {
   text?: string
@@ -81,15 +100,9 @@ describe.each([4000, 8000])('a paste of %i nested handled tags', (depth) => {
   ])('%s', (open, close) => {
     it.each([true, false])('is read in a bounded time (closed: %s)', async (closed) => {
       const markdown = `${open.repeat(depth)}x${closed ? close.repeat(depth) : ''}`
-      // The faster of two parses: load on the machine only ever adds to a run.
-      let ms = Infinity
-      let blocks: Block[] = []
-      for (let run = 0; run < 2; run++) {
-        const start = cpuMs()
-        blocks = await parseMarkdownPreservingBlanks(editor, markdown)
-        ms = Math.min(ms, cpuMs() - start)
-      }
-      expect(ms).toBeLessThan(LIMIT_MS)
+      const { blocks, ms } = await timedParse(markdown)
+      const { ms: flatMs } = await timedParse(`${open}x${close}`.repeat(depth))
+      expect(ms).toBeLessThan(RATIO * flatMs + SLACK_MS)
       // Only the spans no color token took are left for the parse.
       if (open.includes('color:red') && closed) return
       // A second `<a>` closes the first, so they never nest and none is text.
