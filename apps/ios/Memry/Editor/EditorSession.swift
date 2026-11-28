@@ -358,7 +358,7 @@ final class EditorSession {
 
     // MARK: Input views
 
-    @ObservationIgnored lazy var accessory: UIView = floatingAccessory(EditorKeyboardToolbar(session: self))
+    @ObservationIgnored lazy var accessory: AccessoryStrip = floatingAccessory(EditorKeyboardToolbar(session: self))
     @ObservationIgnored private lazy var panelView: UIInputView = host(EditorPanelView(session: self), height: keyboardHeight)
 
     private func host<Content: View>(_ content: Content, height: CGFloat?) -> UIInputView {
@@ -395,19 +395,30 @@ final class EditorSession {
     /// redraw, which reloads the input views: the main thread never rested,
     /// and the menu took no tap. Auto Layout sizes the view from its content,
     /// which says when its height changes, as when a `[[` menu opens.
-    private func floatingAccessory<Content: View>(_ content: Content) -> UIView {
+    private func floatingAccessory<Content: View>(_ content: Content) -> AccessoryStrip {
         weak var hosted: UIView?
         let view = UIHostingConfiguration {
-            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in
-                hosted?.invalidateIntrinsicContentSize()
-            }
+            content
+                .coordinateSpace(.named(AccessoryStrip.space))
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in
+                    hosted?.invalidateIntrinsicContentSize()
+                }
         }
         .margins(.all, 0)
         .makeContentView()
         hosted = view
         view.backgroundColor = .clear
         view.translatesAutoresizingMaskIntoConstraints = false
-        return view
+        let strip = AccessoryStrip()
+        strip.translatesAutoresizingMaskIntoConstraints = false
+        strip.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.leadingAnchor.constraint(equalTo: strip.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: strip.trailingAnchor),
+            view.topAnchor.constraint(equalTo: strip.topAnchor),
+            view.bottomAnchor.constraint(equalTo: strip.bottomAnchor),
+        ])
+        return strip
     }
 
     nonisolated(unsafe) private static var hostingKey: UInt8 = 0
@@ -1641,6 +1652,21 @@ final class EditorSession {
     func dismissKeyboard() {
         if panel != .none { show(.none) }
         field?.textView.resignFirstResponder()
+    }
+}
+
+/// The keyboard accessory. UIKit lays it across the window's width, and the
+/// toolbar is a column centred in it: only the column takes touches, so a tap
+/// on the clear strip beside it reaches the page under it, such as the page
+/// sidebar's rows on an iPad mini.
+final class AccessoryStrip: UIView {
+    /// The coordinate space the toolbar reports its column in.
+    static let space = "editor.accessory"
+    /// The toolbar's column, in this view's coordinates.
+    var column: CGRect = .null
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        column.contains(point)
     }
 }
 
