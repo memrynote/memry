@@ -89,6 +89,9 @@ function serverEditor(): ServerBlockNoteEditor {
   return editor
 }
 
+const withoutSummaryComment = (text: string): string =>
+  text.replace(/^(<summary>.*?)<!--.*?-->/m, '$1')
+
 /**
  * The markdown shapes that reach a converter layer this generator does not
  * reproduce. A case holding one would pin a document desktop does not build.
@@ -112,8 +115,15 @@ function refuseUnreproduced(name: string, markdown: string): void {
     ['plain checkbox', /\{check\}/],
     ['line terminator', /[\u2028\u2029]/]
   ]
+  // A comment in a `<summary>` line is reproduced: its `<` are hidden, so the
+  // seed builds the comment node there (`markdown_seed/toggles.rs`).
+  let reproduced = markdown
+  for (let next = withoutSummaryComment(reproduced); next !== reproduced;) {
+    reproduced = next
+    next = withoutSummaryComment(reproduced)
+  }
   for (const [layer, pattern] of layers) {
-    if (pattern.test(markdown)) {
+    if (pattern.test(reproduced)) {
       throw new Error(`markdown-seed case "${name}" reaches the ${layer} layer`)
     }
   }
@@ -125,7 +135,6 @@ function parse(markdown: string): Promise<SeedBlock[]> {
 
 /** `blocknote-converter.ts` `serializeBlocks`, the callout and quote claims' proof. */
 async function serializeBlocks(blocks: SeedBlock[]): Promise<string> {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const { blocks: spelled, languages } = hideBacktickLanguages(blocks)
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const marked = withPlainCheckboxMarkers(spelled as never[])

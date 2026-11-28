@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 217
+    "caseCount": 218
   },
   "cases": [
     {
@@ -1289,6 +1289,12 @@
       "pins": "BlockNote trims the language of every fence it opens, and a backtick in the info string of a backtick fence is no reason to keep the blanks of a code span of blanks in it",
       "markdown": "```  ``` x\na\n```\n\n``` ```  y\nb\n```\n\n```  `` z\nc\n```\n\n~~~  ``` w\nd\n~~~\n\n```  ```|\ne\n```\n\n- a\n\n    ```  ``` v\n    f\n    ```",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"``` x\"\n3 text \"a\"\n1 element blockContainer\n2 element codeBlock language=\"```  y\"\n3 text \"b\"\n1 element blockContainer\n2 element codeBlock language=\"`` z\"\n3 text \"c\"\n1 element blockContainer\n2 element codeBlock language=\"``` w\"\n3 text \"d\"\n1 element blockContainer\n2 element codeBlock language=\"```|\"\n3 text \"e\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"``` v\"\n5 text \"  f\""
+    },
+    {
+      "name": "comment in a summary line that is no toggle",
+      "pins": "a <!-- comment in the summary line of a <details> block that is no toggle is a comment node among the text of the line, and its bytes in a code span or a link label",
+      "markdown": "<details>\n<summary><!-- c --></summary>\n\nx\n\n</details>\n\n<details>\n<summary>a <!-- c --> **b** `<!-- d -->` [e<!-- f -->](u)</summary>\n\ny\n\n</details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>\"\n3 element htmlComment source=\"<!-- c -->\"\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>a \"\n3 element htmlComment source=\"<!-- c -->\"\n3 text \" \"\n3 text \"b\" bold={}\n3 text \" \"\n3 text \"<!-- d -->\" code={}\n3 text \" \"\n3 text \"e<!-- f -->\" link={\"href\":\"u\"}\n3 text \"</summary>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"y\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
     },
     {
       "name": "mask in a prop: a comment in an address, an alt and a formula",

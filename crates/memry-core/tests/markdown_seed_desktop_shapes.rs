@@ -25,23 +25,33 @@ fn links_in(content: &[SeedInline]) -> Vec<&str> {
         .collect()
 }
 
-/// A `<!--` comment is not built (chapter 12 §12.7), so a toggle markup line
-/// that holds one is the literal text of its block, as it is anywhere else,
-/// not text with the comment half-decoded.
+/// Desktop masks every comment before it reads a line, so the comment in the
+/// summary line of a `<details>` block that is no toggle is a node among the
+/// text of its paragraph, not the bytes of a comment half-decoded into text.
 #[test]
-fn a_comment_in_a_summary_line_that_is_no_toggle_keeps_the_block_as_text() {
-    for source in [
-        "<details>\n<summary><!-- c --></summary>\n\nx\n\n</details>",
-        "<details>\n<summary>a <!-- c --> b</summary>\n\nx\n\n</details>",
-        "<details>\n<summary><!-- c --> **b**</summary>\n\nx\n\n</details>",
-    ] {
-        let seeded = plan(source);
-        assert!(
-            !seeded.fallbacks.is_empty(),
-            "{source:?} was built: {:?}",
-            seeded.blocks
-        );
-    }
+fn a_comment_in_a_summary_line_that_is_no_toggle_is_a_node() {
+    let seeded = plan("<details>\n<summary>a <!-- c --> b</summary>\n\nx\n\n</details>");
+    assert!(seeded.fallbacks.is_empty(), "{:?}", seeded.fallbacks);
+    let nodes: Vec<String> = seeded.blocks[0]
+        .content
+        .iter()
+        .map(|piece| match piece {
+            SeedInline::Text { text, .. } => format!("text {text:?}"),
+            SeedInline::HardBreak { .. } => "break".to_owned(),
+            SeedInline::HtmlComment { source } => format!("comment {source:?}"),
+            other => format!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(
+        nodes,
+        [
+            "text \"<details>\"",
+            "break",
+            "text \"<summary>a \"",
+            "comment \"<!-- c -->\"",
+            "text \" b</summary>\"",
+        ]
+    );
 }
 
 /// An address the parse cuts at a blank, with a parenthesis open in it, cannot

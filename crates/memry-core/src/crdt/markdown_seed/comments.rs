@@ -248,6 +248,42 @@ pub(super) fn mask(markdown: &str) -> Masked {
     }
 }
 
+/// `line` with each closed `<!--` comment outside a code span as its token.
+///
+/// Only a `<summary>` line gets this. Desktop masks every comment before it
+/// reads a line, so the comment in a summary that is no toggle is a node there
+/// whatever `<` surrounds it, and the seed, which keeps a `<!--` comment as
+/// written anywhere a `<` would send its block to the fallback, hides the
+/// line's `<` instead ([`super::toggles`]) and so has to build the node here.
+pub(super) fn encode_html_comments(line: &str) -> String {
+    let ticks = BacktickRuns::of_bytes(line);
+    let mut out = String::with_capacity(line.len());
+    let mut i = 0;
+    while i < line.len() {
+        if line[i..].starts_with('`') {
+            let run = line[i..].bytes().take_while(|b| *b == b'`').count();
+            let end = ticks
+                .closing(i + run, run)
+                .map_or(i + run, |close| close + run);
+            out.push_str(&line[i..end]);
+            i = end;
+        } else if let Some(close) = line[i..]
+            .starts_with("<!--")
+            .then(|| line[i + 4..].find("-->"))
+            .flatten()
+        {
+            let end = i + 4 + close + 3;
+            out.push_str(&encode(&line[i..end]));
+            i = end;
+        } else {
+            let width = line[i..].chars().next().map_or(1, char::len_utf8);
+            out.push_str(&line[i..i + width]);
+            i += width;
+        }
+    }
+    out
+}
+
 /// A whole comment's replacement. `<!--` stays as written.
 fn comment(source: &str, multiline: &mut bool) -> String {
     if source.starts_with("%%") {

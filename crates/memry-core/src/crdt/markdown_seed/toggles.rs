@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::Unsupported;
+use super::comments::encode_html_comments;
 use super::mask_word::mask_word;
 use super::prepare::fence_line;
 
@@ -232,8 +233,10 @@ impl Closers {
 /// `escapeDetailsMarkup`: a `<details>`, `<summary>…</summary>` or
 /// `</details>` line has every `<` hidden, so it parses as text.
 fn escape_details_markup(line: &str) -> String {
-    let markup = details_open_line(line) || summary_line(line).is_some() || line == "</details>";
-    if markup {
+    if summary_line(line).is_some() {
+        return encode_html_comments(line).replace('<', details_lt_token());
+    }
+    if details_open_line(line) || line == "</details>" {
         line.replace('<', details_lt_token())
     } else {
         line.to_owned()

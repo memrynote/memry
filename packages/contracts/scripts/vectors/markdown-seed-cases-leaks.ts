@@ -24,6 +24,12 @@ export const MARKDOWN_SEED_LEAK_CASES: ReadonlyArray<{
     pins: 'BlockNote trims the language of every fence it opens, and a backtick in the info string of a backtick fence is no reason to keep the blanks of a code span of blanks in it'
   },
   {
+    name: 'comment in a summary line that is no toggle',
+    markdown:
+      '<details>\n<summary><!-- c --></summary>\n\nx\n\n</details>\n\n<details>\n<summary>a <!-- c --> **b** `<!-- d -->` [e<!-- f -->](u)</summary>\n\ny\n\n</details>',
+    pins: 'a <!-- comment in the summary line of a <details> block that is no toggle is a comment node among the text of the line, and its bytes in a code span or a link label'
+  },
+  {
     name: 'mask in a prop: a comment in an address, an alt and a formula',
     markdown:
       '[a](https://e.com/%% b %%)\n\n![a %% b %% c](https://e.com/i.png)\n\n$$\nx %% y %% z\n$$',
