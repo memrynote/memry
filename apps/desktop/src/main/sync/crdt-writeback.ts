@@ -9,6 +9,12 @@ import { ingestOfflineEdit, ingestOutsideEditFirst } from './crdt-writeback-inge
 import { registerCrdtWritebackPort } from './crdt-writeback-port'
 import { networkUpdateCount, resetNetworkUpdateState } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
+import {
+  keepsFileOverForkedBody,
+  liveRootKeys,
+  recordWrittenRoots,
+  resetRootGuardState
+} from './crdt-root-guard'
 import { recordUnchangedFile, writeDocWithBaseline, type SerializedDoc } from './writeback-baseline'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
@@ -562,6 +568,7 @@ export function resetWritebackState(): void {
   debugState.clear()
   failingWritebacks.clear()
   unplacedCriticMarks.clear()
+  resetRootGuardState()
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
@@ -681,10 +688,12 @@ async function performWriteback(
   const converted = Y.encodeStateVector(doc)
   // The state the conversion reads, which a file written from it records (`recordDocFile`).
   const written: SerializedDoc = { doc, state: Y.snapshot(doc) }
-  const conversion = await convert(doc, cached.path, async () => {
+  const roots = liveRootKeys(doc)
+  const readFileBody = async (): Promise<string | null> => {
     const raw = await readVaultFile(getVaultRoot(), cached.path)
     return raw === null ? null : splitFrontmatterBlock(raw).body
-  })
+  }
+  const conversion = await convert(doc, cached.path, readFileBody)
   if (cancelGenerations.get(noteId) !== generation) {
     updateDebugState(noteId, { pending: false })
     log.debug('Write-back dropped: the note was cancelled while it converted', { noteId })
@@ -754,6 +763,8 @@ async function performWriteback(
     return
   }
 
+  if (await keepsFileOverForkedBody(noteId, doc, roots, markdown, readFileBody)) return
+
   // The receiving half of the large-file class. A peer running an older build,
   // or one whose oversized snapshot push was refused at the encrypt cap, still
   // sends the body as incremental CRDT updates — those are individually under
@@ -775,6 +786,7 @@ async function performWriteback(
   const holdsBody = journal
     ? await writebackJournal(noteId, written, body, cached, indexDb, modifiedAt)
     : await writebackExisting(noteId, cached, written, body, indexDb, isLargeFileBody, modifiedAt)
+  if (holdsBody) recordWrittenRoots(doc, roots)
   settleCriticMarks(noteId, doc, body.criticMarks, local && holdsBody)
   if (!journal) {
     // The reminders a body's date pills derive belong to every device that

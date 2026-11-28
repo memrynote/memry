@@ -171,7 +171,11 @@ export function registerCrdtIpcHandlers(): void {
         // while open() is in flight has already emitted 'closed'.
         if (win) hookWindowClose(win)
 
-        const doc = await provider.open(input.noteId, win?.id)
+        // With no store only crdt:open-doc seeds, after the server merge: a
+        // seed here would sit beside a server body that merges later (#2544).
+        const doc = await provider.open(input.noteId, win?.id, {
+          skipSeed: !provider.hasPersistence()
+        })
         const diff = Y.encodeStateAsUpdate(doc, input.stateVector)
         const stateVector = Y.encodeStateVector(doc)
         return { diff, stateVector }

@@ -55,7 +55,9 @@ export function getPortalUsage(input: PortalGetUsageInput): PortalGetUsageResult
 /**
  * Run `read` against the note's Y.Doc. A doc a window already holds is used
  * as is. Otherwise main opens it for the call and closes it after, so the
- * edit and the file write-back both happen before the doc goes away.
+ * edit and the file write-back both happen before the doc goes away. With no
+ * CRDT store that open merges the server body before any seed from the file
+ * (`openWithBody`), and a doc still waiting for it reads as empty.
  */
 async function withDoc<T>(
   noteId: string,
@@ -66,7 +68,7 @@ async function withDoc<T>(
   if (live) return read(live, false)
   const release = provider.holdDoc(noteId)
   try {
-    return await read(await provider.open(noteId), true)
+    return await read(await provider.openWithBody(noteId), true)
   } finally {
     await release()
   }

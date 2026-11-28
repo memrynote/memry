@@ -24,7 +24,9 @@ import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-clie
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
 import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
+import { isSyncDecided, isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import { crdtWriteback } from './crdt-writeback-port'
+import { holdOpenRoots } from './crdt-root-guard'
 import { recordNetworkUpdate } from './crdt-network-update'
 import {
   openCrdtPersistence,
@@ -328,6 +330,8 @@ export class CrdtProvider {
   private mergeRemote: ((noteId: string) => Promise<boolean>) | null = null
   /** See `setRemoteBodyQuery`. */
   private remoteBody: RemoteBodyQuery | null = null
+  /** See `settleUnwiredEditorDocs`. */
+  private syncStartFailed = false
   /** Notes whose file this session compared with the baseline at open (#5319). */
   private offlineEditChecked = new Set<string>()
   /**
@@ -468,7 +472,7 @@ export class CrdtProvider {
    * Wired by the sync runtime: merge the server's whole body for a note into
    * its live doc. With no store, a seeded push (a create, the oversized-update
    * fallback) of a closed note merges first and seeds only a doc the server
-   * left empty (#2594). See `openSeededForPush`.
+   * left empty (#2594). See `openWithBody`.
    */
   setRemoteMerge(merge: ((noteId: string) => Promise<boolean>) | null): void {
     this.mergeRemote = merge
@@ -493,10 +497,16 @@ export class CrdtProvider {
    * push of one keeps waiting, so the push stays owed. Every other offline or
    * stuck note keeps waiting, and its editors show the vault file read-only
    * (D-UNMERGED-OPEN-EXIT-2).
+   *
+   * Before the runtime wires its pull, nothing is known of the server body.
+   * A launch restores its tabs while the runtime still starts, so the doc
+   * waits for that start unless it settled that this install does not sync,
+   * and no server body will ever merge.
    */
   private waitsForRemoteBody(noteId: string, merged: boolean, editorOpen = false): boolean {
+    if (this.isNoteLocalOnly(noteId)) return false
     const query = this.remoteBody
-    if (!query || this.isNoteLocalOnly(noteId)) return false
+    if (!query) return !merged && !(isSyncDecided() && !isSyncEligible())
     if (query.hasUnmerged(noteId)) return true
     return !merged && !(editorOpen && query.neverSynced(noteId))
   }
@@ -505,15 +515,17 @@ export class CrdtProvider {
    * What an editor of `noteId` waits on (#5290): null when its doc is ready,
    * `signed-out` when the session ended, `vault-locked` when the last pull
    * found no vault key (#5342), `stuck` when the note's pulls keep failing on
-   * a server answer, else `merging`. The editor shows the vault file
-   * read-only for every reason but `merging`, or while offline, and binds
-   * once the wait ends.
+   * a server answer or the runtime's start failed before it wired its pull,
+   * else `merging`. The editor shows the vault file read-only for every
+   * reason but `merging`, or while offline, and binds once the wait ends.
    */
   remoteBodyWait(noteId: string): CrdtRemoteBodyWait | null {
     if (!this.isAwaitingMerge(noteId)) return null
-    if (this.remoteBody?.signedOut()) return 'signed-out'
-    if (this.remoteBody?.vaultLocked()) return 'vault-locked'
-    return this.remoteBody?.isStuck(noteId) ? 'stuck' : 'merging'
+    const query = this.remoteBody
+    if (!query) return this.syncStartFailed ? 'stuck' : 'merging'
+    if (query.signedOut()) return 'signed-out'
+    if (query.vaultLocked()) return 'vault-locked'
+    return query.isStuck(noteId) ? 'stuck' : 'merging'
   }
 
   /**
@@ -977,16 +989,21 @@ export class CrdtProvider {
    * the fragment holds two block groups, the editor shows whichever Yjs orders
    * first, and a close after typing pushes the fork as a snapshot.
    *
-   * So with no store and a running sync runtime (`mergeRemote` set), the doc
-   * opens unseeded, the server state is merged first, and the file seeds only
-   * a doc that is still empty. The pull seeds on its own when the server holds
-   * nothing. A merge that fails, outlasts the timeout (offline), or leaves
-   * server state unmerged opens the doc empty and waiting (#5290,
-   * `waitsForRemoteBody`): the IPC handler tells the editor, which shows its
-   * loading state, or the vault file read-only once the note is stuck or the
-   * device is offline, until `crdt:doc-loaded`. The pull that later merges, or
-   * the seed when it proves the server empty, ends the wait. A reconnect
-   * retries the merge (`resumeWaitingEditorDocs`).
+   * So with no store the doc opens unseeded, the server state is merged first,
+   * and the file seeds only a doc that is still empty. The pull seeds on its
+   * own when the server holds nothing. A merge that fails, outlasts the timeout
+   * (offline), or leaves server state unmerged opens the doc empty and waiting
+   * (#5290, `waitsForRemoteBody`): the IPC handler tells the editor, which
+   * shows its loading state, or the vault file read-only once the note is
+   * stuck or the device is offline, until `crdt:doc-loaded`. The pull that
+   * later merges, or the seed when it proves the server empty, ends the wait.
+   * A reconnect retries the merge (`resumeWaitingEditorDocs`).
+   *
+   * A launch restores its tabs before the sync runtime wires its merge, so an
+   * open with no merge (`mergeRemote` null, none wired yet) waits the same
+   * way, and seeds only once the runtime's start settled that this install
+   * does not sync. The runtime settles the waiting docs once its start ends
+   * (`resumeWaitingEditorDocs`, `settleUnwiredEditorDocs`).
    *
    * A note that owes its file body (#2646) takes the file on top of the
    * merged server body (`takeFileAfterMerge`), and only after a merge that
@@ -999,11 +1016,12 @@ export class CrdtProvider {
     mergeRemote: ((noteId: string) => Promise<boolean>) | null,
     timeoutMs: number = EDITOR_OPEN_MERGE_TIMEOUT_MS
   ): Promise<Y.Doc> {
-    if (this.persistence || !mergeRemote) return this.open(noteId, windowId)
+    if (this.persistence) return this.open(noteId, windowId)
 
     const doc = await this.open(noteId, windowId, { skipSeed: true })
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
-    await this.settleEditorDoc(noteId, doc, mergeRemote, timeoutMs)
+    // Read after the open: the runtime may have wired its merge meanwhile.
+    await this.settleEditorDoc(noteId, doc, mergeRemote ?? this.mergeRemote, timeoutMs)
     return doc
   }
 
@@ -1014,18 +1032,20 @@ export class CrdtProvider {
   private async settleEditorDoc(
     noteId: string,
     doc: Y.Doc,
-    mergeRemote: (noteId: string) => Promise<boolean>,
+    mergeRemote: ((noteId: string) => Promise<boolean>) | null,
     timeoutMs: number
   ): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined
     let merged = false
     try {
-      merged = await Promise.race([
-        mergeRemote(noteId),
-        new Promise<boolean>((resolve) => {
-          timer = setTimeout(() => resolve(false), timeoutMs)
-        })
-      ])
+      if (mergeRemote) {
+        merged = await Promise.race([
+          mergeRemote(noteId),
+          new Promise<boolean>((resolve) => {
+            timer = setTimeout(() => resolve(false), timeoutMs)
+          })
+        ])
+      }
     } catch (err) {
       log.warn('Server CRDT merge failed before editor open', { noteId, error: err })
     } finally {
@@ -1048,12 +1068,14 @@ export class CrdtProvider {
 
   /**
    * Retries the merge of every editor doc still waiting for its server body,
-   * for the sync runtime once the network is back (#5290). A note the server
-   * never saw seeds here, since no pull would ever name it.
+   * for the sync runtime once it wires its merge and once the network is back
+   * (#5290). A note the server never saw seeds here, since no pull would ever
+   * name it. With no merge wired, a doc seeds only once the runtime's start
+   * settled that this install does not sync (`waitsForRemoteBody`).
    */
   async resumeWaitingEditorDocs(): Promise<void> {
+    if (this.persistence) return
     const merge = this.mergeRemote
-    if (this.persistence || !merge) return
     const waiting = [...this.docs].filter(
       ([, entry]) => entry.awaitingMerge && !entry.closing && entry.windowIds.size > 0
     )
@@ -1083,48 +1105,78 @@ export class CrdtProvider {
     for (const noteId of this.docs.keys()) this.reportEditorWait(noteId)
   }
 
+  /**
+   * For the sync runtime once a start ends without wiring its merge. A start
+   * that settled that this install does not sync seeds the waiting editor
+   * docs (`resumeWaitingEditorDocs`). One that failed (a vault key it cannot
+   * read, an account it cannot reach) leaves them waiting, and their editors
+   * show the vault file read-only (`stuck`) until a later start wires the
+   * merge.
+   */
+  async settleUnwiredEditorDocs(): Promise<void> {
+    if (isSyncDecided() && !isSyncEligible()) return this.resumeWaitingEditorDocs()
+    this.syncStartFailed = true
+    this.reportEditorWaits()
+  }
+
+  /**
+   * For the sync runtime as a start begins: a failure an earlier start settled
+   * (`settleUnwiredEditorDocs`) no longer holds, so an editor that opens
+   * meanwhile waits for this start (`merging`). An editor already showing the
+   * file read-only keeps it until this start merges its doc or fails again.
+   */
+  clearSyncStartFailure(): void {
+    this.syncStartFailed = false
+  }
+
   /** Ends a doc's wait for the server body, and tells its editors (#5290). */
   private endAwaitingMerge(noteId: string, entry: ActiveDoc): void {
     if (!entry.awaitingMerge) return
     entry.awaitingMerge = false
+    holdOpenRoots(entry.doc)
     if (entry.windowIds.size > 0) broadcastToAllWindows(CRDT_EVENTS.DOC_LOADED, { noteId })
   }
 
   /**
-   * The doc a seeded push encodes (#2594). With no store, a closed note opens
-   * empty, and a seed from the vault file shares no Yjs items with the server's
-   * body: pushed, it hides the server's history, peer edits included, on every
-   * device. So the server body is merged first, and only a doc it leaves empty
-   * (a note the server has never seen) seeds from the file. When the file
-   * differs from the merged body, the write-back that the merge schedules keeps
-   * the file as a version before it replaces it, so neither side is lost.
+   * The doc of a closed note that main-process work reads or encodes: a seeded
+   * push (#2594), or a search portal's blocks. With no store, a closed note
+   * opens empty, and a seed from the vault file shares no Yjs items with the
+   * server's body: pushed, it hides the server's history, peer edits included,
+   * on every device. So the server body is merged first, and only a doc it
+   * leaves empty (a note the server has never seen) seeds from the file. When
+   * the file differs from the merged body, the write-back that the merge
+   * schedules keeps the file as a version before it replaces it, so neither
+   * side is lost.
    *
    * A merge that fails, throws, or leaves server state unmerged pushes nothing
-   * (#5290): the doc stays empty and the caller keeps the push owed. The seed
-   * is taken only where `waitsForRemoteBody` allows it.
+   * (#5290): the doc stays empty and the caller keeps the push owed. So does an
+   * open before the runtime wires its merge. The seed is taken only where
+   * `waitsForRemoteBody` allows it, and never into a fresh doc after a merge
+   * landed in one closed under it.
    *
    * The caller holds the doc (`holdDoc`) from before this open to after its
    * encode: with no store, a doc closed in between drops the merged body.
    */
-  private async openSeededForPush(noteId: string): Promise<Y.Doc> {
+  async openWithBody(noteId: string): Promise<Y.Doc> {
+    if (this.persistence) return this.open(noteId)
     const merge = this.mergeRemote
-    if (this.persistence || !merge) return this.open(noteId)
 
     const doc = await this.open(noteId, undefined, { skipSeed: true })
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
     let merged = false
     try {
-      merged = await merge(noteId)
+      if (merge) merged = await merge(noteId)
     } catch (err) {
-      log.warn('Server CRDT merge failed before a seeded push', { noteId, error: err })
+      log.warn('Server CRDT merge failed before a main-process open', { noteId, error: err })
     }
     if (this.waitsForRemoteBody(noteId, merged)) {
       const entry = this.docs.get(noteId)
       if (entry?.doc === doc) entry.awaitingMerge = true
       return doc
     }
-    if (merged && (await this.takeFileAfterMerge(noteId, doc))) return doc
-    return this.open(noteId)
+    if (!merged) return this.open(noteId)
+    await this.takeFileAfterMerge(noteId, doc)
+    return doc
   }
 
   /**
@@ -1218,6 +1270,7 @@ export class CrdtProvider {
     if (!options?.skipSeed) {
       await this.seedFromMarkdown(noteId, doc)
     }
+    holdOpenRoots(doc)
 
     const entry: ActiveDoc = {
       doc,
@@ -1929,7 +1982,7 @@ export class CrdtProvider {
     try {
       const doc = skipSeed
         ? await this.open(noteId, undefined, { skipSeed: true })
-        : await this.openSeededForPush(noteId)
+        : await this.openWithBody(noteId)
       const entry = this.docs.get(noteId)
       const base = await this.readPushBase(noteId)
       const { state, coverage } = this.encodeForPush(base, () => Y.encodeStateAsUpdate(doc))
@@ -2294,6 +2347,7 @@ export class CrdtProvider {
     // the honest place to say so.
     if (ok) {
       this.recordSeedRead(indexDb, noteId, raw)
+      holdOpenRoots(doc)
     }
 
     if (ok && this.persistence) {

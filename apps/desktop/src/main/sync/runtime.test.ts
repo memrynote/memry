@@ -244,6 +244,9 @@ const runtimeMocks = vi.hoisted(() => {
       pushAllSnapshots: vi.fn(),
       unpushedSnapshotNoteIds: vi.fn(() => []),
       reportEditorWaits: vi.fn(),
+      resumeWaitingEditorDocs: vi.fn(async () => {}),
+      clearSyncStartFailure: vi.fn(),
+      settleUnwiredEditorDocs: vi.fn(async () => {}),
       destroy: vi.fn()
     },
     browserSend: vi.fn(),
@@ -1778,6 +1781,63 @@ describe('sync runtime', () => {
     runtimeMocks.crdtProvider.reportEditorWaits.mockClear()
     fireSessionEnded()
     expect(runtimeMocks.crdtProvider.reportEditorWaits).not.toHaveBeenCalled()
+  })
+
+  it('merges the editor docs that waited for the merge once it is wired, before the first full sync', async () => {
+    const provider = runtimeMocks.crdtProvider
+    const runtime = await loadRuntime()
+
+    await runtime.startSyncRuntime()
+
+    expect(provider.resumeWaitingEditorDocs).toHaveBeenCalledTimes(1)
+    const resumed = provider.resumeWaitingEditorDocs.mock.invocationCallOrder[0]
+    expect(resumed).toBeGreaterThan(provider.setRemoteBodyQuery.mock.invocationCallOrder[0])
+    expect(resumed).toBeLessThan(
+      runtimeMocks.SyncEngine.instances[0].start.mock.invocationCallOrder[0]
+    )
+    expect(provider.settleUnwiredEditorDocs).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      ending: 'no session',
+      arrange: () => runtimeMocks.retrieveToken.mockResolvedValueOnce(null)
+    },
+    {
+      ending: 'an account it cannot reach',
+      arrange: () => runtimeMocks.applyOpenVaultBinding.mockResolvedValueOnce('unknown')
+    }
+  ])('settles the waiting editor docs when a start ends with $ending', async ({ arrange }) => {
+    arrange()
+    const runtime = await loadRuntime()
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    await vi.waitFor(() =>
+      expect(runtimeMocks.crdtProvider.settleUnwiredEditorDocs).toHaveBeenCalledTimes(1)
+    )
+    expect(runtimeMocks.crdtProvider.resumeWaitingEditorDocs).not.toHaveBeenCalled()
+  })
+
+  it('drops an earlier verdict and start failure while a start decides again', async () => {
+    const runtime = await loadRuntime()
+    const eligibility = await import('@memry/sync-client/sync-eligibility')
+    eligibility.markSyncIneligible()
+    let pay: (entitlement: { isPaid: boolean }) => void = () => {}
+    runtimeMocks.resolveEntitlementForSyncStart.mockReturnValueOnce(
+      new Promise((resolve) => {
+        pay = resolve
+      })
+    )
+
+    const started = runtime.startSyncRuntime()
+    await vi.waitFor(() => expect(runtimeMocks.resolveEntitlementForSyncStart).toHaveBeenCalled())
+
+    expect(eligibility.isSyncDecided()).toBe(false)
+    expect(runtimeMocks.crdtProvider.clearSyncStartFailure).toHaveBeenCalledTimes(1)
+    pay({ isPaid: true })
+    await started
+    expect(eligibility.isSyncDecided()).toBe(true)
   })
 
   describe('token-refresh callback lifecycle', () => {
