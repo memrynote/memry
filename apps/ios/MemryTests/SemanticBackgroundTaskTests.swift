@@ -4,7 +4,7 @@ import MemryCore
 import Testing
 @testable import Memry
 
-final class FakeTaskRun: SemanticTaskRun, @unchecked Sendable {
+final class FakeTaskRun: BackgroundTaskRun, @unchecked Sendable {
     var expirationHandler: (() -> Void)?
     var completions: [Bool] = []
 
