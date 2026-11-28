@@ -541,6 +541,9 @@ final class EditorSession {
             focusMemory.forget()
             self.field = field
             placeToolbar()
+            // With the keys already up, as after Return in the title, the
+            // keys do not move and no keyboard change reveals the line.
+            if panel == .none { DispatchQueue.main.async { [weak self] in self?.revealCaret() } }
             readFocusedBlock(of: field)
             selectionChanged(in: field)
         } else {
