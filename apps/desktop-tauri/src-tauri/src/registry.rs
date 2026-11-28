@@ -81,6 +81,7 @@ macro_rules! areas {
             reminders
             stickies
             graph
+            migration
             canvas
         )
     };
@@ -141,6 +142,8 @@ mod logging;
 #[macro_use]
 mod menu;
 #[macro_use]
+mod migration;
+#[macro_use]
 mod notes;
 #[macro_use]
 mod notification;
@@ -199,7 +202,7 @@ mod window;
 mod dispatch;
 mod permission;
 
-pub use dispatch::{dispatcher, invoke_handler};
+pub use dispatch::{PREBOOT_COMMANDS, dispatcher, invoke_handler, window_allows, window_gate};
 pub use permission::app_all_permission;
 
 pub fn builder() -> Builder<Wry> {

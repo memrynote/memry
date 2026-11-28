@@ -2,7 +2,9 @@
 # and $mac, the rust_windows and rust_macos legs), $event, the run's event name, and the optional
 # --arg base, the pull request's base branch.
 # scripts/ci-tier.test.mjs runs it for each event. The optional --arg warm (the daily cache-warm run)
-# adds the cache-saving `seams` leg of each OS the merge queue runs, and the Linux `budget` leg.
+# adds the legs that save a cargo entry: the `seams` leg of each OS the merge queue runs, the Linux
+# `budget` leg, the windows-2022 `lint` leg, and the macos-15 partitions of a PR, whose test-archive
+# job saves the macOS suite build (no other run of feat/tauri-v2 builds that archive).
 #
 # Post-merge (the scheduled run of feat/tauri-v2): the legs the merge queue skips. Apple Silicon, every
 # windows-11-arm leg and the Linux `perf` leg (the release perf budgets). `covered` (a push the queue
@@ -43,14 +45,17 @@ def seams($os): {os: $os, part: "seams", seams: true};
 def budget($os): if $os == "ubuntu-22.04" then {os: $os, part: "budget", budget: true} else empty end;
 def split_mac: $event == "pull_request" and (($ARGS.named.base // "") | . != "" and . != "main");
 def partitions($os; $n): range(1; $n + 1) | {os: $os, part: "tests", partition: "\(.)/\($n)", tests: true};
-def leg($os): if $os == "macos-15" and split_mac then (lint($os), seams($os), partitions($os; 4))
+def mac_partitions: partitions("macos-15"; 4);
+def leg($os): if $os == "macos-15" and split_mac then (lint($os), seams($os), mac_partitions)
   elif ($os | startswith("macos")) then {os: $os, part: "all", lint: true, seams: true, tests: true}
   else (lint($os), seams($os), budget($os), partitions($os; 6)) end;
 def full_leg($os): if $os == "windows-11-arm" then (leg($os), {os: $os, part: "models", models: true})
   else leg($os) | if .part == "seams" or .part == "all" then . + {models: true} else . end end;
 def perf_leg: {os: "ubuntu-22.04", part: "perf", perf: true};
 def off_queue: $event != "merge_group";
-def warm_legs: [(["ubuntu-22.04", "windows-2022"])[] | full_leg(.)] | map(select(.part == "seams" or .part == "budget"));
+def warm_legs: [(["ubuntu-22.04", "windows-2022"])[] | full_leg(.)]
+  | map(select(.part == "seams" or .part == "budget" or (.part == "lint" and .os == "windows-2022")))
+  + [mac_partitions];
 (if $post_merge == "covered" then
   []
 elif $post_merge == "true" then

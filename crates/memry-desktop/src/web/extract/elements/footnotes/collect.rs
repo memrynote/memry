@@ -77,7 +77,7 @@ impl Handler {
                 let html = doc.inner_html(clone);
                 let text = LEADING_DOT.replace(&html, "").into_owned();
                 let content = doc.create_element("div");
-                let fragment = doc.parse_fragment(trim(&text));
+                let fragment = doc.parse_fragment(trim(&text))?;
                 doc.append_child(content, fragment)?;
                 state.add(&id, content, None);
             }

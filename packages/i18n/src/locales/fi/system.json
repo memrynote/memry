@@ -90,5 +90,53 @@
     },
     "logFolder": "Lokit: {path}",
     "reloaded": "MemryNote ladattiin uudelleen kaatumisen jälkeen. Viimeisimmät muokkaukset ovat voineet kadota."
+  },
+  "migration": {
+    "running": {
+      "title": "Tietojasi siirretään",
+      "note": "Tämä tapahtuu vain kerran. Pidä MemryNote auki, kunnes siirto on valmis."
+    },
+    "phase": {
+      "preparing": "Valmistellaan…",
+      "secrets": "Salaisuuksiasi siirretään…",
+      "vault": "Siirretään holvia {current}/{total}…",
+      "checking": "Tietojasi tarkistetaan…"
+    },
+    "failed": {
+      "title": "Tietojasi ei siirretty",
+      "note": "Mitään ei menetetty. Aiempi MemryNote-sovellus ja sen tiedot ovat ennallaan.",
+      "check": "Epäonnistunut tarkistus: {check}",
+      "electronRunning": "Aiempi MemryNote-sovellus on yhä auki. Sulje se ja yritä uudelleen.",
+      "diskSpace": "Vapaata levytilaa ei ole tarpeeksi tietojesi siirtämiseen. Vapauta tilaa ja yritä uudelleen.",
+      "electronSchema": "Aiempi MemryNote-sovellus ei ole saanut holvin päivitystä valmiiksi. Päivitä se sovellus, avaa holvi siinä kerran, sulje se ja yritä uudelleen.",
+      "sharedStore": "Joillakin holveilla on yhteinen synkronointihistoria, joten niitä ei voi siirtää. Käytä niille edelleen aiempaa MemryNote-sovellusta.",
+      "vaultUnreachable": "Holvia ei voi lukea juuri nyt. Tarkista, että sen asema on liitetty, ja yritä uudelleen.",
+      "secrets": "Joitakin tallennettuja kirjautumistietoja ei voitu lukea. Yritä uudelleen. Jos tämä toistuu, tarkista, että avainnippusi on avattu.",
+      "verification": "Siirrettyjen tietojesi tarkistus ei mennyt läpi, joten MemryNote jätti kaiken ennalleen.",
+      "notReady": "Tämä MemryNote-versio ei vielä pysty siirtämään tämän holvin tietoja. Tietosi ovat yhä aiemmassa MemryNote-sovelluksessa. Käytä sitä edelleen ja päivitä MemryNote yrittääksesi uudelleen.",
+      "io": "Tiedostoa ei voitu lukea tai kirjoittaa tietojen siirron aikana. Varmista, että levyllä on vapaata tilaa ja että holvikansioihin voi kirjoittaa, ja yritä uudelleen.",
+      "sourceChanged": "Aiempi MemryNote-sovellus muutti tietojaan siirron aikana. Sulje se ja yritä uudelleen.",
+      "coreFileExists": "Holvissa on jo tämän MemryNote-version tietoja, joten sitä ei korvattu. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "malformedRow": "Osa aiemman sovelluksen tiedoista on muodossa, jota ei voi siirtää. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "deleteWithoutDevice": "Holvissa oleva poisto ei ole vielä synkronoitunut. Avaa aiempi MemryNote-sovellus, anna sen synkronoida loppuun, sulje se ja yritä uudelleen.",
+      "deviceKeyMismatch": "Aiemman sovelluksen laiteavain ei vastaa tämän laitteen synkronointirekisteröintiä, joten kirjautumistasi ei siirretty. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "keyVerifierMismatch": "Aiemman sovelluksen salausavain ei vastaa tiliäsi, joten kirjautumistasi ei siirretty. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "targetOccupied": "Tämä MemryNote-versio on jo kirjautunut, joten aiemman sovelluksen kirjautumista ei siirretty sen päälle. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen."
+    },
+    "done": {
+      "title": "Tietosi ovat valmiina",
+      "body": "Avataan MemryNote…"
+    },
+    "retry": "Yritä uudelleen",
+    "showDetails": "Näytä tiedot",
+    "reportMissing": "Raporttia ei ole vielä.",
+    "completed": {
+      "title": "Tietosi ovat nyt tässä versiossa",
+      "body": "Muistiinpanosi, asetuksesi ja kirjautumisesi ovat nyt tässä MemryNote-versiossa. Aiemman sovelluksen tiedot säilyvät koskemattomina kohteessa {path}."
+    },
+    "notice": {
+      "title": "Muutokset aiemmassa sovelluksessa",
+      "body": "Holvia muutettiin aiemmassa MemryNote-sovelluksessa sen jälkeen, kun se siirrettiin tähän versioon. Ne muutokset eivät ole täällä: ne säilyvät aiemman sovelluksen tiedoissa kohteessa {path}. Synkronoidut muutokset saapuvat synkronoinnin kautta."
+    }
   }
 }

@@ -20,7 +20,7 @@ fn ordinal(doc: &Document, node: NodeId) -> usize {
 }
 
 fn play(html: &str, ops: &[Value]) -> Value {
-    let mut doc = Document::parse_html(html);
+    let mut doc = Document::parse_html(html).expect("parse");
     let mut log = Vec::new();
     for step in ops {
         let op = step["op"].as_str().unwrap();

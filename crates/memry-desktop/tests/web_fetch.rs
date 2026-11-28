@@ -227,7 +227,7 @@ async fn every_request_sends_one_consistent_header_set() {
     web.download_image(&server.url("/hero.png"), dir.path())
         .await
         .unwrap();
-    let fetcher = BlockingFetcher::new(web, tokio::runtime::Handle::current());
+    let fetcher = BlockingFetcher::new(web, tokio::runtime::Handle::current(), Arc::default());
     let echo = server.url("/echo");
     tokio::task::spawn_blocking(move || {
         fetcher.fetch(FetchRequest {
@@ -473,7 +473,11 @@ async fn a_failed_hero_download_leaves_no_file() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_blocking_fetcher_serves_extraction_from_a_blocking_thread() {
     let server = start().await;
-    let fetcher = BlockingFetcher::new(client(&server), tokio::runtime::Handle::current());
+    let fetcher = BlockingFetcher::new(
+        client(&server),
+        tokio::runtime::Handle::current(),
+        Arc::default(),
+    );
     let echo = server.url("/echo");
     let missing = server.url("/missing");
     let (posted, absent) = tokio::task::spawn_blocking(move || {
@@ -504,10 +508,43 @@ async fn the_blocking_fetcher_serves_extraction_from_a_blocking_thread() {
     assert_eq!(server.seen()[0].body, b"payload");
 }
 
+/// The Inbox runner sets the flag when it stops waiting for a parse (a stop or its deadline);
+/// the parse thread it leaves behind makes no more requests.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_abandoned_blocking_fetcher_sends_nothing() {
+    let server = start().await;
+    let abandoned = Arc::new(std::sync::atomic::AtomicBool::new(true));
+    let fetcher = BlockingFetcher::new(
+        client(&server),
+        tokio::runtime::Handle::current(),
+        abandoned,
+    );
+    let echo = server.url("/echo");
+    let refused = tokio::task::spawn_blocking(move || {
+        fetcher.fetch(FetchRequest {
+            url: echo,
+            method: "GET".into(),
+            headers: Vec::new(),
+            body: None,
+        })
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        refused.map(|r| r.status),
+        Err("The extraction was abandoned".to_owned())
+    );
+    assert!(server.seen().is_empty());
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_blocking_fetcher_keeps_the_cap_the_deadline_and_the_redirect_limit() {
     let server = start().await;
-    let fetcher = BlockingFetcher::new(client(&server), tokio::runtime::Handle::current());
+    let fetcher = BlockingFetcher::new(
+        client(&server),
+        tokio::runtime::Handle::current(),
+        Arc::default(),
+    );
     let urls = ["/streamed-big", "/gzip-bomb", "/stall", "/loop"].map(|path| server.url(path));
     let outcomes = tokio::task::spawn_blocking(move || {
         urls.map(|url| {

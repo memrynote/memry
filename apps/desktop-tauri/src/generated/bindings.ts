@@ -1168,6 +1168,20 @@ export const commands = {
 	graphGetLayout: (viewKey: string) => __TAURI_INVOKE<GraphLayoutView | null>("graph_get_layout", { viewKey }),
 	/**  `graph:save-layout`: replaces the view's layout. */
 	graphSaveLayout: (viewKey: string, layout: GraphLayoutView) => __TAURI_INVOKE<null>("graph_save_layout", { viewKey, layout }),
+	/**  Marks `electron-localstorage.json` applied, so no later window sets its keys again. */
+	migrationLocalstorageApplied: () => __TAURI_INVOKE<null>("migration_localstorage_applied"),
+	/**
+	 *  Show details: shows the verification report (`electron-import-report.json`) in the file
+	 *  manager.
+	 */
+	migrationOpenReport: () => __TAURI_INVOKE<null>("migration_open_report"),
+	/**
+	 *  Try again: runs the import again after a failure. Refused while a run is going, after it
+	 *  succeeded, and on a launch without one.
+	 */
+	migrationRetry: () => __TAURI_INVOKE<null>("migration_retry"),
+	/**  What the migration view shows now; `idle` on a launch that migrates nothing. */
+	migrationStatus: () => __TAURI_INVOKE<MigrationStatus>("migration_status"),
 	/**
 	 *  `canvas:can-upload-asset`: `false` until the attachment upload lands (30f), Electron's answer
 	 *  with no sync. The editor then keeps new images inline in the scene.
@@ -1240,10 +1254,13 @@ export const events = {
 	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
 	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
 	importReadwiseStatusChangedEvent: makeEvent<ImportReadwiseStatusChangedEvent, ImportReadwiseStatusChangedEvent>("import-readwise-status-changed-event"),
+	inboxMetadataCompleteEvent: makeEvent<InboxMetadataCompleteEvent, InboxMetadataCompleteEvent>("inbox-metadata-complete-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
+	inboxProcessingErrorEvent: makeEvent<InboxProcessingErrorEvent, InboxProcessingErrorEvent>("inbox-processing-error-event"),
 	inboxReviewDueEvent: makeEvent<InboxReviewDueEvent, InboxReviewDueEvent>("inbox-review-due-event"),
 	inboxReviewOpenEvent: makeEvent<InboxReviewOpenEvent, InboxReviewOpenEvent>("inbox-review-open-event"),
 	inboxSnoozeDueEvent: makeEvent<InboxSnoozeDueEvent, InboxSnoozeDueEvent>("inbox-snooze-due-event"),
+	inboxUpdatedEvent: makeEvent<InboxUpdatedEvent, InboxUpdatedEvent>("inbox-updated-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -3223,11 +3240,46 @@ export type ImportedFileInfo = {
 };
 
 /**
+ *  The capture fields a job wrote (`Partial<InboxItem>`). A field the job did not write is
+ *  absent; Electron sent `processingError: null` and `thumbnailPath: null` on a success.
+ */
+export type InboxItemChanges = {
+	processingStatus?: string | null,
+	processingError?: string | null,
+	thumbnailPath?: string | null,
+	content?: string | null,
+};
+
+/**  The link preview `inbox:metadata-complete` carries. */
+export type InboxLinkPreview = {
+	title: string | null,
+	description: string | null,
+	image: string | null,
+	thumbnailPath: string | null,
+};
+
+/**  `InboxMetadataCompleteEvent`: the link preview of capture `id` is stored. */
+export type InboxMetadataCompleteEvent = {
+	id: string,
+	metadata: InboxLinkPreview,
+};
+
+/**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
  *  (#3544), a clicked inbox notification.
  */
 export type InboxOpenItemEvent = {
 	itemId: string,
+};
+
+/**
+ *  `InboxProcessingErrorEvent`: a job's last attempt failed. `operation` is one of
+ *  `transcription`, `metadata`, `pdf` and `ocr`; the runner sends `metadata`.
+ */
+export type InboxProcessingErrorEvent = {
+	id: string,
+	operation: string,
+	error: string,
 };
 
 /**  `InboxResultMetadata`. `itemType` is the stored text; the renderer narrows it. */
@@ -3264,6 +3316,12 @@ export type InboxReviewTestResult = {
 export type InboxSnoozeDueEvent = {
 	count: number,
 	items: SnoozeDueItem[],
+};
+
+/**  `InboxUpdatedEvent`: a job wrote these fields of capture `id`. */
+export type InboxUpdatedEvent = {
+	id: string,
+	changes: InboxItemChanges,
 };
 
 export type InheritedFieldsView = {
@@ -3706,6 +3764,28 @@ export type Metrics = {
 	retryCount?: number | null,
 	activeSeconds?: number | null,
 	value?: number | null,
+};
+
+/**  `idle` on a launch that migrates nothing. */
+export type MigrationState = "idle" | "running" | "failed" | "done";
+
+export type MigrationStatus = {
+	/**  Grows with every change, so the page drops an answer older than an update it was sent. */
+	seq: number,
+	state: MigrationState,
+	/**  0 to 100. */
+	percent: number,
+	title: string,
+	/**  The phase line while running. */
+	phase: string | null,
+	body: string,
+	note: string | null,
+	/**  The failing check, as Step 37e2's `RunError::check` names it. */
+	check: string | null,
+	/**  The line that names `check` to the user. */
+	checkLine: string | null,
+	/**  The error message, in English like the log. */
+	details: string | null,
 };
 
 /**

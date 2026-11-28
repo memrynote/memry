@@ -8,10 +8,13 @@ macro_rules! inbox {
     };
     (events $($chain:tt)*) => {
         chain!(events [
+            crate::events::InboxMetadataCompleteEvent,
             crate::events::InboxOpenItemEvent,
+            crate::events::InboxProcessingErrorEvent,
             crate::events::InboxReviewDueEvent,
             crate::events::InboxReviewOpenEvent,
             crate::events::InboxSnoozeDueEvent,
+            crate::events::InboxUpdatedEvent,
         ] $($chain)*)
     };
 }

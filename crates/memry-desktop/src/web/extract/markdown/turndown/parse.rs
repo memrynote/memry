@@ -62,6 +62,29 @@ pub struct Caps {
     pub deadline: Duration,
 }
 
+/// The deepest a node of a fetched page may nest: Blink's `kMaximumHTMLParserDOMTreeDepth`.
+pub const PAGE_MAX_DEPTH: usize = 512;
+
+/// The most nodes any page builds.
+const PAGE_MAX_NODES: usize = 1 << 22;
+
+/// The longest a parse may run. A chunk of input costs at most a fraction of a second.
+const PAGE_PARSE_DEADLINE: Duration = Duration::from_secs(10);
+
+impl Caps {
+    /// The caps of `len` bytes of a fetched page. At most `2 * len + 64` nodes: a tag, text run
+    /// or comment takes at least one byte, and the elements the parser adds itself (`html`,
+    /// `tbody`, a reconstructed `b`) stay within a second one per byte on any page a person
+    /// writes.
+    pub fn for_page(len: usize) -> Self {
+        Self {
+            max_depth: PAGE_MAX_DEPTH,
+            max_nodes: (2 * len + 64).min(PAGE_MAX_NODES),
+            deadline: PAGE_PARSE_DEADLINE,
+        }
+    }
+}
+
 /// The cap a page went past.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CapHit {
@@ -370,6 +393,12 @@ pub fn parse(html: &str) -> Dom {
 /// `caps`. Returns the tree and the steps the sink took.
 pub fn parse_page(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
     parse_guarded(html, caps, true)
+}
+
+/// [`parse`] within `caps`, for Turndown's input when it comes from a fetched page (the Inbox
+/// article job): the same tree as `parse`, or the cap it went past.
+pub fn parse_capped(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
+    parse_guarded(html, caps, false)
 }
 
 /// An imported HTML file as jsdom parses it for `html-to-markdown.ts`: scripting off, as

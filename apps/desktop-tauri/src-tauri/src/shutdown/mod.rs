@@ -231,6 +231,14 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
         }
         return;
     }
+    // The boot waits for the first-launch migration: closing its window quits, and a rerun
+    // repeats the migration cleanly, so only the log needs flushing.
+    if startup::boot_suspended() {
+        if let RunEvent::Exit = event {
+            flush_log(app);
+        }
+        return;
+    }
     if crate::windows::startup_error::startup_failed() {
         on_run_event_after_failed_startup(app, event);
         return;
