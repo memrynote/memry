@@ -1,17 +1,117 @@
 diff --git a/dist/src-Buuo5l7X.js b/dist/src-Buuo5l7X.js
-index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52abf36fd600 100644
+index 309919e68432af485f441267281c270312c64bd2..3190e2572a40302e76b17ba3890b5b732f977e70 100644
 --- a/dist/src-Buuo5l7X.js
 +++ b/dist/src-Buuo5l7X.js
-@@ -824,7 +824,7 @@ function Y(e) {
- 	let t = "", n = 0;
+@@ -820,29 +820,31 @@ var Fn = /* @__PURE__ */ new Set("\\`![~*_\n<"), In = [
+ 	Pn,
+ 	On
+ ];
+-function Y(e) {
+-	let t = "", n = 0;
++function memryParseInlineText(e) {
++	let t = [], n = 0;
  	for (; n < e.length;) {
  		if (e[n] === "\n" && n >= 2 && e[n - 1] === " " && e[n - 2] === " ") {
 -			t = t.replace(/ +$/, ""), t += "<br>\n", n++;
-+			t = t.replace(/(?<! ) +$/, ""), t += "<br>\n", n++;
++			memryTrimEnd(t), t.push("<br>\n"), n++;
  			continue;
  		}
  		let r = !1;
-@@ -990,7 +990,7 @@ function Gn(e) {
+ 		if (Fn.has(e[n])) for (let i of In) {
+ 			let a = i(e, n);
+ 			if (a) {
+-				t += a.html, n = a.end, r = !0;
++				t.push(a.html), n = a.end, r = !0;
+ 				break;
+ 			}
+ 		}
+ 		if (!r) {
+ 			let r = n;
+ 			for (n++; n < e.length && !Fn.has(e[n]);) n++;
+-			t += q(e.substring(r, n));
++			t.push(q(e.substring(r, n)));
+ 		}
+ 	}
+-	return t;
++	return t.join("");
+ }
++function Y(e) { memryInlineDepth++; try { return memryParseInlineText(e); } finally { if (--memryInlineDepth === 0) memryInlineCaches.clear(); } }
++
+ function Ln(e, t) {
+ 	let n = 0, r = t;
+ 	for (; r < e.length && e[r] === "`";) n++, r++;
+@@ -892,28 +894,8 @@ function zn(e, t) {
+ 		end: a + 1
+ 	};
+ }
+-function Bn(e, t) {
+-	let n = 0;
+-	for (let r = t; r < e.length; r++) {
+-		if (e[r] === "\\" && r + 1 < e.length) {
+-			r++;
+-			continue;
+-		}
+-		if (e[r] === "[" && n++, e[r] === "]" && (n--, n === 0)) return r;
+-	}
+-	return -1;
+-}
+-function Vn(e, t) {
+-	let n = 0;
+-	for (let r = t; r < e.length; r++) {
+-		if (e[r] === "\\" && r + 1 < e.length) {
+-			r++;
+-			continue;
+-		}
+-		if (e[r] === "(" && n++, e[r] === ")" && (n--, n === 0)) return r;
+-	}
+-	return -1;
+-}
++function Bn(e, t) { return memryClosing(e, t, "[", "]"); }
++function Vn(e, t) { return memryClosing(e, t, "(", ")"); }
+ function Hn(e) {
+ 	e = e.trim();
+ 	let t, n;
+@@ -944,38 +926,7 @@ function Hn(e) {
+ 		title: r
+ 	};
+ }
+-function X(e, t, n, r, i) {
+-	let a = n.length, o = t + a;
+-	if (o >= e.length || e[o] === " " || e[o] === "	") return null;
+-	let s = o;
+-	for (; s < e.length;) {
+-		if (e[s] === "\\" && s + 1 < e.length) {
+-			s += 2;
+-			continue;
+-		}
+-		if (e.substring(s, s + a) === n) {
+-			if (e[s - 1] === " " || e[s - 1] === "	") {
+-				s++;
+-				continue;
+-			}
+-			if (a === 1 && (s > 0 && e[s - 1] === n[0] && !(s >= 2 && e[s - 2] === "\\") || s + a < e.length && e[s + a] === n[0])) {
+-				s++;
+-				continue;
+-			}
+-			let t = e.substring(o, s);
+-			if (t.length === 0) {
+-				s++;
+-				continue;
+-			}
+-			return {
+-				html: r + Y(t) + i,
+-				end: s + a
+-			};
+-		}
+-		s++;
+-	}
+-	return null;
+-}
++function X(e, t, n, r, i) { let a = n.length, o = t + a; if (o >= e.length || e[o] === " " || e[o] === "\t") return null; let s = memryFindCloser(e, o, n); return s === -1 ? null : { html: r + Y(e.substring(o, s)) + i, end: s + a }; }
+ var Un = /* @__PURE__ */ new Set(/* @__PURE__ */ "address.article.aside.audio.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.section.source.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul".split("."));
+ function Wn(e) {
+ 	if (/^ {0,3}<(!--|\?|![A-Za-z]|!\[CDATA\[)/.test(e)) return !0;
+@@ -990,7 +941,7 @@ function Gn(e) {
  			i = !0, r++;
  			continue;
  		}
@@ -20,7 +120,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  		if (a) {
  			let e = a[1], o = e[0], s = e.length, c = a[2].trim(), l = [];
  			for (r++; r < t.length;) {
-@@ -1007,7 +1007,7 @@ function Gn(e) {
+@@ -1007,7 +958,7 @@ function Gn(e) {
  			}), i = !1;
  			continue;
  		}
@@ -29,7 +129,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  		if (o) {
  			n.push({
  				type: "heading",
-@@ -1051,7 +1051,7 @@ function Gn(e) {
+@@ -1051,7 +1002,7 @@ function Gn(e) {
  			for (; r < t.length && /^\s{0,3}>/.test(t[r]);) e.push(t[r].replace(/^\s{0,3}>\s?/, "")), r++;
  			for (; r < t.length;) {
  				let n = t[r];
@@ -38,7 +138,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  				e.push(n), r++;
  			}
  			n.push({
-@@ -1060,7 +1060,7 @@ function Gn(e) {
+@@ -1060,7 +1011,7 @@ function Gn(e) {
  			}), i = !1;
  			continue;
  		}
@@ -47,7 +147,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  		if (c) {
  			let e = c[1].length, a = c[2], o = c[3], s = c[4], l = c[5], u, d, f;
  			s ? (u = "task", f = s.trim() !== "[ ]") : /^\d+[.)]$/.test(a) ? (u = "ordered", d = parseInt(a, 10)) : u = "bullet";
-@@ -1070,12 +1070,12 @@ function Gn(e) {
+@@ -1070,12 +1021,12 @@ function Gn(e) {
  				return !!(t >= p || t >= m && e.match(/^\s*([-*+]|\d+[.)])\s+/));
  			};
  			r++;
@@ -63,7 +163,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  					if (e < t.length && h(t[e])) {
  						g.push(""), r++;
  						continue;
-@@ -1085,7 +1085,7 @@ function Gn(e) {
+@@ -1085,7 +1036,7 @@ function Gn(e) {
  				if (!h(e)) break;
  				e.match(/^\s*/)[0].length >= p ? g.push(e.substring(p)) : g.push(e.substring(m)), r++;
  			}
@@ -72,7 +172,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  			n.push({
  				type: "listItem",
  				listType: u,
-@@ -1109,12 +1109,12 @@ function Gn(e) {
+@@ -1109,12 +1060,12 @@ function Gn(e) {
  		let l = [e];
  		for (r++; r < t.length;) {
  			let e = t[r];
@@ -87,7 +187,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  		}), i = !1;
  	}
  	return n;
-@@ -1122,7 +1122,7 @@ function Gn(e) {
+@@ -1122,7 +1073,7 @@ function Gn(e) {
  function Kn(e, t) {
  	if (t + 1 >= e.length) return null;
  	let n = e[t], r = e[t + 1];
@@ -96,7 +196,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  	let i = qn(n), a = Jn(r), o = [], s = t + 2;
  	for (; s < e.length;) {
  		let t = e[s];
-@@ -1416,7 +1416,7 @@ var ur = (e) => k.create({
+@@ -1416,7 +1367,7 @@ var ur = (e) => k.create({
  			return r === null || r === "Files" && (lr(n, e), !0);
  		} } } })];
  	}
@@ -105,7 +205,7 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
  //#endregion
  //#region src/api/clipboard/fromClipboard/handleVSCodePaste.ts
  function Tr(e, t) {
-@@ -3315,3 +3315,37 @@ function Yi(e, ...t) {
+@@ -3315,3 +3266,131 @@ function Yi(e, ...t) {
  export { mt as A, V as C, bt as D, xt as E, yt as O, Mt as S, z as T, Ft as _, Gi as a, H as b, kr as c, K as d, $t as f, U as g, en as h, qi as i, vt as k, tr as l, nn as m, Ji as n, Wi as o, tn as p, Ki as r, Oi as s, Yi as t, er as u, It as v, B as w, Lt as x, Pt as y };
  
  //# sourceMappingURL=src-Buuo5l7X.js.map
@@ -143,24 +243,124 @@ index 309919e68432af485f441267281c270312c64bd2..f4dfb03e2224d8a5df0db3f691bb52ab
 +  }
 +  return null;
 +}
++
++// Memry: the inline parser read to the end of the text for every opener that never closes, and
++// copied everything written so far for every hard break. What follows keeps each answer once.
++// The caches hold the texts one outermost parseInline call reads, and are dropped when it returns.
++var memryInlineCaches = new Map();
++var memryInlineDepth = 0;
++function memryInlineCache(text) {
++  let cache = memryInlineCaches.get(text);
++  if (!cache) {
++    cache = { dead: new Map(), partners: new Map() };
++    memryInlineCaches.set(text, cache);
++  }
++  return cache;
++}
++// The first position at or after `afterOpen` where `delimiter` closes an emphasis, or -1. Whether a
++// position closes does not depend on the opener, except that it cannot close right at `afterOpen`
++// (an empty emphasis), so a walk that finds none marks every position it visited, and a later
++// opener stops at the first of them.
++function memryFindCloser(text, afterOpen, delimiter) {
++  const cache = memryInlineCache(text);
++  let dead = cache.dead.get(delimiter);
++  const length = delimiter.length;
++  const closes = (at) =>
++    text.startsWith(delimiter, at) &&
++    text[at - 1] !== " " &&
++    text[at - 1] !== "\t" &&
++    !(
++      length === 1 &&
++      ((at > 0 && text[at - 1] === delimiter[0] && !(at >= 2 && text[at - 2] === "\\")) ||
++        (at + length < text.length && text[at + length] === delimiter[0]))
++    );
++  let end = text.length;
++  let at = afterOpen;
++  while (at < text.length) {
++    if (dead !== undefined && dead[at] === 1) {
++      end = at;
++      break;
++    }
++    if (text[at] === "\\" && at + 1 < text.length) {
++      at += 2;
++      continue;
++    }
++    if (closes(at) && at !== afterOpen) return at;
++    at++;
++  }
++  if (dead === undefined) {
++    dead = new Uint8Array(text.length);
++    cache.dead.set(delimiter, dead);
++  }
++  for (at = afterOpen; at < end; ) {
++    if (!(at === afterOpen && closes(at))) dead[at] = 1;
++    at += text[at] === "\\" && at + 1 < text.length ? 2 : 1;
++  }
++  return -1;
++}
++// The `close` that balances the `open` at `openPos` (which is always an `open`), or -1. One pass from
++// the first opener asked about pairs every opener after it with a stack, and a scan from any of them
++// reads the same characters to the same answer.
++function memryClosing(text, openPos, open, close) {
++  const cache = memryInlineCache(text);
++  let partners = cache.partners.get(open);
++  if (partners === undefined) {
++    partners = new Int32Array(text.length).fill(-2);
++    cache.partners.set(open, partners);
++  }
++  if (partners[openPos] === -2) {
++    const stack = [];
++    for (let at = openPos; at < text.length; at++) {
++      const char = text[at];
++      if (char === "\\" && at + 1 < text.length) {
++        at++;
++      } else if (char === open) {
++        partners[at] = -1;
++        stack.push(at);
++      } else if (char === close && stack.length > 0) {
++        partners[stack.pop()] = at;
++      }
++    }
++  }
++  return partners[openPos];
++}
++function memryTrimEnd(parts) {
++  while (parts.length > 0) {
++    const last = parts[parts.length - 1];
++    let end = last.length;
++    while (end > 0 && last.charCodeAt(end - 1) === 32) end--;
++    if (end === last.length && end > 0) return;
++    if (end > 0) {
++      parts[parts.length - 1] = last.slice(0, end);
++      return;
++    }
++    parts.pop();
++  }
++}
 diff --git a/dist/src-C54Ok9E0.cjs b/dist/src-C54Ok9E0.cjs
-index e28831093ae6a558ced66dafbc1b8f6f7614765a..72d22d461ea9dd27e98cdfea577611bf41a458d4 100644
+index e28831093ae6a558ced66dafbc1b8f6f7614765a..a47fff61b57fd7e09ad890ff4749d6b4ded0b06a 100644
 --- a/dist/src-C54Ok9E0.cjs
 +++ b/dist/src-C54Ok9E0.cjs
-@@ -6,18 +6,52 @@ const e=require("./blocks-CTB_5Vyj.cjs"),t=require("./BlockNoteExtension-BJCLnwr
+@@ -5,19 +5,149 @@ const e=require("./blocks-CTB_5Vyj.cjs"),t=require("./BlockNoteExtension-BJCLnwr
+ `,end:t+2}:"\\`*_{}[]()#+-.!~|>".includes(n)?{html:k(n),end:t+2}:null}function tt(e,t){return e[t]==="`"?gt(e,t):null}function nt(e,t){return e[t]!==`!`||e[t+1]!==`[`?null:_t(e,t)}function rt(e,t){return e[t]===`[`?vt(e,t):null}function it(e,t){return e[t]!==`~`||e[t+1]!==`~`?null:I(e,t,`~~`,`<del>`,`</del>`)}function at(e,t){return e[t]===`*`&&e[t+1]===`*`&&e[t+2]===`*`||e[t]===`_`&&e[t+1]===`_`&&e[t+2]===`_`&&!j(e,t,3)?I(e,t,e.substring(t,t+3),`<strong><em>`,`</em></strong>`):null}function ot(e,t){return e[t]===`*`&&e[t+1]===`*`||e[t]===`_`&&e[t+1]===`_`&&!j(e,t,2)?I(e,t,e.substring(t,t+2),`<strong>`,`</strong>`):null}function st(e,t){return e[t]===`*`||e[t]===`_`&&!j(e,t,1)?I(e,t,e[t],`<em>`,`</em>`):null}function ct(e,t){return e[t]===`
  `?{html:`<br>
  `,end:t+1}:null}var lt=/^<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/,ut=/^<!--[\s\S]*?-->/,dt=/^<!\[CDATA\[[\s\S]*?\]\]>/,ft=/^<\?[\s\S]*?\?>/,pt=/^<![A-Za-z][\s\S]*?>/;function mt(e,t){if(e[t]!==`<`)return null;let n=e.substring(t);for(let e of[ut,dt,ft,pt,lt]){let r=n.match(e);if(r)return{html:r[0],end:t+r[0].length}}return null}var M=new Set(`\\\`![~*_
- <`),ht=[et,tt,nt,rt,it,at,ot,st,mt,ct];function N(e){let t=``,n=0;for(;n<e.length;){if(e[n]===`
+-<`),ht=[et,tt,nt,rt,it,at,ot,st,mt,ct];function N(e){let t=``,n=0;for(;n<e.length;){if(e[n]===`
 -`&&n>=2&&e[n-1]===` `&&e[n-2]===` `){t=t.replace(/ +$/,``),t+=`<br>
-+`&&n>=2&&e[n-1]===` `&&e[n-2]===` `){t=t.replace(/(?<! ) +$/,``),t+=`<br>
- `,n++;continue}let r=!1;if(M.has(e[n]))for(let i of ht){let a=i(e,n);if(a){t+=a.html,n=a.end,r=!0;break}}if(!r){let r=n;for(n++;n<e.length&&!M.has(e[n]);)n++;t+=k(e.substring(r,n))}}return t}function gt(e,t){let n=0,r=t;for(;r<e.length&&e[r]==="`";)n++,r++;let i=r;for(;i<e.length;)if(e[i]==="`"){let t=0,a=i;for(;i<e.length&&e[i]==="`";)t++,i++;if(t===n){let t=e.substring(r,a);return t=t.replace(/\n/g,` `),t.length>=2&&t[0]===` `&&t[t.length-1]===` `&&/[^ ]/.test(t)&&(t=t.substring(1,t.length-1)),{html:`<code>${k(t)}</code>`,end:i}}}else i++;return null}function _t(t,n){let r=P(t,n+1);if(r===-1)return null;let i=n+2;if(t[r+1]!==`(`)return null;let a=r+2,o=F(t,a-1);if(o===-1)return null;let s=t.substring(i,r),{url:c,title:l}=yt(t.substring(a,o));if(e.bn(c)){let e=s||l;return{html:`<video src="${k(c)}"${e?` data-name="${k(e)}"`:``} data-url="${k(c)}" controls></video>`,end:o+1}}let u=l===void 0?``:` title="${k(l)}"`;return{html:`<img src="${k(c)}" alt="${k(s)}"${u}>`,end:o+1}}function vt(e,t){let n=t+1,r=P(e,t);if(r===-1||e[r+1]!==`(`)return null;let i=r+2,a=F(e,r+1);if(a===-1)return null;let o=e.substring(n,r),{url:s,title:c}=yt(e.substring(i,a)),l=c===void 0?``:` title="${k(c)}"`;return{html:`<a href="${k(s)}"${l}>${N(o)}</a>`,end:a+1}}function P(e,t){let n=0;for(let r=t;r<e.length;r++){if(e[r]===`\\`&&r+1<e.length){r++;continue}if(e[r]===`[`&&n++,e[r]===`]`&&(n--,n===0))return r}return-1}function F(e,t){let n=0;for(let r=t;r<e.length;r++){if(e[r]===`\\`&&r+1<e.length){r++;continue}if(e[r]===`(`&&n++,e[r]===`)`&&(n--,n===0))return r}return-1}function yt(e){e=e.trim();let t,n;if(e.startsWith(`<`)){let r=e.indexOf(`>`);r===-1?(t=e.substring(1),n=``):(t=e.substring(1,r),n=e.substring(r+1).trim())}else{let r=e.length;for(let t=0;t<e.length;t++){if(e[t]===`\\`&&t+1<e.length){t++;continue}if(e[t]===` `||e[t]===`	`||e[t]===`
- `){r=t;break}}t=e.substring(0,r),n=e.substring(r).trim()}let r;if(n.length>0){let e=n.match(/^"([^"]*)"$|^'([^']*)'$|^\(([^)]*)\)$/);e&&(r=e[1]??e[2]??e[3])}return{url:t,title:r}}function I(e,t,n,r,i){let a=n.length,o=t+a;if(o>=e.length||e[o]===` `||e[o]===`	`)return null;let s=o;for(;s<e.length;){if(e[s]===`\\`&&s+1<e.length){s+=2;continue}if(e.substring(s,s+a)===n){if(e[s-1]===` `||e[s-1]===`	`){s++;continue}if(a===1&&(s>0&&e[s-1]===n[0]&&!(s>=2&&e[s-2]===`\\`)||s+a<e.length&&e[s+a]===n[0])){s++;continue}let t=e.substring(o,s);if(t.length===0){s++;continue}return{html:r+N(t)+i,end:s+a}}s++}return null}var bt=new Set(`address.article.aside.audio.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.section.source.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`));function L(e){if(/^ {0,3}<(!--|\?|![A-Za-z]|!\[CDATA\[)/.test(e))return!0;let t=e.match(/^ {0,3}<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s|\/?>|$)/);return t?bt.has(t[1].toLowerCase()):!1}function R(e){let t=e.split(`
+-`,n++;continue}let r=!1;if(M.has(e[n]))for(let i of ht){let a=i(e,n);if(a){t+=a.html,n=a.end,r=!0;break}}if(!r){let r=n;for(n++;n<e.length&&!M.has(e[n]);)n++;t+=k(e.substring(r,n))}}return t}function gt(e,t){let n=0,r=t;for(;r<e.length&&e[r]==="`";)n++,r++;let i=r;for(;i<e.length;)if(e[i]==="`"){let t=0,a=i;for(;i<e.length&&e[i]==="`";)t++,i++;if(t===n){let t=e.substring(r,a);return t=t.replace(/\n/g,` `),t.length>=2&&t[0]===` `&&t[t.length-1]===` `&&/[^ ]/.test(t)&&(t=t.substring(1,t.length-1)),{html:`<code>${k(t)}</code>`,end:i}}}else i++;return null}function _t(t,n){let r=P(t,n+1);if(r===-1)return null;let i=n+2;if(t[r+1]!==`(`)return null;let a=r+2,o=F(t,a-1);if(o===-1)return null;let s=t.substring(i,r),{url:c,title:l}=yt(t.substring(a,o));if(e.bn(c)){let e=s||l;return{html:`<video src="${k(c)}"${e?` data-name="${k(e)}"`:``} data-url="${k(c)}" controls></video>`,end:o+1}}let u=l===void 0?``:` title="${k(l)}"`;return{html:`<img src="${k(c)}" alt="${k(s)}"${u}>`,end:o+1}}function vt(e,t){let n=t+1,r=P(e,t);if(r===-1||e[r+1]!==`(`)return null;let i=r+2,a=F(e,r+1);if(a===-1)return null;let o=e.substring(n,r),{url:s,title:c}=yt(e.substring(i,a)),l=c===void 0?``:` title="${k(c)}"`;return{html:`<a href="${k(s)}"${l}>${N(o)}</a>`,end:a+1}}function P(e,t){let n=0;for(let r=t;r<e.length;r++){if(e[r]===`\\`&&r+1<e.length){r++;continue}if(e[r]===`[`&&n++,e[r]===`]`&&(n--,n===0))return r}return-1}function F(e,t){let n=0;for(let r=t;r<e.length;r++){if(e[r]===`\\`&&r+1<e.length){r++;continue}if(e[r]===`(`&&n++,e[r]===`)`&&(n--,n===0))return r}return-1}function yt(e){e=e.trim();let t,n;if(e.startsWith(`<`)){let r=e.indexOf(`>`);r===-1?(t=e.substring(1),n=``):(t=e.substring(1,r),n=e.substring(r+1).trim())}else{let r=e.length;for(let t=0;t<e.length;t++){if(e[t]===`\\`&&t+1<e.length){t++;continue}if(e[t]===` `||e[t]===`	`||e[t]===`
+-`){r=t;break}}t=e.substring(0,r),n=e.substring(r).trim()}let r;if(n.length>0){let e=n.match(/^"([^"]*)"$|^'([^']*)'$|^\(([^)]*)\)$/);e&&(r=e[1]??e[2]??e[3])}return{url:t,title:r}}function I(e,t,n,r,i){let a=n.length,o=t+a;if(o>=e.length||e[o]===` `||e[o]===`	`)return null;let s=o;for(;s<e.length;){if(e[s]===`\\`&&s+1<e.length){s+=2;continue}if(e.substring(s,s+a)===n){if(e[s-1]===` `||e[s-1]===`	`){s++;continue}if(a===1&&(s>0&&e[s-1]===n[0]&&!(s>=2&&e[s-2]===`\\`)||s+a<e.length&&e[s+a]===n[0])){s++;continue}let t=e.substring(o,s);if(t.length===0){s++;continue}return{html:r+N(t)+i,end:s+a}}s++}return null}var bt=new Set(`address.article.aside.audio.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.section.source.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`));function L(e){if(/^ {0,3}<(!--|\?|![A-Za-z]|!\[CDATA\[)/.test(e))return!0;let t=e.match(/^ {0,3}<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s|\/?>|$)/);return t?bt.has(t[1].toLowerCase()):!1}function R(e){let t=e.split(`
 -`),n=[],r=0,i=!0;for(;r<t.length;){let e=t[r];if(e.trim()===``){i=!0,r++;continue}let a=e.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);if(a){let e=a[1],o=e[0],s=e.length,c=a[2].trim(),l=[];for(r++;r<t.length;){if(t[r].match(RegExp(`^ {0,3}${o}{${s},}\\s*$`))){r++;break}l.push(t[r]),r++}n.push({type:`codeBlock`,language:c||``,code:l.join(`
 -`)}),i=!1;continue}let o=e.match(/^(#{1,6})\s+(.+?)(?:\s+#+\s*|\s*)$/);if(o){n.push({type:`heading`,level:o[1].length,content:o[2]}),i=!1,r++;continue}if(/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e)){let t=n[n.length-1];if(!i&&e.trim().match(/^-+$/)&&t&&t.type===`paragraph`){let e=t;n[n.length-1]={type:`heading`,level:2,content:e.content},i=!1,r++;continue}n.push({type:`hr`}),i=!1,r++;continue}if(r+1<t.length){let a=t[r+1];if(/^={1,}\s*$/.test(a)&&e.trim().length>0){n.push({type:`heading`,level:1,content:e.trim()}),i=!1,r+=2;continue}}let s=xt(t,r);if(s){n.push(s.token),r=s.nextLine,i=!1;continue}if(/^\s{0,3}>/.test(e)){let e=[];for(;r<t.length&&/^\s{0,3}>/.test(t[r]);)e.push(t[r].replace(/^\s{0,3}>\s?/,``)),r++;for(;r<t.length;){let n=t[r];if(n.trim()===``||/^\s{0,3}>/.test(n)||/^(#{1,6})\s/.test(n)||/^(`{3,}|~{3,})/.test(n)||/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(n)||/^\s*([-*+]|\d+[.)])\s+/.test(n)||/^\s*\|(.+\|)+\s*$/.test(n))break;e.push(n),r++}n.push({type:`blockquote`,content:e.join(`
 -`)}),i=!1;continue}let c=e.match(/^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\] )?(.*)$/);if(c){let e=c[1].length,a=c[2],o=c[3],s=c[4],l=c[5],u,d,f;s?(u=`task`,f=s.trim()!==`[ ]`):/^\d+[.)]$/.test(a)?(u=`ordered`,d=parseInt(a,10)):u=`bullet`;let p=e+a.length+o.length+(s?s.length:0),m=e+1,h=e=>{if(e.trim()===``)return!0;let t=e.match(/^\s*/)[0].length;return!!(t>=p||t>=m&&e.match(/^\s*([-*+]|\d+[.)])\s+/))};r++;let g=[];for(;r<t.length;){let e=t[r];if(e.trim()===``){let e=r+1;for(;e<t.length&&t[e].trim()===``;)e++;if(e<t.length&&h(t[e])){g.push(``),r++;continue}break}if(!h(e))break;e.match(/^\s*/)[0].length>=p?g.push(e.substring(p)):g.push(e.substring(m)),r++}let _=g.join(`
 -`).replace(/^\n+|\n+$/g,``);n.push({type:`listItem`,listType:u,indent:e,content:l.trim(),start:d,checked:f,childContent:_||void 0}),i=!1;continue}if(L(e)){let e=[];for(;r<t.length&&t[r].trim()!==``;)e.push(t[r]),r++;n.push({type:`rawHtml`,content:e.join(`
 -`)}),i=!1;continue}let l=[e];for(r++;r<t.length;){let e=t[r];if(e.trim()===``||/^(#{1,6})\s/.test(e)||/^(`{3,}|~{3,})/.test(e)||/^\s{0,3}>/.test(e)||/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e)||/^\s*([-*+]|\d+[.)])\s+/.test(e)||/^\s*\|(.+\|)+\s*$/.test(e)||L(e)||r+1<t.length&&/^[=-]+\s*$/.test(t[r+1])&&e.trim().length>0)break;l.push(e),r++}n.push({type:`paragraph`,content:l.map(e=>e.replace(/^ {1,3}/,``)).join(`
 -`).replace(/[ \t]+$/,``)}),i=!1}return n}function xt(e,t){if(t+1>=e.length)return null;let n=e[t],r=e[t+1];if(!r.includes(`|`)||!/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(r)||!n.includes(`|`))return null;let i=z(n),a=St(r),o=[],s=t+2;for(;s<e.length;){let t=e[s];if(!t.includes(`|`))break;o.push(z(t)),s++}return{token:{type:`table`,headers:i,rows:o,alignments:a},nextLine:s}}function z(e){let t=e.trim(),n=t.startsWith(`|`)?t.substring(1):t,r=n.endsWith(`|`)?n.substring(0,n.length-1):n,i=[],a=``;for(let e=0;e<r.length;e++)r[e]===`\\`&&e+1<r.length&&r[e+1]===`|`?(a+=`|`,e++):r[e]===`|`?(i.push(a.trim()),a=``):a+=r[e];return i.push(a.trim()),i}function St(e){return z(e).map(e=>{let t=e.trim(),n=t.startsWith(`:`),r=t.endsWith(`:`);return n&&r?`center`:r?`right`:n?`left`:null})}function B(e){let t=``,n=0;for(;n<e.length;){let r=e[n];switch(r.type){case`heading`:{let e=r;t+=`<h${e.level}>${N(e.content)}</h${e.level}>`,n++;break}case`paragraph`:t+=`<p>${N(r.content)}</p>`,n++;break;case`codeBlock`:{let e=r,i=e.language?` data-language="${k(e.language)}"`:``;t+=`<pre><code${i}>${k(e.code)}</code></pre>`,n++;break}case`blockquote`:{let e=B(R(r.content));t+=`<blockquote>${e}</blockquote>`,n++;break}case`hr`:t+=`<hr>`,n++;break;case`listItem`:{let r=Ct(e,n);t+=r.html,n=r.nextIndex;break}case`table`:t+=Tt(r),n++;break;case`rawHtml`:t+=r.content,n++;break;default:n++}}return t}function Ct(e,t){let n=``,r=t,i=null;for(;r<e.length&&e[r].type===`listItem`;){let t=e[r],a=wt(t.listType);if(i!==null&&i!==a&&(n+=`</${i===`ordered`?`ol`:`ul`}>`,i=null),i===null){if(a===`ordered`){let e=t.start!==void 0&&t.start!==1?` start="${t.start}"`:``;n+=`<ol${e}>`}else n+=`<ul>`;i=a}if(t.listType===`task`){let e=t.checked?` checked`:``;n+=`<li><input type="checkbox" disabled${e}><p>${N(t.content)}</p>`}else n+=`<li><p>${N(t.content)}</p>`;if(t.childContent){let e=R(t.childContent);n+=B(e)}n+=`</li>`,r++}return i!==null&&(n+=`</${i===`ordered`?`ol`:`ul`}>`),{html:n,nextIndex:r}}function wt(e){return e===`ordered`?`ordered`:`bullet`}function Tt(e){let t=`<table>`,n=e.headers.every(e=>e.trim()===``),r=e.headers.length;if(!n){t+=`<thead><tr>`;for(let n=0;n<r;n++){let r=e.alignments[n],i=r?` align="${r}"`:``;t+=`<th${i}>${N(e.headers[n])}</th>`}t+=`</tr></thead>`}if(e.rows.length>0){t+=`<tbody>`;for(let n of e.rows){t+=`<tr>`;for(let i=0;i<r;i++){let r=i<n.length?n[i]:``,a=e.alignments[i],o=a?` align="${a}"`:``;t+=`<td${o}>${N(r)}</td>`}t+=`</tr>`}t+=`</tbody>`}return t+=`</table>`,t}function Et(e){return B(R(e))}function V(e){return Et(e)}function Dt(e,t){return O(V(e),t)}var Ot=class{editor;constructor(e){this.editor=e}blocksToHTMLLossy(e=this.editor.document){return n.F(this.editor.pmSchema,this.editor).exportBlocks(e,{})}blocksToFullHTML(e=this.editor.document){return he(this.editor.pmSchema,this.editor).serializeBlocks(e,{})}tryParseHTMLToBlocks(e){return O(e,this.editor.pmSchema)}blocksToMarkdownLossy(e=this.editor.document){return n.b(e,this.editor.pmSchema,this.editor,{})}tryParseMarkdownToBlocks(e){return Dt(e,this.editor.pmSchema)}pasteHTML(e,t=!1){let n=e;if(!t){let t=this.tryParseHTMLToBlocks(e);n=this.blocksToFullHTML(t)}n&&this.editor.prosemirrorView?.pasteHTML(n)}pasteText(e){return this.editor.prosemirrorView?.pasteText(e)}pasteMarkdown(e){let t=V(e);return this.pasteHTML(t)}};function kt(t){let{bnBlock:n}=e.nr(t),r=t.doc.resolve(n.beforePos),i=r.nodeBefore,a=t.doc.resolve(n.afterPos).nodeAfter,o;return r.depth>1&&(o=r.node(),o.type.isInGroup(`bnBlock`)||(o=r.node(r.depth-1))),{block:e.wn(n.node,t.doc),prevBlock:i===null?void 0:e.wn(i,t.doc),nextBlock:a===null?void 0:e.wn(a,t.doc),parentBlock:o===void 0?void 0:e.wn(o,t.doc)}}function H(t,n,r=`start`){let i=typeof n==`string`?n:n.id,a=e.jn(t.doc),o=e.On(a),s=e.Nt(i,t.doc);if(!s)throw Error(`Block with ID ${i} not found`);let l=e.$n(s),u=o.blockSchema[l.blockNoteType].content;if(l.isBlockContainer){let n=l.blockContent;if(u===`none`){t.setSelection(c.NodeSelection.create(t.doc,n.beforePos));return}if(u===`inline`||u===`plain`)r===`start`?t.setSelection(c.TextSelection.create(t.doc,n.beforePos+1)):t.setSelection(c.TextSelection.create(t.doc,n.afterPos-1));else if(u===`table`)r===`start`?t.setSelection(c.TextSelection.create(t.doc,n.beforePos+4)):t.setSelection(c.TextSelection.create(t.doc,n.afterPos-4));else throw new e.Hn(u)}else{let n=r===`start`?l.childContainer.node.firstChild:l.childContainer.node.lastChild;H(t,e.ar(n,t.doc),r)}}var U=[`vscode-editor-data`,`blocknote/html`,`text/markdown`,`text/html`,`text/plain`,`Files`];function At(e,t){if(!e.startsWith(`.`)||!t.startsWith(`.`))throw Error(`The strings provided are not valid file extensions.`);return e===t}function jt(e,t){let n=e.split(`/`),r=t.split(`/`);if(n.length!==2)throw Error(`The string ${e} is not a valid MIME type.`);if(r.length!==2)throw Error(`The string ${t} is not a valid MIME type.`);return n[1]===`*`||r[1]===`*`?n[0]===r[0]:(n[0]===`*`||r[0]===`*`||n[0]===r[0])&&n[1]===r[1]}function Mt(e,t,n,r=`after`){let i;return i=Array.isArray(t.content)&&t.content.length===0?e.updateBlock(t,n).id:e.insertBlocks([n],t,r)[0].id,i}async function Nt(t,n){if(!n.uploadFile){console.warn(`Attempted ot insert file, but uploadFile is not set in the BlockNote editor options`);return}let r=`dataTransfer`in t?t.dataTransfer:t.clipboardData;if(r===null)return;let i=null;for(let e of U)if(r.types.includes(e)){i=e;break}if(i!==`Files`)return;let a=r.items;if(a){t.preventDefault();for(let r=0;r<a.length;r++){let i=`file`;for(let e of Object.values(n.schema.blockSpecs))for(let t of e.implementation.meta?.fileBlockAccept||[]){let n=t.startsWith(`.`),o=a[r].getAsFile();if(o&&(!n&&o.type&&jt(a[r].type,t)||n&&At(`.`+o.name.split(`.`).pop(),t))){i=e.config.type;break}}let o=a[r].getAsFile();if(o){let r={type:i,props:{name:o.name}},a;if(t.type===`paste`){let e=n.getTextCursorPosition().block;a=Mt(n,e,r)}else if(t.type===`drop`){let i={left:t.clientX,top:t.clientY},o=n.prosemirrorView.posAtCoords(i);if(!o)return;a=n.transact(t=>{let a=e.er(t,o.pos),s=e.ar(a.bnBlock.node,t.doc),c=(n.domElement?.querySelector(`[data-id="${s}"]`))?.getBoundingClientRect(),l=n.getBlock(s);if(l)return Mt(n,l,r,c&&(c.top+c.bottom)/2>i.top?`before`:`after`)})}else return;if(!a)return;let s=await n.uploadFile(o,a),c=typeof s==`string`?{props:{url:s}}:{...s};n.updateBlock(a,c)}}}}var Pt=e=>s.Extension.create({name:`dropFile`,addProseMirrorPlugins(){return[new c.Plugin({props:{handleDOMEvents:{drop(t,n){if(!e.isEditable)return;let r=null;for(let e of U)if(n.dataTransfer.types.includes(e)){r=e;break}return r===null||r===`Files`&&(Nt(n,e),!0)}}}})]}}),Ft=/(^|\n) {0,3}#{1,6} {1,8}[^\n]{1,64}\r?\n\r?\n\s{0,32}\S/,It=/(_|__|\*|\*\*|~~|==|\+\+)(?!\s)(?:[^\s](?:.{0,62}[^\s])?|\S)(?=\1)/,Lt=/\[[^\]]{1,128}\]\(https?:\/\/\S{1,999}\)/,Rt=/(?:\s|^)`(?!\s)(?:[^\s`](?:[^`]{0,46}[^\s`])?|[^\s`])`([^\w]|$)/,zt=/(?:^|\n)\s{0,5}-\s{1}[^\n]+\n\s{0,15}-\s/,Bt=/(?:^|\n)\s{0,5}\d+\.\s{1}[^\n]+\n\s{0,15}\d+\.\s/,Vt=/\n{2} {0,3}-{2,48}\n{2}/,Ht=/(?:\n|^)(```|~~~|\$\$)(?!`|~)[^\s]{0,64} {0,64}[^\n]{0,64}\n[\s\S]{0,9999}?\s*\1 {0,64}(?:\n+|$)/,Ut=/(?:\n|^)(?!\s)\w[^\n]{0,64}\r?\n(-|=)\1{0,64}\n\n\s{0,64}(\w|$)/,Wt=/(?:^|(\r?\n\r?\n))( {0,3}>[^\n]{1,333}\n){1,999}($|(\r?\n))/,Gt=/^\s*\|(.+\|)+\s*$/m,Kt=/^\s*\|(\s*[-:]+[-:]\s*\|)+\s*$/m,qt=/^\s*\|(.+\|)+\s*$/m,Jt=e=>Ft.test(e)||It.test(e)||Lt.test(e)||Rt.test(e)||zt.test(e)||Bt.test(e)||Vt.test(e)||Ht.test(e)||Ut.test(e)||Wt.test(e)||Gt.test(e)||Kt.test(e)||qt.test(e);function Yt(e,t){let{schema:n}=t.state;if(!e.clipboardData)return!1;let r=e.clipboardData.getData(`text/plain`);if(!r||!n.nodes.codeBlock)return!1;let i=e.clipboardData.getData(`vscode-editor-data`),a=(i?JSON.parse(i):void 0)?.mode;return a?(t.pasteHTML(`<pre><code class="language-${a}">${r.replace(/\r\n?/g,`
++<`),ht=[et,tt,nt,rt,it,at,ot,st,mt,ct];function memryParseInlineText(e){let t = [], n = 0;for(;n<e.length;){if(e[n]===`
++`&&n>=2&&e[n-1]===` `&&e[n-2]===` `){memryTrimEnd(t), t.push(`<br>
++`), n++;continue}let r=!1;if(M.has(e[n]))for(let i of ht){let a=i(e,n);if(a){t.push(a.html),n=a.end,r=!0;break}}if(!r){let r=n;for(n++;n<e.length&&!M.has(e[n]);)n++;t.push(k(e.substring(r,n)))}}return t.join("");}
++function N(e) { memryInlineDepth++; try { return memryParseInlineText(e); } finally { if (--memryInlineDepth === 0) memryInlineCaches.clear(); } }
++function gt(e,t){let n=0,r=t;for(;r<e.length&&e[r]==="`";)n++,r++;let i=r;for(;i<e.length;)if(e[i]==="`"){let t=0,a=i;for(;i<e.length&&e[i]==="`";)t++,i++;if(t===n){let t=e.substring(r,a);return t=t.replace(/\n/g,` `),t.length>=2&&t[0]===` `&&t[t.length-1]===` `&&/[^ ]/.test(t)&&(t=t.substring(1,t.length-1)),{html:`<code>${k(t)}</code>`,end:i}}}else i++;return null}function _t(t,n){let r=P(t,n+1);if(r===-1)return null;let i=n+2;if(t[r+1]!==`(`)return null;let a=r+2,o=F(t,a-1);if(o===-1)return null;let s=t.substring(i,r),{url:c,title:l}=yt(t.substring(a,o));if(e.bn(c)){let e=s||l;return{html:`<video src="${k(c)}"${e?` data-name="${k(e)}"`:``} data-url="${k(c)}" controls></video>`,end:o+1}}let u=l===void 0?``:` title="${k(l)}"`;return{html:`<img src="${k(c)}" alt="${k(s)}"${u}>`,end:o+1}}function vt(e,t){let n=t+1,r=P(e,t);if(r===-1||e[r+1]!==`(`)return null;let i=r+2,a=F(e,r+1);if(a===-1)return null;let o=e.substring(n,r),{url:s,title:c}=yt(e.substring(i,a)),l=c===void 0?``:` title="${k(c)}"`;return{html:`<a href="${k(s)}"${l}>${N(o)}</a>`,end:a+1}}function P(e, t) { return memryClosing(e, t, "[", "]"); }function F(e, t) { return memryClosing(e, t, "(", ")"); }function yt(e){e=e.trim();let t,n;if(e.startsWith(`<`)){let r=e.indexOf(`>`);r===-1?(t=e.substring(1),n=``):(t=e.substring(1,r),n=e.substring(r+1).trim())}else{let r=e.length;for(let t=0;t<e.length;t++){if(e[t]===`\\`&&t+1<e.length){t++;continue}if(e[t]===` `||e[t]===`	`||e[t]===`
++`){r=t;break}}t=e.substring(0,r),n=e.substring(r).trim()}let r;if(n.length>0){let e=n.match(/^"([^"]*)"$|^'([^']*)'$|^\(([^)]*)\)$/);e&&(r=e[1]??e[2]??e[3])}return{url:t,title:r}}function I(e, t, n, r, i) { let a = n.length, o = t + a; if (o >= e.length || e[o] === " " || e[o] === "\t") return null; let s = memryFindCloser(e, o, n); return s === -1 ? null : { html: r + N(e.substring(o, s)) + i, end: s + a }; }var bt=new Set(`address.article.aside.audio.base.basefont.blockquote.body.caption.center.col.colgroup.dd.details.dialog.dir.div.dl.dt.fieldset.figcaption.figure.footer.form.frame.frameset.h1.h2.h3.h4.h5.h6.head.header.hr.html.iframe.legend.li.link.main.menu.menuitem.nav.noframes.ol.optgroup.option.p.param.section.source.summary.table.tbody.td.tfoot.th.thead.title.tr.track.ul`.split(`.`));function L(e){if(/^ {0,3}<(!--|\?|![A-Za-z]|!\[CDATA\[)/.test(e))return!0;let t=e.match(/^ {0,3}<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s|\/?>|$)/);return t?bt.has(t[1].toLowerCase()):!1}function R(e){let t=e.split(`
 +`),n=[],r=0,i=!0;for(;r<t.length;){let e=t[r];if(e.trim()===``){i=!0,r++;continue}let a=e.match(/^ {0,3}(`{3,}(?!`)|~{3,}(?!~))(.*)$/);if(a){let e=a[1],o=e[0],s=e.length,c=a[2].trim(),l=[];for(r++;r<t.length;){if(t[r].match(RegExp(`^ {0,3}${o}{${s},}\\s*$`))){r++;break}l.push(t[r]),r++}n.push({type:`codeBlock`,language:c||``,code:l.join(`
 +`)}),i=!1;continue}let o=memryMatchHeading(e);if(o){n.push({type:`heading`,level:o[1].length,content:o[2]}),i=!1,r++;continue}if(/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(e)){let t=n[n.length-1];if(!i&&e.trim().match(/^-+$/)&&t&&t.type===`paragraph`){let e=t;n[n.length-1]={type:`heading`,level:2,content:e.content},i=!1,r++;continue}n.push({type:`hr`}),i=!1,r++;continue}if(r+1<t.length){let a=t[r+1];if(/^={1,}\s*$/.test(a)&&e.trim().length>0){n.push({type:`heading`,level:1,content:e.trim()}),i=!1,r+=2;continue}}let s=xt(t,r);if(s){n.push(s.token),r=s.nextLine,i=!1;continue}if(/^\s{0,3}>/.test(e)){let e=[];for(;r<t.length&&/^\s{0,3}>/.test(t[r]);)e.push(t[r].replace(/^\s{0,3}>\s?/,``)),r++;for(;r<t.length;){let n=t[r];if(n.trim()===``||/^\s{0,3}>/.test(n)||/^(#{1,6})\s/.test(n)||/^(`{3,}|~{3,})/.test(n)||/^(\s{0,3})([-*_])\s*(\2\s*){2,}$/.test(n)||/^\s*([-*+]|\d+[.)])\s+/.test(n)||/^\s*\|.+\|\s*$/.test(n))break;e.push(n),r++}n.push({type:`blockquote`,content:e.join(`
 +`)}),i=!1;continue}let c=e.match(/^(\s*)([-*+]|\d+[.)])(\s+)(?!\s)(\[[ xX]\] )?(.*)$/);if(c){let e=c[1].length,a=c[2],o=c[3],s=c[4],l=c[5],u,d,f;s?(u=`task`,f=s.trim()!==`[ ]`):/^\d+[.)]$/.test(a)?(u=`ordered`,d=parseInt(a,10)):u=`bullet`;let p=e+a.length+o.length+(s?s.length:0),m=e+1,h=e=>{if(e.trim()===``)return!0;let t=e.match(/^\s*/)[0].length;return!!(t>=p||t>=m&&e.match(/^\s*([-*+]|\d+[.)])\s+/))};r++;let g=[],memryNext=0;for(;r<t.length;){let e=t[r];if(e.trim()===``){if(memryNext<=r)for(memryNext=r+1;memryNext<t.length&&t[memryNext].trim()===``;)memryNext++;let e=memryNext;if(e<t.length&&h(t[e])){g.push(``),r++;continue}break}if(!h(e))break;e.match(/^\s*/)[0].length>=p?g.push(e.substring(p)):g.push(e.substring(m)),r++}let _=g.join(`
@@ -207,20 +407,376 @@ index e28831093ae6a558ced66dafbc1b8f6f7614765a..72d22d461ea9dd27e98cdfea577611bf
 +  }
 +  return null;
 +}
++
++// Memry: the inline parser read to the end of the text for every opener that never closes, and
++// copied everything written so far for every hard break. What follows keeps each answer once.
++// The caches hold the texts one outermost parseInline call reads, and are dropped when it returns.
++var memryInlineCaches = new Map();
++var memryInlineDepth = 0;
++function memryInlineCache(text) {
++  let cache = memryInlineCaches.get(text);
++  if (!cache) {
++    cache = { dead: new Map(), partners: new Map() };
++    memryInlineCaches.set(text, cache);
++  }
++  return cache;
++}
++// The first position at or after `afterOpen` where `delimiter` closes an emphasis, or -1. Whether a
++// position closes does not depend on the opener, except that it cannot close right at `afterOpen`
++// (an empty emphasis), so a walk that finds none marks every position it visited, and a later
++// opener stops at the first of them.
++function memryFindCloser(text, afterOpen, delimiter) {
++  const cache = memryInlineCache(text);
++  let dead = cache.dead.get(delimiter);
++  const length = delimiter.length;
++  const closes = (at) =>
++    text.startsWith(delimiter, at) &&
++    text[at - 1] !== " " &&
++    text[at - 1] !== "\t" &&
++    !(
++      length === 1 &&
++      ((at > 0 && text[at - 1] === delimiter[0] && !(at >= 2 && text[at - 2] === "\\")) ||
++        (at + length < text.length && text[at + length] === delimiter[0]))
++    );
++  let end = text.length;
++  let at = afterOpen;
++  while (at < text.length) {
++    if (dead !== undefined && dead[at] === 1) {
++      end = at;
++      break;
++    }
++    if (text[at] === "\\" && at + 1 < text.length) {
++      at += 2;
++      continue;
++    }
++    if (closes(at) && at !== afterOpen) return at;
++    at++;
++  }
++  if (dead === undefined) {
++    dead = new Uint8Array(text.length);
++    cache.dead.set(delimiter, dead);
++  }
++  for (at = afterOpen; at < end; ) {
++    if (!(at === afterOpen && closes(at))) dead[at] = 1;
++    at += text[at] === "\\" && at + 1 < text.length ? 2 : 1;
++  }
++  return -1;
++}
++// The `close` that balances the `open` at `openPos` (which is always an `open`), or -1. One pass from
++// the first opener asked about pairs every opener after it with a stack, and a scan from any of them
++// reads the same characters to the same answer.
++function memryClosing(text, openPos, open, close) {
++  const cache = memryInlineCache(text);
++  let partners = cache.partners.get(open);
++  if (partners === undefined) {
++    partners = new Int32Array(text.length).fill(-2);
++    cache.partners.set(open, partners);
++  }
++  if (partners[openPos] === -2) {
++    const stack = [];
++    for (let at = openPos; at < text.length; at++) {
++      const char = text[at];
++      if (char === "\\" && at + 1 < text.length) {
++        at++;
++      } else if (char === open) {
++        partners[at] = -1;
++        stack.push(at);
++      } else if (char === close && stack.length > 0) {
++        partners[stack.pop()] = at;
++      }
++    }
++  }
++  return partners[openPos];
++}
++function memryTrimEnd(parts) {
++  while (parts.length > 0) {
++    const last = parts[parts.length - 1];
++    let end = last.length;
++    while (end > 0 && last.charCodeAt(end - 1) === 32) end--;
++    if (end === last.length && end > 0) return;
++    if (end > 0) {
++      parts[parts.length - 1] = last.slice(0, end);
++      return;
++    }
++    parts.pop();
++  }
++}
 diff --git a/src/api/parsers/markdown/markdownToHtml.ts b/src/api/parsers/markdown/markdownToHtml.ts
-index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79bdd3e167 100644
+index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..15c951d6e6a4812cd4ec16aa26841e95f57eecd7 100644
 --- a/src/api/parsers/markdown/markdownToHtml.ts
 +++ b/src/api/parsers/markdown/markdownToHtml.ts
-@@ -227,7 +227,7 @@ function parseInline(text: string): string {
+@@ -207,13 +207,131 @@ const inlineTokenizers: InlineTokenizer[] = [
+   trySoftBreak,
+ ];
+ 
++// Memry: the inline parser read to the end of the text for every opener that never closes, and
++// copied everything written so far for every hard break. What follows keeps each answer once.
++// The caches hold the texts one outermost parseInline call reads, and are dropped when it returns.
++interface InlineCache {
++  dead: Map<string, Uint8Array>;
++  partners: Map<string, Int32Array>;
++}
++const memryInlineCaches = new Map<string, InlineCache>();
++let memryInlineDepth = 0;
++function memryInlineCache(text: string): InlineCache {
++  let cache = memryInlineCaches.get(text);
++  if (!cache) {
++    cache = { dead: new Map(), partners: new Map() };
++    memryInlineCaches.set(text, cache);
++  }
++  return cache;
++}
++// The first position at or after `afterOpen` where `delimiter` closes an emphasis, or -1. Whether a
++// position closes does not depend on the opener, except that it cannot close right at `afterOpen`
++// (an empty emphasis), so a walk that finds none marks every position it visited, and a later
++// opener stops at the first of them.
++function memryFindCloser(
++  text: string,
++  afterOpen: number,
++  delimiter: string,
++): number {
++  const cache = memryInlineCache(text);
++  let dead = cache.dead.get(delimiter);
++  const length = delimiter.length;
++  const closes = (at: number): boolean =>
++    text.startsWith(delimiter, at) &&
++    text[at - 1] !== " " &&
++    text[at - 1] !== "\t" &&
++    !(
++      length === 1 &&
++      ((at > 0 && text[at - 1] === delimiter[0] && !(at >= 2 && text[at - 2] === "\\")) ||
++        (at + length < text.length && text[at + length] === delimiter[0]))
++    );
++  let end = text.length;
++  let at = afterOpen;
++  while (at < text.length) {
++    if (dead !== undefined && dead[at] === 1) {
++      end = at;
++      break;
++    }
++    if (text[at] === "\\" && at + 1 < text.length) {
++      at += 2;
++      continue;
++    }
++    if (closes(at) && at !== afterOpen) return at;
++    at++;
++  }
++  if (dead === undefined) {
++    dead = new Uint8Array(text.length);
++    cache.dead.set(delimiter, dead);
++  }
++  for (at = afterOpen; at < end; ) {
++    if (!(at === afterOpen && closes(at))) dead[at] = 1;
++    at += text[at] === "\\" && at + 1 < text.length ? 2 : 1;
++  }
++  return -1;
++}
++// The `close` that balances the `open` at `openPos` (which is always an `open`), or -1. One pass from
++// the first opener asked about pairs every opener after it with a stack, and a scan from any of them
++// reads the same characters to the same answer.
++function memryClosing(
++  text: string,
++  openPos: number,
++  open: string,
++  close: string,
++): number {
++  const cache = memryInlineCache(text);
++  let partners = cache.partners.get(open);
++  if (partners === undefined) {
++    partners = new Int32Array(text.length).fill(-2);
++    cache.partners.set(open, partners);
++  }
++  if (partners[openPos] === -2) {
++    const stack: number[] = [];
++    for (let at = openPos; at < text.length; at++) {
++      const char = text[at];
++      if (char === "\\" && at + 1 < text.length) {
++        at++;
++      } else if (char === open) {
++        partners[at] = -1;
++        stack.push(at);
++      } else if (char === close && stack.length > 0) {
++        partners[stack.pop()!] = at;
++      }
++    }
++  }
++  return partners[openPos];
++}
++function memryTrimEnd(parts: string[]): void {
++  while (parts.length > 0) {
++    const last = parts[parts.length - 1];
++    let end = last.length;
++    while (end > 0 && last.charCodeAt(end - 1) === 32) end--;
++    if (end === last.length && end > 0) return;
++    if (end > 0) {
++      parts[parts.length - 1] = last.slice(0, end);
++      return;
++    }
++    parts.pop();
++  }
++}
++
+ /**
+  * Parse inline markdown syntax and return HTML.
+  * Handles: bold, italic, bold+italic, strikethrough, inline code,
+  * links, images (with video detection), hard line breaks, backslash escapes.
+  */
+ function parseInline(text: string): string {
+-  let result = "";
++  memryInlineDepth++;
++  try {
++    return parseInlineText(text);
++  } finally {
++    if (--memryInlineDepth === 0) {
++      memryInlineCaches.clear();
++    }
++  }
++}
++
++function parseInlineText(text: string): string {
++  const result: string[] = [];
+   let i = 0;
+ 
+   while (i < text.length) {
+@@ -227,8 +345,8 @@ function parseInline(text: string): string {
        text[i - 1] === " " &&
        text[i - 2] === " "
      ) {
 -      result = result.replace(/ +$/, "");
-+      result = result.replace(/(?<! ) +$/, "");
-       result += "<br>\n";
+-      result += "<br>\n";
++      memryTrimEnd(result);
++      result.push("<br>\n");
        i++;
        continue;
-@@ -698,6 +698,40 @@ function isHtmlBlockStart(line: string): boolean {
+     }
+@@ -239,7 +357,7 @@ function parseInline(text: string): string {
+       for (const tokenizer of inlineTokenizers) {
+         const r = tokenizer(text, i);
+         if (r) {
+-          result += r.html;
++          result.push(r.html);
+           i = r.end;
+           matched = true;
+           break;
+@@ -254,11 +372,11 @@ function parseInline(text: string): string {
+       while (i < text.length && !SPECIAL_CHARS.has(text[i])) {
+         i++;
+       }
+-      result += escapeHtml(text.substring(runStart, i));
++      result.push(escapeHtml(text.substring(runStart, i)));
+     }
+   }
+ 
+-  return result;
++  return result.join("");
+ }
+ 
+ function parseInlineCode(
+@@ -390,43 +508,11 @@ function parseLink(
+ }
+ 
+ function findClosingBracket(text: string, openPos: number): number {
+-  let depth = 0;
+-  for (let i = openPos; i < text.length; i++) {
+-    if (text[i] === "\\" && i + 1 < text.length) {
+-      i++; // skip escaped
+-      continue;
+-    }
+-    if (text[i] === "[") {
+-      depth++;
+-    }
+-    if (text[i] === "]") {
+-      depth--;
+-      if (depth === 0) {
+-        return i;
+-      }
+-    }
+-  }
+-  return -1;
++  return memryClosing(text, openPos, "[", "]");
+ }
+ 
+ function findClosingParen(text: string, openPos: number): number {
+-  let depth = 0;
+-  for (let i = openPos; i < text.length; i++) {
+-    if (text[i] === "\\" && i + 1 < text.length) {
+-      i++;
+-      continue;
+-    }
+-    if (text[i] === "(") {
+-      depth++;
+-    }
+-    if (text[i] === ")") {
+-      depth--;
+-      if (depth === 0) {
+-        return i;
+-      }
+-    }
+-  }
+-  return -1;
++  return memryClosing(text, openPos, "(", ")");
+ }
+ 
+ /**
+@@ -501,50 +587,14 @@ function parseDelimited(
+     return null;
+   }
+ 
+-  // Find closing delimiter
+-  let j = afterOpen;
+-  while (j < text.length) {
+-    // Skip escaped characters
+-    if (text[j] === "\\" && j + 1 < text.length) {
+-      j += 2;
+-      continue;
+-    }
+-
+-    if (text.substring(j, j + len) === delimiter) {
+-      // Closing delimiter must not be preceded by whitespace
+-      if (text[j - 1] === " " || text[j - 1] === "\t") {
+-        j++;
+-        continue;
+-      }
+-
+-      // For single-char delimiters, don't accept closer if it's part of a
+-      // multi-char run (e.g., don't treat the * in ** as italic closer)
+-      if (
+-        len === 1 &&
+-        ((j > 0 &&
+-          text[j - 1] === delimiter[0] &&
+-          !(j >= 2 && text[j - 2] === "\\")) ||
+-          (j + len < text.length && text[j + len] === delimiter[0]))
+-      ) {
+-        j++;
+-        continue;
+-      }
+-
+-      const inner = text.substring(afterOpen, j);
+-      if (inner.length === 0) {
+-        j++;
+-        continue;
+-      }
+-
+-      return {
+-        html: openTag + parseInline(inner) + closeTag,
+-        end: j + len,
+-      };
+-    }
+-    j++;
++  const closer = memryFindCloser(text, afterOpen, delimiter);
++  if (closer === -1) {
++    return null;
+   }
+-
+-  return null;
++  return {
++    html: openTag + parseInline(text.substring(afterOpen, closer)) + closeTag,
++    end: closer + len,
++  };
+ }
+ 
+ // ─── Block-Level Types ───────────────────────────────────────────────────────
+@@ -698,6 +748,40 @@ function isHtmlBlockStart(line: string): boolean {
  
  // ─── Block-Level Tokenizer ──────────────────────────────────────────────────
  
@@ -261,7 +817,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
  function tokenize(markdown: string): Token[] {
    const lines = markdown.split("\n");
    const tokens: Token[] = [];
-@@ -715,7 +749,7 @@ function tokenize(markdown: string): Token[] {
+@@ -715,7 +799,7 @@ function tokenize(markdown: string): Token[] {
      }
  
      // Fenced code block (0-3 leading spaces allowed per CommonMark)
@@ -270,7 +826,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
      if (fenceMatch) {
        const fence = fenceMatch[1];
        const fenceChar = fence[0];
-@@ -747,7 +781,7 @@ function tokenize(markdown: string): Token[] {
+@@ -747,7 +831,7 @@ function tokenize(markdown: string): Token[] {
      // - Closing `#` sequence requires a preceding space (so `### foo###`
      //   keeps the trailing #s as text, while `### foo ###` strips them).
      // - Trailing whitespace is always stripped from the heading content.
@@ -279,7 +835,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
      if (headingMatch) {
        tokens.push({
          type: "heading",
-@@ -841,7 +875,7 @@ function tokenize(markdown: string): Token[] {
+@@ -841,7 +925,7 @@ function tokenize(markdown: string): Token[] {
          if (/^\s*([-*+]|\d+[.)])\s+/.test(cur)) {
            break;
          } // list item
@@ -288,7 +844,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
            break;
          } // table
          quoteLines.push(cur);
-@@ -857,7 +891,7 @@ function tokenize(markdown: string): Token[] {
+@@ -857,7 +941,7 @@ function tokenize(markdown: string): Token[] {
  
      // List item (bullet, ordered, or task)
      const listItemMatch = line.match(
@@ -297,7 +853,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
      );
      if (listItemMatch) {
        const indent = listItemMatch[1].length;
-@@ -914,14 +948,18 @@ function tokenize(markdown: string): Token[] {
+@@ -914,14 +998,18 @@ function tokenize(markdown: string): Token[] {
        // Consume ALL subsequent lines that belong to this list item
        i++;
        const subLines: string[] = [];
@@ -319,7 +875,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
            }
            if (lookAhead < lines.length && belongsToItem(lines[lookAhead])) {
              subLines.push("");
-@@ -950,7 +988,7 @@ function tokenize(markdown: string): Token[] {
+@@ -950,7 +1038,7 @@ function tokenize(markdown: string): Token[] {
        // Build the list item token
        // If there are sub-lines, they become child content (recursively tokenized)
        // Don't trim — preserve relative indentation of sub-lines
@@ -328,7 +884,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
        tokens.push({
          type: "listItem",
          listType,
-@@ -1006,7 +1044,7 @@ function tokenize(markdown: string): Token[] {
+@@ -1006,7 +1094,7 @@ function tokenize(markdown: string): Token[] {
        if (/^\s*([-*+]|\d+[.)])\s+/.test(nextLine)) {
          break;
        }
@@ -337,7 +893,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
          break;
        }
        if (isHtmlBlockStart(nextLine)) {
-@@ -1032,7 +1070,7 @@ function tokenize(markdown: string): Token[] {
+@@ -1032,7 +1120,7 @@ function tokenize(markdown: string): Token[] {
        content: paraLines
          .map((l) => l.replace(/^ {1,3}/, ""))
          .join("\n")
@@ -346,7 +902,7 @@ index 1b3d2e1c11ea25b829286e2de258d12215c2bae0..9108d1b59c243a99a8f0d66ee8a3fe79
      });
      prevLineWasBlank = false;
    }
-@@ -1056,7 +1094,7 @@ function tryParseTable(
+@@ -1056,7 +1144,7 @@ function tryParseTable(
    // Must contain at least one pipe and only dashes, colons, pipes, and whitespace
    if (
      !separatorLine.includes("|") ||
