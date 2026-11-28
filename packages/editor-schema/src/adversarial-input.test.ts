@@ -119,6 +119,14 @@ const cases: Array<[string, () => unknown]> = [
   ['BlockNote reads a run of unclosed link addresses', () => markdownToHTML('[a](b'.repeat(5000))],
   // Each `[` reads to the end for a `(` that never closes.
   ['a line of links no paren closes', () => maskLinkDestinations('[a](b'.repeat(8000))],
+  // A comment, CDATA section, instruction or declaration with no end is read to the end of the text from every opener.
+  ['BlockNote reads many unclosed comments', () => markdownToHTML(`a ${'<!--'.repeat(20_000)}`)],
+  [
+    'BlockNote reads many unclosed CDATA sections',
+    () => markdownToHTML(`a ${'<![CDATA['.repeat(20_000)}`)
+  ],
+  ['BlockNote reads many unclosed instructions', () => markdownToHTML(`a ${'<?'.repeat(40_000)}`)],
+  ['BlockNote reads many unclosed declarations', () => markdownToHTML(`a ${'<!a'.repeat(20_000)}`)],
   // Each break trims the spaces off everything written so far.
   ['BlockNote reads many hard breaks', () => markdownToHTML(`${'a  \n'.repeat(8000)}b`)]
 ]
