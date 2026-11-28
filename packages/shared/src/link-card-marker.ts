@@ -5,7 +5,7 @@ import {
   wikiLinkDisplayProps,
   wikiLinkMarkProps,
   type WikiLinkDisplayProps
-} from './wiki-link-props'
+} from './wiki-link-props.ts'
 
 /**
  * The `<!-- link-card:{…} -->` sidecar line: display settings of a wiki link

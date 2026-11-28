@@ -1,6 +1,6 @@
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { DETAILS_LINE_TAIL, DETAILS_MARKUP } from './block-starts.ts'
-import type { ParsedBlockShape } from './markdown'
+import type { ParsedBlockShape } from './markdown.ts'
 
 // ---------------------------------------------------------------------------
 // quote — a blockquote run whose inner structure BlockNote's flat `quote` block

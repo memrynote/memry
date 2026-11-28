@@ -5,7 +5,7 @@ import {
 } from '@memry/shared/html-comments'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { MASK_WORD } from '@memry/shared/mask-word'
-import { HtmlNesting, RAW_HTML_MAX_NESTING } from './html-nesting'
+import { HtmlNesting, RAW_HTML_MAX_NESTING } from './html-nesting.ts'
 
 export { RAW_HTML_MAX_NESTING }
 
