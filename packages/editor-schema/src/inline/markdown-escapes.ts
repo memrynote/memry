@@ -372,9 +372,7 @@ function unmarkCutTags<T extends Item>(items: T[]): T[] {
       continue
     }
     flush()
-    // SAFETY: only `content` is replaced, with items of the same shape.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SAFETY above
-    out.push(isLink(item) ? ({ ...item, content: unmarkCutTags(item.content) } as T) : item)
+    out.push(isLink(item) ? { ...item, content: unmarkCutTags(item.content) } : item)
   }
   flush()
   return out
