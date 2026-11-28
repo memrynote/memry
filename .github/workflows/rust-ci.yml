@@ -49,6 +49,13 @@ on:
   # Main has no merge queue today. If it gets one, the gate reports there too.
   merge_group:
   workflow_dispatch:
+    inputs:
+      # Seeds the caches after a cache-key change without waiting for the 03:27 run: dispatch on
+      # feat/tauri-v2 with warm=true runs the warm legs only, as on a SHA a scheduled run passed.
+      warm:
+        description: Run only the cache-warm legs
+        type: boolean
+        default: false
   # Every 6 hours: the legs the merge queue skips (Apple Silicon, every windows-11-arm leg, the Linux
   # release perf budgets, the windows-arm64 e2e specs) on the head of feat/tauri-v2, the default branch, where schedules fire (#5035). A push the queue passed runs
   # none of them; a SHA a scheduled run already finished is skipped.
@@ -148,10 +155,10 @@ jobs:
           INTEL: ${{ steps.tier.outputs.intel }}
           WINDOWS_LEGS: ${{ steps.tier.outputs.rust_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.rust_macos }}
-          POST_MERGE: ${{ steps.tier.outputs.post_merge }}
+          POST_MERGE: ${{ github.event_name == 'workflow_dispatch' && inputs.warm && 'covered' || steps.tier.outputs.post_merge }}
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.base_ref }}
-          WARM: ${{ github.event_name == 'schedule' && github.event.schedule == '27 3 * * *' }}
+          WARM: ${{ (github.event_name == 'schedule' && github.event.schedule == '27 3 * * *') || (github.event_name == 'workflow_dispatch' && inputs.warm) }}
         run: |
           all=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" --arg event "$EVENT" --arg base "$BASE" --arg warm "$WARM" \
             -f .github/actions/ci-tier/rust-legs.jq)
@@ -317,9 +324,9 @@ jobs:
         if: runner.os == 'Windows' && runner.arch == 'X64'
         uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
 
-      # The repo's cache cap is 10 GB and an OS's entry is 2.5-3.5 GB, so each merge-queue OS has one
-      # entry and only its `seams` leg saves it: lint and test-archive restore it and write
-      # nothing. macOS (every part, `seams` included) and windows-11-arm legs restore and never save: theirs would not
+      # The repo's cache cap is 50 GB (cache/storage-limit) and an OS's entry is 3-5.5 GB, so each
+      # merge-queue OS has one entry and only its `seams` leg saves it: lint and test-archive restore
+      # it and write nothing. macOS (every part, `seams` included) and windows-11-arm legs restore and never save: theirs would not
       # fit the cap beside the queue's. Only runs on refs/heads/feat/tauri-v2 save (the daily warm run,
       # dispatch there, and a push the queue did not cover or that changed a cache-key input such as
       # Cargo.lock). PRs, merge groups and other refs restore feat/tauri-v2's entry, the default
@@ -328,7 +335,10 @@ jobs:
       # The Linux `budget` leg keeps an entry of its own, saved the same way: its release build shares
       # nothing with the debug entry, and rust-cache never saves over an exact key hit, so the debug
       # entry saved before the calendar budget existed held none of it and every run compiled 457
-      # release crates (17 minutes, run 46058633973). The cap is 50 GB now (cache/storage-limit).
+      # release crates (17 minutes, run 46058633973).
+      # The windows-2022 `lint` leg keeps one too: clippy checks its dependencies (rmeta), which the
+      # seams entry's build does not hold, so its cargo steps took 25 of its 18 to 29 minutes (run
+      # 46106151332).
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
@@ -341,9 +351,9 @@ jobs:
           # The image in the key: rust-cache keys on job id + OS + arch only, so main's ubuntu-latest
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
           # No part in the key: every leg of an OS restores the entry its seams leg saved, but the
-          # Linux `budget` leg, which restores and saves its own (see above).
-          key: ${{ matrix.os }}-${{ matrix.budget && 'budget' || 'checks' }}
-          save-if: ${{ (matrix.part == 'seams' || matrix.part == 'budget') && matrix.os != 'windows-11-arm' && !startsWith(matrix.os, 'macos') && github.ref == 'refs/heads/feat/tauri-v2' }}
+          # Linux `budget` and windows-2022 `lint` legs, which restore and save their own (see above).
+          key: ${{ matrix.os }}-${{ matrix.budget && 'budget' || (matrix.os == 'windows-2022' && matrix.part == 'lint' && 'lint') || 'checks' }}
+          save-if: ${{ (matrix.part == 'seams' || matrix.part == 'budget' || (matrix.part == 'lint' && matrix.os == 'windows-2022')) && matrix.os != 'windows-11-arm' && !startsWith(matrix.os, 'macos') && github.ref == 'refs/heads/feat/tauri-v2' }}
           # The warm run exists to save: a flaky step must not lose its entry.
           cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
 
@@ -1029,7 +1039,8 @@ jobs:
     if: ${{ !cancelled() && needs.plan.outputs.partitions != '[]' && (needs.plan.outputs.post_merge != 'covered' || needs.plan.outputs.warm == 'true') && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
     # windows-11-arm restores no cargo cache and builds BoringSSL from scratch (see lint-and-test).
-    # macos-15 restores none either: its cold suite build took 26 minutes (run 45986308547).
+    # macos-15 restores an entry of its own (see Cache cargo): cold, its suite build took 21 to 26
+    # minutes (runs 45986308547, 46094183409).
     timeout-minutes: ${{ matrix.os == 'windows-11-arm' && 90 || 65 }}
     strategy:
       fail-fast: false
@@ -1078,7 +1089,9 @@ jobs:
 
       # Restores the entry lint-and-test's `seams` leg of this OS saves, and saves nothing (the cache
       # cap, see lint-and-test). rust-cache puts the job id in its key, so this job names that job's
-      # id itself.
+      # id itself. macos-15 has no seams entry (macOS legs never save one): its archive keeps an
+      # entry of its own, saved only on refs/heads/feat/tauri-v2, by the cache-warm run, which builds
+      # the archive of the macOS partitions a PR runs (rust-legs.jq).
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
@@ -1088,9 +1101,10 @@ jobs:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
         with:
           workspaces: crates
-          key: ${{ matrix.os }}-checks-lint-and-test
+          key: ${{ matrix.os == 'macos-15' && 'macos-15-tests-test-archive' || format('{0}-checks-lint-and-test', matrix.os) }}
           add-job-id-key: false
-          save-if: false
+          save-if: ${{ matrix.os == 'macos-15' && github.ref == 'refs/heads/feat/tauri-v2' }}
+          cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
 
       - name: Drop a partial cargo cache
         if: steps.cargo-cache.outcome == 'failure'
