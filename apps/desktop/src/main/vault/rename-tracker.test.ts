@@ -34,6 +34,7 @@ import {
   hasPendingDeletes,
   getPendingDeleteCount,
   createDeferredDeletes,
+  forgetRenameTarget,
   settleDeferredDeletes,
   buildAddedFileIdentityKey,
   buildFileIdentityKey,
@@ -123,6 +124,42 @@ describe('rename-tracker', () => {
     await move
     await vi.advanceTimersByTimeAsync(500)
     expect(deferred).toHaveBeenCalledTimes(1)
+  })
+
+  // The file's own rename event named the file it became: only that file's add
+  // takes the delete, ahead of older deletes of the same bytes, and a copy or
+  // a template note with the same bytes never does.
+  it('pairs a delete whose new path is known only with the add at that path', () => {
+    trackPendingDelete('note-older', 'hash-same', 'notes/older.md', vi.fn())
+    trackPendingDelete('note-a', 'hash-same', 'notes/a.md', vi.fn(), null, null, 'notes/b.md')
+
+    expect(checkForRename('hash-same', 'notes/b.md')).toMatchObject({ id: 'note-a' })
+
+    trackPendingDelete('note-c', 'hash-same', 'notes/c.md', vi.fn(), null, null, 'notes/d.md')
+    expect(checkForRename('hash-same', 'notes/copy.md')).toMatchObject({ id: 'note-older' })
+    expect(checkForRename('hash-same', 'notes/copy-2.md')).toBeNull()
+    expect(checkForRename('hash-same', 'notes/d.md')).toMatchObject({ id: 'note-c' })
+  })
+
+  // A move to another folder under a new name names the new name in the old
+  // folder: the add there runs and does not take the delete.
+  it('pairs a delete with any add once the add at its named path did not take it', () => {
+    trackPendingDelete('note-a', 'hash-a', 'Docs/a.md', vi.fn(), null, null, 'Docs/b.md')
+    expect(checkForRename('hash-a', 'Other/b.md')).toBeNull()
+
+    forgetRenameTarget('note-a', 'Docs/b.md')
+    expect(checkForRename('hash-a', 'Other/b.md')).toMatchObject({ id: 'note-a' })
+  })
+
+  // A chained rename, a -> b -> c: the add of b took the first delete, and the
+  // unlink of b tracked the next one before that add ended.
+  it("keeps a newer delete's named path when an older add of the same note ends", () => {
+    trackPendingDelete('note-a', 'hash-a', 'Docs/b.md', vi.fn(), null, null, 'Docs/c.md')
+
+    forgetRenameTarget('note-a', 'Docs/b.md')
+
+    expect(checkForRename('hash-a', 'Docs/copy.md')).toBeNull()
+    expect(checkForRename('hash-a', 'Docs/c.md')).toMatchObject({ id: 'note-a' })
   })
 
   // ==========================================================================

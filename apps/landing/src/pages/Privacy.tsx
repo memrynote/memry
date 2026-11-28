@@ -9,7 +9,7 @@ export function PrivacyPage() {
         eyebrow="Legal · Privacy"
         title="Privacy Policy"
         intro="memrynote is built on a simple promise: your notes belong to you, and we cannot read them."
-        lastUpdated="November 18, 2026"
+        lastUpdated="November 28, 2026"
       >
         <h2>Summary in 30 seconds</h2>
         <ul>
@@ -170,6 +170,14 @@ export function PrivacyPage() {
           can reply or send the messages you opted into. We may track delivery, opens, clicks, and
           unsubscribes for those emails so we can understand whether the campaign is working.
         </p>
+        <p>
+          <strong>Product updates and newsletter.</strong> When you create an account, from the
+          website, the desktop app, or the iPhone app, we add your email address to our mailing list
+          for product updates, beta news, and the newsletter. Every one of those emails has an
+          unsubscribe link, and one click takes you off the list. You can also email{' '}
+          <a href="mailto:support@memrynote.com">support@memrynote.com</a> to be removed.
+          Unsubscribing does not affect your account or the transactional emails it needs.
+        </p>
 
         <h2>7. How we use the data we have</h2>
         <p>We use the data described above only to:</p>
@@ -178,6 +186,9 @@ export function PrivacyPage() {
           <li>Bill you, through Paddle, for the plan you chose.</li>
           <li>
             Send transactional email (sign-up confirmation, payment receipts, security notices).
+          </li>
+          <li>
+            Send product update and newsletter emails, which you can unsubscribe from at any time.
           </li>
           <li>
             Understand which features get used and where the app crashes (if you have left anonymous
@@ -223,8 +234,8 @@ export function PrivacyPage() {
             (name, billing address, payment method).
           </li>
           <li>
-            <strong>Resend or a similar transactional email provider</strong> — delivers sign-up,
-            billing, and security emails.
+            <strong>Resend or a similar email provider</strong> — delivers sign-up, billing, and
+            security emails, and holds the mailing list for product update and newsletter emails.
           </li>
           <li>
             <strong>Apple</strong> — if you ask for an iPhone beta invite, receives the email
@@ -251,6 +262,11 @@ export function PrivacyPage() {
           <li>
             <strong>Account record:</strong> kept while your account exists. If you delete your
             account, the record and any remaining blobs are removed within 30 days.
+          </li>
+          <li>
+            <strong>Mailing list:</strong> your email address stays on it until you unsubscribe.
+            Deleting your account does not unsubscribe you, so use the unsubscribe link or email
+            support.
           </li>
           <li>
             <strong>Billing records:</strong> retained as required by tax law in your country
