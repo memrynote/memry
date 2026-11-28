@@ -29,11 +29,14 @@ const LIMIT_MS = 500
 /** A block tag also builds blocks, which take longer than a mark. */
 const BLOCK_LIMIT_MS = 1000
 /**
- * Past the cap `<ul><li>` is a list of thousands of items, which a note may be
- * and which takes as long to build as it does: the bound is on the nesting, so
- * only a stack overflow or a minute of it fails.
+ * Past the cap `<ul><li>` is a flat list of `depth - 48` items, which a note may
+ * be and which BlockNote builds and writes at about half a millisecond an item:
+ * 1.1, 1.2, 2.2 and 4.6 s of CPU at 1000, 2000, 4000 and 8000 levels, within a
+ * third of the 3.5 s a plain `- x` list of as many items takes. The bound is on
+ * the nesting, which took 50 s at 4000 levels before the cap, so only a stack
+ * overflow or the better part of a minute fails.
  */
-const LIST_LIMIT_MS = 6000
+const LIST_LIMIT_MS = 20_000
 
 interface Run {
   text?: string
@@ -115,12 +118,17 @@ describe.each([4000, 8000])('%i nested handled tags', (depth) => {
     ['a figure', '<figure>', '</figure>', BLOCK_LIMIT_MS],
     ['a toggle', '<details data-memry-toggle>', '</details>', BLOCK_LIMIT_MS],
     ['a code block', '<pre>', '</pre>', BLOCK_LIMIT_MS]
-  ])('%s is read in a bounded time', async (_label, open, close, limit) => {
-    for (const closed of [true, false]) {
-      const { ms } = await seed(nested(open, close, depth, closed))
-      expect(ms).toBeLessThan(limit)
-    }
-  })
+  ])(
+    '%s is read in a bounded time',
+    async (_label, open, close, limit) => {
+      for (const closed of [true, false]) {
+        const { ms } = await seed(nested(open, close, depth, closed))
+        expect(ms).toBeLessThan(limit)
+      }
+    },
+    // Each seed runs twice, and a loaded machine stretches the wall time of a list's seconds of CPU.
+    120_000
+  )
 })
 
 describe('the depth cap', () => {
