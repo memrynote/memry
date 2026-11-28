@@ -264,6 +264,36 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([source, target])
     }
 
+    /// The line the caret lands on stays above the keyboard and its toolbar.
+    /// On an iPad mini in landscape the on-screen keys and the toolbar take
+    /// the window's lower two thirds, a new note's first line included.
+    func testTheCaretLineStaysAboveTheKeyboardToolbar() throws {
+        try openNotes()
+        let title = "[agent] \(run) caret"
+        let block = makeNote(title)
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), block), "Return in the title did not move to the body")
+        let toolbar = keyboardToolbar
+        XCTAssertTrue(toolbar.waitForExistence(timeout: 10), "the body has no keyboard toolbar")
+        attach("caret-line")
+        XCTAssertLessThanOrEqual(block.frame.maxY, toolbar.frame.minY, "the line with the caret is under the keyboard toolbar")
+
+        // Lines typed past the keys scroll up with the caret.
+        for line in 1...12 {
+            app.typeText("Line \(line)\n")
+            let typed = app.textViews.matching(NSPredicate(
+                format: "identifier BEGINSWITH 'note.block.' AND value == %@", "Line \(line)"
+            )).firstMatch
+            XCTAssertTrue(typed.waitForExistence(timeout: 10), "line \(line) did not get its own block")
+        }
+        let caret = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND hasKeyboardFocus == true"
+        )).firstMatch
+        XCTAssertTrue(caret.waitForExistence(timeout: 10), "no block holds the caret")
+        attach("caret-line-typed")
+        XCTAssertLessThanOrEqual(caret.frame.maxY, toolbar.frame.minY, "the line typed last is under the keyboard toolbar")
+        deleteNotes([title])
+    }
+
     /// #4377: a wiki link's menu opens its note beside the linking one, each
     /// pane takes typing, and ⌘⌥W closes the focused pane with both notes'
     /// typing kept.
@@ -507,7 +537,7 @@ final class NotesSplitUITests: XCTestCase {
         let farEntry = outlineEntry("\(run) far")
         XCTAssertTrue(farEntry.waitForExistence(timeout: 15), "the outline does not list the far heading")
         farEntry.tap()
-        XCTAssertTrue(far.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the far heading")
+        XCTAssertTrue(waitUntilShown(far), "the outline did not scroll to the far heading")
         attach("inspector-outline-far")
 
         // A rotation there and back brings the rail back alone: the list
@@ -847,6 +877,40 @@ final class NotesSplitUITests: XCTestCase {
     /// A heading block in the note body.
     private func heading(_ text: String) -> XCUIElement {
         app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS %@", text)).firstMatch
+    }
+
+    /// The editor's keyboard toolbar: its strip, padding included.
+    private var keyboardToolbar: XCUIElement {
+        app.descendants(matching: .any)["editor.keyboardToolbar"].firstMatch
+    }
+
+    /// Waits up to 5 s for `element` to sit inside the window, below the
+    /// navigation bar over its column and above the keyboard toolbar and the
+    /// on-screen keys. After the outline scrolls the page to the note's last
+    /// heading on a simulator with the software keyboard up, `isHittable`
+    /// throws "Activation point invalid" for every block on screen, a heading in
+    /// plain view included, so visibility is read off the frame.
+    private func waitUntilShown(_ element: XCUIElement) -> Bool {
+        let deadline = Date().addingTimeInterval(5)
+        repeat {
+            if element.exists {
+                let frame = element.frame
+                let window = app.windows.firstMatch.frame
+                var top = window.minY
+                var bottom = window.maxY
+                for bar in app.navigationBars.allElementsBoundByIndex
+                where bar.frame.minX < frame.maxX && frame.minX < bar.frame.maxX {
+                    top = max(top, bar.frame.maxY)
+                }
+                for cover in [keyboardToolbar, app.keyboards.firstMatch] where cover.exists {
+                    bottom = min(bottom, cover.frame.minY)
+                }
+                if !frame.isEmpty, frame.minY >= top, frame.maxY <= bottom,
+                   frame.minX >= window.minX, frame.maxX <= window.maxX { return true }
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        return false
     }
 
     /// The page menu's Full width row, the menu left open.
