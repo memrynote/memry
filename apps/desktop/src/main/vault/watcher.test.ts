@@ -1807,6 +1807,30 @@ describe('vault watcher', () => {
       expect(updatedFor(id)).toBe(true)
     })
 
+    it('runs the change of a renamed note whose hash check fails', async () => {
+      const watcher = readyWatcher()
+      watcher.debouncedChange = (filePath: string) => void watcher.handleFileChange(filePath)
+      const second = new Date('2026-01-12T00:00:00.000Z')
+      const { notePath, id } = await indexNote(watcher, 'unread', 'Body', second)
+      indexDb.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, id)).run()
+      const renamed = path.join(vault.notesDir, 'renamed.md')
+      fs.renameSync(notePath, renamed)
+      await rawEvent(watcher, notePath, 'renamed.md')
+      watcher.handleFileDelete(notePath)
+      await vi.waitFor(() => expect(pathOf(id)).toBe('notes/renamed.md'))
+      await watcher.handleFileAdd(renamed)
+
+      fs.writeFileSync(renamed, fs.readFileSync(renamed, 'utf8').replace('Body', 'Bodx'))
+      fs.utimesSync(renamed, second, second)
+      window.webContents.send.mockClear()
+      vi.mocked(scanMarkdownFile).mockRejectedValueOnce(
+        Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' })
+      )
+      await watcher.handleRawChange(renamed, fs.statSync(renamed))
+
+      await vi.waitFor(() => expect(updatedFor(id)).toBe(true))
+    })
+
     it('matches a write folded into the rename event by the identity at the new name', async () => {
       const watcher = readyWatcher()
       const { notePath, id } = await indexNote(watcher, 'apple', 'Apple body')
