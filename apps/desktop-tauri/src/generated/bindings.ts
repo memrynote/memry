@@ -1168,6 +1168,20 @@ export const commands = {
 	graphGetLayout: (viewKey: string) => __TAURI_INVOKE<GraphLayoutView | null>("graph_get_layout", { viewKey }),
 	/**  `graph:save-layout`: replaces the view's layout. */
 	graphSaveLayout: (viewKey: string, layout: GraphLayoutView) => __TAURI_INVOKE<null>("graph_save_layout", { viewKey, layout }),
+	/**  Marks `electron-localstorage.json` applied, so no later window sets its keys again. */
+	migrationLocalstorageApplied: () => __TAURI_INVOKE<null>("migration_localstorage_applied"),
+	/**
+	 *  Show details: shows the verification report (`electron-import-report.json`) in the file
+	 *  manager.
+	 */
+	migrationOpenReport: () => __TAURI_INVOKE<null>("migration_open_report"),
+	/**
+	 *  Try again: runs the import again after a failure. Refused while a run is going, after it
+	 *  succeeded, and on a launch without one.
+	 */
+	migrationRetry: () => __TAURI_INVOKE<null>("migration_retry"),
+	/**  What the migration view shows now; `idle` on a launch that migrates nothing. */
+	migrationStatus: () => __TAURI_INVOKE<MigrationStatus>("migration_status"),
 	/**
 	 *  `canvas:can-upload-asset`: `false` until the attachment upload lands (30f), Electron's answer
 	 *  with no sync. The editor then keeps new images inline in the scene.
@@ -3748,6 +3762,28 @@ export type Metrics = {
 	retryCount?: number | null,
 	activeSeconds?: number | null,
 	value?: number | null,
+};
+
+/**  `idle` on a launch that migrates nothing. */
+export type MigrationState = "idle" | "running" | "failed" | "done";
+
+export type MigrationStatus = {
+	/**  Grows with every change, so the page drops an answer older than an update it was sent. */
+	seq: number,
+	state: MigrationState,
+	/**  0 to 100. */
+	percent: number,
+	title: string,
+	/**  The phase line while running. */
+	phase: string | null,
+	body: string,
+	note: string | null,
+	/**  The failing check, as Step 37e2's `RunError::check` names it. */
+	check: string | null,
+	/**  The line that names `check` to the user. */
+	checkLine: string | null,
+	/**  The error message, in English like the log. */
+	details: string | null,
 };
 
 /**

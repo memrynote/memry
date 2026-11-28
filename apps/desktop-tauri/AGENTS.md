@@ -57,6 +57,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 ## Startup
 
 - `startup::register(stage, name, f)` adds work to a boot stage (`Paths`, `Logging`, `Guards`, ... `Schedulers`). `run()` executes stages in enum order. A failing stage exits with code 2. Do not edit `run()` to add boot work.
+- A registration can pause the boot with `startup::suspend_boot()`: the stages after it wait while the event loop runs, until `startup::resume_boot(app)` runs them on the main thread. The first-launch migration (`src-tauri/src/migration/`, `Stage::Migration`) is the one user: no telemetry, account, vault or sync stage may sort before it (`tests/startup.rs`).
 - `StartupState` is the one startup type. Rust publishes it as `window.__MEMRY_STARTUP__` through the main window's init script, and `src/renderer/src/lib/startup/` applies it before first paint.
 
 ## The not-ported shim
