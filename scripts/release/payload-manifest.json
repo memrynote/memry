@@ -4,7 +4,7 @@
     "windows": {
       "binDir": "",
       "resourceDir": "",
-      "executables": ["Memrynote.exe", "memry-ml-worker.exe"],
+      "executables": ["Memrynote.exe", "memry-ml-worker.exe", "memrynote-cli.exe"],
       "resources": [
         "pdfium/pdfium.dll",
         "pdfium/LICENSE",
@@ -16,7 +16,7 @@
     "macos": {
       "binDir": "Contents/MacOS",
       "resourceDir": "Contents/Resources",
-      "executables": ["MemryNote", "memry-ml-worker", "memry-eventkit"],
+      "executables": ["MemryNote", "memry-ml-worker", "memrynote-cli", "memry-eventkit"],
       "resources": [
         "pdfium/libpdfium.dylib",
         "pdfium/LICENSE",
@@ -28,7 +28,7 @@
     "linux": {
       "binDir": "usr/bin",
       "resourceDir": "usr/lib/MemryNote",
-      "executables": ["memrynote", "memry-ml-worker"],
+      "executables": ["memrynote", "memry-ml-worker", "memrynote-cli"],
       "resources": [
         "pdfium/libpdfium.so",
         "pdfium/LICENSE",

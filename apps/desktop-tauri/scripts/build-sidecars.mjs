@@ -22,11 +22,14 @@ const OCR_SOURCE = join(ROOT, 'crates/memry-desktop/src/services/file_text/ocr.r
 export const OCR_DATA = join(TAURI_DIR, 'resources/tessdata/eng.traineddata.gz')
 
 /**
- * The Rust binaries bundled through `externalBin`, by crate and bin name. Step 35 adds
- * `memrynote-cli` here; Step 29's `memry-eventkit` (macOS) is not a cargo bin and gets its own
- * build step.
+ * The Rust binaries bundled through `externalBin`, by crate and bin name. `memrynote-cli` is the
+ * binary the terminal command shim runs from beside the app binary (`memrynote_cli::shim`). The
+ * macOS `memry-eventkit` helper is not a cargo bin: the app's build.rs builds it.
  */
-export const SIDECARS = [{ crate: 'memry-ml-worker', bin: 'memry-ml-worker' }]
+export const SIDECARS = [
+  { crate: 'memry-ml-worker', bin: 'memry-ml-worker' },
+  { crate: 'memrynote-cli', bin: 'memrynote-cli' }
+]
 
 /** A Rust target triple to the `scripts/fetch-pdfium.mjs --target` of its pdfium build. */
 const PDFIUM_TARGETS = {

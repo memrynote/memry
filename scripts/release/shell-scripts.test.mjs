@@ -195,7 +195,7 @@ describe(
       '../../apps/desktop-tauri/eventkit/entitlements.plist'
     )
 
-    it('gives the app entitlements to the main binary and the bundle only, and the EventKit helper calendars only', () =>
+    it('gives the app entitlements to the main binary and the bundle only, the EventKit helper calendars only and the CLI none', () =>
       inTemp((dir) => {
         const app = path.join(dir, 'MemryNote.app')
         const files = {
@@ -204,6 +204,7 @@ describe(
             '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
           'Contents/MacOS/MemryNote': 'bin',
           'Contents/MacOS/memry-ml-worker': 'bin',
+          'Contents/MacOS/memrynote-cli': 'bin',
           'Contents/MacOS/memry-eventkit': 'bin',
           'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
         }
@@ -221,6 +222,7 @@ describe(
         const signing = '--force --timestamp --options runtime'
         assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n'), [
           `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-ml-worker`,
+          `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memrynote-cli`,
           `codesign ${signing} --entitlements ${eventkitEntitlements} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-eventkit`,
           `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/Resources/pdfium/libpdfium.dylib`,
           `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}/Contents/MacOS/MemryNote`,
@@ -229,7 +231,11 @@ describe(
         ])
       }))
 
-    for (const missing of ['Contents/MacOS/memry-eventkit', 'Contents/MacOS/memry-ml-worker']) {
+    for (const missing of [
+      'Contents/MacOS/memry-eventkit',
+      'Contents/MacOS/memry-ml-worker',
+      'Contents/MacOS/memrynote-cli'
+    ]) {
       it(`fails before signing when the manifest's ${path.basename(missing)} is not in the bundle`, () =>
         inTemp((dir) => {
           const app = path.join(dir, 'MemryNote.app')
@@ -239,6 +245,7 @@ describe(
               '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
             'Contents/MacOS/MemryNote': 'bin',
             'Contents/MacOS/memry-ml-worker': 'bin',
+            'Contents/MacOS/memrynote-cli': 'bin',
             'Contents/MacOS/memry-eventkit': 'bin',
             'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
           }
