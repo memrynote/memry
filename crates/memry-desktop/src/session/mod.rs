@@ -85,6 +85,10 @@ pub enum SessionError {
     /// picked the name, so it is someone else's and stays untouched.
     #[error("A folder already exists at {0}")]
     FolderExists(String),
+    /// The [`VaultMigrator`] refused the folder: the previous app's data has not moved into it
+    /// yet. Never a verdict on the vault, so a startup open keeps it current and tries again.
+    #[error("{0}")]
+    NotMigrated(String),
 }
 
 impl CoreError for SessionError {
@@ -98,6 +102,7 @@ impl CoreError for SessionError {
             Self::AlreadyOpen => (FailureKind::Invalid, "vault_already_open"),
             Self::Held(_) => (FailureKind::Locked, "vault_held"),
             Self::FolderExists(_) => (FailureKind::Invalid, "vault_folder_exists"),
+            Self::NotMigrated(_) => (FailureKind::Invalid, "vault_not_migrated"),
         }
     }
 }

@@ -432,6 +432,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     // Loaded by the `I18n` stage, which needs it for the language.
     let config = app.state::<Arc<AppConfig>>().inner().clone();
     let session = Session::new(VaultRegistry::new(config));
+    crate::migration::electron::install_vault_migrator(app, &session);
     register_settings_hook(app, &session);
     // Locked files read-only on disk at each open, before the watcher starts (Step 14e-2b).
     memry_desktop::locks::register(&session);

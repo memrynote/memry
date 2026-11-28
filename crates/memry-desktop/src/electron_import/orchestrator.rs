@@ -1,7 +1,8 @@
 //! The first-launch migration (Step 37e2, #3554): [`run_first_launch`] runs the phases in order,
 //! preflight, `app-state`, `secrets`, `vault`, `finish`, and [`migrate_vault`] imports a vault the
-//! run deferred when the session first opens it. Nothing calls either in production until the
-//! Tauri wiring (37f).
+//! run deferred when the session first opens it. The Tauri shell runs the first in its
+//! `Migration` startup stage and installs the second as the session's open hook
+//! ([`vault_migrator`]).
 //!
 //! **Resuming.** Every phase is a pure function of the untouched Electron data, and the report
 //! (`electron-import-report.json`) is saved after each one: a rerun after a crash skips the
@@ -28,7 +29,7 @@ pub mod preflight;
 mod secrets;
 mod vault;
 
-pub use self::deferred::{migrate_vault, move_vault};
+pub use self::deferred::{migrate_vault, move_vault, vault_migrator, wall_clock_ms};
 pub use self::error::RunError;
 
 use std::path::{Path, PathBuf};

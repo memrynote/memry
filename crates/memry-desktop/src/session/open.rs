@@ -55,7 +55,7 @@ pub(crate) fn prepare_core_dir(
     }
     // The previous app's data moves in before anything creates a core over it (Step 37).
     if let Some(migrate) = migrate {
-        migrate(path).map_err(SessionError::Invalid)?;
+        migrate(path).map_err(SessionError::NotMigrated)?;
     }
     if !is_vault_initialized(path) {
         init_vault(path).map_err(|err| match err.kind() {
