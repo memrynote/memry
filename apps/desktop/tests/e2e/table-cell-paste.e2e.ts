@@ -230,16 +230,16 @@ test.describe('Pasting into a table cell', () => {
     const cells = await tableCells(page)
     expect(cells).toHaveLength(3)
     expect(cells?.every((row) => row.length === 2)).toBe(true)
-    expect(cells?.[2][0]).toContain('first')
-    expect(cells?.[2][0]).toContain('second')
+    expect(cells?.[2][0]).toBe('Review first\nsecond')
 
-    // A markdown row is one line, so the newline becomes a space on disk —
-    // lossy, but the text is all still there and the table is still a table.
+    // A markdown row is one line, so the newline is written as `<br>`, which
+    // reads back as the same hard break, and the table is still two columns.
     await expect
       .poll(() => savedBody(page, noteId), { message: 'note body on disk', timeout: 20_000 })
       .toContain('second')
     const body = await savedBody(page, noteId)
-    expect(body).toMatch(/\|\s*Review first second\s*\|\s*Nobody\s*\|/)
+    expect(body).toMatch(/\|\s*Review first<br>second\s*\|\s*Nobody\s*\|/)
+    expect(columnCount(body, '| Review')).toBe(2)
   })
 
   test('moves text from one cell into another on cut and paste', async ({ page }) => {
