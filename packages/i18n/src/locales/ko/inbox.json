@@ -279,12 +279,10 @@
         "description": "{count, plural, other {#시간 후}}"
       },
       "tomorrow": {
-        "label": "내일",
-        "description": "내일 오전 9시"
+        "label": "내일"
       },
       "nextWeek": {
-        "label": "다음 주",
-        "description": "월요일 오전 9시"
+        "label": "다음 주"
       },
       "inMinutes": {
         "label": "{count, plural, other {#분 후}}"

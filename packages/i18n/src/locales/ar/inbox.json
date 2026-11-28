@@ -279,12 +279,10 @@
         "description": "بعد {count, plural, zero {# ساعة} one {ساعة واحدة} two {ساعتين} few {# ساعات} many {# ساعة} other {# ساعة}}"
       },
       "tomorrow": {
-        "label": "غدًا",
-        "description": "غدًا في 9 صباحًا"
+        "label": "غدًا"
       },
       "nextWeek": {
-        "label": "الأسبوع القادم",
-        "description": "الاثنين في 9 صباحًا"
+        "label": "الأسبوع القادم"
       },
       "inMinutes": {
         "label": "بعد {count, plural, zero {# دقيقة} one {دقيقة واحدة} two {دقيقتين} few {# دقائق} many {# دقيقة} other {# دقيقة}}"

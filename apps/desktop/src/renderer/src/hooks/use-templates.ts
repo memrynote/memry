@@ -7,7 +7,8 @@ import { getI18n } from 'react-i18next'
 
 import { useState, useEffect, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { TEMPLATE_NAME_TAKEN } from '@memry/contracts/templates-api'
+import { extractErrorMessage, IpcFailureError } from '@/lib/ipc-error'
 
 import {
   templatesService,
@@ -38,9 +39,12 @@ interface UseTemplatesReturn {
   reload: () => Promise<void>
   /** Get a single template by ID */
   getTemplate: (id: string) => Promise<Template | null>
-  /** Create a new template */
+  /**
+   * Create a new template. Resolves null on failure, but a refused name throws
+   * an `IpcFailureError` coded `TEMPLATE_NAME_TAKEN` whose message is ready to show.
+   */
   createTemplate: (input: TemplateCreateInput) => Promise<Template | null>
-  /** Update a template */
+  /** Update a template. A refused rename throws like `createTemplate`. */
   updateTemplate: (input: TemplateUpdateInput) => Promise<Template | null>
   /** Delete a template */
   deleteTemplate: (id: string) => Promise<boolean>
@@ -100,8 +104,12 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
           ])
           return response.template
         }
+        if (response.errorCode === TEMPLATE_NAME_TAKEN) {
+          throw new IpcFailureError(response.error ?? '', response.errorCode)
+        }
         return null
       } catch (err) {
+        if (err instanceof IpcFailureError) throw err
         log.error('Failed to create template:', err)
         return null
       }
@@ -129,8 +137,12 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
           )
           return response.template
         }
+        if (response.errorCode === TEMPLATE_NAME_TAKEN) {
+          throw new IpcFailureError(response.error ?? '', response.errorCode)
+        }
         return null
       } catch (err) {
+        if (err instanceof IpcFailureError) throw err
         log.error('Failed to update template:', err)
         return null
       }

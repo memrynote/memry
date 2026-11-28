@@ -392,7 +392,8 @@
     "createFailed": "Nem sikerült létrehozni a sablont",
     "updateFailed": "Nem sikerült frissíteni a sablont",
     "deleteFailed": "Nem sikerült törölni a sablont",
-    "duplicateFailed": "Nem sikerült megkettőzni a sablont"
+    "duplicateFailed": "Nem sikerült megkettőzni a sablont",
+    "nameTaken": "Már létezik „{name}” nevű sablon. Válassz másik nevet."
   },
   "customIcon": {
     "unreadableImage": "Nem sikerült beolvasni a képet. Próbálkozzon PNG, JPG, GIF, WEBP vagy SVG formátumú fájllal.",

@@ -27,6 +27,7 @@ use memry_core::api::tag_hub::TagHub;
 use memry_core::api::tag_schemas::TagSchemas;
 use memry_core::api::tasks::Tasks;
 use memry_core::domain::tag_schema::{self, PropertyInfo, ResolvedTag};
+use memry_core::domain::template_store::TemplateWriteError;
 
 use crate::error::{CoreError, FailureKind};
 use crate::i18n::{self, Args};
@@ -49,6 +50,8 @@ pub enum SchemaError {
     #[error(transparent)]
     Storage(#[from] StorageError),
     #[error(transparent)]
+    Template(#[from] TemplateWriteError),
+    #[error(transparent)]
     Auth(#[from] AuthError),
     /// A field rename ended between two notes, as a quit ends it; its job stays recorded.
     #[error("the field rename stopped; the next open finishes it")]
@@ -61,6 +64,7 @@ impl CoreError for SchemaError {
             Self::Refused { code, .. } => (FailureKind::Invalid, code),
             Self::Definitions(error) => error.kind_and_code(),
             Self::Storage(error) => error.kind_and_code(),
+            Self::Template(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::Stopped => (FailureKind::Invalid, "no_vault_open"),
         }

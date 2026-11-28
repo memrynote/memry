@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "카테고리 이름",
     "tagNamePlaceholder": "태그 이름",
     "uncategorized": "미분류",
+    "view": {
+      "label": "태그 보기",
+      "categories": "카테고리",
+      "az": "가나다순"
+    },
+    "azList": {
+      "heading": "모든 태그",
+      "empty": "아직 태그가 없습니다"
+    },
     "search": {
       "placeholder": "카테고리와 태그 검색",
       "empty": "검색과 일치하는 카테고리나 태그가 없습니다"

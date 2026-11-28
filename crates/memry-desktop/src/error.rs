@@ -10,6 +10,7 @@ use memry_core::api::errors::{
     SyncError, TransportError,
 };
 use memry_core::crdt::errors::CrdtError;
+use memry_core::domain::template_store::TemplateWriteError;
 
 /// The class of a failure. Mirrors `ErrorKind` of `memry-tauri`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,6 +69,15 @@ impl CoreError for StorageError {
             Self::Invalid { .. } => (Invalid, "invalid"),
             Self::Corrupt { .. } => (Recovery, "storage_corrupt"),
             Self::ForeignSchema { .. } => (Storage, "foreign_schema"),
+        }
+    }
+}
+
+impl CoreError for TemplateWriteError {
+    fn kind_and_code(&self) -> (FailureKind, &'static str) {
+        match self {
+            Self::NameTaken { .. } => (FailureKind::Invalid, "template_name_taken"),
+            Self::Storage(error) => error.kind_and_code(),
         }
     }
 }

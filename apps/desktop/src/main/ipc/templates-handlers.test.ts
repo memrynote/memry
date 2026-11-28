@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
+import { TemplateNameTakenError } from '../lib/errors'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
@@ -116,5 +117,29 @@ describe('templates-handlers', () => {
       newName: 'Copy'
     })
     expect(duplicateResult).toEqual({ success: false, error: 'duplicate failed' })
+  })
+
+  it('answers a refused name with a code and a message the editor can show', async () => {
+    registerTemplatesHandlers()
+    ;(templates.createTemplate as vi.Mock).mockRejectedValue(new TemplateNameTakenError('Standup'))
+    ;(templates.updateTemplate as vi.Mock).mockRejectedValue(new TemplateNameTakenError('Retro'))
+
+    const created = await invokeHandler(TemplatesChannels.invoke.CREATE, {
+      name: 'Standup',
+      tags: [],
+      properties: [],
+      content: ''
+    })
+    const updated = await invokeHandler(TemplatesChannels.invoke.UPDATE, {
+      id: 't1',
+      name: 'Retro'
+    })
+
+    expect(created).toEqual({
+      success: false,
+      errorCode: 'template-name-taken',
+      error: 'A template named “Standup” already exists. Choose a different name.'
+    })
+    expect(updated).toMatchObject({ success: false, errorCode: 'template-name-taken' })
   })
 })

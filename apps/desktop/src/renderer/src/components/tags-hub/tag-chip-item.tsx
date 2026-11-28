@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { getTagColors } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { cn } from '@/lib/utils'
 import { List } from '@/lib/icons'
@@ -34,7 +34,7 @@ export function TagChipContent({ tag, className }: TagChipContentProps): React.J
 
   return (
     <span
-      style={{ backgroundColor: `${colors.text}1F`, color: colors.text }}
+      style={{ backgroundColor: `${colors.text}1F`, color: tagLabelColor(colors.text) }}
       className={cn(
         'flex h-7 min-w-0 items-center gap-1.5 rounded-[7px] ps-[9px] pe-2.5 text-[13px] font-medium leading-4',
         className

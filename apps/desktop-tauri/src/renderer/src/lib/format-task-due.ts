@@ -1,6 +1,7 @@
 import { getI18n } from 'react-i18next'
 import { getActiveLocale } from '@/lib/active-locale'
 import { formatDate } from '@/lib/format-date'
+import { isHour12 } from '@/lib/time-format'
 
 export type DueRelative = 'today' | 'tomorrow' | 'this-week' | 'absolute'
 
@@ -92,9 +93,17 @@ function formatTime(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number)
   const date = new Date()
   date.setHours(h, m, 0, 0)
-  return date.toLocaleTimeString(getActiveLocale(), { hour: 'numeric', minute: '2-digit' })
+  return date.toLocaleTimeString(getActiveLocale(), {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: isHour12()
+  })
 }
 
 function formatTimeFromIso(iso: string): string {
-  return new Date(iso).toLocaleTimeString(getActiveLocale(), { hour: 'numeric', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(getActiveLocale(), {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: isHour12()
+  })
 }

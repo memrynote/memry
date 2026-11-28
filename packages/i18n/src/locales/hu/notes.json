@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "Kategória neve",
     "tagNamePlaceholder": "Címke neve",
     "uncategorized": "Besorolatlan",
+    "view": {
+      "label": "Címkenézet",
+      "categories": "Kategóriák",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Összes címke",
+      "empty": "Még nincsenek címkék"
+    },
     "search": {
       "placeholder": "Kategóriák és címkék keresése",
       "empty": "Nincs a keresésnek megfelelő kategória vagy címke"

@@ -392,7 +392,8 @@
     "createFailed": "יצירת התבנית נכשלה",
     "updateFailed": "עדכון התבנית נכשל",
     "deleteFailed": "מחיקת התבנית נכשלה",
-    "duplicateFailed": "שכפול התבנית נכשל"
+    "duplicateFailed": "שכפול התבנית נכשל",
+    "nameTaken": "כבר קיימת תבנית בשם „{name}”. בחרו שם אחר."
   },
   "customIcon": {
     "unreadableImage": "לא ניתן לקרוא את התמונה. אפשר לנסות קובץ PNG, JPG, GIF, WEBP או SVG.",

@@ -297,6 +297,7 @@ export interface TemplateCreateResponse {
   success: boolean
   template: Template | null
   error?: string
+  errorCode?: 'template-name-taken'
 }
 
 export interface TemplateListResponse {

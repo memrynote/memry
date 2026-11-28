@@ -5,6 +5,12 @@
 //!
 //! **The stored payload is the template** (§13.2 rule 4), so [`get`] reads `sync_items` and not
 //! the `templates` projection: a field the projection does not keep still reaches the editor.
+//!
+//! **A name is unique on local writes only.** [`create`] and a rename through [`update`] refuse
+//! a name whose [`name_key`] (NFC, whitespace collapsed, case folded) a built-in or another
+//! listed template has ([`TemplateWriteError::NameTaken`]), as Electron's `assertNameFree`.
+//! Templates that arrive by sync or by the legacy import never pass here, so duplicates already
+//! in a vault stay as they are and still sync.
 
 use std::sync::Arc;
 
@@ -17,6 +23,7 @@ use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
+use super::notes::names::name_key;
 use super::reads::{self, TemplateSummary};
 use super::tasks::model::new_task_id;
 use super::template_admin::{self, BUILT_INS, BuiltIn, TemplateEdit, is_built_in};
@@ -108,6 +115,52 @@ pub fn get(conn: &Connection, id: &str) -> Result<Option<Template>, StorageError
     Ok(payload.map(|payload| from_payload(id, &payload)))
 }
 
+/// A local template write refused by a rule of this module, or failed in storage.
+#[derive(Debug, thiserror::Error)]
+pub enum TemplateWriteError {
+    /// A built-in or another listed template already has the name key of `name`.
+    #[error("a template named `{name}` already exists")]
+    NameTaken { name: String },
+    #[error(transparent)]
+    Storage(#[from] StorageError),
+}
+
+/// Whether a built-in or a listed template other than `except` has the [`name_key`] of `name`.
+fn name_taken(conn: &Connection, name: &str, except: Option<&str>) -> Result<bool, StorageError> {
+    let Some(key) = name_key(name) else {
+        return Ok(false);
+    };
+    Ok(reads::templates(conn)?
+        .iter()
+        .any(|t| Some(t.id.as_str()) != except && name_key(&t.name).as_ref() == Some(&key)))
+}
+
+fn refuse_taken(
+    conn: &Connection,
+    name: &str,
+    except: Option<&str>,
+) -> Result<(), TemplateWriteError> {
+    if name_taken(conn, name, except)? {
+        return Err(TemplateWriteError::NameTaken {
+            name: name.trim().to_owned(),
+        });
+    }
+    Ok(())
+}
+
+/// `name` trimmed when no template has its name key, else the first free of `name 2`,
+/// `name 3`, ... (`uniqueTemplateName`).
+pub fn free_name(conn: &Connection, name: &str) -> Result<String, StorageError> {
+    let name = name.trim();
+    let mut candidate = name.to_owned();
+    let mut n = 2;
+    while name_taken(conn, &candidate, None)? {
+        candidate = format!("{name} {n}");
+        n += 1;
+    }
+    Ok(candidate)
+}
+
 fn not_found(id: &str) -> StorageError {
     StorageError::NotFound {
         what: format!("template {id}"),
@@ -115,31 +168,30 @@ fn not_found(id: &str) -> StorageError {
 }
 
 /// A stored template the user can change: refused for a built-in, not found when not live.
-fn require_custom(conn: &Connection, id: &str) -> Result<(), StorageError> {
+fn require_custom(conn: &Connection, id: &str) -> Result<Template, StorageError> {
     if is_built_in(id) {
         return Err(StorageError::Invalid {
             what: format!("built-in template `{id}` cannot be changed"),
         });
     }
-    match get(conn, id)? {
-        Some(_) => Ok(()),
-        None => Err(not_found(id)),
-    }
+    get(conn, id)?.ok_or_else(|| not_found(id))
 }
 
-/// Creates a template from `fields`; returns its id.
+/// Creates a template from `fields`; returns its id. A name another template has is refused.
 pub fn create(
     conn: &Connection,
     fields: &TemplateFields,
     device_id: &str,
     now_ms: i64,
-) -> Result<String, StorageError> {
+) -> Result<String, TemplateWriteError> {
     let name = fields.name.trim();
     if name.is_empty() {
         return Err(StorageError::Invalid {
             what: "a template needs a name".into(),
-        });
+        }
+        .into());
     }
+    refuse_taken(conn, name, None)?;
     let id = new_task_id();
     templates::create(
         conn,
@@ -159,16 +211,22 @@ pub fn create(
     Ok(id)
 }
 
-/// Saves `edit` over a live stored template.
+/// Saves `edit` over a live stored template. Only a rename (another name key) is checked, so a
+/// template that shares its name with a synced one can still be edited, its name sent back.
 pub fn update(
     conn: &Connection,
     id: &str,
     edit: &TemplateEdit,
     device_id: &str,
     now_ms: i64,
-) -> Result<(), StorageError> {
-    require_custom(conn, id)?;
-    template_admin::update(conn, id, edit, device_id, now_ms)
+) -> Result<(), TemplateWriteError> {
+    let current = require_custom(conn, id)?;
+    if let Some(name) = &edit.name
+        && name_key(name) != name_key(&current.name)
+    {
+        refuse_taken(conn, name, Some(id))?;
+    }
+    Ok(template_admin::update(conn, id, edit, device_id, now_ms)?)
 }
 
 /// Tombstones a live stored template.
@@ -223,14 +281,38 @@ impl TemplateStore {
             .read_blocking(|conn| super::tag_fields::template_of(conn, tags))
     }
 
-    pub fn create(&self, fields: &TemplateFields, now_ms: i64) -> Result<String, StorageError> {
+    pub fn create(
+        &self,
+        fields: &TemplateFields,
+        now_ms: i64,
+    ) -> Result<String, TemplateWriteError> {
         self.db
-            .call_blocking(|conn| create(conn, fields, &self.device_id, now_ms))
+            .call_blocking(|conn| Ok(create(conn, fields, &self.device_id, now_ms)))?
     }
 
-    pub fn update(&self, id: &str, edit: &TemplateEdit, now_ms: i64) -> Result<(), StorageError> {
+    /// [`create`] under [`free_name`] of `fields.name`, in one write.
+    pub fn create_numbered(
+        &self,
+        fields: &TemplateFields,
+        now_ms: i64,
+    ) -> Result<String, TemplateWriteError> {
+        self.db.call_blocking(|conn| {
+            let numbered = TemplateFields {
+                name: free_name(conn, &fields.name)?,
+                ..fields.clone()
+            };
+            Ok(create(conn, &numbered, &self.device_id, now_ms))
+        })?
+    }
+
+    pub fn update(
+        &self,
+        id: &str,
+        edit: &TemplateEdit,
+        now_ms: i64,
+    ) -> Result<(), TemplateWriteError> {
         self.db
-            .call_blocking(|conn| update(conn, id, edit, &self.device_id, now_ms))
+            .call_blocking(|conn| Ok(update(conn, id, edit, &self.device_id, now_ms)))?
     }
 
     pub fn delete(&self, id: &str, now_ms: i64) -> Result<(), StorageError> {

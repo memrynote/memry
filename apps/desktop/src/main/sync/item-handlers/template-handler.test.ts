@@ -59,6 +59,53 @@ describe('templateHandler', () => {
     )
   })
 
+  it('applies a remote template whose name another template already has', () => {
+    testDb.db
+      .insert(templates)
+      .values({
+        id: 'local-tpl',
+        name: 'Standup',
+        tags: [],
+        properties: [],
+        content: 'mine',
+        clock: { 'device-a': 1 },
+        createdAt: '2026-07-16T00:00:00.000Z',
+        modifiedAt: '2026-07-16T00:00:00.000Z'
+      })
+      .run()
+
+    const inserted = templateHandler.applyUpsert(
+      ctx,
+      'remote-tpl',
+      { name: 'standup', content: 'theirs' },
+      { 'device-b': 1 }
+    )
+    // A rename arriving from another device onto a taken name is accepted too.
+    templateHandler.applyUpsert(
+      ctx,
+      'local-tpl',
+      { name: 'Meeting Notes' },
+      { 'device-a': 1, 'device-b': 1 }
+    )
+    const renamed = templateHandler.applyUpsert(
+      ctx,
+      'remote-tpl',
+      { name: 'Meeting Notes' },
+      { 'device-b': 2 }
+    )
+
+    expect(inserted).toBe('applied')
+    expect(renamed).toBe('applied')
+    expect(
+      testDb.db
+        .select()
+        .from(templates)
+        .all()
+        .map((t) => t.name)
+        .toSorted()
+    ).toEqual(['Meeting Notes', 'Meeting Notes'])
+  })
+
   it('skips a payload with no name instead of inventing an Untitled Template', () => {
     expect(templateHandler.applyUpsert(ctx, 'ghost', {}, { 'device-b': 1 })).toBe('skipped')
     expect(testDb.db.select().from(templates).all()).toEqual([])

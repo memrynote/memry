@@ -279,12 +279,10 @@
         "description": "{count, plural, other {# 時間後}}"
       },
       "tomorrow": {
-        "label": "明日",
-        "description": "明日の午前 9 時"
+        "label": "明日"
       },
       "nextWeek": {
-        "label": "来週",
-        "description": "月曜日の午前 9 時"
+        "label": "来週"
       },
       "inMinutes": {
         "label": "{count, plural, other {# 分後}}"

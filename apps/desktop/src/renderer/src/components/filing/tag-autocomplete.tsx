@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { useAllTags } from '@/hooks/use-all-tags'
 import { useTags } from '@/hooks/use-tags'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
-import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
+import { COLOR_NAMES, getTagColors, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { useT } from '@memry/i18n/renderer'
 
 function getColorForTag(tagName: string): string {
@@ -52,7 +52,7 @@ const TagPill = ({
           ? 'h-5 rounded-[5px] ps-[7px] pe-[7px] text-[12px] font-medium leading-4 focus-within:pe-[3px] hover:pe-[3px]'
           : 'rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5'
       )}
-      style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
+      style={{ backgroundColor: `${colors.text}15`, color: tagLabelColor(colors.text) }}
     >
       {icon ? <NoteIconDisplay value={icon} className="size-3 text-[11px] leading-none" /> : null}
       {tag}
@@ -387,7 +387,7 @@ export const TagAutocomplete = ({
             >
               <span
                 className="inline-flex items-center gap-1 rounded-[10px] py-0.5 px-2 text-[11px] leading-3.5"
-                style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
+                style={{ backgroundColor: `${colors.text}15`, color: tagLabelColor(colors.text) }}
               >
                 {icon ? (
                   <NoteIconDisplay value={icon} className="size-3 text-[11px] leading-none" />
@@ -422,7 +422,7 @@ export const TagAutocomplete = ({
         </span>
         <span
           className="inline-flex items-center rounded-md py-px px-1.5 text-[11px] leading-3.5"
-          style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
+          style={{ backgroundColor: `${colors.text}15`, color: tagLabelColor(colors.text) }}
         >
           {trimmedInput}
         </span>

@@ -279,12 +279,10 @@
         "description": "Za {count, plural, one {# sat} few {# sata} other {# sati}}"
       },
       "tomorrow": {
-        "label": "Sutra",
-        "description": "Sutra u 9:00"
+        "label": "Sutra"
       },
       "nextWeek": {
-        "label": "Sljedeći tjedan",
-        "description": "Ponedjeljak u 9:00"
+        "label": "Sljedeći tjedan"
       },
       "inMinutes": {
         "label": "Za {count, plural, one {# minutu} few {# minute} other {# minuta}}"

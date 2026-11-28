@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { formatTaskDue } from './format-task-due'
+import { setClockFormatPref } from './time-format'
 
 const NOW = new Date('2026-04-29T10:00:00') // Wed
 
@@ -70,6 +71,22 @@ describe('formatTaskDue', () => {
       })
     ).toMatchObject({
       label: 'Today · 2:00 PM – 3:00 PM'
+    })
+  })
+
+  describe('with the 24h clock setting', () => {
+    afterEach(() => setClockFormatPref('12h'))
+
+    it('shows due times and ranges in 24h', () => {
+      setClockFormatPref('24h')
+      expect(
+        formatTaskDue({
+          dueDate: '2026-04-29',
+          dueTime: '14:00',
+          endAt: '2026-04-29T15:00:00',
+          now: NOW
+        }).label
+      ).toBe('Today · 14:00 – 15:00')
     })
   })
 })

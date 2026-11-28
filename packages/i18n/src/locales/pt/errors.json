@@ -392,7 +392,8 @@
     "createFailed": "Não foi possível criar o modelo",
     "updateFailed": "Não foi possível atualizar o modelo",
     "deleteFailed": "Não foi possível excluir o modelo",
-    "duplicateFailed": "Não foi possível duplicar o modelo"
+    "duplicateFailed": "Não foi possível duplicar o modelo",
+    "nameTaken": "Já existe um modelo chamado “{name}”. Escolha outro nome."
   },
   "customIcon": {
     "unreadableImage": "Não foi possível ler essa imagem. Tente um arquivo PNG, JPG, GIF, WEBP ou SVG.",

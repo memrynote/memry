@@ -392,7 +392,8 @@
     "createFailed": "Kan het sjabloon niet maken",
     "updateFailed": "Kan het sjabloon niet bijwerken",
     "deleteFailed": "Kan het sjabloon niet verwijderen",
-    "duplicateFailed": "Kan het sjabloon niet dupliceren"
+    "duplicateFailed": "Kan het sjabloon niet dupliceren",
+    "nameTaken": "Er bestaat al een sjabloon met de naam “{name}”. Kies een andere naam."
   },
   "customIcon": {
     "unreadableImage": "Die afbeelding kan niet worden gelezen. Probeer een PNG-, JPG-, GIF-, WEBP- of SVG-bestand.",

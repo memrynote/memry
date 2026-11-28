@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "Nama kategori",
     "tagNamePlaceholder": "Nama teg",
     "uncategorized": "Tidak dikategorikan",
+    "view": {
+      "label": "Paparan teg",
+      "categories": "Kategori",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Semua teg",
+      "empty": "Belum ada teg"
+    },
     "search": {
       "placeholder": "Cari kategori dan teg",
       "empty": "Tiada kategori atau teg yang sepadan dengan carian anda"

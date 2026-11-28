@@ -392,7 +392,8 @@
     "createFailed": "Gagal membuat templat",
     "updateFailed": "Gagal mengemas kini templat",
     "deleteFailed": "Gagal memadamkan templat",
-    "duplicateFailed": "Gagal membuat pendua templat"
+    "duplicateFailed": "Gagal membuat pendua templat",
+    "nameTaken": "Templat bernama “{name}” sudah wujud. Pilih nama lain."
   },
   "customIcon": {
     "unreadableImage": "Imej itu tidak dapat dibaca. Cuba fail PNG, JPG, GIF, WEBP atau SVG.",

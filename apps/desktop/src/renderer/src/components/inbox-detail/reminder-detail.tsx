@@ -17,6 +17,7 @@ import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import { metadataAs } from './item-metadata'
 import type { InboxItem, InboxItemListItem } from '@/types'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
+import { isHour12 } from '@/lib/time-format'
 
 const log = createLogger('Component:ReminderDetail')
 
@@ -39,7 +40,7 @@ function formatTriggerDate(isoString: string): string {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: isHour12()
   })
 }
 

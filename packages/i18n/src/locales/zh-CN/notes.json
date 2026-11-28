@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "分类名称",
     "tagNamePlaceholder": "标签名称",
     "uncategorized": "未分类",
+    "view": {
+      "label": "标签视图",
+      "categories": "分类",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "所有标签",
+      "empty": "暂无标签"
+    },
     "search": {
       "placeholder": "搜索分类和标签",
       "empty": "没有匹配的分类或标签"

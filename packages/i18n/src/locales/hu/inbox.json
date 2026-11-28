@@ -279,12 +279,10 @@
         "description": "{count, plural, one {# óra múlva} other {# óra múlva}}"
       },
       "tomorrow": {
-        "label": "Holnap",
-        "description": "Holnap 9:00-kor"
+        "label": "Holnap"
       },
       "nextWeek": {
-        "label": "Jövő héten",
-        "description": "Hétfőn 9:00-kor"
+        "label": "Jövő héten"
       },
       "inMinutes": {
         "label": "{count, plural, one {# perc múlva} other {# perc múlva}}"

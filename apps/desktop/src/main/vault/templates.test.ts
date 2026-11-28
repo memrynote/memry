@@ -42,6 +42,7 @@ import {
   applyTemplate,
   BUILT_IN_TEMPLATES
 } from './templates'
+import { TemplateNameTakenError } from '../lib/errors'
 
 describe('templates CRUD', () => {
   beforeEach(() => {
@@ -171,6 +172,157 @@ describe('templates CRUD', () => {
 
   it('throws when duplicating a non-existent template', async () => {
     await expect(duplicateTemplate('nonexistent', 'Copy')).rejects.toThrow(/not found/i)
+  })
+})
+
+// Two templates with one name cannot be told apart in the picker, so a local
+// create or rename that would produce a pair is refused. Rows that already
+// share a name (synced from another device, imported from the pre-sync files)
+// are left alone.
+describe('template names are unique', () => {
+  beforeEach(() => {
+    testDb = createTestDataDb()
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  function insertRow(id: string, name: string): void {
+    const now = new Date().toISOString()
+    testDb.db
+      .insert(templatesTable)
+      .values({
+        id,
+        name,
+        tags: [],
+        properties: [],
+        content: 'body',
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+  }
+
+  function rowCount(): number {
+    return testDb.db.select().from(templatesTable).all().length
+  }
+
+  it('refuses to create a template named like an existing one', async () => {
+    await createTemplate({ name: 'Standup' })
+    vi.clearAllMocks()
+
+    await expect(createTemplate({ name: 'Standup' })).rejects.toMatchObject({
+      name: 'TemplateNameTakenError',
+      code: 'template-name-taken',
+      templateName: 'Standup'
+    })
+
+    expect(rowCount()).toBe(1)
+    expect(enqueueCreate).not.toHaveBeenCalled()
+  })
+
+  it.each(['stand up', 'STAND UP', '  Stand up  ', 'Stand   up', 'Stand\u00A0up'])(
+    'treats %j as the same name as "Stand up"',
+    async (variant) => {
+      await createTemplate({ name: 'Stand up' })
+
+      await expect(createTemplate({ name: variant })).rejects.toBeInstanceOf(TemplateNameTakenError)
+    }
+  )
+
+  it('refuses a name a built-in template has, in any case', async () => {
+    await expect(createTemplate({ name: 'meeting notes' })).rejects.toBeInstanceOf(
+      TemplateNameTakenError
+    )
+    expect(rowCount()).toBe(0)
+  })
+
+  it('refuses a rename onto another template and leaves the row as it was', async () => {
+    await createTemplate({ name: 'Standup' })
+    const other = await createTemplate({ name: 'Retro', content: 'keep' })
+    vi.clearAllMocks()
+
+    await expect(updateTemplate({ id: other.id, name: ' standup ' })).rejects.toBeInstanceOf(
+      TemplateNameTakenError
+    )
+    await expect(updateTemplate({ id: other.id, name: 'Daily Standup' })).rejects.toBeInstanceOf(
+      TemplateNameTakenError
+    )
+
+    expect(
+      testDb.db.select().from(templatesTable).where(eq(templatesTable.id, other.id)).get()
+    ).toMatchObject({ name: 'Retro', content: 'keep' })
+    expect(enqueueUpdate).not.toHaveBeenCalled()
+  })
+
+  it('allows a template to be renamed to a free name or re-cased', async () => {
+    const created = await createTemplate({ name: 'Standup' })
+
+    expect((await updateTemplate({ id: created.id, name: 'STANDUP' })).name).toBe('STANDUP')
+    expect((await updateTemplate({ id: created.id, name: 'Weekly sync' })).name).toBe('Weekly sync')
+  })
+
+  it('still edits a template that already shares its name with another, as long as the name is kept', async () => {
+    insertRow('twin-a', 'Standup')
+    insertRow('twin-b', 'Standup')
+
+    // The editor sends the name with every autosave.
+    const updated = await updateTemplate({ id: 'twin-a', name: 'Standup', content: 'edited' })
+
+    expect(updated).toMatchObject({ name: 'Standup', content: 'edited' })
+    expect((await updateTemplate({ id: 'twin-b', content: 'edited too' })).content).toBe(
+      'edited too'
+    )
+  })
+
+  it('refuses to rename a duplicate-named template onto a third, taken name', async () => {
+    insertRow('twin-a', 'Standup')
+    insertRow('twin-b', 'Standup')
+    insertRow('other', 'Retro')
+
+    await expect(updateTemplate({ id: 'twin-a', name: 'retro' })).rejects.toBeInstanceOf(
+      TemplateNameTakenError
+    )
+  })
+
+  it('lets a duplicate-named pair be renamed apart', async () => {
+    insertRow('twin-a', 'Standup')
+    insertRow('twin-b', 'Standup')
+
+    expect((await updateTemplate({ id: 'twin-a', name: 'Standup (old)' })).name).toBe(
+      'Standup (old)'
+    )
+  })
+
+  it('duplicates to a unique name each time', async () => {
+    const source = await createTemplate({ name: 'Standup' })
+
+    const first = await duplicateTemplate(source.id, 'Standup (Copy)')
+    const second = await duplicateTemplate(source.id, 'Standup (Copy)')
+    const third = await duplicateTemplate(source.id, 'standup (copy)')
+    // Same name as the source itself.
+    const fourth = await duplicateTemplate(source.id, 'Standup')
+
+    expect([first, second, third, fourth].map((t) => t.name)).toEqual([
+      'Standup (Copy)',
+      'Standup (Copy) 2',
+      'standup (copy) 3',
+      'Standup 2'
+    ])
+  })
+
+  it('duplicates a built-in under its own name without colliding with it', async () => {
+    const copy = await duplicateTemplate('meeting-notes', 'Meeting Notes')
+
+    expect(copy.name).toBe('Meeting Notes 2')
+  })
+
+  it('does not count a row carrying a built-in id, which the list hides', async () => {
+    insertRow('blank', 'Ghost name')
+
+    expect((await createTemplate({ name: 'Ghost name' })).name).toBe('Ghost name')
   })
 })
 

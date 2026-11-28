@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { IpcFailureError } from '@/lib/ipc-error'
 import { TemplateEditorPage } from './template-editor'
 
 const getTemplate = vi.fn()
@@ -285,6 +286,27 @@ describe('TemplateEditorPage', () => {
 
     await user.click(screen.getByRole('button', { name: /create template/i }))
     await waitFor(() => expect(createTemplate).toHaveBeenCalledTimes(1))
+  })
+
+  it('shows a refused name under the title and lets the user fix it', async () => {
+    createTemplate.mockRejectedValueOnce(
+      new IpcFailureError(
+        'A template named “Meeting” already exists. Choose a different name.',
+        'template-name-taken'
+      )
+    )
+    const user = userEvent.setup()
+    render(<TemplateEditorPage />)
+
+    await user.type(screen.getByLabelText('template title'), 'Meeting')
+    await user.click(screen.getByRole('button', { name: /create template/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A template named “Meeting” already exists. Choose a different name.'
+    )
+
+    await user.type(screen.getByLabelText('template title'), ' 2')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('adopts the new id on the tab and flips the button to Update', async () => {

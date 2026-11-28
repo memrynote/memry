@@ -392,7 +392,8 @@
     "createFailed": "تعذّر إنشاء القالب",
     "updateFailed": "تعذّر تحديث القالب",
     "deleteFailed": "تعذّر حذف القالب",
-    "duplicateFailed": "تعذّر إنشاء نسخة من القالب"
+    "duplicateFailed": "تعذّر إنشاء نسخة من القالب",
+    "nameTaken": "يوجد قالب باسم «{name}» بالفعل. اختر اسمًا مختلفًا."
   },
   "customIcon": {
     "unreadableImage": "تعذّر قراءة هذه الصورة. جرّب ملف PNG أو JPG أو GIF أو WEBP أو SVG.",

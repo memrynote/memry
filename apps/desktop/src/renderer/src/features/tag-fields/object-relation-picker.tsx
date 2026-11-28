@@ -7,7 +7,7 @@ import { tagsService } from '@/services/tags-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toast } from 'sonner'
-import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, withAlpha, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { ObjectAvatar, TagGlyph } from './object-avatar'
 import { useTagLookLookup } from './object-look'
 import { createObject } from './create-object'
@@ -111,7 +111,7 @@ export function ObjectRelationPicker({
         />
         <span
           className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium"
-          style={{ backgroundColor: withAlpha(tagColor, 0.12), color: tagColor }}
+          style={{ backgroundColor: withAlpha(tagColor, 0.12), color: tagLabelColor(tagColor) }}
         >
           {targetLook && <TagGlyph look={targetLook} className="size-3" />}
           {tagName}

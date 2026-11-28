@@ -25,7 +25,7 @@ use memry_desktop::tags::schema::view::{
     FieldType, NewFieldSpec, PresetKey, PresetState, RelationView, TagSchemaCommand, TemplateChoice,
 };
 use memry_desktop::tags::schema::{SchemaError, Schemas};
-use memry_desktop::templates::Templates;
+use memry_desktop::templates::{TemplateCreateInput, Templates};
 use memry_desktop::vault::consumer::Applied;
 use tokio::sync::broadcast;
 use vault_env::{Env, env, indexed};
@@ -545,6 +545,40 @@ fn dismissing_the_ready_made_tags_is_kept() {
             .snapshot()
             .unwrap()
             .preset_strip_dismissed
+    );
+    e.close();
+}
+
+#[test]
+fn a_ready_made_tags_template_takes_the_next_free_name() {
+    let (mut e, open, store) = opened();
+    let templates = Templates::open(&open, store.clone()).unwrap();
+    templates
+        .create(
+            &TemplateCreateInput {
+                name: "person".into(),
+                ..TemplateCreateInput::default()
+            },
+            1,
+        )
+        .unwrap();
+    let ran = schemas(&e, &open, &store)
+        .run(
+            TagSchemaCommand::AddPreset {
+                preset: PresetKey::Person,
+                tag: None,
+            },
+            &mut |_, _, _| {},
+        )
+        .unwrap();
+    let id = &ran.result.snapshot.tags["person"]
+        .template
+        .as_ref()
+        .expect("a template")
+        .id;
+    assert_eq!(
+        templates.get(id).unwrap().expect("the template").name,
+        "Person 2"
     );
     e.close();
 }

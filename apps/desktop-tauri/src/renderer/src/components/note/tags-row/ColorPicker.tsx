@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { TAG_COLORS, COLOR_ROWS, getTagColors, withAlpha } from './tag-colors'
+import { TAG_COLORS, COLOR_ROWS, getTagColors, withAlpha, tagLabelColor } from './tag-colors'
 import { CustomColorSwatch } from './CustomColorSwatch'
 import { Check } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
@@ -81,7 +81,7 @@ export function ColorPicker({
           className="inline-flex items-center rounded-[10px] px-2 py-0.5 text-[11px]/3.5 font-medium [font-synthesis:none]"
           style={{
             backgroundColor: withAlpha(previewColors.text, 0.12),
-            color: previewColors.text
+            color: tagLabelColor(previewColors.text)
           }}
         >
           {tagName}

@@ -392,7 +392,8 @@
     "createFailed": "Nepodarilo sa vytvoriť šablónu",
     "updateFailed": "Nepodarilo sa aktualizovať šablónu",
     "deleteFailed": "Nepodarilo sa odstrániť šablónu",
-    "duplicateFailed": "Nepodarilo sa duplikovať šablónu"
+    "duplicateFailed": "Nepodarilo sa duplikovať šablónu",
+    "nameTaken": "Šablóna s názvom „{name}“ už existuje. Zvoľte iný názov."
   },
   "customIcon": {
     "unreadableImage": "Obrázok sa nepodarilo prečítať. Skúste súbor PNG, JPG, GIF, WEBP alebo SVG.",

@@ -14,7 +14,8 @@ import {
   type TemplateUpdateInput as UpdateArgs,
   type TemplateView
 } from '../../../generated/bindings'
-import { extractErrorMessage } from '../lib/ipc-error'
+import { TEMPLATE_NAME_TAKEN } from '@memry/contracts/templates-api'
+import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { withSyncedRecords } from './sync-service'
 import { subscribeToEvent } from './tauri-event'
 
@@ -80,6 +81,7 @@ interface TemplateCreateResponse {
   success: boolean
   template: Template | null
   error?: string
+  errorCode?: typeof TEMPLATE_NAME_TAKEN
 }
 
 interface TemplateListResponse {
@@ -100,11 +102,19 @@ function toTemplate(view: TemplateView): Template {
   return { ...view, description: view.description ?? undefined }
 }
 
-async function written(write: () => Promise<TemplateView>): Promise<TemplateCreateResponse> {
+/** `name` fills the message of a refused name, as Electron's handler fills it. */
+async function written(
+  write: () => Promise<TemplateView>,
+  name = ''
+): Promise<TemplateCreateResponse> {
   try {
     return { success: true, template: toTemplate(await write()) }
   } catch (error) {
-    return { success: false, template: null, error: extractErrorMessage(error, '') || undefined }
+    const message = extractErrorMessage(error, '', { name: name.trim() }) || undefined
+    if (commandErrorCode(error) === 'template_name_taken') {
+      return { success: false, template: null, error: message, errorCode: TEMPLATE_NAME_TAKEN }
+    }
+    return { success: false, template: null, error: message }
   }
 }
 
@@ -131,7 +141,7 @@ export async function getTemplate(id: string): Promise<Template | null> {
  */
 export function createTemplate(input: TemplateCreateInput): Promise<TemplateCreateResponse> {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a property value is the JSON the command carries as is
-  return written(() => commands.templatesCreate(input as CreateArgs))
+  return written(() => commands.templatesCreate(input as CreateArgs), input.name)
 }
 
 /**
@@ -139,7 +149,7 @@ export function createTemplate(input: TemplateCreateInput): Promise<TemplateCrea
  */
 export function updateTemplate(input: TemplateUpdateInput): Promise<TemplateCreateResponse> {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a property value is the JSON the command carries as is
-  return written(() => commands.templatesUpdate(input as UpdateArgs))
+  return written(() => commands.templatesUpdate(input as UpdateArgs), input.name)
 }
 
 /**

@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "Kategori adı",
     "tagNamePlaceholder": "Etiket adı",
     "uncategorized": "Kategorisiz",
+    "view": {
+      "label": "Etiket görünümü",
+      "categories": "Kategoriler",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "Tüm etiketler",
+      "empty": "Henüz etiket yok"
+    },
     "search": {
       "placeholder": "Kategori ve etiketlerde ara",
       "empty": "Aramanızla eşleşen kategori veya etiket yok"

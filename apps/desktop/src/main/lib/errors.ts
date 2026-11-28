@@ -1,3 +1,5 @@
+import { TEMPLATE_NAME_TAKEN } from '@memry/contracts/templates-api'
+
 /**
  * Error codes for vault operations
  */
@@ -172,4 +174,17 @@ export function isDatabaseError(error: unknown): error is DatabaseError {
  */
 export function isWatcherError(error: unknown): error is WatcherError {
   return error instanceof WatcherError
+}
+
+/**
+ * A local create or rename hit a name another template already has. The IPC
+ * handler turns this into a localized message plus `TEMPLATE_NAME_TAKEN`.
+ */
+export class TemplateNameTakenError extends Error {
+  readonly code = TEMPLATE_NAME_TAKEN
+
+  constructor(readonly templateName: string) {
+    super(`A template named "${templateName}" already exists`)
+    this.name = 'TemplateNameTakenError'
+  }
 }

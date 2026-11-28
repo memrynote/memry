@@ -279,12 +279,10 @@
         "description": "Dalam {count, plural, other {# jam}}"
       },
       "tomorrow": {
-        "label": "Esok",
-        "description": "Esok pukul 9 pagi"
+        "label": "Esok"
       },
       "nextWeek": {
-        "label": "Minggu depan",
-        "description": "Isnin pukul 9 pagi"
+        "label": "Minggu depan"
       },
       "inMinutes": {
         "label": "Dalam {count, plural, other {# minit}}"

@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "Category name",
     "tagNamePlaceholder": "Tag name",
     "uncategorized": "Uncategorized",
+    "view": {
+      "label": "Tag view",
+      "categories": "Categories",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "All tags",
+      "empty": "No tags yet"
+    },
     "search": {
       "placeholder": "Search categories and tags",
       "empty": "No categories or tags match your search"

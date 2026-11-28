@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next'
 import type { TaskActivityEntry } from '@memry/rpc/tasks'
 import { TASK_FIELD_ACTIVITY_PREFIX } from '@memry/contracts/tasks-api'
 import { cn } from '@/lib/utils'
+import { isHour12 } from '@/lib/time-format'
 
 // ============================================================================
 // VALUE FORMATTING
@@ -51,7 +52,7 @@ function formatTemporal(value: string, language: string): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    ...(hasTime ? { hour: 'numeric', minute: '2-digit' } : {})
+    ...(hasTime ? { hour: 'numeric', minute: '2-digit', hour12: isHour12() } : {})
   }).format(date)
 }
 

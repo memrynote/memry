@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "分類名稱",
     "tagNamePlaceholder": "標籤名稱",
     "uncategorized": "未分類",
+    "view": {
+      "label": "標籤檢視",
+      "categories": "分類",
+      "az": "A–Z"
+    },
+    "azList": {
+      "heading": "所有標籤",
+      "empty": "尚無標籤"
+    },
     "search": {
       "placeholder": "搜尋分類與標籤",
       "empty": "沒有符合搜尋的分類或標籤"

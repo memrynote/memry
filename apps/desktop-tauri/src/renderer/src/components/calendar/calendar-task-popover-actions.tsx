@@ -16,6 +16,7 @@ import {
   CalendarCardSection,
   MOD_KEY_LABEL
 } from './calendar-card'
+import { isHour12 } from '@/lib/time-format'
 
 const MOVE_BUTTON_CLASS =
   'inline-flex h-[26px] items-center rounded-md bg-foreground/[0.06] px-2.5 text-xs font-medium text-foreground outline-none transition-colors hover:bg-foreground/10 focus-visible:ring-1 focus-visible:ring-(--tint-ring)'
@@ -162,7 +163,8 @@ function formatTarget(target: SnoozeTarget): string {
     return date.toLocaleString(getActiveLocale(), {
       weekday: 'short',
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: isHour12()
     })
   }
   return date.toLocaleDateString(getActiveLocale(), {

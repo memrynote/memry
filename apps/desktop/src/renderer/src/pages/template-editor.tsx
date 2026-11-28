@@ -108,13 +108,23 @@ function TemplateEditorSurface({
     [queryClient]
   )
 
-  const { fields, mountedFields, setFields, state, templateId, isDirty, canSave, save, discard } =
-    useTemplateDraft({
-      templateId: initialTemplateId,
-      initial,
-      onCreated: handleCreated,
-      onSaved: handleSaved
-    })
+  const {
+    fields,
+    mountedFields,
+    setFields,
+    state,
+    templateId,
+    isDirty,
+    canSave,
+    nameError,
+    save,
+    discard
+  } = useTemplateDraft({
+    templateId: initialTemplateId,
+    initial,
+    onCreated: handleCreated,
+    onSaved: handleSaved
+  })
 
   // ==========================================================================
   // Tab wiring
@@ -398,6 +408,11 @@ function TemplateEditorSurface({
                 onTitleChange={handleNameChange}
                 disabled={isBuiltIn}
               />
+              {nameError && (
+                <p role="alert" className="mt-1 text-xs text-destructive">
+                  {nameError}
+                </p>
+              )}
             </div>
           </div>
 

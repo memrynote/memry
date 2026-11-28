@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
+import { nameKey } from '@memry/shared/note-names'
+import { uniqueTemplateName } from '@memry/shared/template-names'
 import { ArrowUpRight, Plus } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -58,7 +60,11 @@ export function TagTemplateSection({
   const createTemplate = async (): Promise<void> => {
     setBusy(true)
     try {
-      const name = tagDisplayName(tagName)
+      // No name field to correct here, so number the name past any template
+      // that already has it instead of failing on every retry.
+      const { templates } = await templatesService.list()
+      const taken = new Set(templates.map((tpl) => nameKey(tpl.name) ?? ''))
+      const name = uniqueTemplateName(tagDisplayName(tagName), taken)
       const result = await templatesService.create({
         name,
         content: `## ${t('tagFields.settings.template.defaultHeading')}\n`

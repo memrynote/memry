@@ -9,11 +9,14 @@
 //! | a stored row with a built-in's id is never read              | the built-in wins                     |
 //! | the vault's templates list in `localeCompare` order          | `listTemplates`' `localeCompare`      |
 //! | a create keeps its tags as given; an update collapses them   | `createTemplate`; core edit rule      |
+//! | a local create or rename refuses a name another template has | unique names, built-ins included      |
+//! | a duplicate name already stored stays and stays editable     | only a real rename is checked         |
+//! | a numbered create takes the next free name                   | preset templates                      |
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::reads;
 use memry_core::domain::template_admin::TemplateEdit;
-use memry_core::domain::template_store::{self, TemplateFields};
+use memry_core::domain::template_store::{self, TemplateFields, TemplateWriteError};
 use memry_core::domain::templates::{self, NewTemplate};
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
@@ -34,9 +37,11 @@ fn open(label: &str) -> Db {
 
 fn run<T: Send + 'static>(
     db: &Db,
-    f: impl FnOnce(&mut Connection) -> Result<T, StorageError> + Send + 'static,
+    f: impl FnOnce(&mut Connection) -> Result<T, TemplateWriteError> + Send + 'static,
 ) -> T {
-    db.call_blocking(f).expect("a database call")
+    db.call_blocking(|conn| Ok(f(conn)))
+        .expect("a database call")
+        .expect("a template write")
 }
 
 fn stage() -> Value {
@@ -133,7 +138,7 @@ fn a_built_in_is_read_from_code_and_never_changed() {
         };
         assert!(matches!(
             template_store::update(conn, "meeting-notes", &edit, DEVICE, NOW),
-            Err(StorageError::Invalid { .. })
+            Err(TemplateWriteError::Storage(StorageError::Invalid { .. }))
         ));
         assert!(matches!(
             template_store::delete(conn, "blank", DEVICE, NOW),
@@ -157,13 +162,14 @@ fn a_deleted_template_is_gone_for_every_call() {
             )
         };
         not_found(template_store::delete(conn, &id, DEVICE, NOW + 2));
-        not_found(template_store::update(
-            conn,
-            &id,
-            &TemplateEdit::default(),
-            DEVICE,
-            NOW + 2,
-        ));
+        let update = template_store::update(conn, &id, &TemplateEdit::default(), DEVICE, NOW + 2);
+        assert!(
+            matches!(
+                update,
+                Err(TemplateWriteError::Storage(StorageError::NotFound { .. }))
+            ),
+            "{update:?}"
+        );
         not_found(template_store::delete(conn, "never-was", DEVICE, NOW + 2));
         Ok(())
     });
@@ -213,9 +219,24 @@ fn the_vaults_templates_list_in_locale_compare_order() {
         .into_iter()
         .enumerate()
         {
-            template_store::create(conn, &fields(name), DEVICE, NOW + i as i64)?;
+            // Below the local name rule: `apple` and `Apple` would refuse each other there.
+            templates::create(
+                conn,
+                &NewTemplate {
+                    id: &format!("t{i}"),
+                    name,
+                    description: None,
+                    icon: None,
+                    tags: &[],
+                    properties: &[],
+                    content: "",
+                },
+                DEVICE,
+                NOW + i as i64,
+            )?
+            .acknowledge();
         }
-        reads::templates(conn)
+        Ok(reads::templates(conn)?)
     })
     .into_iter()
     .skip(8)
@@ -258,4 +279,138 @@ fn a_create_keeps_its_tags_as_given_and_an_update_collapses_case_variants() {
     assert_eq!(created, json!(["Work", "work", "Home", "WORK"]));
     // The core's edit rule, older than desktop on Tauri and shared with iOS: first spelling kept.
     assert_eq!(updated, json!(["home", "Later"]));
+}
+
+fn rename(name: &str) -> TemplateEdit {
+    TemplateEdit {
+        name: Some(name.into()),
+        ..TemplateEdit::default()
+    }
+}
+
+fn taken<T: std::fmt::Debug>(result: Result<T, TemplateWriteError>) {
+    assert!(
+        matches!(result, Err(TemplateWriteError::NameTaken { .. })),
+        "{result:?}"
+    );
+}
+
+#[test]
+fn a_local_create_or_rename_refuses_a_name_another_template_has() {
+    let db = open("unique");
+    let names = run(&db, |conn| {
+        let weekly = template_store::create(conn, &fields("Weekly"), DEVICE, NOW)?;
+        let other = template_store::create(conn, &fields("Other"), DEVICE, NOW + 1)?;
+        // By name key (whitespace collapsed, case folded); a built-in's name counts too.
+        taken(template_store::create(
+            conn,
+            &fields("  weekly "),
+            DEVICE,
+            NOW + 2,
+        ));
+        taken(template_store::create(
+            conn,
+            &fields("Blank\tnote"),
+            DEVICE,
+            NOW + 2,
+        ));
+        taken(template_store::create(
+            conn,
+            &fields("MEETING NOTES"),
+            DEVICE,
+            NOW + 2,
+        ));
+        taken(template_store::update(
+            conn,
+            &other,
+            &rename("WEEKLY"),
+            DEVICE,
+            NOW + 2,
+        ));
+        taken(template_store::update(
+            conn,
+            &other,
+            &rename("Blank Note"),
+            DEVICE,
+            NOW + 2,
+        ));
+        // A template keeps its own name in another case, and a deleted one frees its name.
+        template_store::update(conn, &weekly, &rename("weekly"), DEVICE, NOW + 3)?;
+        template_store::delete(conn, &other, DEVICE, NOW + 4)?;
+        template_store::create(conn, &fields("Other"), DEVICE, NOW + 5)?;
+        Ok(reads::templates(conn)?
+            .into_iter()
+            .skip(8)
+            .map(|t| t.name)
+            .collect::<Vec<_>>())
+    });
+    assert_eq!(names, ["Other", "weekly"]);
+}
+
+#[test]
+fn a_duplicate_name_already_stored_stays_and_stays_editable() {
+    let db = open("stored-duplicates");
+    let names = run(&db, |conn| {
+        // As sync or the legacy import writes them: past the local rules.
+        for (id, name) in [("synced-a", "Shared"), ("synced-b", "shared")] {
+            templates::create(
+                conn,
+                &NewTemplate {
+                    id,
+                    name,
+                    description: None,
+                    icon: None,
+                    tags: &[],
+                    properties: &[],
+                    content: "",
+                },
+                DEVICE,
+                NOW,
+            )?
+            .acknowledge();
+        }
+        let edit = TemplateEdit {
+            name: Some("Shared".into()),
+            content: Some("edited".into()),
+            ..TemplateEdit::default()
+        };
+        template_store::update(conn, "synced-a", &edit, DEVICE, NOW + 1)?;
+        // Another spelling of its own key is no rename either.
+        template_store::update(conn, "synced-a", &rename("SHARED "), DEVICE, NOW + 2)?;
+        template_store::update(conn, "synced-a", &rename("Shared"), DEVICE, NOW + 3)?;
+        taken(template_store::update(
+            conn,
+            "synced-a",
+            &rename("Meeting Notes"),
+            DEVICE,
+            NOW + 4,
+        ));
+        assert_eq!(
+            template_store::get(conn, "synced-a")?
+                .expect("kept")
+                .content,
+            "edited"
+        );
+        Ok(reads::templates(conn)?
+            .into_iter()
+            .skip(8)
+            .map(|t| t.name)
+            .collect::<Vec<_>>())
+    });
+    assert_eq!(names, ["shared", "Shared"]);
+}
+
+#[test]
+fn a_numbered_create_takes_the_next_free_name() {
+    let db = open("numbered");
+    let names = run(&db, |conn| {
+        template_store::create(conn, &fields("Person"), DEVICE, NOW)?;
+        template_store::create(conn, &fields("person 2"), DEVICE, NOW + 1)?;
+        Ok([
+            template_store::free_name(conn, " Person ")?,
+            template_store::free_name(conn, "Company")?,
+            template_store::free_name(conn, "blank note")?,
+        ])
+    });
+    assert_eq!(names, ["Person 3", "Company", "blank note 2"]);
 }

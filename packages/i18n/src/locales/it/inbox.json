@@ -279,12 +279,10 @@
         "description": "Tra {count, plural, one {# ora} many {# ore} other {# ore}}"
       },
       "tomorrow": {
-        "label": "Domani",
-        "description": "Domani alle 9:00"
+        "label": "Domani"
       },
       "nextWeek": {
-        "label": "Settimana prossima",
-        "description": "Lunedì alle 9:00"
+        "label": "Settimana prossima"
       },
       "inMinutes": {
         "label": "Tra {count, plural, one {# minuto} many {# minuti} other {# minuti}}"

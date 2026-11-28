@@ -19,6 +19,7 @@ import { useInboxStats, useInboxFilingHistory, useInboxPatterns } from '@/hooks/
 import { cn } from '@/lib/utils'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import { INBOX_SCROLL_KEYS } from './inbox-view-state'
+import { isHour12 } from '@/lib/time-format'
 
 export interface InboxHealthViewProps {
   className?: string
@@ -116,6 +117,7 @@ function getWeekdayNames(locale: string, weekday: 'short' | 'long'): string[] {
 function formatPeakHour(hour: number, locale: string): string {
   const formatter = new Intl.DateTimeFormat(locale, {
     hour: 'numeric',
+    hour12: isHour12(),
     timeZone: 'UTC'
   })
   return formatter.format(new Date(Date.UTC(2024, 0, 1, hour % 24)))

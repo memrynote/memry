@@ -279,12 +279,10 @@
         "description": "Через {count, plural, one {# час} few {# часа} many {# часов} other {# часа}}"
       },
       "tomorrow": {
-        "label": "Завтра",
-        "description": "Завтра в 9:00"
+        "label": "Завтра"
       },
       "nextWeek": {
-        "label": "Следующая неделя",
-        "description": "В понедельник в 9:00"
+        "label": "Следующая неделя"
       },
       "inMinutes": {
         "label": "Через {count, plural, one {# минуту} few {# минуты} many {# минут} other {# минуты}}"

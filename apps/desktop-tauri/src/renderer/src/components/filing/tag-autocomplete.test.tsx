@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TagAutocomplete } from './tag-autocomplete'
+import { tagLabelColor } from '@/components/note/tags-row/tag-colors'
 
 const tagMocks = vi.hoisted(() => ({
   searchTags: vi.fn(),
@@ -101,7 +102,7 @@ describe('TagAutocomplete', () => {
     const listbox = await screen.findByRole('listbox', { name: 'tagSuggestions' })
 
     const pill = within(listbox).getByText('project')
-    expect(pill).toHaveStyle({ color: '#ff0000' })
+    expect(pill).toHaveStyle({ color: tagLabelColor('#ff0000') })
     expect(within(listbox).getByText('🚀')).toBeInTheDocument()
   })
 
@@ -112,7 +113,7 @@ describe('TagAutocomplete', () => {
 
     const pill = screen.getByRole('listitem')
     expect(pill).toHaveTextContent('existing')
-    expect(pill).toHaveStyle({ color: '#00ff00' })
+    expect(pill).toHaveStyle({ color: tagLabelColor('#00ff00') })
     expect(within(pill).getByText('📚')).toBeInTheDocument()
   })
 

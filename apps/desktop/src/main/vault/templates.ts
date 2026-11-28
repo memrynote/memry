@@ -18,6 +18,8 @@ import { existsSync, unlinkSync } from 'fs'
 import { eq } from 'drizzle-orm'
 import { templates as templatesTable, type TemplateRow } from '@memry/db-schema/schema/templates'
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
+import { nameKey } from '@memry/shared/note-names'
+import { uniqueTemplateName } from '@memry/shared/template-names'
 import { substituteTemplatePlaceholders } from '@memry/shared/template-placeholders'
 import { stripTaskBlockSuffixes } from '@memry/shared/task-block'
 import type {
@@ -31,7 +33,7 @@ import { BUILT_IN_TEMPLATES, BUILT_IN_IDS } from './built-in-templates'
 import { getMemryDir } from './init'
 import { getCurrentVaultPath } from '../store'
 import { getDatabase } from '../database'
-import { VaultError, VaultErrorCode } from '../lib/errors'
+import { TemplateNameTakenError, VaultError, VaultErrorCode } from '../lib/errors'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { generateNoteId } from '../lib/id'
 import { createLogger } from '../lib/logger'
@@ -133,6 +135,42 @@ function assertNotBuiltIn(id: string, action: 'modify' | 'delete'): void {
   }
 }
 
+/**
+ * Keys (`nameKey`: trimmed, whitespace-collapsed, case-folded) of every name a
+ * template can be picked by: the built-ins and the custom rows, except
+ * `exceptId`. Rows carrying a built-in id are ghosts hidden from the list.
+ */
+function takenNameKeys(exceptId?: string): Set<string> {
+  const keys = new Set<string>()
+  for (const t of BUILT_IN_TEMPLATES) {
+    const key = nameKey(t.name)
+    if (key) keys.add(key)
+  }
+  const rows = getDatabase()
+    .select({ id: templatesTable.id, name: templatesTable.name })
+    .from(templatesTable)
+    .all()
+  for (const row of rows) {
+    if (row.id === exceptId || BUILT_IN_IDS.has(row.id)) continue
+    const key = nameKey(row.name)
+    if (key) keys.add(key)
+  }
+  return keys
+}
+
+/**
+ * `name`, or `name 2`, `name 3`, ... when another template has it. For code
+ * that creates a template on the user's behalf and must not fail on a clash.
+ */
+export function availableTemplateName(name: string): string {
+  return uniqueTemplateName(name, takenNameKeys())
+}
+
+function assertNameFree(name: string, exceptId?: string): void {
+  const key = nameKey(name)
+  if (key && takenNameKeys(exceptId).has(key)) throw new TemplateNameTakenError(name.trim())
+}
+
 // ============================================================================
 // CRUD Operations
 // ============================================================================
@@ -195,6 +233,8 @@ export async function getTemplate(id: string): Promise<Template | null> {
  * Create a new custom template.
  */
 export async function createTemplate(input: TemplateCreateInput): Promise<Template> {
+  assertNameFree(input.name)
+
   const id = generateNoteId()
   const now = new Date().toISOString()
 
@@ -247,6 +287,15 @@ export async function updateTemplate(input: TemplateUpdateInput): Promise<Templa
   }
 
   const existing = rowToTemplate(row)
+
+  // Only a real rename is checked. Sync and the pre-sync import can leave two
+  // templates with one name, and the user must still be able to edit the rest
+  // of either one; saving the same name back (the editor always sends it) is
+  // not a rename.
+  if (input.name !== undefined && nameKey(input.name) !== nameKey(existing.name)) {
+    assertNameFree(input.name, input.id)
+  }
+
   const now = new Date().toISOString()
 
   const updated: Template = {
@@ -317,6 +366,8 @@ export async function deleteTemplate(id: string): Promise<void> {
 
 /**
  * Duplicate a template. Duplicating a built-in produces a custom template.
+ * A `newName` another template already has gets a number appended (`Name 2`),
+ * so a duplicate always lands.
  */
 export async function duplicateTemplate(id: string, newName: string): Promise<Template> {
   const existing = await getTemplate(id)
@@ -325,7 +376,7 @@ export async function duplicateTemplate(id: string, newName: string): Promise<Te
   }
 
   return createTemplate({
-    name: newName,
+    name: availableTemplateName(newName),
     description: existing.description,
     icon: existing.icon,
     tags: [...existing.tags],

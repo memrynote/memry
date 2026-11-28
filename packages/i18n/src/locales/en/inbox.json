@@ -279,12 +279,10 @@
         "description": "In {count, plural, one {# hour} other {# hours}}"
       },
       "tomorrow": {
-        "label": "Tomorrow",
-        "description": "Tomorrow at 9 AM"
+        "label": "Tomorrow"
       },
       "nextWeek": {
-        "label": "Next Week",
-        "description": "Monday at 9 AM"
+        "label": "Next Week"
       },
       "inMinutes": {
         "label": "In {count, plural, one {# Minute} other {# Minutes}}"

@@ -3,6 +3,24 @@ import { getActiveLocale } from '@/lib/active-locale'
 
 export type ClockFormat = GeneralSettings['clockFormat']
 
+// Module-scoped clock format so pure (non-React) helpers and Intl calls follow the
+// user's 12h/24h setting, the same way `setDateFormatPref` serves date helpers.
+// Kept in sync by useClockFormatSync at the app root. '12h' is the settings default.
+let currentClockFormat: ClockFormat = '12h'
+
+export function setClockFormatPref(format: ClockFormat): void {
+  currentClockFormat = format
+}
+
+export function getClockFormatPref(): ClockFormat {
+  return currentClockFormat
+}
+
+/** `hour12` for an Intl call that shows a time, so it honors the clock setting. */
+export function isHour12(format: ClockFormat = currentClockFormat): boolean {
+  return format === '12h'
+}
+
 // Any fixed calendar day works: only the time-of-day is ever formatted, so this
 // just gives Intl a Date to read the hour and minute off.
 const CLOCK_REFERENCE_YEAR = 2000

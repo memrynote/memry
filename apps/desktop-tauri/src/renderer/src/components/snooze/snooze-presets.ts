@@ -17,7 +17,6 @@ import { formatTimeOfDay } from '@/lib/time-format'
 export interface SnoozePreset {
   id: string
   label: string
-  description: string
   getTime: () => Date
 }
 
@@ -209,25 +208,21 @@ export const snoozePresets: SnoozePreset[] = [
   {
     id: 'later-today',
     label: 'Later Today',
-    description: 'This evening',
     getTime: laterToday
   },
   {
     id: 'tomorrow',
     label: 'Tomorrow',
-    description: 'Tomorrow at 9am',
     getTime: tomorrow
   },
   {
     id: 'this-weekend',
     label: 'This Weekend',
-    description: 'Saturday at 9am',
     getTime: thisWeekend
   },
   {
     id: 'next-week',
     label: 'Next Week',
-    description: 'Monday at 9am',
     getTime: nextWeek
   }
 ]
@@ -239,13 +234,11 @@ export const quickSnoozePresets: SnoozePreset[] = [
   {
     id: 'in-1-hour',
     label: 'In 1 Hour',
-    description: '1 hour from now',
     getTime: inOneHour
   },
   {
     id: 'in-2-hours',
     label: 'In 2 Hours',
-    description: '2 hours from now',
     getTime: inTwoHours
   }
 ]
