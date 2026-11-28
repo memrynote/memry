@@ -84,7 +84,8 @@
 //!   moved after that row was stamped gets a pass ([`memry_core::domain::note_files::behind_bodies`]).
 //!   A note whose body did not move gets none, even when its document would write other
 //!   bytes (a file the read does not keep whole, seeded as the reference app seeds it): a
-//!   file the app did not change is never rewritten.
+//!   file the app did not change is never rewritten. A note a pull marked whose pass did not
+//!   settle the mark (`place`, `note_pulled_marks`) gets a pass too.
 //!
 //!   A row's stamp has one meaning for every writer: the row accounts for every change to the
 //!   file and to the body made at or before it
