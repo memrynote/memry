@@ -32,9 +32,30 @@ final class AccessoryStrip: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
 
+    /// The toolbar's size as last told to UIKit.
+    private var told: CGSize?
+
     /// The toolbar's own size: UIKit re-sizes an accessory only when the
-    /// accessory itself says its size changed.
-    override var intrinsicContentSize: CGSize { toolbar.intrinsicContentSize }
+    /// accessory itself says its size changed, and the page's keyboard inset
+    /// follows. The toolbar's size moves with its safe area (the home
+    /// indicator's strip while the keys are away), which it says only to
+    /// itself, so the strip passes each change on as the toolbar did when it
+    /// was the accessory.
+    override var intrinsicContentSize: CGSize {
+        let size = toolbar.intrinsicContentSize
+        told = size
+        return size
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if let told, told != toolbar.intrinsicContentSize { invalidateIntrinsicContentSize() }
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        invalidateIntrinsicContentSize()
+    }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
