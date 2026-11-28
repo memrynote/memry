@@ -143,9 +143,65 @@ vi.mock('../src/generated/bindings', () => {
     if (answer?.success === false) throw new Error(answer.error ?? '')
     return null
   }
+  // `window.api.tasks` keeps the Electron names and envelopes; component tests still set them.
+  const tasks = () =>
+    window.api.tasks as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  const listedTasks = async (result: Promise<unknown>) =>
+    ((await result) as { tasks?: unknown[] } | undefined)?.tasks ?? []
   return {
     commands: {
       appInfo: () => Promise.resolve({}),
+      tasksCreate: (input: unknown) => tasks().create(input),
+      tasksGet: (id: string) => tasks().get(id),
+      tasksUpdate: (input: unknown) => tasks().update(input),
+      tasksDelete: (id: string) => tasks().delete(id),
+      tasksList: (input: unknown) => tasks().list(input),
+      tasksComplete: (input: unknown) => tasks().complete(input),
+      tasksUncomplete: (id: string) => tasks().uncomplete(id),
+      tasksArchive: (id: string) => tasks().archive(id),
+      tasksUnarchive: (id: string) => tasks().unarchive(id),
+      tasksMove: (input: unknown) => tasks().move(input),
+      tasksReorder: (input: { taskIds: string[]; positions: number[] }) =>
+        tasks().reorder(input.taskIds, input.positions),
+      tasksDuplicate: (id: string) => tasks().duplicate(id),
+      tasksGetSubtasks: (parentId: string) => tasks().getSubtasks(parentId),
+      tasksConvertToSubtask: (input: { taskId: string; parentId: string }) =>
+        tasks().convertToSubtask(input.taskId, input.parentId),
+      tasksConvertToTask: (id: string) => tasks().convertToTask(id),
+      tasksProjectCreate: (input: unknown) => tasks().createProject(input),
+      tasksProjectGet: (id: string) => tasks().getProject(id),
+      tasksProjectUpdate: (input: unknown) => tasks().updateProject(input),
+      tasksProjectDelete: (id: string) => tasks().deleteProject(id),
+      tasksProjectList: () => tasks().listProjects(),
+      tasksProjectArchive: (id: string) => tasks().archiveProject(id),
+      tasksProjectReorder: (input: { projectIds: string[]; positions: number[] }) =>
+        tasks().reorderProjects(input.projectIds, input.positions),
+      tasksProjectLinkItem: (input: unknown) => tasks().linkProjectItem(input),
+      tasksProjectUnlinkItem: (input: unknown) => tasks().unlinkProjectItem(input),
+      tasksProjectListLinks: (id: string) => tasks().listProjectLinks(id),
+      tasksProjectListContents: (id: string) => tasks().listProjectContents(id),
+      tasksProjectSetLinkPinned: (input: unknown) => tasks().setProjectLinkPinned(input),
+      tasksProjectSetHomeNote: (input: unknown) => tasks().setProjectHomeNote(input),
+      tasksProjectListForItem: (input: { itemType: string; itemId: string }) =>
+        tasks().listForItem(input.itemType, input.itemId),
+      tasksStatusCreate: (input: unknown) => tasks().createStatus(input),
+      tasksStatusUpdate: ({ id, ...updates }: { id: string }) => tasks().updateStatus(id, updates),
+      tasksStatusDelete: (id: string) => tasks().deleteStatus(id),
+      tasksStatusReorder: (input: { statusIds: string[]; positions: number[] }) =>
+        tasks().reorderStatuses(input.statusIds, input.positions),
+      tasksStatusList: (projectId: string) => tasks().listStatuses(projectId),
+      tasksGetTags: () => tasks().getTags(),
+      tasksBulkComplete: (input: { ids: string[] }) => tasks().bulkComplete(input.ids),
+      tasksBulkDelete: (input: { ids: string[] }) => tasks().bulkDelete(input.ids),
+      tasksBulkMove: (input: { ids: string[]; projectId: string }) =>
+        tasks().bulkMove(input.ids, input.projectId),
+      tasksBulkArchive: (input: { ids: string[] }) => tasks().bulkArchive(input.ids),
+      tasksGetStats: () => tasks().getStats(),
+      tasksGetToday: () => listedTasks(tasks().getToday()),
+      tasksGetUpcoming: (days: number | null) => listedTasks(tasks().getUpcoming(days)),
+      tasksGetOverdue: () => listedTasks(tasks().getOverdue()),
+      tasksGetLinkedTasks: (noteId: string) => tasks().getLinkedTasks(noteId),
+      tasksGetActivity: (input: unknown) => tasks().getActivity(input),
       folderViewGetConfig: async (folderPath: string) => {
         const answer = (await folderView().getConfig(folderPath)) as
           | { config?: unknown }
@@ -578,6 +634,22 @@ vi.mock('../src/generated/bindings', () => {
       tagsProgressEvent: event(() => api().onTagsProgress),
       vaultLocksChangedEvent: event(() => api().onVaultLocksChanged),
       vaultLocksExternalEditRestoredEvent: event(() => api().onVaultLockExternalEditRestored),
+      // Electron's payloads carry the record; the service reads it back by the event's id.
+      taskCreatedEvent: event(
+        () => api().onTaskCreated,
+        (payload) => ({ id: (payload as { task: { id: string } }).task.id })
+      ),
+      taskUpdatedEvent: event(() => api().onTaskUpdated),
+      taskDeletedEvent: event(() => api().onTaskDeleted),
+      taskCompletedEvent: event(() => api().onTaskCompleted),
+      taskMovedEvent: event(() => api().onTaskMoved),
+      taskActivityCreatedEvent: event(() => api().onTaskActivityCreated),
+      projectCreatedEvent: event(
+        () => api().onProjectCreated,
+        (payload) => ({ id: (payload as { project: { id: string } }).project.id })
+      ),
+      projectUpdatedEvent: event(() => api().onProjectUpdated),
+      projectDeletedEvent: event(() => api().onProjectDeleted),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })
