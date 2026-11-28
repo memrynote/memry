@@ -28,6 +28,7 @@
  * to them keep valid CommonMark flanking (`:*em*:` parses, `x*em*x` does not).
  */
 
+import { isBackslashEscaped } from './hard-breaks.ts'
 import { isObject } from './is-record.ts'
 import type { LegacyReading } from './markdown-code.ts'
 import { MASK_WORD } from './mask-word.ts'
@@ -376,11 +377,13 @@ export function maskInlineColorSpans(
   // The `<span>` tags still open across the note, innermost last: whether each
   // became a token. A `</span>` closes the innermost one, and is a token only
   // when that one is: a plain span's close, and one that closes nothing, are
-  // text, as the HTML parse reads them.
+  // text, as the HTML parse reads them. A backslash before the `<` is the
+  // escape the writer spells text that holds a span with: no tag at all.
   const open: boolean[] = []
 
   const maskSegment = (segment: string): string =>
-    segment.replace(SPAN_TAG_REGEX, (tag, style: string | undefined) => {
+    segment.replace(SPAN_TAG_REGEX, (tag, style: string | undefined, at: number) => {
+      if (!legacy.html && isBackslashEscaped(segment, at)) return tag
       if (tag === '</span>') return open.pop() || legacy.html ? CLOSE_TOKEN : tag
       const styles = style === undefined ? null : parseColorDecls(style)
       if (!tag.endsWith('/>')) open.push(styles !== null)

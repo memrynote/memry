@@ -254,6 +254,14 @@ describe('a backslash before a handled tag', () => {
     ['\\<a href="u">', [['<a href="u">', true]]],
     ['\\<br/>', [['<br/>', true]]],
     ['\\<details data-memry-toggle>', []],
+    [
+      '\\<span style="color:red">x\\</span>',
+      [
+        ['<span style="color:red">', true],
+        ['</span>', true]
+      ]
+    ],
+    ['\\<span>', [['<span>', true]]],
     ['\\<input type=checkbox>', [['<input type=checkbox>', true]]],
     ['\\\\<b>', []],
     ['\\\\\\<b>', [['<b>', true]]],

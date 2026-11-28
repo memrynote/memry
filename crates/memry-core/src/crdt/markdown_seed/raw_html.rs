@@ -112,7 +112,14 @@ fn code_span_end(chars: &[char], at: usize) -> usize {
     run
 }
 
-fn scan_line(chars: &[char], base: usize, markdown: bool, scan: &mut Scan, spans: &mut Vec<Span>) {
+fn scan_line(
+    chars: &[char],
+    base: usize,
+    markdown: bool,
+    scan: &mut Scan,
+    spans: &mut Vec<Span>,
+    table_row: bool,
+) {
     let line = Line::new(chars);
     let n = chars.len();
     // The `[` this line has left open, and where the address of the last link
@@ -134,10 +141,16 @@ fn scan_line(chars: &[char], base: usize, markdown: bool, scan: &mut Scan, spans
                         }
                     }
                     Some(found) => {
-                        if let Some(tag) = &found.tag
-                            && is_handled(tag, scan)
-                        {
-                            if !markdown && reads_as_markup(tag) {
+                        if let Some(tag) = &found.tag {
+                            let handled = scan
+                                .model
+                                .as_mut()
+                                .is_some_and(|model| is_handled(tag, model));
+                            if handled {
+                                at = found.end;
+                                continue;
+                            }
+                            if scan.model.is_none() && reads_as_markup(tag) {
                                 // The writer escapes it. A row splits at a
                                 // pipe before it reads a tag.
                                 if chars[at..found.end].contains(&'|') {
@@ -149,8 +162,6 @@ fn scan_line(chars: &[char], base: usize, markdown: bool, scan: &mut Scan, spans
                                 }
                                 continue;
                             }
-                            at = found.end;
-                            continue;
                         }
                         // Desktop reads the comment inside it as one token, so
                         // where the tag ends depends on a length and on quotes
@@ -203,6 +214,12 @@ fn scan_line(chars: &[char], base: usize, markdown: bool, scan: &mut Scan, spans
                     at = code_span_end(chars, at);
                     continue;
                 }
+                '|' if table_row && depth == 0 => {
+                    // A cell ends the marks opened in it.
+                    if let Some(model) = scan.model.as_mut() {
+                        model.end_paragraph();
+                    }
+                }
                 '[' => depth += 1,
                 ']' if depth > 0 => {
                     depth -= 1;
@@ -226,14 +243,18 @@ pub(super) fn scan(text: &str, markdown: bool) -> Vec<Span> {
     let mut scan = Scan::new(markdown);
     let mut fence = FenceTracker::default();
     let mut base = 0;
-    for line in text.split('\n') {
+    let lines: Vec<&str> = text.split('\n').collect();
+    for (index, line) in lines.iter().enumerate() {
         let chars: Vec<char> = line.chars().collect();
         let in_fence = markdown && fence.consume(line);
-        if !in_fence {
-            scan.line(line);
+        let mut table_row = false;
+        if in_fence {
+            scan.fenced();
+        } else {
+            table_row = scan.line(line, lines.get(index + 1).copied());
         }
         if !in_fence && line.contains('<') {
-            scan_line(&chars, base, markdown, &mut scan, &mut spans);
+            scan_line(&chars, base, markdown, &mut scan, &mut spans, table_row);
         }
         base += chars.len() + 1;
     }

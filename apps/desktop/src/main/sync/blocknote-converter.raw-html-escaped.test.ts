@@ -77,7 +77,10 @@ const HANDLED_SPELLINGS = [
   '<ul><li>x</li></ul>',
   '<ol><li>x</li></ol>',
   '<table><tr><td>x</td></tr></table>',
-  '<input type="checkbox">'
+  '<input type="checkbox">',
+  '<span>x</span>',
+  '<span style="color:red">x</span>',
+  '<span style="text-decoration:underline">x</span>'
 ]
 
 describe('a backslash before a tag the editor handles', () => {
@@ -95,7 +98,7 @@ describe('a backslash before a tag the editor handles', () => {
     for (const run of runsOf(blocks)) expect(run.type).toBe('text')
   })
 
-  it.each(['<kq>', '</kq>', '<kbd>x</kbd>', '<x a="*">', '<div>', '<span>x</span>'])(
+  it.each(['<kq>', '</kq>', '<kbd>x</kbd>', '<x a="*">', '<div>', '<details>', '</details>'])(
     'is kept with %s, which the editor does not handle',
     async (spelling) => {
       const blocks = await read(`\\${spelling}`)

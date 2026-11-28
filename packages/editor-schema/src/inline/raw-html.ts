@@ -345,8 +345,6 @@ function namesHandledTag(line: string, at: number): { name: string; closing: boo
 interface Scan {
   /** The tags a note holds open. Null in text mode, which counts none. */
   model: HtmlNesting | null
-  /** In text mode, for each `<span>` still open, whether it has a `style`. */
-  spans: boolean[]
 }
 
 /** The attributes of `tag` spelled as one string, to tell a repeat from another tag. */
@@ -357,19 +355,19 @@ const attributesOf = (tag: Tag): string =>
     .join('\0')}`
 
 /**
- * Whether the editor handles `tag`, within the nesting cap. A `</span>` belongs
- * to the innermost `<span>` that is open, and one closing a plain span, or
- * nothing, is text.
+ * Whether the editor handles `tag` in a note, within the nesting cap. A `</span>`
+ * belongs to the innermost `<span>` that is open, and one closing a plain span,
+ * or nothing, is text.
  */
-function isHandled(tag: Tag, scan: Scan): boolean {
+function isHandled(tag: Tag, model: HtmlNesting): boolean {
   const { name, closing, attrs } = tag
   const has = (attr: string): boolean => attrs.some(([found]) => found === attr)
   switch (name) {
     case 'span':
-      return handlesSpan(tag, scan, has('style'))
+      return handlesSpan(tag, model, has('style'))
     case 'details':
-      if (closing) scan.model?.close('details')
-      return !closing && has('data-memry-toggle') && (scan.model?.open(name, null) ?? true)
+      if (closing) model.close('details')
+      return !closing && has('data-memry-toggle') && model.open(name, null)
     case 'input':
       return (
         !closing &&
@@ -378,23 +376,14 @@ function isHandled(tag: Tag, scan: Scan): boolean {
     default:
       if (!HANDLED_TAGS.has(name)) return false
       if (VOID_TAGS.has(name)) {
-        scan.model?.passes(name)
+        model.passes(name)
         return true
       }
-      if (scan.model === null) return true
-      return closing
-        ? scan.model.close(name) !== 'literal'
-        : scan.model.open(name, attributesOf(tag))
+      return closing ? model.close(name) !== 'literal' : model.open(name, attributesOf(tag))
   }
 }
 
-function handlesSpan(tag: Tag, scan: Scan, styled: boolean): boolean {
-  const { model } = scan
-  if (model === null) {
-    if (tag.closing) return scan.spans.pop() === true
-    if (!tag.selfClosing) scan.spans.push(styled)
-    return styled
-  }
+function handlesSpan(tag: Tag, model: HtmlNesting, styled: boolean): boolean {
   if (tag.closing) return model.close('span') === 'closed'
   if (styled) return model.open('span', attributesOf(tag))
   if (!tag.selfClosing) model.pushLiteral('span')
@@ -403,17 +392,22 @@ function handlesSpan(tag: Tag, scan: Scan, styled: boolean): boolean {
 
 /**
  * Whether the text `\\<tag>` is a literal tag the editor would otherwise read:
- * a tag of `HANDLED_TAGS`, a checkbox. A `<span>` is left to its own rules
- * (`inline-colors.ts`), and so is a toggle's `<details>`, which pairs with its
- * `</details>` across lines, so that an unterminated one stays the text it is.
+ * a tag of `HANDLED_TAGS`, a checkbox, a span of any kind (one with a `style`
+ * is a colour, and a plain one takes the `</span>` that ends a coloured run). A
+ * toggle's `<details>` is left as it is: it pairs with its `</details>` across
+ * lines, and an unterminated one is pinned as the text it is.
  */
 function readsAsMarkup(tag: Tag): boolean {
-  if (tag.name === 'input') {
-    return (
-      !tag.closing && tag.attrs.some(([a, v]) => a === 'type' && v.toLowerCase() === 'checkbox')
-    )
+  switch (tag.name) {
+    case 'input':
+      return (
+        !tag.closing && tag.attrs.some(([a, v]) => a === 'type' && v.toLowerCase() === 'checkbox')
+      )
+    case 'span':
+      return true
+    default:
+      return HANDLED_TAGS.has(tag.name)
   }
-  return HANDLED_TAGS.has(tag.name)
 }
 
 /** Whether a tag that closes on a later line is within the cap. */
@@ -437,7 +431,8 @@ function scanLine(
   base: number,
   markdown: boolean,
   scan: Scan,
-  spans: RawHtmlSpan[]
+  spans: RawHtmlSpan[],
+  tableRow: boolean
 ): void {
   // The `[` this line has left open, and where the address of the last link
   // starts: `[a](<x y>)` is a destination the link mask reads.
@@ -460,14 +455,14 @@ function scanLine(
         }
         continue
       }
-      if (found.tag !== null && isHandled(found.tag, scan)) {
-        if (!markdown && readsAsMarkup(found.tag)) {
-          // The writer escapes it. A row splits at a pipe before it reads a tag.
-          const whole = !line.slice(at, found.end).includes('|')
-          spans.push({ start: base + at, end: base + (whole ? found.end : at + 1), escaped: true })
-          if (whole) at = found.end - 1
-          continue
-        }
+      if (found.tag !== null && scan.model === null && readsAsMarkup(found.tag)) {
+        // The writer escapes it. A row splits at a pipe before it reads a tag.
+        const whole = !line.slice(at, found.end).includes('|')
+        spans.push({ start: base + at, end: base + (whole ? found.end : at + 1), escaped: true })
+        if (whole) at = found.end - 1
+        continue
+      }
+      if (found.tag !== null && scan.model !== null && isHandled(found.tag, scan.model)) {
         at = found.end - 1
         continue
       }
@@ -508,6 +503,9 @@ function scanLine(
         from = end
       }
       at = close < 0 ? run - 1 : close - 1
+    } else if (ch === '|' && tableRow && depth === 0) {
+      // A cell ends the marks opened in it.
+      scan.model?.endParagraph()
     } else if (ch === '[') {
       depth++
     } else if (ch === ']' && depth > 0) {
@@ -525,20 +523,74 @@ function scanLine(
 export function scanRawHtml(text: string, markdown: boolean): RawHtmlSpan[] {
   const spans: RawHtmlSpan[] = []
   if (!text.includes('<')) return spans
-  const scan: Scan = { model: markdown ? new HtmlNesting() : null, spans: [] }
+  const scan: Scan = { model: markdown ? new HtmlNesting() : null }
   const fence = markdown ? createFenceTracker() : null
+  const lines = text.split('\n')
   let base = 0
-  for (const line of text.split('\n')) {
+  // Whether the line above opened a list item, and whether this line is in a table.
+  let afterItem = false
+  let inTable = false
+  for (const [index, line] of lines.entries()) {
     const inFence = fence?.consume(line) ?? false
+    let tableRow = false
     if (scan.model !== null && !inFence) {
+      const row = line.includes('|') && (inTable || isDelimiterRow(lines[index + 1]))
+      let item = false
       if (line.trim() === '') scan.model.blankLine()
       else if (startsHtmlBlock(line)) scan.model.htmlBlockLine()
+      else if (row) scan.model.endParagraph()
+      else if ((item = opensListItem(line, afterItem))) scan.model.endParagraph()
+      afterItem = item
+      inTable = row
+      tableRow = row
+    } else {
+      afterItem = false
+      inTable = false
     }
-    if (!inFence && line.includes('<')) scanLine(line, base, markdown, scan, spans)
+    if (!inFence && line.includes('<')) scanLine(line, base, markdown, scan, spans, tableRow)
     base += line.length + 1
   }
   return spans
 }
+
+/**
+ * Whether `line` opens a list item that ends the paragraph above it: a bullet
+ * or a number, behind any block quote markers and up to three spaces. A number
+ * only interrupts a paragraph when it is 1, and one after another item is an
+ * item whatever it is; an item with more indent is the item above's own text,
+ * and is left to count with it.
+ */
+function opensListItem(line: string, afterItem: boolean): boolean {
+  let at = 0
+  for (;;) {
+    let next = at
+    while (next - at < 3 && line[next] === ' ') next++
+    if (line[next] !== '>') break
+    at = next + 1
+    if (line[at] === ' ' || line[at] === '\t') at++
+  }
+  let marker = at
+  while (line[marker] === ' ') marker++
+  if (marker - at > 3) return false
+  const first = line[marker]
+  if (first === '-' || first === '*' || first === '+') return isBlank(line[marker + 1])
+  let end = marker
+  while (end - marker < 10 && line[end] >= '0' && line[end] <= '9') end++
+  const digits = end - marker
+  if (digits === 0 || digits > 9 || (line[end] !== '.' && line[end] !== ')')) return false
+  return isBlank(line[end + 1]) && (afterItem || Number(line.slice(marker, end)) === 1)
+}
+
+/** Whether `line` is the row under a table's header: cells of dashes, with a colon at either end. */
+function isDelimiterRow(line: string | undefined): boolean {
+  if (line === undefined || !line.includes('|')) return false
+  let cells = line.trim()
+  if (cells.startsWith('|')) cells = cells.slice(1)
+  if (cells.endsWith('|')) cells = cells.slice(0, -1)
+  return cells.split('|').every((cell) => DELIMITER_CELL.test(cell))
+}
+
+const DELIMITER_CELL = /^[ \t]*:?-+:?[ \t]*$/
 
 /**
  * `isHtmlBlockStart`: a line of up to three spaces, then a tag of the block-tag

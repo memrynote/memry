@@ -63,7 +63,6 @@ const UNHANDLED = [
   '<kq-->',
   '<kbd>Ctrl</kbd>',
   '<kbd>Ctrl</kbd>+<kbd>K</kbd>',
-  '<span>x</span>',
   '<sup>2</sup>',
   '<mark>m</mark>',
   '<x-y>',
@@ -224,7 +223,7 @@ describe('raw HTML the editor does not handle', () => {
     }
   })
 
-  it('reads a note from before lossless blocks as it did', async () => {
+  it('reads a note from before raw HTML stayed text as it did', async () => {
     const { parseMarkdownToBlocksRepaired } = await import('@memry/editor-schema/parse-markdown')
     const editorHost = {
       tryParseMarkdownToBlocks: async () => [] as unknown[],
@@ -240,7 +239,7 @@ describe('raw HTML the editor does not handle', () => {
         }
       },
       'a <kbd>b</kbd>',
-      { losslessBlocks: false }
+      { literalHtml: false }
     )
     expect(seen).toEqual(['a <kbd>b</kbd>'])
   })

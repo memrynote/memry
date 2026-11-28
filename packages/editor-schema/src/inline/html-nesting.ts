@@ -164,8 +164,12 @@ export class HtmlNesting {
     if (CLOSES_PARAGRAPH.has(name)) this.htmlBlockLine()
   }
 
-  /** The end of a paragraph, heading or cell: the marks opened in it are closed. */
-  private endParagraph(): void {
+  /**
+   * The end of a paragraph, heading, list item or cell: the marks opened in it
+   * are closed, and the parse keeps them in its list of active formatting
+   * elements.
+   */
+  endParagraph(): void {
     while (this.stack.length > 0 && !this.stack[this.stack.length - 1].persistent) {
       this.popTo(this.stack.length - 1)
     }

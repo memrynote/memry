@@ -91,29 +91,113 @@ const HTML_BLOCK_TAGS: [&str; 26] = [
 pub(super) struct Scan {
     /// The tags a note holds open. `None` in text mode, which counts none.
     pub(super) model: Option<HtmlNesting>,
-    /// In text mode, for each `<span>` still open, whether it has a `style`.
-    spans: Vec<bool>,
+    /// Whether the line above opened a list item.
+    after_item: bool,
+    /// Whether the line above is a row of a table.
+    in_table: bool,
 }
 
 impl Scan {
     pub(super) fn new(markdown: bool) -> Self {
         Self {
             model: markdown.then(HtmlNesting::default),
-            spans: Vec::new(),
+            after_item: false,
+            in_table: false,
         }
     }
 
-    /// A blank line, or a line that starts an HTML block, as the model reads them.
-    pub(super) fn line(&mut self, line: &str) {
+    /// A blank line, a line that starts an HTML block, and a list item or a
+    /// table row, as the model reads them. `next` is the line below, which
+    /// tells a table's header row from a line with a pipe in it. Says whether
+    /// `line` is a row of a table, whose cells each end the marks opened in them.
+    pub(super) fn line(&mut self, line: &str, next: Option<&str>) -> bool {
         let Some(model) = self.model.as_mut() else {
-            return;
+            return false;
         };
+        let row = line.contains('|') && (self.in_table || next.is_some_and(is_delimiter_row));
+        let mut item = false;
         if crate::domain::journal_rules::js_trim(line).is_empty() {
             model.blank_line();
         } else if starts_html_block(line) {
             model.html_block_line();
+        } else if row {
+            model.end_paragraph();
+        } else {
+            item = opens_list_item(line, self.after_item);
+            if item {
+                model.end_paragraph();
+            }
+        }
+        self.after_item = item;
+        self.in_table = row;
+        row
+    }
+
+    /// A line in a fence: no table, no item, and a table above it is over.
+    pub(super) fn fenced(&mut self) {
+        self.after_item = false;
+        self.in_table = false;
+    }
+}
+
+/// `opensListItem`: whether `line` opens a list item that ends the paragraph
+/// above it: a bullet or a number, behind any block quote markers and up to
+/// three spaces. A number only interrupts a paragraph when it is 1, and one
+/// after another item is an item whatever it is; an item with more indent is
+/// the item above's own text, and is left to count with it.
+fn opens_list_item(line: &str, after_item: bool) -> bool {
+    let bytes = line.as_bytes();
+    let at_blank = |at: usize| matches!(bytes.get(at), Some(b' ' | b'\t'));
+    let mut at = 0;
+    loop {
+        let mut next = at;
+        while next - at < 3 && bytes.get(next) == Some(&b' ') {
+            next += 1;
+        }
+        if bytes.get(next) != Some(&b'>') {
+            break;
+        }
+        at = next + 1;
+        if at_blank(at) {
+            at += 1;
         }
     }
+    let mut marker = at;
+    while bytes.get(marker) == Some(&b' ') {
+        marker += 1;
+    }
+    if marker - at > 3 {
+        return false;
+    }
+    if matches!(bytes.get(marker), Some(b'-' | b'*' | b'+')) {
+        return at_blank(marker + 1);
+    }
+    let mut end = marker;
+    while end - marker < 10 && bytes.get(end).is_some_and(u8::is_ascii_digit) {
+        end += 1;
+    }
+    let digits = end - marker;
+    if digits == 0 || digits > 9 || !matches!(bytes.get(end), Some(b'.' | b')')) {
+        return false;
+    }
+    at_blank(end + 1) && (after_item || line[marker..end].parse::<u32>() == Ok(1))
+}
+
+/// `isDelimiterRow`: the row under a table's header, cells of dashes with a
+/// colon at either end.
+fn is_delimiter_row(line: &str) -> bool {
+    if !line.contains('|') {
+        return false;
+    }
+    let mut cells = crate::domain::journal_rules::js_trim(line);
+    cells = cells.strip_prefix('|').unwrap_or(cells);
+    cells = cells.strip_suffix('|').unwrap_or(cells);
+    cells.split('|').all(|cell| {
+        let cell = cell.trim_matches([' ', '\t']);
+        let dashes = cell.strip_prefix(':').unwrap_or(cell);
+        let dashes = dashes.strip_suffix(':').unwrap_or(dashes);
+        !dashes.is_empty() && dashes.bytes().all(|b| b == b'-')
+    })
 }
 
 /// `isHtmlBlockStart`: a line of up to three spaces, then a tag of the
@@ -173,11 +257,14 @@ pub(super) fn names_handled_tag(line: &Line, at: usize) -> Option<(String, bool)
 }
 
 /// `readsAsMarkup`: whether the text `\<tag>` is a literal tag the editor would
-/// otherwise read: a tag of [`HANDLED`], a checkbox. A `<span>` is left to its
-/// own rules, and so is a toggle's `<details>`, which pairs with its
-/// `</details>` across lines, so that an unterminated one stays the text it is.
+/// otherwise read: a tag of [`HANDLED`], a checkbox, a span of any kind (one
+/// with a `style` is a colour, and a plain one takes the `</span>` that ends a
+/// coloured run). A toggle's `<details>` is left as it is: it pairs with its
+/// `</details>` across lines, and an unterminated one is pinned as the text it
+/// is.
 pub(super) fn reads_as_markup(tag: &Tag) -> bool {
     match tag.name.as_str() {
+        "span" => true,
         "input" => {
             !tag.closing
                 && tag
@@ -212,25 +299,18 @@ fn attributes_of(tag: &Tag) -> String {
     format!("{}\0{}", tag.name, attrs.join("\0"))
 }
 
-/// Whether the editor handles `tag`, within the nesting cap. A `</span>` belongs
-/// to the innermost `<span>` that is open, and one closing a plain span, or
-/// nothing, is text.
-pub(super) fn is_handled(tag: &Tag, scan: &mut Scan) -> bool {
+/// Whether the editor handles `tag` in a note, within the nesting cap. A
+/// `</span>` belongs to the innermost `<span>` that is open, and one closing a
+/// plain span, or nothing, is text.
+pub(super) fn is_handled(tag: &Tag, model: &mut HtmlNesting) -> bool {
     let has = |name: &str| tag.attrs.iter().any(|(attr, _)| attr == name);
     match tag.name.as_str() {
-        "span" => handles_span(tag, scan, has("style")),
+        "span" => handles_span(tag, model, has("style")),
         "details" => {
-            if tag.closing
-                && let Some(model) = scan.model.as_mut()
-            {
+            if tag.closing {
                 model.close("details");
             }
-            !tag.closing
-                && has("data-memry-toggle")
-                && scan
-                    .model
-                    .as_mut()
-                    .is_none_or(|model| model.open("details", None))
+            !tag.closing && has("data-memry-toggle") && model.open("details", None)
         }
         "input" => {
             !tag.closing
@@ -241,29 +321,15 @@ pub(super) fn is_handled(tag: &Tag, scan: &mut Scan) -> bool {
         }
         name if !HANDLED.contains(&name) => false,
         name if VOID.contains(&name) => {
-            if let Some(model) = scan.model.as_mut() {
-                model.passes(name);
-            }
+            model.passes(name);
             true
         }
-        name => match scan.model.as_mut() {
-            None => true,
-            Some(model) if tag.closing => model.close(name) != Close::Literal,
-            Some(model) => model.open(name, Some(&attributes_of(tag))),
-        },
+        name if tag.closing => model.close(name) != Close::Literal,
+        name => model.open(name, Some(&attributes_of(tag))),
     }
 }
 
-fn handles_span(tag: &Tag, scan: &mut Scan, styled: bool) -> bool {
-    let Some(model) = scan.model.as_mut() else {
-        if tag.closing {
-            return scan.spans.pop() == Some(true);
-        }
-        if !tag.self_closing {
-            scan.spans.push(styled);
-        }
-        return styled;
-    };
+fn handles_span(tag: &Tag, model: &mut HtmlNesting, styled: bool) -> bool {
     if tag.closing {
         return model.close("span") == Close::Closed;
     }

@@ -1,13 +1,14 @@
 /**
- * Text that spells a span, or a toggle's `<details>`, is a fixed point of the write.
+ * Text that spells a span is a fixed point of the write.
  *
  * A `<span>` the note leaves open takes the `</span>` the writer ends a coloured
  * or underlined run with, so `<u>a <span> b</u>` grew one more `</span>` on every
  * save, and `<span style="color:red">a<span>b` the same. Typed text that spells
- * `<span style="color:red">x</span>` or `<details data-memry-toggle>` lost its
- * tag characters as soon as it was read back. The writer now escapes the `<` of
- * such text (`\<span>`), as it does for the other tags the editor handles, and
- * the reader reads the escape as the character.
+ * `<span style="color:red">x</span>` lost its tag characters as soon as it was
+ * read back. The writer now escapes the `<` of such text (`\<span>`), as it does
+ * for the other tags the editor handles, and the reader reads the escape as the
+ * character. A toggle's `<details>` is left as it is: the conformance vectors pin
+ * an unterminated one as the text it is.
  */
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
@@ -85,32 +86,23 @@ describe('a span the note leaves open', () => {
   })
 })
 
-describe('typed text that spells a span or a toggle', () => {
+describe('typed text that spells a span', () => {
   it.each([
     ['a coloured span', '<span style="color:red">x</span>', '\\<span style="color:red">x\\</span>'],
     ['a plain span', 'a <span> b', 'a \\<span> b'],
-    ['a closing span', 'a </span> b', 'a \\</span> b'],
-    ['a toggle', '<details data-memry-toggle> x', '\\<details data-memry-toggle> x'],
-    [
-      'an open toggle',
-      'a <details data-memry-toggle open> x',
-      'a \\<details data-memry-toggle open> x'
-    ]
+    ['a closing span', 'a </span> b', 'a \\</span> b']
   ])('is written with its angle bracket escaped, %s', async (_name, text, written) => {
     expect(await write([typed(text)])).toBe(written)
   })
 
-  it.each([
-    '<span style="color:red">x</span>',
-    'a <span> b',
-    'a </span> b',
-    '<details data-memry-toggle> x',
-    'a <details data-memry-toggle open> x'
-  ])('comes back as the same text: %s', async (text) => {
-    const runs = runsOf(await read(await write([typed(text)])))
+  it.each(['<span style="color:red">x</span>', 'a <span> b', 'a </span> b'])(
+    'comes back as the same text: %s',
+    async (text) => {
+      const runs = runsOf(await read(await write([typed(text)])))
 
-    expect(runs.map((run) => [run.text, run.styles?.textColor])).toEqual([[text, undefined]])
-  })
+      expect(runs.map((run) => [run.text, run.styles?.textColor])).toEqual([[text, undefined]])
+    }
+  )
 
   it('does not end a colour, as a closing span typed inside one did', async () => {
     const blocks = [

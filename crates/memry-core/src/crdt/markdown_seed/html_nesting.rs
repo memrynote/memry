@@ -152,8 +152,10 @@ impl HtmlNesting {
         }
     }
 
-    /// The end of a paragraph, heading or cell: the marks opened in it are closed.
-    fn end_paragraph(&mut self) {
+    /// The end of a paragraph, heading, list item or cell: the marks opened in
+    /// it are closed, and the parse keeps them in its list of active formatting
+    /// elements.
+    pub(super) fn end_paragraph(&mut self) {
         while self.stack.last().is_some_and(|open| !open.persistent) {
             self.pop_to(self.stack.len() - 1);
         }

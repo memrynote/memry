@@ -102,6 +102,49 @@ fn a_handled_tag_past_the_nesting_cap_is_hidden_with_its_closing_tag() {
     );
 }
 
+/// `html-nesting.test.ts`, 'marks a list item or a table cell ends'.
+#[test]
+fn a_list_item_and_a_table_cell_end_the_marks_opened_in_them() {
+    let lines = |count: usize, make: &dyn Fn(usize) -> String| -> String {
+        (0..count).map(make).collect::<Vec<_>>().join("\n")
+    };
+    let table = |rows: String| format!("| a | b |\n| - | - |\n{rows}");
+    let cap = MAX_NESTING;
+    for markdown in [
+        lines(cap + 5, &|i| format!("- <i>item{i}")),
+        lines(cap + 5, &|i| format!("{}. <i>item{i}", i + 1)),
+        lines(cap + 5, &|i| format!("> - <i>item{i}")),
+        format!("- a\n{}", lines(cap + 5, &|i| format!("  - <i>item{i}"))),
+        table(lines(cap + 5, &|i| format!("| <b>c{i} | x |"))),
+        format!(
+            "{} |\n{} |",
+            "| <b>c".repeat(cap + 6),
+            "| -".repeat(cap + 6)
+        ),
+    ] {
+        assert_eq!(hidden(&markdown), Vec::<String>::new());
+    }
+    assert_eq!(
+        hidden(&lines(cap + 5, &|i| format!("- <b data-n=\"{i}\">x"))).len(),
+        5
+    );
+    assert_eq!(
+        hidden(&table(lines(cap + 5, &|i| format!(
+            "| <b data-n=\"{i}\">x |"
+        ))))
+        .len(),
+        5
+    );
+    for markdown in [
+        lines(cap + 5, &|_| "a | <b>x".to_owned()),
+        "| <b>x ".repeat(cap + 5),
+        format!("a\n{}", lines(cap + 5, &|i| format!("{}. <b>x", i + 2))),
+        format!("a\n{}", lines(cap + 5, &|_| "    - <b>x".to_owned())),
+    ] {
+        assert_eq!(hidden(&markdown).len(), 5);
+    }
+}
+
 #[test]
 fn a_closing_span_belongs_to_the_innermost_open_span() {
     assert_eq!(hidden("<span>a</span>"), ["<span>", "</span>"]);
@@ -261,6 +304,11 @@ fn a_backslash_before_a_handled_tag_hides_the_tag_as_escaped() {
     );
     case("\\\\<b>", &[]);
     case("\\\\\\<b>", &[("<b>", true)]);
+    case(
+        "\\<span style=\"color:red\">x\\</span>",
+        &[("<span style=\"color:red\">", true), ("</span>", true)],
+    );
+    case("\\<span>", &[("<span>", true)]);
     case("\\<kq>", &[("<kq>", false)]);
     case("\\</details>", &[("</details>", false)]);
     case("\\<input type=text>", &[("<input type=text>", false)]);

@@ -144,3 +144,17 @@ describe('the depth cap', () => {
     expect(count(textOf(blocks), '<')).toBe(30 * 5 - CAP)
   })
 })
+
+describe('marks a list item or a table cell leaves open', () => {
+  it.each([
+    ['list items', Array.from({ length: 105 }, (_, i) => `- <i>item${i}`).join('\n')],
+    [
+      'table rows',
+      `| a |\n| - |\n${Array.from({ length: 105 }, (_, i) => `| <b>c${i} |`).join('\n')}`
+    ]
+  ])('are marks in all of %s, not text', async (_label, markdown) => {
+    const { blocks } = await seed(markdown)
+    // The HTML parse closes the mark at each `</li>` and `</td>`, so no tag is past the cap.
+    expect(count(textOf(blocks), '<')).toBe(0)
+  })
+})

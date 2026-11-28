@@ -46,18 +46,39 @@ async function settle(markdown: string): Promise<{ once: string; twice: string }
 
 describe('a closing span tag that closes no coloured span', () => {
   it.each([
-    'a </span> b <span style="color:red">c</span>',
-    '<span style="color:red">c</span> a </span> b',
-    '<span style="color:red">a</span></span>',
-    '</span></span> <span style="text-decoration:underline">x</span>',
-    '<span>a</span> <span style="color:red">c</span>',
-    '<span class="x">a</span> <span style="color:red">c</span> <span>d</span>',
-    '<span style="color:red">a <span>b</span> c</span>',
-    '`</span>` <span style="color:red">c</span> </span>'
-  ])('is kept in %s', async (markdown) => {
+    [
+      'a </span> b <span style="color:red">c</span>',
+      'a \\</span> b <span style="color:red">c</span>'
+    ],
+    [
+      '<span style="color:red">c</span> a </span> b',
+      '<span style="color:red">c</span> a \\</span> b'
+    ],
+    ['<span style="color:red">a</span></span>', '<span style="color:red">a</span>\\</span>'],
+    [
+      '</span></span> <span style="text-decoration:underline">x</span>',
+      '\\</span>\\</span> <span style="text-decoration:underline">x</span>'
+    ],
+    [
+      '<span>a</span> <span style="color:red">c</span>',
+      '\\<span>a\\</span> <span style="color:red">c</span>'
+    ],
+    [
+      '<span class="x">a</span> <span style="color:red">c</span> <span>d</span>',
+      '\\<span class="x">a\\</span> <span style="color:red">c</span> \\<span>d\\</span>'
+    ],
+    [
+      '<span style="color:red">a <span>b</span> c</span>',
+      '<span style="color:red">a \\<span>b\\</span> c</span>'
+    ],
+    [
+      '`</span>` <span style="color:red">c</span> </span>',
+      '`</span>` <span style="color:red">c</span> \\</span>'
+    ]
+  ])('is kept as text, escaped, in %s', async (markdown, written) => {
     const { once, twice } = await settle(markdown)
-    expect(once).toBe(markdown)
-    expect(twice).toBe(markdown)
+    expect(once).toBe(written)
+    expect(twice).toBe(written)
   })
 
   it('is read as text, and the coloured span as a colour', async () => {
@@ -79,8 +100,11 @@ describe('a closing span tag that closes no coloured span', () => {
 
 describe('a tag the writer makes out of a mark', () => {
   it.each([
-    ['</span> <u>x</u>', '</span> <span style="text-decoration:underline">x</span>'],
-    ['<span>a</span> <u>x</u>', '<span>a</span> <span style="text-decoration:underline">x</span>']
+    ['</span> <u>x</u>', '\\</span> <span style="text-decoration:underline">x</span>'],
+    [
+      '<span>a</span> <u>x</u>',
+      '\\<span>a\\</span> <span style="text-decoration:underline">x</span>'
+    ]
   ])('does not take a `</span>` of %j', async (markdown, written) => {
     const { once, twice } = await settle(markdown)
     expect(once).toBe(written)
@@ -91,7 +115,7 @@ describe('a tag the writer makes out of a mark', () => {
 describe('a closing span tag in a later block than its open', () => {
   it('is text there, and the note settles', async () => {
     const { once, twice } = await settle('<span style="color:red">a\n\nb</span>')
-    expect(once).toBe('<span style="color:red">a</span>\n\nb</span>')
+    expect(once).toBe('<span style="color:red">a</span>\n\nb\\</span>')
     expect(twice).toBe(once)
   })
 })
