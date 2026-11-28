@@ -15,7 +15,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 
 ## Commands
 
-- Name a command `<domain>_<verb>` in snake_case. Its module lives in `src-tauri/src/commands/<domain>.rs`, and its path goes in `src-tauri/src/registry.rs` under the domain's comment, one fully qualified path per line, domains in alphabetical order.
+- Name a command `<domain>_<verb>` in snake_case. Its module lives in `src-tauri/src/commands/<domain>.rs`, and its path goes in its area's `src-tauri/src/registry/<area>.rs`, one fully qualified path per line. A new area adds its module to `registry.rs` and its name to the `areas!` chain there. `registry.rs` and `events/mod.rs` list no command or event (`tests/registration_layout.rs`).
 - Command types derive `Serialize`, `Deserialize` and `specta::Type` with `#[serde(rename_all = "camelCase")]`.
 - No 64-bit integer that needs more than 53 bits crosses IPC. Ids and hashes travel as strings. The builder casts `i64` to a JavaScript number because every `i64` that crosses is an epoch-millisecond timestamp, a count or a size.
 - A command returns `Result<T, CommandError>`. A rejected call throws the serialized `CommandError { kind, code, message }`, which `extractErrorMessage` reads. Call `log_failure(command, &error)` in the `map_err`. Messages never carry secrets.
@@ -27,7 +27,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 ## Events
 
 - An event is a struct deriving `tauri_specta::Event`, named `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). The wire name is the one tauri-specta derives. Legacy channel strings are not used.
-- List it in `registry.rs` and emit it after commit with `events::broadcast` or `events::send_to`. Both log a failed delivery and return, so they are safe inside a transaction. Do not call `emit` directly.
+- Define it in `src-tauri/src/events/<area>.rs`, list it in `registry/<area>.rs`, and emit it after commit with `events::broadcast` or `events::send_to`. Both log a failed delivery and return, so they are safe inside a transaction. Do not call `emit` directly.
 
 ## Sync
 
