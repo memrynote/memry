@@ -95,6 +95,17 @@ const cases: Array<[string, () => unknown]> = [
     () => maskCodeAcrossLines(Array.from({ length: 1500 }, (_, i) => '`'.repeat(i + 1)).join('\n'))
   ],
   ['lines of single backticks in one paragraph', () => maskCodeAcrossLines('a`\n'.repeat(50_000))],
+  // Every tick of a line is a candidate opener, and a line holds no more than one pass of work.
+  ['one line of single backticks', () => maskCodeAcrossLines('a`'.repeat(100_000))],
+  // No run of 2 to 601 backticks has a closer of its length, so each retries against the shorter
+  // runs that follow it on the line: the first of each length, found once for the whole line.
+  [
+    'one line of backtick runs no run closes, then many single backticks',
+    () =>
+      maskCodeAcrossLines(
+        `${Array.from({ length: 600 }, (_, i) => `${'`'.repeat(601 - i)}x `).join('')}${'a ` '.repeat(25_000)}`
+      )
+  ],
   [
     'a line of empty-label links in nested parens',
     () => maskEmptyLinks(`${'[](('.repeat(25_000)}${'))'.repeat(25_000)}`)
