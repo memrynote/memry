@@ -26,8 +26,14 @@ export const CHANGE_KEY_GRACE_MS = 500
  */
 export const WRITE_KEY_TTL_MS = 1000
 
+/** The file a key belongs to, whatever its size and mtime. */
+function fileOf(stats: Stats): string {
+  return `${stats.dev}:${stats.ino}:${stats.birthtimeMs}`
+}
+
 interface Entry {
   key: string
+  file: string
   /** Set while a `change` holds the key until its debounced change ran. */
   change: number | null
   expiry: NodeJS.Timeout | null
@@ -44,9 +50,20 @@ export class RecentFileIdentities {
     const entry = this.entries.get(filePath)
     if (entry?.change != null) {
       entry.key = key
+      entry.file = fileOf(stats)
       return
     }
-    this.set(filePath, { key, change: null, expiry: null }, WRITE_KEY_TTL_MS)
+    this.set(filePath, { key, file: fileOf(stats), change: null, expiry: null }, WRITE_KEY_TTL_MS)
+  }
+
+  /**
+   * `filePath`'s own watcher named the file's new name, and `renamedStats` are
+   * the file there now: it takes the key only if it is the file the key is of.
+   */
+  recordRenamed(filePath: string, renamedStats: Stats): void {
+    const entry = this.entries.get(filePath)
+    const key = buildFileIdentityKey(renamedStats)
+    if (key !== null && entry?.file === fileOf(renamedStats)) entry.key = key
   }
 
   /**
@@ -55,11 +72,11 @@ export class RecentFileIdentities {
    */
   recordChange(filePath: string, stats: Stats | undefined): void {
     const key = stats ? buildFileIdentityKey(stats) : null
-    if (key === null) {
+    if (!stats || key === null) {
       this.take(filePath)
       return
     }
-    this.set(filePath, { key, change: ++this.changes, expiry: null }, null)
+    this.set(filePath, { key, file: fileOf(stats), change: ++this.changes, expiry: null }, null)
   }
 
   /**

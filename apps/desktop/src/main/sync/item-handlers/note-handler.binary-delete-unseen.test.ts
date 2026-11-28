@@ -185,6 +185,36 @@ describe("a peer's delete of a binary note whose file holds bytes no server has"
     if (landed) recordDownloadedFileSize(id, `att-${id}`, bytes.length, sha256(bytes))
   }
 
+  /**
+   * How long the watcher may take to hear a folder's change. macOS reports one
+   * through FSEvents, which fseventsd delivers up to 30 s late when other
+   * processes keep it busy.
+   */
+  const FS_EVENTS_TIMEOUT_MS = 45_000
+
+  /** An outside file whose add marks that the watcher hears the vault. */
+  async function watch(): Promise<void> {
+    const relativePath = 'Sentinel/s.md'
+    // Made before the watch: a file in a folder made after it reports nothing
+    // until chokidar has read the folder.
+    fs.mkdirSync(path.dirname(abs(relativePath)), { recursive: true })
+    await startWatcher(vault.path)
+    let writtenAt = 0
+    // fsevents can drop a write made right after the watcher starts.
+    await vi.waitFor(
+      async () => {
+        await flushProjectionEvents()
+        if (getNoteCacheByPath(index.db, relativePath)) return
+        if (Date.now() - writtenAt > 1000) {
+          writtenAt = Date.now()
+          fs.writeFileSync(abs(relativePath), `sentinel ${writtenAt}\n`)
+        }
+        throw new Error(`waiting for ${relativePath}`)
+      },
+      { timeout: FS_EVENTS_TIMEOUT_MS, interval: 100 }
+    )
+  }
+
   const replaceOutside = (relativePath: string, bytes: string) =>
     fs.writeFileSync(abs(relativePath), bytes)
 
@@ -211,7 +241,7 @@ describe("a peer's delete of a binary note whose file holds bytes no server has"
 
   it('keeps a replace inside the watcher window, which the vault takes in as a new note', async () => {
     seed('img', 'Pictures/p.png', 'synced-bytes')
-    await startWatcher(vault.path)
+    await watch()
 
     replaceOutside('Pictures/p.png', 'replaced just now')
     expect(pullDelete('img')).toBe('applied')
@@ -226,9 +256,9 @@ describe("a peer's delete of a binary note whose file holds bytes no server has"
         expect(kept?.id).not.toBe('img')
         expect(saved).toHaveBeenCalledWith(kept?.id, abs(KEPT))
       },
-      { timeout: 15_000, interval: 100 }
+      { timeout: FS_EVENTS_TIMEOUT_MS, interval: 100 }
     )
-  }, 30_000)
+  }, 100_000)
 
   it('deletes a file that still holds the bytes a download landed', () => {
     seed('img', 'Pictures/p.png', 'synced-bytes')
