@@ -142,7 +142,14 @@ fn a_save_racing_the_removal_keeps_the_canvas_and_a_save_after_it_writes_nothing
     // The save lands inside the rename window: the document is back when the removal settles.
     assert!(matches!(w.save(&id, "saved"), Update::Saved { .. }));
     let path = w.canvases.document_path(&id).unwrap().unwrap();
-    let rel = path.strip_prefix(&w.vault).unwrap().to_string_lossy();
+    // Vault-relative and `/`-joined, as the watcher reports it (`runtime.rs::rel_of`).
+    let rel = path
+        .strip_prefix(&w.vault)
+        .unwrap()
+        .components()
+        .map(|part| part.as_os_str().to_str().unwrap())
+        .collect::<Vec<_>>()
+        .join("/");
 
     assert!(w.canvases.removed_outside(&rel, LATER).unwrap().is_empty());
     assert!(w.scene_of(&id).contains("saved"));
