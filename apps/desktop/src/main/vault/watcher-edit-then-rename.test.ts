@@ -166,8 +166,7 @@ const renameSynced = vi.fn()
 const FS_EVENTS_TIMEOUT_MS = 45_000
 /**
  * A wait for work the app starts itself, or a file's own watcher reports. A
- * test waits on `watch` and two settles, 80 s in all; a case-only rename,
- * which only the folder reports, waits on two folder events, 120 s in all.
+ * test waits on `watch` and two settles, 80 s in all.
  */
 const SETTLE_TIMEOUT_MS = 10_000
 
@@ -476,19 +475,37 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     async () => {
       seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
       await watch()
+      lostAdds.add(path.join(vault.path, 'Docs/Apple.md'))
       await editThenBeforeChange('Docs/apple.md', '# apple\n\nbody edited\n', () =>
         fs.renameSync(
           path.join(vault.path, 'Docs/apple.md'),
           path.join(vault.path, 'Docs/Apple.md')
         )
       )
-      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'), FS_EVENTS_TIMEOUT_MS)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
 
       await settleOn(() => expect(editFedTo('n1')).toBe(true))
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
-    120_000
+    80_000
+  )
+
+  // A case-only rename leaves the old spelling openable on a disk that ignores
+  // case, and only the folder, through FSEvents, reports the new one.
+  it.runIf(process.platform === 'darwin' && fileSystemIgnoresCase())(
+    'a case-only rename whose new spelling the folder never reports keeps the note id',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      lostAdds.add(path.join(vault.path, 'Docs/Apple.md'))
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/Apple.md'))
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    80_000
   )
 
   it('raw events on one file in one event-loop turn stat it once', async () => {
@@ -524,19 +541,20 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     async () => {
       seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
       await watch()
+      lostAdds.add(path.join(vault.path, 'Docs/Apple.md'))
       await editThen('Docs/apple.md', '# apple\n\nbody edited\n', () =>
         fs.renameSync(
           path.join(vault.path, 'Docs/apple.md'),
           path.join(vault.path, 'Docs/Apple.md')
         )
       )
-      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'), FS_EVENTS_TIMEOUT_MS)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
 
       await settleOn(() => expect(editFedTo('n1')).toBe(true))
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
-    120_000
+    80_000
   )
 
   /**
