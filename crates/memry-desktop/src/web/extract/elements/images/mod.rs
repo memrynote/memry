@@ -231,7 +231,7 @@ fn create_figure_with_caption(
     doc.append_child(figure, copy)?;
     let figcaption = doc.create_element("figcaption");
     let content = extract_unique_caption_content(doc, caption);
-    let fragment = doc.parse_fragment(&content);
+    let fragment = doc.parse_fragment(&content)?;
     doc.append_child(figcaption, fragment)?;
     doc.append_child(figure, figcaption)?;
     Ok(figure)

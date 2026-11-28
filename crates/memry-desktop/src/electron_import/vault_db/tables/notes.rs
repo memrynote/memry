@@ -201,7 +201,7 @@ fn note_payload(
         }
     }
     // `noteCoverForPush`, only for a file that was read. Its marker writes are not repeated:
-    // the `note-cover:` rows are carried by the sync state import (36c).
+    // the core keeps no marker, so the sync state import skips the `note-cover:` rows.
     if let Some(fields) = fields {
         match fields.cover {
             Some(cover) => {

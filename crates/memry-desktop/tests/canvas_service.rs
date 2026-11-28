@@ -21,6 +21,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::auth::ensure_device_identity;
+use memry_core::api::canvas::Canvases;
 use memry_core::api::errors::SecureStoreError;
 use memry_core::api::vault::Vault;
 use memry_core::domain::canvas::file_format::{FileMeta, read_file_meta, with_file_meta};
@@ -56,6 +57,8 @@ pub(crate) struct World {
     _dir: tempfile::TempDir,
     pub vault: PathBuf,
     pub canvases: CanvasService,
+    /// The record side, written as another device's apply would.
+    pub core: Arc<Canvases>,
 }
 
 /// A stand-in OS trash: `<vault>/.trash`, which no canvas listing walks.
@@ -85,11 +88,13 @@ pub(crate) fn world_with(trash: Trash) -> World {
     ensure_device_identity(store.clone()).unwrap();
     let opened = Vault::open("vault".into(), core.to_string_lossy().into_owned()).unwrap();
     let index = opened.search(None).unwrap().index_handle();
-    let canvases = CanvasService::new(vault.clone(), opened.canvases(store).unwrap(), index, trash);
+    let core = opened.canvases(store).unwrap();
+    let canvases = CanvasService::new(vault.clone(), core.clone(), index, trash);
     World {
         _dir: dir,
         vault,
         canvases,
+        core,
     }
 }
 

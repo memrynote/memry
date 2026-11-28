@@ -17,8 +17,14 @@
 
 #[path = "device_key/mod.rs"]
 mod device_key;
+#[path = "attachments_harness/events.rs"]
+mod events;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
+#[path = "attachments_harness/placement.rs"]
+mod placement;
+#[path = "attachments_harness/service.rs"]
+mod service;
 
 use std::collections::BTreeSet;
 use std::io::{Seek, SeekFrom, Write};
@@ -37,7 +43,7 @@ use memry_core::domain::notes;
 use memry_core::protocol::account::{DeviceDirectory, DeviceSigner, device_directory};
 use memry_core::protocol::attachments::{AttachmentError, SignerResolver};
 use memry_core::protocol::auth::DevicePlatform;
-use memry_core::seams::secure_store::SecureStoreKey;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
@@ -144,11 +150,12 @@ struct Device {
     _dir: tempfile::TempDir,
     vault: PathBuf,
     db: Db,
-    _core: Vault,
+    core: Arc<Vault>,
+    store: Arc<dyn SecureStore>,
     clock_id: String,
     secret: Vec<u8>,
     registered: String,
-    session: AuthSession,
+    session: Arc<AuthSession>,
     wire: Arc<Wire>,
 }
 
@@ -164,6 +171,9 @@ impl Device {
             .unwrap();
         let token = boot["accessToken"].as_str().unwrap().as_bytes().to_vec();
         store.set(SecureStoreKey::AccessToken, token).unwrap();
+        store
+            .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+            .unwrap();
         let dir = tempfile::tempdir().unwrap();
         let vault = dir.path().join("vault");
         let data = vault.join(".memry").join("core");
@@ -173,7 +183,7 @@ impl Device {
         let transport: Arc<dyn Transport> = wire.clone();
         let session = AuthSession::new(
             transport,
-            store,
+            Arc::clone(&store),
             server.url.clone(),
             "desktop".into(),
             DeviceDescriptor {
@@ -191,11 +201,12 @@ impl Device {
             _dir: dir,
             vault,
             db: core.db_handle(),
-            _core: core,
+            core: Arc::new(core),
+            store,
             clock_id: keys::local_device_id_hex(&secret[32..]).unwrap(),
             secret,
             registered: boot["deviceId"].as_str().unwrap().to_owned(),
-            session,
+            session: Arc::new(session),
             wire,
         }
     }
@@ -558,7 +569,7 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
     let clock = a.clock_id.clone();
     let recorded = id.clone();
     let referenced =
-        a.db.call(move |conn| record_uploaded(conn, "note-1", REL, &recorded, &clock, 4))
+        a.db.call(move |conn| record_uploaded(conn, "note-1", REL, REL, &recorded, &clock, 4))
             .await
             .unwrap();
     assert!(referenced);
@@ -572,7 +583,7 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
 
     let clock = a.clock_id.clone();
     let recorded = id.clone();
-    a.db.call(move |conn| record_uploaded(conn, "note-1", REL, &recorded, &clock, 5))
+    a.db.call(move |conn| record_uploaded(conn, "note-1", REL, REL, &recorded, &clock, 5))
         .await
         .unwrap();
     assert_eq!(references(&a).await, ["from-a-peer".to_owned(), id.clone()]);

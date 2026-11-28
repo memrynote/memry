@@ -598,6 +598,11 @@ impl Desktop {
         Self::drive(db, FakeServer::new(), declaration, observers).await
     }
 
+    /// A driver sending `declaration` over the vault `db` holds, bound to `vault-1`.
+    pub async fn over(db: Db, declaration: Declaration) -> Self {
+        Self::drive(db, FakeServer::new(), declaration, Vec::new()).await
+    }
+
     /// The app restarted: a new driver over the same `data.db` and server.
     #[cfg(feature = "markdown")]
     pub async fn reopen(self, declaration: Declaration) -> Self {

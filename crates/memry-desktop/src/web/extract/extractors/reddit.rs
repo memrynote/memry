@@ -46,7 +46,7 @@ fn description(doc: &mut Document, post_content: &str) -> Result<String, Extract
         return Ok(String::new());
     }
     let div = doc.create_element("div");
-    let fragment = doc.parse_fragment(post_content);
+    let fragment = doc.parse_fragment(post_content)?;
     doc.append_child(div, fragment)?;
     let text = trimmed(doc, div);
     Ok(RUNS
@@ -225,7 +225,7 @@ impl Extractor for RedditExtractor {
                 response.status
             )));
         }
-        let mut doc = Document::parse_html(&response.text);
+        let mut doc = Document::parse_html(&response.text)?;
         let root = doc.root();
         extract_old_reddit(&mut doc, root)
     }

@@ -49,7 +49,7 @@ fn check(html: &str, variant: &Value) -> Vec<String> {
     let input = &variant["input"];
     let url = input["url"].as_str().unwrap();
     let pipeline = input["variant"].as_str() == Some("pipeline");
-    let mut doc = Document::parse_html(html);
+    let mut doc = Document::parse_html(html).expect("parse");
     let meta_tags = collect_meta_tags(&doc).unwrap();
     let schema = extract_schema_org_data(&doc).unwrap();
     let metadata = extract(&mut doc, &schema, &meta_tags).unwrap();

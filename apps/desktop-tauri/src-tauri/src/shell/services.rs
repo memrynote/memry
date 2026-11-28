@@ -15,6 +15,7 @@ use memry_desktop::ai::local_agent::LocalAgent;
 use memry_desktop::ai::local_provider::LocalProviderStore;
 use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
+use memry_desktop::calendar::service::CalendarService;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::fold::agent::FoldAgents;
@@ -102,7 +103,17 @@ fn load_config_and_locale(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     std::fs::create_dir_all(&data_dir).map_err(|e| failed("app_data_dir", e))?;
     let config = Arc::new(AppConfig::load(data_dir.join(CONFIG_FILE)));
     app.manage(config.clone());
+    let initial = boot_locale(&config, sys_locale::get_locale);
+    app.manage(Arc::new(LocaleService::new(initial)));
+    Ok(())
+}
 
+/// The locale to boot with: the app config's, overridden by the current vault's language
+/// preference. The first-launch migration asks again once Electron's config is merged in.
+pub fn boot_locale(
+    config: &Arc<AppConfig>,
+    os_locale: impl FnOnce() -> Option<String>,
+) -> &'static str {
     let current = memry_desktop::registry::VaultRegistry::new(config.clone()).current();
     let has_vaults = config.read(|map| {
         map.get("vaults")
@@ -112,15 +123,13 @@ fn load_config_and_locale(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let vault_language = current
         .as_deref()
         .and_then(|path| vault_config::preferences_language(Path::new(path)));
-    let initial = locale::resolve_startup(
-        &config,
+    locale::resolve_startup(
+        config,
         has_vaults,
         current.is_some(),
         vault_language.as_deref(),
-        sys_locale::get_locale,
-    );
-    app.manage(Arc::new(LocaleService::new(initial)));
-    Ok(())
+        os_locale,
+    )
 }
 
 /// Node's `process.arch` vocabulary, which the server's `arch` field has always held.
@@ -187,7 +196,26 @@ impl<R: Runtime> PinFailureSink for PinFailures<R> {
     }
 }
 
+/// Held while telemetry starts: the first-launch migration can start it from its own thread.
+static TELEMETRY_START: Mutex<()> = Mutex::new(());
+
+/// The telemetry service, started now if its stage has not run yet. The first-launch migration
+/// sends its events before `Stage::Telemetry`, once the import carried Electron's opt-out.
+pub fn telemetry_started(app: &AppHandle<Wry>) -> Option<Arc<Service>> {
+    if let Err(error) = start_telemetry(app) {
+        tracing::warn!(scope = "Telemetry", "telemetry not started: {error}");
+    }
+    telemetry(app)
+}
+
 fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
+    let _one_start = TELEMETRY_START
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    if app.try_state::<Arc<Service>>().is_some() {
+        // The first-launch migration started it.
+        return Ok(());
+    }
     let paths = app.state::<AppPaths>();
     let env = app.state::<LaunchEnv>();
     let runtime = RuntimeConfig::resolve(&compiled(), &env);
@@ -343,6 +371,10 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         device,
     )));
     app.manage(AiProxy::new(memry_desktop::http::builder()));
+    app.manage(Arc::new(CalendarService::new(
+        identity.clone(),
+        settings.clone(),
+    )));
     app.manage(keychain);
     app.manage(identity);
     app.manage(settings);

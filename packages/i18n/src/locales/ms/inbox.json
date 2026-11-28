@@ -579,7 +579,10 @@
       "journalOff": "Jurnal dimatikan dalam Tetapan.",
       "sendFailed": "Tidak dapat menghantar sticky.",
       "undoExpired": "Sudah terlambat untuk membuat asal.",
-      "undoFailed": "Tidak dapat membuat asal penghantaran."
+      "undoFailed": "Tidak dapat membuat asal penghantaran.",
+      "journalBusy": "Entri jurnal hari ini masih disimpan. Cuba lagi sebentar lagi.",
+      "folderExcluded": "Folder Sticky dikecualikan. Alih keluar folder itu daripada senarai folder yang dikecualikan dalam Tetapan untuk menghantar nota.",
+      "projectMissing": "Projek tugas ini tidak wujud. Pilih projek lalai dalam Tetapan, atau hantar sebagai nota."
     },
     "inputLabel": "Teks sticky",
     "dismissError": "Tutup"

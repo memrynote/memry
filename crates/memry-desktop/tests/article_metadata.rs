@@ -47,7 +47,7 @@ fn ordinal(elements: &[NodeId], found: Option<NodeId>) -> Value {
 
 /// Runs the pipeline over one page in the order the oracle does and returns its vector.
 fn page_vector(html: &str) -> Value {
-    let mut doc = Document::parse_html(html);
+    let mut doc = Document::parse_html(html).expect("parse");
     let meta_tags = collect_meta_tags(&doc).unwrap();
     let schema = extract_schema_org_data(&doc).unwrap();
     let metadata = extract(&mut doc, &schema, &meta_tags).unwrap();

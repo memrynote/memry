@@ -1,5 +1,5 @@
 //! Importers of the record tables whose push payload Electron builds from the row alone:
-//! `vault_metadata`, `folder_configs` and `property_definitions`. Each payload is the JSON
+//! `vault_metadata`, `folder_configs`, `property_definitions` and `canvas_folders`. Each payload is the JSON
 //! Electron's handler sends (`buildPushPayload`), key for key and in its order, stored verbatim
 //! in `sync_items` and projected by the core.
 
@@ -18,7 +18,7 @@ pub const MAX_CLOCK_BYTES: usize = 64 * 1024;
 /// The `vault_metadata` row Electron reads (`agent/storage/vault-id.ts:7`).
 const SINGLETON_ID: &str = "singleton";
 
-pub(super) fn malformed(table: &'static str, rowid: i64, what: &'static str) -> ImportError {
+pub(crate) fn malformed(table: &'static str, rowid: i64, what: &'static str) -> ImportError {
     ImportError::MalformedRow { table, rowid, what }
 }
 
@@ -81,7 +81,7 @@ pub(super) fn records(
     })
 }
 
-fn insert_clock(
+pub(super) fn insert_clock(
     payload: &mut Map<String, Value>,
     row: &Row<'_>,
     table: &'static str,
@@ -188,6 +188,39 @@ pub fn property_definitions(ctx: &mut TableCtx<'_>) -> Result<TableStats, Import
             Ok(ImportRecord {
                 item_type: "property_definition",
                 item_id: name,
+                payload: Value::Object(payload).to_string(),
+                synced_at,
+            })
+        },
+    )
+}
+
+/// `canvas_folders` as `canvas-folder-handler.ts:23-31` pushes it. `created_at` and
+/// `updated_at` are not in the payload, and the core projects `created_at` as the time this
+/// device first held the folder (data 0028), so both are dropped.
+pub fn canvas_folders(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
+    const TABLE: &str = "canvas_folders";
+    records(
+        ctx,
+        "SELECT rowid, id, vault_id, path, icon, deleted_at, clock, synced_at FROM canvas_folders",
+        |row, rowid| {
+            let id = read_source_id(row, SourceDb::Data, TABLE, "id")?;
+            let mut payload = Map::new();
+            payload.insert("id".into(), Value::from(id.clone()));
+            payload.insert("vaultId".into(), Value::from(text(row, "vault_id")?));
+            payload.insert("path".into(), Value::from(text(row, "path")?));
+            payload.insert("icon".into(), Value::from(text(row, "icon")?));
+            insert_clock(&mut payload, row, TABLE, rowid)?;
+            let deleted_at: Option<i64> = row
+                .get("deleted_at")
+                .map_err(|e| source_error(SourceDb::Data, e))?;
+            payload.insert("deletedAt".into(), Value::from(deleted_at));
+            let synced_at: Option<i64> = row
+                .get("synced_at")
+                .map_err(|e| source_error(SourceDb::Data, e))?;
+            Ok(ImportRecord {
+                item_type: "canvas_folder",
+                item_id: id,
                 payload: Value::Object(payload).to_string(),
                 synced_at,
             })

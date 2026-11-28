@@ -16,6 +16,7 @@ use crate::domain::{journal, note_files, note_positions, owed_file_body};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::storage::nested_tx;
+use crate::sync::attachments::release::record_deleted_note;
 use crate::sync::{body_debt, outbox};
 
 /// The file at `path` of a note or a journal day is gone: the record is deleted
@@ -153,6 +154,12 @@ fn delete_in(
     };
     if !removal_deletes(tx, note_id)? && !(bare_goes && bare_large(tx, note_id)?) {
         return Ok(Removed::Undecided);
+    }
+    // A removed note's attachments go to the deleted-asset release (`syncNoteDelete`). A day
+    // records nothing, and neither does a crossing note, whose body becomes a day that may
+    // still name them.
+    if live == ITEM_TYPE && bare_goes {
+        record_deleted_note(tx, note_id, now_ms)?;
     }
     tombstone_local(tx, live, note_id, device_id, now_ms)?;
     outbox::enqueue(tx, &outbox::Change::delete(live, note_id), now_ms)?;

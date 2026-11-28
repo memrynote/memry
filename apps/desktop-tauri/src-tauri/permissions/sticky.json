@@ -2,7 +2,7 @@
   "permission": [
     {
       "identifier": "sticky",
-      "description": "The commands the sticky window's renderer calls besides `boot`: its drafts and window calls (services/sticky-service.ts), the quit flush handshake (use-sticky-draft.ts), and the settings reads `onSettingsChanged` makes for every change event it receives (services/settings-service.ts `announce`, subscribed through use-feature-flags.ts).",
+      "description": "The commands the sticky window's renderer calls besides `boot`: its drafts, send and window calls (services/sticky-service.ts), the quit flush handshake (use-sticky-draft.ts), and the settings reads `onSettingsChanged` makes for every change event it receives (services/settings-service.ts `announce`, subscribed through use-feature-flags.ts).",
       "commands": {
         "allow": [
           "flush_done",
@@ -12,9 +12,12 @@
           "sticky_delete_draft",
           "sticky_get_session",
           "sticky_list_drafts",
+          "sticky_open_target",
           "sticky_resize",
           "sticky_save_draft",
-          "sticky_tuck"
+          "sticky_send",
+          "sticky_tuck",
+          "sticky_undo_send"
         ]
       }
     }

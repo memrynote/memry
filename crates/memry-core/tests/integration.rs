@@ -30,6 +30,8 @@ mod api_attachment_fetch;
 mod api_inbox;
 #[path = "api_inbox_attachments.rs"]
 mod api_inbox_attachments;
+#[path = "api_inbox_suggest.rs"]
+mod api_inbox_suggest;
 #[path = "api_journal.rs"]
 mod api_journal;
 #[path = "api_note_attachment_queue.rs"]
@@ -75,6 +77,8 @@ mod api_vault_reads;
 mod api_vault_sync;
 #[path = "attachment_cache.rs"]
 mod attachment_cache;
+#[path = "attachment_delete_records.rs"]
+mod attachment_delete_records;
 #[path = "attachment_download.rs"]
 mod attachment_download;
 #[path = "attachment_holds.rs"]
@@ -83,6 +87,8 @@ mod attachment_holds;
 mod attachment_manifest_vectors;
 #[path = "attachment_plan.rs"]
 mod attachment_plan;
+#[path = "attachment_runners.rs"]
+mod attachment_runners;
 #[path = "attachment_stream.rs"]
 mod attachment_stream;
 #[path = "attachment_upload_wire.rs"]
@@ -121,6 +127,8 @@ mod body_tags_reindex;
 mod body_write_handles;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
+#[path = "calendar_desktop_reads.rs"]
+mod calendar_desktop_reads;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
 #[path = "calendar_feed_untrusted.rs"]
@@ -249,6 +257,14 @@ mod domain_projects_statuses;
 mod domain_projects_write;
 #[path = "domain_related_items.rs"]
 mod domain_related_items;
+#[path = "domain_reminders_fire.rs"]
+mod domain_reminders_fire;
+#[path = "domain_reminders_fire_sync.rs"]
+mod domain_reminders_fire_sync;
+#[path = "domain_reminders_list.rs"]
+mod domain_reminders_list;
+#[path = "domain_reminders_readers.rs"]
+mod domain_reminders_readers;
 #[path = "domain_reminders_task.rs"]
 mod domain_reminders_task;
 #[path = "domain_saved_filters.rs"]
@@ -301,6 +317,8 @@ mod domain_template_legacy;
 mod domain_template_store;
 #[path = "domain_templates.rs"]
 mod domain_templates;
+#[path = "driver_imported_vault.rs"]
+mod driver_imported_vault;
 #[cfg(feature = "markdown")]
 #[path = "driver_observers.rs"]
 mod driver_observers;
@@ -355,6 +373,8 @@ mod header_tags_untrusted;
 mod http_client;
 #[path = "inbox_seed_sync.rs"]
 mod inbox_seed_sync;
+#[path = "inbox_suggest_vectors.rs"]
+mod inbox_suggest_vectors;
 #[path = "inbox_vectors.rs"]
 mod inbox_vectors;
 #[path = "journal_body.rs"]

@@ -118,10 +118,10 @@ pub fn extract_conversation(
 
     // `createTemporaryDocument()`: linkedom has no `implementation`, so the scratch document
     // comes from `DOMParser`.
-    let mut temp = Document::parse_html("<!doctype html><html><body></body></html>");
+    let mut temp = Document::parse_html("<!doctype html><html><body></body></html>")?;
     let temp_root = temp.root();
     let container = temp.create_element("article");
-    let fragment = temp.parse_fragment(&raw);
+    let fragment = temp.parse_fragment(&raw)?;
     temp.append_child(container, fragment)?;
     let body = temp
         .body_of(temp_root)

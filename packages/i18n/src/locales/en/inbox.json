@@ -579,7 +579,10 @@
       "journalOff": "Journal is turned off in Settings.",
       "sendFailed": "Couldn’t send the sticky.",
       "undoExpired": "It’s too late to undo this.",
-      "undoFailed": "Couldn’t undo the send."
+      "undoFailed": "Couldn’t undo the send.",
+      "journalBusy": "Today’s journal entry is still saving. Try again in a moment.",
+      "folderExcluded": "The Sticky folder is excluded. Remove it from the excluded folders in Settings to send notes.",
+      "projectMissing": "This task’s project doesn’t exist. Choose a default project in Settings, or send this as a note."
     },
     "inputLabel": "Sticky text",
     "dismissError": "Dismiss"

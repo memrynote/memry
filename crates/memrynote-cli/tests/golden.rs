@@ -102,6 +102,8 @@ static ISO: LazyLock<Regex> = LazyLock::new(|| {
 });
 static MS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?-u:\b)[0-9]{13}(?-u:\b)").expect("regex"));
+static DURATION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#""durationMs":( ?)[0-9]+"#).expect("regex"));
 static BELOW_TOKEN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"<(?:vault|home|tmp)>(?:(?:\\\\|\\|/)[^\\/"'\s]+)+"#).expect("regex")
 });
@@ -130,7 +132,10 @@ fn normalize(text: &str, dirs: &Dirs, ids: &mut HashMap<String, String>) -> Stri
         })
         .into_owned();
     let out = ISO.replace_all(&out, "<iso>");
-    MS.replace_all(&out, "<ms>").into_owned()
+    let out = MS.replace_all(&out, "<ms>");
+    DURATION
+        .replace_all(&out, r#""durationMs":${1}<duration>"#)
+        .into_owned()
 }
 
 #[derive(Default)]
