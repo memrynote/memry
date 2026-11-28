@@ -30,9 +30,6 @@
  * A `file-limit <bytes>` line sets the bootstrap user's `max_file_size`, so a larger attachment
  * gets the Worker's 413 `STORAGE_FILE_TOO_LARGE`. It answers `{ harnessFileLimit: true }`.
  *
- * `HARNESS_BOOTSTRAP_KEY` in the environment gives the Worker a bootstrap session key, so
- * `POST /sync/bootstrap` grants a session instead of answering 501.
- *
  * A `policy <writesEnabled 0|1> [minWriteVersion]` line upserts the `desktop` row of
  * `client_policies` (chapter 11 §11.8), which the Worker reads on every request. It answers
  * `{ harnessPolicy: true }`.
@@ -45,9 +42,7 @@ import { createTestDevice } from '../src/test-auth.js'
 
 const count = Number(process.env.DEVICES ?? '2')
 const server = new SimulatedServer()
-// Bootstrap sessions (chapter 10) answer 501 unless the Worker holds a key.
-const bootstrapKey = process.env.HARNESS_BOOTSTRAP_KEY
-await server.start(bootstrapKey ? { BOOTSTRAP_SESSION_HMAC_KEY: bootstrapKey } : {})
+await server.start()
 
 const userId = crypto.randomUUID()
 const register = async (at: number) => {

@@ -24,20 +24,9 @@ pub struct Server {
 
 impl Server {
     pub fn start() -> Self {
-        Self::start_with(&[])
-    }
-
-    /// A Worker that grants bootstrap sessions (chapter 10); [`Server::start`]'s answers 501.
-    #[allow(dead_code)] // One binary elevates.
-    pub fn start_elevating() -> Self {
-        Self::start_with(&[("HARNESS_BOOTSTRAP_KEY", "harness-bootstrap-key")])
-    }
-
-    fn start_with(envs: &[(&str, &str)]) -> Self {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/sync-harness");
         let mut child = Command::new(dir.join("node_modules/.bin/tsx"))
             .arg("scripts/serve.ts")
-            .envs(envs.iter().copied())
             .current_dir(&dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

@@ -244,7 +244,6 @@ impl SyncBackend for VaultSyncBackend {
             Ok(transfer) => match self.session.local_device_id() {
                 Ok(device_id) => {
                     attachments.start(transfer, &device_id, Arc::clone(&self.session));
-                    driver.on_bootstrap_elevation(attachments.pace_listener());
                 }
                 Err(error) => attachments.not_started(&format!("no device id: {error}")),
             },
