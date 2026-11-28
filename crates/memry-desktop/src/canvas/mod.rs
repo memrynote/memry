@@ -3,10 +3,12 @@
 //! and `canvas/library-file.ts`). The record and its sync live in
 //! [`memry_core::domain::canvas`]; the file text in its `file_format`.
 
+pub mod assets;
 pub mod dirs;
 mod files;
 pub mod folders;
 pub mod library;
+pub mod live;
 pub mod reconcile;
 pub mod scene_file;
 pub mod service;

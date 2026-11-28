@@ -57,11 +57,13 @@ use crate::seams::secure_store::{
     AdoptError, Adoption, DeviceIdentityStore, GenericSecrets, KEYS, KeyringStore, SERVICE,
     account, device_account,
 };
-use crate::vault::fs_atomic::atomic_write;
 use checks::{check_device, check_master};
+pub use done::forget_secrets_import;
+use done::{DONE_FILE, mark_done};
 use ledger::{Ledger, Written};
 
 mod checks;
+mod done;
 mod ledger;
 
 /// Electron's service of the five sync secrets (`KEYCHAIN_ENTRIES`).
@@ -77,8 +79,6 @@ const DEVICE_KEY_LEN: usize = 64;
 /// land under an account this app does not read.
 const LOCAL_PROVIDER: &str = "memry.agent.local-provider";
 const LOCAL_PROVIDER_ACCOUNT: &str = "api-key";
-/// The phase's done marker, in this app's data dir.
-const DONE_FILE: &str = "secrets-import.done";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SecretsMode {
@@ -404,11 +404,10 @@ pub fn import_secrets(
         Err(error) => return Err(SecretsError::DoneMarker(error.to_string())),
     }
     let (report, evidence) = inputs().map_err(|error| SecretsError::Read(error.to_string()))?;
-    let outcome = run(&report, &evidence, mode, keyring, identity)?;
+    let (outcome, synced) = run(&report, &evidence, mode, keyring, identity)?;
     // A failed marker write leaves a finished import. Retry the marker write only: once the
     // session is used, a rerun of the import finds the rotated refresh token `TargetOccupied`.
-    atomic_write(&done, b"done\n")
-        .map_err(|error| SecretsError::DoneMarker(error.source.to_string()))?;
+    mark_done(app_dir, &synced)?;
     Ok(SecretsPhase::Ran(outcome))
 }
 
@@ -427,7 +426,7 @@ fn run(
     mode: SecretsMode,
     keyring: &KeyringStore,
     identity: &DeviceIdentityStore,
-) -> Result<SecretsOutcome, SecretsError> {
+) -> Result<(SecretsOutcome, Vec<(SecureStoreKey, Secret)>), SecretsError> {
     let mut plan = plan(report, mode, keyring.device_suffix())?;
     let device_checked = match &plan.device {
         Some(device) => check_device(device, evidence)?,
@@ -473,7 +472,8 @@ fn run(
                 outcome.present += usize::from(device_key == DeviceKey::AlreadyHeld);
                 outcome.device_key = device_key;
             }
-            Ok(outcome)
+            // Every sync slot of the plan now holds Electron's value: written or found present.
+            Ok((outcome, plan.sync))
         }
         Err(error) => Err(ledger.roll_back(keyring, error)),
     }

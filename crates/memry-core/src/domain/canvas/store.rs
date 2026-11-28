@@ -27,6 +27,7 @@ use crate::sync::outbox;
 use crate::sync::server_vault::RecordVault;
 
 use super::folder_paths::normalize_folder;
+use super::scene_assets::record_scene_assets;
 use super::{CANVAS_SCENE_SYNC_CAP_BYTES, Canvas, ITEM_TYPE, NewCanvas, canonical_scene};
 
 /// Whether a saved canvas was queued for push.
@@ -146,6 +147,8 @@ pub fn list(conn: &Connection, vault_id: &str) -> Result<Vec<Canvas>, StorageErr
 
 /// Creates a canvas, queued for push unless its scene is over the cap. It
 /// states the [`RecordVault`] stamp of the vault whose local id is `vault_id`.
+/// The scene's asset sidecar is recorded for the new id: an adopted document and a
+/// conflict copy arrive with one (`reconcile.ts:593`).
 pub fn create(
     conn: &Connection,
     canvas: &NewCanvas<'_>,
@@ -175,6 +178,7 @@ pub fn create(
     }));
     let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
+    record_scene_assets(&tx, vault_id, &id, &scene, now_ms)?;
     commit(tx, &id, &scene, now_ms)
 }
 

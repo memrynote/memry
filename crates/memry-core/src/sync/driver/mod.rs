@@ -34,6 +34,7 @@
 //!   shutdown, and behind an update too large for the incremental route. All
 //!   CRDT pushes share one [`CrdtAdmission`].
 
+mod attachments;
 mod bodies;
 mod cipher;
 #[cfg(feature = "markdown")]

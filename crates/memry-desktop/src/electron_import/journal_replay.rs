@@ -387,15 +387,25 @@ fn inside(vault: &Path, path: &Path) -> Result<Option<PathBuf>, ()> {
     }
 }
 
-/// Misses NTFS stream names (`.memry::$DATA`) and 8.3 short names (`MEMRY~1`): corrupt journals.
+/// On Windows also the 8.3 short names NTFS may give `.memry` (`MEMRY~1`, `MEMRY~12`): every
+/// such name is refused, as no Electron path names one. Misses NTFS stream names
+/// (`.memry::$DATA`): corrupt journals.
 pub(crate) fn is_memry_dir(name: &std::ffi::OsStr) -> bool {
     let name = name.to_string_lossy();
-    let name = if cfg!(windows) {
-        name.trim_end_matches(['.', ' '])
+    if cfg!(windows) {
+        let name = name.trim_end_matches(['.', ' ']);
+        name.eq_ignore_ascii_case(".memry") || is_short_memry_name(name)
     } else {
-        &name
-    };
-    name.eq_ignore_ascii_case(".memry")
+        name.eq_ignore_ascii_case(".memry")
+    }
+}
+
+/// `MEMRY~<digits>`, any case.
+fn is_short_memry_name(name: &str) -> bool {
+    name.get(..6)
+        .is_some_and(|head| head.eq_ignore_ascii_case("MEMRY~"))
+        && name.len() > 6
+        && name[6..].bytes().all(|b| b.is_ascii_digit())
 }
 
 /// No existing component of `target` below `vault` is a symlink.

@@ -8,6 +8,12 @@ use serde_json::Map;
 use super::*;
 use crate::notes::properties::text_values;
 use crate::vault::consumer::MoveKind;
+use crate::vault::writeback::place::PARKED;
+// Only the moves that fail on a read-only folder count tries (`cfg(unix)`).
+#[cfg(unix)]
+use crate::vault::writeback::place::PLACE_TRIES;
+
+mod marks;
 
 /// A note named `n` at `n.md` whose document took `text`.
 fn note(f: &mut Fixture, text: &str) -> String {
@@ -27,7 +33,17 @@ fn pulled(f: &Fixture, id: &str, change: impl FnOnce(&NotesWriter)) {
         .expect("a note")
         .title;
     change(&f.writer);
-    f.pass.mark_pulled(id, Some(&before));
+    mark(f, id, Some(&before));
+}
+
+/// The mark the sync observer records in `data.db`.
+fn mark(f: &Fixture, id: &str, title_before: Option<&str>) {
+    f.vault.note_files().mark_pulled(id, title_before).unwrap();
+}
+
+/// The notes the open reconcile schedules for their pulled place.
+fn marked(f: &Fixture) -> Vec<String> {
+    f.vault.note_files().pulled_notes(PARKED).unwrap()
 }
 
 fn pulled_rename(f: &Fixture, id: &str, title: &str) {
@@ -158,7 +174,7 @@ fn a_journal_day_never_moves() {
     let rel = "journal/2025-01-01.md";
     let text = "---\ntags:\n  - mine\n---\nA day.\n";
     let id = f.adopt_day(rel, "2025-01-01", text);
-    f.pass.mark_pulled(&id, Some("2025-01-01"));
+    mark(&f, &id, Some("2025-01-01"));
     assert_eq!(f.run(&id), Outcome::Unchanged);
     assert_eq!(f.read(rel), text);
     assert!(
@@ -328,8 +344,6 @@ fn a_place_that_names_a_journal_day_keeps_the_file() {
 #[test]
 fn a_failed_move_still_writes_the_body_where_the_file_is() {
     use std::os::unix::fs::PermissionsExt;
-
-    use crate::vault::writeback::place::PLACE_TRIES;
 
     let mut f = fixture();
     let id = note(&mut f, "first words\n");

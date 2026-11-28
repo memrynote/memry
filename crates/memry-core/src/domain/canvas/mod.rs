@@ -29,6 +29,7 @@ pub mod file_format;
 pub mod folder_paths;
 pub mod folders;
 pub mod merge;
+mod scene_assets;
 pub mod scene_refs;
 mod store;
 

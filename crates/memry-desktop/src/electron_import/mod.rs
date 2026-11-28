@@ -14,6 +14,7 @@ mod leveldb_log;
 mod leveldb_manifest;
 mod leveldb_table;
 pub mod local_storage;
+pub mod orchestrator;
 pub mod profile;
 pub mod progress;
 pub mod report;
@@ -91,8 +92,8 @@ pub enum ImportError {
     /// The source holds data whose importer a later build brings. The message is the user's:
     /// `area` in their words, and what to do. `detail` names the table or key, for logs.
     #[error(
-        "This version of MemryNote cannot move this vault's {area} yet. Nothing was changed. \
-         Keep using the previous MemryNote app for this vault, and update MemryNote to try again."
+        "This version of MemryNote cannot move this vault's {area} yet. Your data is still in \
+         the previous MemryNote app. Keep using it, and update MemryNote to try again."
     )]
     NotReady { area: &'static str, detail: String },
     /// A queued delete has no clock, and `memry-config.json` names no device to stamp one with
@@ -127,6 +128,15 @@ pub enum ImportError {
          MemryNote app, let it finish syncing, then quit it and try again."
     )]
     NeverSynced { table: &'static str },
+    /// Owed journal day merges whose fold still needs this device's state of the foreign day,
+    /// which the core keeps only with a row Electron already removed. Nothing was written.
+    /// `foreign_ids` is for logs.
+    #[error(
+        "A journal day in this vault has changes that have not synced yet. Nothing was changed. \
+         Open the previous MemryNote app while online, let it finish syncing, then quit it and \
+         try again."
+    )]
+    UndrainedJournalDay { foreign_ids: Vec<String> },
     /// Queued note body pushes whose Yjs document the store copy does not hold. Staged
     /// without one, the push of an empty payload would have no state to send.
     #[error(

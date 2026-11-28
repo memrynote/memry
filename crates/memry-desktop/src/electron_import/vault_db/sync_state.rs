@@ -16,14 +16,16 @@ use memry_core::protocol::types::Declaration;
 use memry_core::storage::import::{
     ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState, ImportWriter,
 };
-use rusqlite::Connection;
 use rusqlite::types::ValueRef;
+use rusqlite::{Connection, OptionalExtension};
 use serde::Deserialize;
 use serde_json::Value;
 
+use super::journal_day_merges::journal_day_merge;
+
 use super::source::source_error;
 use super::tables::records::malformed;
-use super::tables::{SourceDb, TableStats, pending_area};
+use super::tables::{SourceDb, TableStats};
 use super::{ImportError, TableCtx, read_source_id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,18 +46,12 @@ pub enum Carried {
 /// Parses one key's value into the plan, as Electron reads it.
 pub type KeyFn = fn(&mut SyncStatePlan, &str) -> Carried;
 
-/// What the import does with a key. A key that carries data names its handler, or the stage that
-/// writes it, so a carried key without either cannot be written.
+/// What the import does with a key. A key that carries data names its handler, so a carried key
+/// without one cannot be written.
 #[derive(Debug, Clone, Copy)]
 pub enum KeyRule {
     /// Dropped into the report.
     Skip { reason: &'static str },
-    /// Carried by a handler the named stage writes; a source holding the key fails the import
-    /// with [`ImportError::NotReady`].
-    Pending {
-        stage: &'static str,
-        reason: &'static str,
-    },
     /// Carried by `handler`, which the `sync_state` table's importer runs per key.
     Convert {
         handler: KeyFn,
@@ -89,17 +85,6 @@ const fn convert(key: KeyMatch, handler: KeyFn, reason: &'static str) -> SyncSta
     SyncStateKey {
         key,
         rule: KeyRule::Convert { handler, reason },
-    }
-}
-
-/// A key the documents carry (36c4).
-const fn document(key: KeyMatch, reason: &'static str) -> SyncStateKey {
-    SyncStateKey {
-        key,
-        rule: KeyRule::Pending {
-            stage: "36c4",
-            reason,
-        },
     }
 }
 
@@ -178,11 +163,12 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
     ),
     skip(
         Exact("crdtBodyDebtMirrorAt"),
-        "store and database come from one snapshot, nothing left to mismatch",
+        "read with crdtUnmergedDebt: the time of the debt Electron already converted",
     ),
-    document(
+    convert(
         Exact("crdtUnmergedDebt"),
-        "marks every document owed as a core body debt",
+        unmerged_debt,
+        "not yet converted: a core body debt for every live markdown note and journal day",
     ),
     skip(
         Exact("lastCrdtSweepAt"),
@@ -194,13 +180,15 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
          (packages/sync-client/src/declined-refs.ts); the core keeps no decline set yet, so its \
          manifest check pulls them again (follow-up on #3553)",
     ),
-    document(
+    convert(
         Prefix("journalDayMerge:"),
-        "an owed journal day merge (sync/journal-day-merge.ts); destination set by 36c4",
+        journal_day_merge,
+        "the core's owed merge of the same foreign id, this device's day text kept",
     ),
-    document(
+    skip(
         Prefix("note-cover:"),
-        "an owed note cover sync marker (item-handlers/note-cover-sync.ts); destination set by 36c4",
+        "read by the note_metadata importer: a removal rides in the note payload as cover null, \
+         and the core then tells a removal from the frontmatter it edits",
     ),
 ];
 
@@ -216,6 +204,9 @@ pub const MAX_VALUE_BYTES: usize = 8 * 1024 * 1024;
 pub struct SyncStatePlan {
     pub state: ImportSyncState,
     pub stats: TableStats,
+    /// Foreign ids of the `journalDayMerge:` rows whose fold needs this device's holder text,
+    /// tags or attachment references: the import refuses them.
+    pub local_folds: Vec<String>,
 }
 
 const TABLE: &str = "sync_state";
@@ -244,12 +235,6 @@ pub fn plan(source: &Connection) -> Result<SyncStatePlan, ImportError> {
             }
             Some(rule) => match rule.rule {
                 KeyRule::Skip { .. } => Carried::Dropped(rule.report_name()),
-                KeyRule::Pending { stage, .. } => {
-                    return Err(ImportError::NotReady {
-                        area: pending_area(stage).unwrap_or("data"),
-                        detail: format!("sync_state key {key} ({stage})"),
-                    });
-                }
                 KeyRule::Convert { handler, .. } => {
                     let value = match row.get_ref("value").map_err(|e| source_error(db, e))? {
                         ValueRef::Text(bytes) => std::str::from_utf8(bytes)
@@ -268,6 +253,15 @@ pub fn plan(source: &Connection) -> Result<SyncStatePlan, ImportError> {
             Carried::Dropped(reason) => plan.stats.dropped.push((reason, 1)),
         }
     }
+    // Electron writes the debt on every vault open with an unmarked store but converts it only
+    // at sync start (`crdt-store-epoch.ts:56-73`, `engine.ts:292`), so a vault that never synced
+    // (free, signed out, held) keeps a dormant one. Without a record cursor the core's first
+    // sync owes every live document itself (`first_sync_store::owe_live_documents`); owing them
+    // here would freeze write-back and outside edits until a sync that may never run.
+    plan.state.owe_every_body = plan.state.record_cursor.is_some() && unconverted_debt(source)?;
+    plan.state
+        .journal_merges
+        .sort_by(|a, b| a.foreign_id.cmp(&b.foreign_id));
     Ok(plan)
 }
 
@@ -291,6 +285,14 @@ pub fn mismatches(source: &Connection, writer: &ImportWriter) -> Result<Vec<Stri
         ("pause", planned.paused != staged.paused),
         ("quarantine", planned.quarantined != staged.quarantined),
         ("refused items", planned.refused != staged.refused),
+        (
+            "body debts",
+            planned.owe_every_body && !staged.owe_every_body,
+        ),
+        (
+            "journal day merges",
+            planned.journal_merges != staged.journal_merges,
+        ),
     ];
     Ok(differ
         .into_iter()
@@ -450,6 +452,38 @@ fn schema_invalid_items(plan: &mut SyncStatePlan, value: &str) -> Carried {
     }
     plan.state.refused = kept.into_values().collect();
     Carried::Written
+}
+
+/// `convertUnmergedDebtMirror` reads only `'1'` as a debt. Whether Electron converted it
+/// already is read with the row's time ([`unconverted_debt`]).
+fn unmerged_debt(_: &mut SyncStatePlan, value: &str) -> Carried {
+    match value {
+        "1" => Carried::Written,
+        _ => Carried::Dropped("crdtUnmergedDebt"),
+    }
+}
+
+/// `convertUnmergedDebtMirror` (`crdt-body-debts.ts:465-482`): a `crdtUnmergedDebt = '1'` is
+/// converted at engine start unless `crdtBodyDebtMirrorAt` holds the row's `updated_at` as
+/// `Date#getTime`. Drizzle's `timestamp` mode stores seconds. A time that is not an integer
+/// counts as not converted: an owed body costs one pull.
+fn unconverted_debt(source: &Connection) -> Result<bool, ImportError> {
+    let row: Option<(Option<i64>, Option<String>)> = source
+        .query_row(
+            "SELECT CASE WHEN typeof(d.updated_at) = 'integer' THEN d.updated_at END,
+                    (SELECT value FROM sync_state WHERE key = 'crdtBodyDebtMirrorAt')
+             FROM sync_state d WHERE d.key = 'crdtUnmergedDebt' AND d.value = '1'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|e| source_error(SourceDb::Data, e))?;
+    Ok(row.is_some_and(|(at, mirror_at)| {
+        let row_at = at
+            .and_then(|s| s.checked_mul(1000))
+            .map(|ms| ms.to_string());
+        row_at.is_none() || row_at != mirror_at
+    }))
 }
 
 #[cfg(test)]
