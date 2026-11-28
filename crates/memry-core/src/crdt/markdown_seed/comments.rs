@@ -17,7 +17,9 @@ use std::sync::LazyLock;
 
 use crate::domain::journal_rules::js_trim;
 
-use super::backtick_runs::BacktickRuns;
+use super::backtick_runs::{
+    BacktickRuns, is_escaped, next_tick as next_unescaped_tick, opens_fence_line,
+};
 use super::comment_closes::{Later, LaterCloses};
 use super::markers::FenceTracker;
 use super::mask_word::mask_word;
@@ -166,7 +168,7 @@ pub(super) fn mask(markdown: &str) -> Masked {
         let mut next_open = [Next::default(), Next::default()];
         let mut i = 0;
         while i < line.len() {
-            let tick = next_tick.at(i, || line[i..].find('`').map(|at| at + i));
+            let tick = next_tick.at(i, || next_unescaped_tick(line, i));
             let opened = next_comment_open(line, i, &mut next_open);
             if tick.is_none() && opened.is_none() {
                 break;
@@ -219,13 +221,12 @@ pub(super) fn mask(markdown: &str) -> Masked {
             }
 
             let tick = tick.unwrap_or(0);
-            let run_end = tick + line[tick..].bytes().take_while(|b| *b == b'`').count();
-            let Some(close_at) = ticks.closing(run_end, run_end - tick) else {
+            let Some((_, end)) = ticks.span_at(tick, !opens_fence_line(line, tick)) else {
+                let run_end = ticks.end_of(tick);
                 result.push_str(&line[i..run_end]);
                 i = run_end;
                 continue;
             };
-            let end = close_at + (run_end - tick);
             result.push_str(&line[i..end]);
             i = end;
         }
@@ -260,11 +261,10 @@ pub(super) fn encode_html_comments(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut i = 0;
     while i < line.len() {
-        if line[i..].starts_with('`') {
-            let run = line[i..].bytes().take_while(|b| *b == b'`').count();
+        if line[i..].starts_with('`') && !is_escaped(line, i) {
             let end = ticks
-                .closing(i + run, run)
-                .map_or(i + run, |close| close + run);
+                .span_at(i, !opens_fence_line(line, i))
+                .map_or_else(|| ticks.end_of(i), |(_, end)| end);
             out.push_str(&line[i..end]);
             i = end;
         } else if let Some(close) = line[i..]
@@ -316,11 +316,10 @@ fn ends_cell(line: &str, ticks: &BacktickRuns, from: usize, limit: usize) -> boo
         if bytes[i] == b'\\' {
             i += 1;
         } else if bytes[i] == b'`' {
-            let run_end = i + bytes[i..].iter().take_while(|b| **b == b'`').count();
-            i = match ticks.closing(run_end, run_end - i) {
-                Some(close) => close + (run_end - i),
-                None => run_end,
-            } - 1;
+            i = ticks
+                .span_at(i, !opens_fence_line(line, i))
+                .map_or_else(|| ticks.end_of(i), |(_, end)| end)
+                - 1;
         } else if bytes[i..].starts_with(b"[[") {
             depth += 1;
             i += 1;

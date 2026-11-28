@@ -56,5 +56,17 @@ export const MARKDOWN_SEED_LEAK_CASES: ReadonlyArray<{
     name: 'mask in a prop: details markup in a formula and a spaced address in a summary',
     markdown: '$$\n<details>\n$$\n\n<details>\n<summary>[a](<1 v>)</summary>\n\nx\n\n</details>',
     pins: 'the formula holds the tag as written; the summary link keeps its spaced address whole, with no placeholder in it'
+  },
+  {
+    name: 'comment between escaped backticks',
+    markdown:
+      '\\`%%x%%\\`\n\na \\`%%y%%\\` b\n\n\\\\`%%z%%`\n\n| a |\n|---|\n| \\`%%x%%\\` |\n\n<details>\n<summary>\\`<!-- c -->\\`</summary>\n\nx\n\n</details>',
+    pins: 'a backslash makes a backtick text, so a comment between two of them is a comment node; after an escaped backslash the backtick opens a span and the comment is its bytes'
+  },
+  {
+    name: 'comment in a span a run of backticks retries into',
+    markdown:
+      'a``%%x%%b`c\n\na``%%x%%b`c`\n\n\\``%%x%%`\n\n| a |\n|---|\n| a``%%x%%b`c |\n| ``x ` |\n| ``x ` y |\n| ```x  y` |\n| [](u) `x  y` |\n| [](u)``` x  y` |\n| \\```[](u)\\`[](u)\\` |\n\n```%% a`\n`%%\nc\n```',
+    pins: "a run of backticks with no closer of its length retries from each later backtick against the shorter run left, as the parser does, so a comment the span reaches is the span's own bytes; a run that opens a fence line pairs only with its own length; an empty-label link outside such a span is a node, and its brackets make no row unsafe for the span's blanks"
   }
 ]

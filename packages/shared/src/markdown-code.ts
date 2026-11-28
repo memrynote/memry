@@ -36,6 +36,7 @@ export function maskMarkdownCode(markdown: string): string {
     codeLine: (line) => ' '.repeat(line.length),
     textOpen: (open) => open,
     codeSpan: (source) => ' '.repeat(source.length),
+    skippedTicks: (ticks) => ' '.repeat(ticks.length),
     comment: (source) => source
   })
 }
@@ -121,6 +122,8 @@ interface Visitor {
   /** A line of a fenced or indented code block. */
   codeLine(line: string): string
   codeSpan(source: string): string
+  /** The backticks of a run that come before the span the parser retries into: text. */
+  skippedTicks?(ticks: string): string
   /** A comment opener that is text: it never closes, or is cut off by a fence or a cell. */
   textOpen(open: string): string
   /**
@@ -205,7 +208,7 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
     const tableRow = TABLE_ROW_LINE.test(line)
     let i = 0
     while (i < line.length) {
-      const tick = line.indexOf('`', i)
+      const tick = nextTick(line, i)
       const opened = nextCommentOpen(line, i)
       if (tick === -1 && !opened) break
 
@@ -251,17 +254,19 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
         break
       }
 
-      let runEnd = tick
-      while (line[runEnd] === '`') runEnd++
-      const closeAt = findClosingRun(line, runEnd, runEnd - tick)
-      if (closeAt === -1) {
+      const span = codeSpanAt(line, tick)
+      if (!span) {
+        const runEnd = tickRunEnd(line, tick)
         result += line.slice(i, runEnd)
         i = runEnd
         continue
       }
-      const end = closeAt + (runEnd - tick)
-      result += line.slice(i, tick) + visit.codeSpan(line.slice(tick, end))
-      i = end
+      const skipped = line.slice(tick, span.start)
+      result +=
+        line.slice(i, tick) +
+        (visit.skippedTicks ? visit.skippedTicks(skipped) : skipped) +
+        visit.codeSpan(line.slice(span.start, span.end))
+      i = span.end
     }
     if (pending) {
       if (index === lines.length - 1)
@@ -311,10 +316,8 @@ function cellPipe(line: string, from: number, legacyTables: boolean): number {
     if (line[i] === '\\') {
       i++
     } else if (line[i] === '`' && !legacyTables) {
-      let runEnd = i
-      while (line[runEnd] === '`') runEnd++
-      const closeAt = findClosingRun(line, runEnd, runEnd - i)
-      i = (closeAt === -1 ? runEnd : closeAt + (runEnd - i)) - 1
+      const span = codeSpanAt(line, i)
+      i = (span ? span.end : tickRunEnd(line, i)) - 1
     } else if (line.startsWith('[[', i)) {
       depth++
       i++
@@ -362,12 +365,10 @@ function indexOutsideCodeSpans(line: string, marker: string): number {
   let i = 0
   for (;;) {
     const at = line.indexOf(marker, i)
-    const tick = line.indexOf('`', i)
+    const tick = nextTick(line, i)
     if (at === -1 || tick === -1 || at < tick) return at
-    let runEnd = tick
-    while (line[runEnd] === '`') runEnd++
-    const closeAt = findClosingRun(line, runEnd, runEnd - tick)
-    i = closeAt === -1 ? runEnd : closeAt + (runEnd - tick)
+    const span = codeSpanAt(line, tick)
+    i = span ? span.end : tickRunEnd(line, tick)
   }
 }
 
@@ -376,16 +377,52 @@ function withoutCr(line: string): string {
   return line.endsWith('\r') ? line.slice(0, -1) : line
 }
 
-/** Start of the next backtick run exactly `length` long, or -1. */
-function findClosingRun(line: string, from: number, length: number): number {
-  let i = from
-  while (i < line.length) {
-    const start = line.indexOf('`', i)
-    if (start === -1) return -1
-    let end = start
-    while (line[end] === '`') end++
-    if (end - start === length) return start
-    i = end
+/** The first backtick at or after `from` that no backslash escapes, or -1. */
+function nextTick(line: string, from: number): number {
+  let at = line.indexOf('`', from)
+  while (at !== -1) {
+    let slashes = 0
+    while (line[at - 1 - slashes] === '\\') slashes++
+    if (slashes % 2 === 0) return at
+    at = line.indexOf('`', at + 1)
   }
   return -1
+}
+
+function tickRunEnd(line: string, tick: number): number {
+  let end = tick
+  while (line[end] === '`') end++
+  return end
+}
+
+/**
+ * The code span that opens in the run of backticks at `tick`, or null when the
+ * run is text. The parser reads a run of `n` as a span closed by the next run
+ * of exactly `n`; with none, it retries from each later backtick of the run
+ * against the shorter run left (`a``x b`c` is `a`, a span `x b`, then `c`), so
+ * the comment scan has to see the same span, or it masks a comment the parser
+ * then reads inside code. A run of three or more that opens the line is a
+ * fence's, which the parser reads whole whatever its info string holds, so it
+ * pairs only with a run of its own length.
+ */
+function codeSpanAt(line: string, tick: number): { start: number; end: number } | null {
+  const runEnd = tickRunEnd(line, tick)
+  const first = new Map<number, number>()
+  const length = runEnd - tick
+  for (let at = runEnd; at < line.length;) {
+    const start = line.indexOf('`', at)
+    if (start === -1) break
+    const end = tickRunEnd(line, start)
+    if (end - start <= length && !first.has(end - start)) {
+      first.set(end - start, start)
+      if (end - start === length) break
+    }
+    at = end
+  }
+  const fenceOpener = length >= 3 && /^ {0,3}$/.test(line.slice(0, tick))
+  for (let width = length; width >= (fenceOpener ? length : 1); width--) {
+    const close = first.get(width)
+    if (close !== undefined) return { start: runEnd - width, end: close + width }
+  }
+  return null
 }

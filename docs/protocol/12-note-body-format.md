@@ -59,7 +59,7 @@ text (`:42-52`). A built table keeps every cell, as desktop's converter does: a 
 span splits no cell, and a body row wider than the header row widens the table, the header and the
 shorter rows padded with empty cells. A header row spelled like a delimiter row (`| --- |`) widens
 like any other (`:54-59`, `crates/memry-core/src/crdt/markdown_seed/table.rs:22-38`;
-`packages/editor-schema/src/inline/cell-code-spans.ts:162-181`,
+`packages/editor-schema/src/inline/cell-code-spans.ts:171-190`,
 `packages/editor-schema/src/table-width.ts:82-91`, `:119-142`). A callout or a structured quote is
 claimed as desktop claims it: when serializing its parsed body gives back its bytes, or when
 the canonical form it would write instead settles, and a quote that parses to one paragraph
@@ -119,7 +119,7 @@ at a paragraph's start or end or in a run of three or more, is not decided and s
 fence's info string,`""`for an untagged fence or an indented run, never BlockNote's`javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
 `crates/memry-core/src/crdt/markdown_seed/blocks.rs:290-316`).
 BlockNote trims it, so ` `  ` x `is the language `` ``` x ``, with or without a backtick in it (desktop's
-code-span mask leaves such a line alone,`packages/editor-schema/src/inline/cell-code-spans.ts:49`, `:172`). No backtick fence can
+code-span mask leaves such a line alone,`packages/editor-schema/src/inline/cell-code-spans.ts:49`, `:181`). No backtick fence can
 hold a language with a backtick, so write-back spells such a block with a tilde fence, longer than any
 run of tildes in the code, and a space before a language that opens with a tilde
 (`packages/shared/src/code-fence-language.ts:24`, `:46`, called from `apps/desktop/src/main/sync/blocknote-converter.ts`and`apps/desktop/src/renderer/src/components/note/content-area/markdown-utils.ts` `serializeBlocks`); a reader
@@ -130,18 +130,33 @@ takes the tilde fence as it takes any other.
 - **`%% … %%` comments are `htmlComment` nodes (§12.7).** Desktop masks every comment outside
   code before any line is split (`apps/desktop/src/main/sync/blocknote-converter.ts:474-476`,
   `packages/shared/src/html-comments.ts:131`, boundaries from `walkMarkdown`,
-  `packages/shared/src/markdown-code.ts:150`, including a comment that crosses a table cell end
+  `packages/shared/src/markdown-code.ts:153`, including a comment that crosses a table cell end
   as text and a code span's pipe as part of the cell, `:320`), and again on each chunk it parses.
   The core walks the text the same way and masks each `%%` comment to one word, then turns the
   word into a node once the blocks exist, in the block's marks, and back into its bytes inside a
   code span, a link label and a code block, and in a prop
-  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:101`, `:311`;
+  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:103`, `:311`;
   `crates/memry-core/src/crdt/markdown_seed/comment_nodes.rs:84`;
   `packages/editor-schema/src/parse-markdown.ts:228`, `:296`, `:306`). A `%%` that never closes,
   or sits in code, is text. Desktop serializes a comment back as its source, so it decides
   a callout or a quote whose body holds one by a proof the core does not run: a body of
   one paragraph stays a flat quote, any other keeps its lines as literal text
   (`crates/memry-core/src/crdt/markdown_seed/claims.rs:213-219`).
+- **A backtick is read as the parser reads it, so a comment between two is a node or code the
+  same way on both sides.** A backslash makes the backtick after it text. A run of backticks
+  closes on the next run of exactly its length; with none, the parser retries from each later
+  backtick of the run against the shorter run left, longest first, so ` a`x b`c `` is `a`, the
+  span `x b`, then `c`. A run of three or more that opens a line is a fence's and pairs only
+  with a run of its own length. Every scan that has to agree with the parser follows the same
+  rule: the comment walk and a cell's pipe, the cell's blanks, and the empty-label link scan
+  (`packages/shared/src/markdown-code.ts:381`, `:408`;
+  `packages/editor-schema/src/inline/cell-code-spans.ts:151`;
+  `packages/editor-schema/src/inline/code-mask.ts:45`;
+  `crates/memry-core/src/crdt/markdown_seed/backtick_runs.rs:68`, `:90`, `:112`). So
+  `` \`%%x%%\` `is a backtick, a comment node and a backtick, and` a``%%x%%b`c `` holds the
+  comment in its span as the bytes `%%x%%b`. A row's blanks in a code span are kept unless the
+  row holds a bracket or a tag, and an empty-label link outside code is no bracket, because it
+  is a token by then (`crates/memry-core/src/crdt/markdown_seed/table.rs:99`, `:122`).
 - **A link with no label is an `htmlComment` node (§12.7).** Desktop masks `[](u)`, a blank label
   and a title included, to a comment's token after the pipe escape, outside code, an image and an
   escape, and only when the whole link is on one line
@@ -162,7 +177,7 @@ takes the tilde fence as it takes any other.
   address with its parentheses closed is still the link, whole (BBF-109). Desktop escapes the
   brackets before it masks the empty-label links, reading a code span as BlockNote does, across a
   line (`packages/editor-schema/src/inline/unwritable-links.ts:45`,
-  `packages/editor-schema/src/inline/code-mask.ts:16`,
+  `packages/editor-schema/src/inline/code-mask.ts:17`,
   `packages/editor-schema/src/parse-markdown.ts:386`); the core reads the same text
   (`crates/memry-core/src/crdt/markdown_seed/links.rs:34`,
   `crates/memry-core/src/crdt/markdown_seed/inline.rs:188`, `:285`). Seed, write, seed builds the
@@ -174,7 +189,7 @@ takes the tilde fence as it takes any other.
   The one place a `<!--` comment is built is the `<summary>` line of a `<details>` block that is no
   toggle: desktop has masked it to a word by then, so it is a node among the line's text, and the
   core turns each closed one outside a code span into the same token before it hides the line's `<`
-  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:258`,
+  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:259`,
   `crates/memry-core/src/crdt/markdown_seed/toggles.rs:162`).
 - **A mask's word never reaches a document.** The read path hides a construct behind a word drawn
   once per process (`MEMRYCMT…X`, `MEMRYHBK…;`, a code span's blanks, a `<details>` tag, a spaced
@@ -232,14 +247,14 @@ takes the tilde fence as it takes any other.
 - **A code span keeps its blanks on any line with a pipe.** `maskCellCodeSpans` hides each space
   and tab of a code span on every line that holds a `|` and no `[`, `]` or tag, not only a table
   row, so `` ` |`é `` keeps its leading space and `` ` a`b `` does not
-  (`packages/editor-schema/src/inline/cell-code-spans.ts:162-181`,
+  (`packages/editor-schema/src/inline/cell-code-spans.ts:171-190`,
   `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:37`). A code span at the start of a
   block keeps its leading space too: `` ` *a` b `` is the code ` *a`
   (`packages/editor-schema/src/parse-markdown.ts:188`,
   `crates/memry-core/src/crdt/markdown_seed/runs.rs:296`). A code span of nothing but spaces and
   tabs is hidden the same way on any line, a pipe or not, so a block that holds only such a span
   (`` ` ` ``, `` - `  ` ``) keeps it: read back as plain blanks, the block was empty and went
-  with it (`packages/editor-schema/src/inline/cell-code-spans.ts:174`,
+  with it (`packages/editor-schema/src/inline/cell-code-spans.ts:183`,
   `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:44`).
 - **A marker alone on its line is an empty block.** A flush-left heading line of `#` to
   `######` with nothing after it is an empty heading (an indented one gets no placeholder and
@@ -1427,7 +1442,7 @@ A `<!--` that opens an HTML block and never closes would hide the rest of the
 note, so it is a node whose `source` is `<!--` alone, and the text after it
 stays document content, written back as its own bytes (BBF-101,
 `packages/shared/src/html-comments.ts:127-142`,
-`packages/shared/src/markdown-code.ts:76-79`). Builds before BBF-101 parse such
+`packages/shared/src/markdown-code.ts:77-80`). Builds before BBF-101 parse such
 a note to an empty body and keep the file through the source record. A `<!--`
 that never closes inside a paragraph is text.
 

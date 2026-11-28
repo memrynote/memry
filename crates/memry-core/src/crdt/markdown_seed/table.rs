@@ -5,7 +5,7 @@
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
-use super::backtick_runs::BacktickRuns;
+use super::backtick_runs::{BacktickRuns, opens_fence_line};
 use super::inline::cell_content;
 use super::prepare::split_by_code_fences;
 use super::shapes::is_table_separator;
@@ -82,14 +82,14 @@ fn code_span_pipes(line: &[char]) -> Vec<bool> {
             continue;
         }
         let run = line[i..].iter().take_while(|ch| **ch == '`').count();
-        let Some(close) = ticks.closing(i + run, run) else {
+        let Some((open, end)) = ticks.span_at(i, true) else {
             i += run;
             continue;
         };
-        for at in i + run..close {
+        for at in i + run..end - (i + run - open) {
             hidden[at] = line[at] == '|' && line[at - 1] != '\\';
         }
-        i = close + run;
+        i = end;
     }
     hidden
 }
@@ -97,6 +97,7 @@ fn code_span_pipes(line: &[char]) -> Vec<bool> {
 /// `maskCellCodeSpans`' `UNSAFE_LINE`, `/[[\]]|<(?!br\s*\/?>)/i`: a row whose
 /// code spans keep their whitespace unmasked.
 pub(super) fn unsafe_for_code_mask(line: &str) -> bool {
+    let line = &without_empty_links(line);
     if line.contains(['[', ']']) {
         return true;
     }
@@ -113,6 +114,76 @@ pub(super) fn unsafe_for_code_mask(line: &str) -> bool {
         let after = after.strip_prefix('/').unwrap_or(after);
         !after.starts_with('>')
     })
+}
+
+/// `line` with each empty-label link outside code and outside an image
+/// dropped. Desktop hides one behind a token before it reads `UNSAFE_LINE`
+/// (`maskEmptyLinks`), so its brackets make no row unsafe.
+fn without_empty_links(line: &str) -> String {
+    if !line.contains("](") {
+        return line.to_owned();
+    }
+    let bytes = line.as_bytes();
+    let ticks = BacktickRuns::of_bytes(line);
+    let mut out = String::with_capacity(line.len());
+    let mut i = 0;
+    let mut last = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' => i += 2,
+            b'`' => {
+                i = ticks
+                    .span_at(i, !opens_fence_line(line, i))
+                    .map_or_else(|| ticks.end_of(i), |(_, end)| end);
+            }
+            b'[' => {
+                let label = i
+                    + 1
+                    + bytes[i + 1..]
+                        .iter()
+                        .take_while(|b| matches!(b, b' ' | b'\t'))
+                        .count();
+                let close = bytes[label..]
+                    .starts_with(b"](")
+                    .then(|| address_end(bytes, label + 1))
+                    .flatten();
+                let image = i > 0 && bytes[i - 1] == b'!';
+                match close {
+                    Some(end) if !image => {
+                        out.push_str(&line[last..i]);
+                        last = end + 1;
+                        i = end + 1;
+                    }
+                    _ => i += 1,
+                }
+            }
+            _ => i += 1,
+        }
+    }
+    out.push_str(&line[last.min(line.len())..]);
+    out
+}
+
+/// The `)` that brings the depth of the `(` at `open` back to zero, a
+/// backslash stepping over the byte after it (`findClosingParen`).
+fn address_end(bytes: &[u8], open: usize) -> Option<usize> {
+    let mut depth = 0;
+    let mut i = open;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' => i += 1,
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
 }
 
 /// `parsePipeCells`: the line trimmed, one outer pipe off each end, split on

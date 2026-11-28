@@ -115,7 +115,8 @@ function firstAfter(indexes: number[] | undefined, after: number): number | unde
 
 /**
  * A backslash skips the character after it. A span opens at a run of
- * backticks and closes on the first later run of exactly its length, which a
+ * backticks, or at a later backtick of it, and closes on the first later run
+ * of exactly its length, which a
  * lookup by length finds in log time, so a line of runs no run closes costs
  * no scan per opener.
  */
@@ -143,7 +144,15 @@ function maskLine(line: string, chars: string[], masked: MaskedChars): string {
     }
     while (runs[at][0] + runs[at][1] <= i) at++
     const run = runs[at][0] + runs[at][1] - i
-    const closer = firstAfter(byLength.get(run), at)
+    // The parser retries from each later backtick of a run with no closer of
+    // its length against the shorter run left: `` ``x ` `` is a backtick and
+    // the span `` `x ` ``.
+    let width = run
+    let closer = firstAfter(byLength.get(width), at)
+    while (closer === undefined && width > 1) {
+      width--
+      closer = firstAfter(byLength.get(width), at)
+    }
     if (closer === undefined) {
       out += line.slice(i, i + run)
       i += run
@@ -153,8 +162,8 @@ function maskLine(line: string, chars: string[], masked: MaskedChars): string {
     out +=
       line.slice(i, i + run) +
       maskCodeContent(line.slice(i + run, close), chars, masked) +
-      line.slice(close, close + run)
-    i = close + run
+      line.slice(close, close + width)
+    i = close + width
   }
   return out
 }

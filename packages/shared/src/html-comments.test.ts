@@ -96,7 +96,7 @@ describe('maskHtmlComments (AF-015)', () => {
     for (const markdown of ['a``%%x%%b`c', 'a``<!-- c -->b`c`', '``%%x%%` y']) {
       expect(masked(markdown), markdown).toBe(markdown)
     }
-    expect(masked('a``%%x%%b``c')).not.toContain('%%')
+    expect(masked('a``%%x%%b``c')).toBe('a``%%x%%b``c')
     expect(masked('a``%%x%%b')).not.toContain('%%')
   })
 

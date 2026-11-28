@@ -53,7 +53,8 @@ pub(super) fn keep_code_whitespace(text: &str) -> String {
 }
 
 /// `maskLine`: a backslash skips the char after it, and a span closes on the
-/// first run of exactly its length.
+/// first run of exactly its length, from the run's first backtick or a later
+/// one the parser retries from.
 fn mask_line(line: &str, blank_only: bool) -> String {
     let chars: Vec<char> = line.chars().collect();
     let ticks = BacktickRuns::of_chars(&chars);
@@ -71,15 +72,16 @@ fn mask_line(line: &str, blank_only: bool) -> String {
             continue;
         }
         let run = chars[i..].iter().take_while(|c| **c == '`').count();
-        let Some(close) = ticks.closing(i + run, run) else {
+        let Some((open, end)) = ticks.span_at(i, true) else {
             out.extend(&chars[i..i + run]);
             i += run;
             continue;
         };
+        let close = end - (i + run - open);
         out.extend(&chars[i..i + run]);
         mask_content(&chars[i + run..close], blank_only, &mut out);
-        out.extend(&chars[close..close + run]);
-        i = close + run;
+        out.extend(&chars[close..end]);
+        i = end;
     }
     out
 }
