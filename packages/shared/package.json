@@ -28,6 +28,7 @@
     "./link-references": "./src/link-references.ts",
     "./markdown-fences": "./src/markdown-fences.ts",
     "./mask-word": "./src/mask-word.ts",
+    "./stale-mask-tokens": "./src/stale-mask-tokens.ts",
     "./markdown-code": "./src/markdown-code.ts",
     "./inline-tags": "./src/inline-tags.ts",
     "./note-names": "./src/note-names.ts",

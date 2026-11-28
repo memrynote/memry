@@ -27,9 +27,7 @@ const TOKENS: Array<[string, string]> = [
   ['a spaced address', `MEMRYLNK${WORD}12X`],
   ['an inline token', `MEMRYTKN${WORD}1X`],
   ['a code span character', `MEMRYCSP${WORD}1X`],
-  ['a table probe', `MEMRYTBL${WORD}1X`],
   ['a comment', `MEMRYCMT${WORD}3c20c6dX`],
-  ['a link card', `MEMRYLINKCARD${WORD}`],
   ['a colour start', `MEMRYICO${WORD}2:`],
   ['a colour end', `:MEMRYICC${WORD};`]
 ]

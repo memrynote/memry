@@ -45,6 +45,7 @@ import {
 import { sidecarMarkerLines } from '@memry/shared/block-markers'
 import { hideBacktickLanguages, spellBacktickLanguages } from '@memry/shared/code-fence-language'
 import { extractInlineColorRuns, restoreInlineColorTokens } from '@memry/shared/inline-colors'
+import { withoutStaleMaskTokens } from '@memry/shared/stale-mask-tokens'
 import {
   assembleMarkdownWithBlanks,
   extractWikiImageEmbedRefs,
@@ -367,7 +368,12 @@ async function serializeCanonical(
     Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))
     prepareSnapshot?.(snapshot)
     const editor = getEditor()
-    const blocks = editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
+    // A token an older build left in a string of the document is no use to this
+    // process, which cannot decode another's word, and would be written into
+    // the file. Dropped before this process makes tokens of its own.
+    const blocks = withoutStaleMaskTokens(
+      editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
+    )
     if (blocks.length === 0) {
       // `''` is a real body — the body of a note that has never been written —
       // so an empty result cannot simply be refused. It is only that body when
