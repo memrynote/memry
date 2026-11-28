@@ -147,8 +147,19 @@ describe('rename-tracker', () => {
     trackPendingDelete('note-a', 'hash-a', 'Docs/a.md', vi.fn(), null, null, 'Docs/b.md')
     expect(checkForRename('hash-a', 'Other/b.md')).toBeNull()
 
-    forgetRenameTarget('note-a')
+    forgetRenameTarget('note-a', 'Docs/b.md')
     expect(checkForRename('hash-a', 'Other/b.md')).toMatchObject({ id: 'note-a' })
+  })
+
+  // A chained rename, a -> b -> c: the add of b took the first delete, and the
+  // unlink of b tracked the next one before that add ended.
+  it("keeps a newer delete's named path when an older add of the same note ends", () => {
+    trackPendingDelete('note-a', 'hash-a', 'Docs/b.md', vi.fn(), null, null, 'Docs/c.md')
+
+    forgetRenameTarget('note-a', 'Docs/b.md')
+
+    expect(checkForRename('hash-a', 'Docs/copy.md')).toBeNull()
+    expect(checkForRename('hash-a', 'Docs/c.md')).toMatchObject({ id: 'note-a' })
   })
 
   // ==========================================================================
