@@ -192,8 +192,25 @@ chunk took 30 ms or 250 ms; with every 20th attachment at 300 chunks, it made 23
 The Rust core batches the manifests of one re-drive call's downloads, leaving
 out ids the metered policy defers, and fetches alone when fewer than two would
 download. It remembers a 404 for 10 minutes per vault
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:459`,
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:33`, `:581`,
 `crates/memry-core/src/protocol/attachments.rs:165`).
+
+**A reader MUST NOT ask again for a failed download on every re-drive.** A
+404 or 410 is the server saying it does not have the attachment, and ids are
+minted per upload, so it never will. Desktop probes such an id again a day
+later, gives up after three probes, and backs off any other failure from a
+minute to six hours
+(`packages/sync-client/src/attachment-download-state.ts:26-37`, `:301-356`).
+The Rust core keeps the same schedule per attachment in
+`attachment_download_failures`, and its re-drive leaves out an attachment
+whose next attempt is not due, so 25 the server lacks no longer fill every
+batch (`crates/memry-core/src/domain/attachment_download_failures.rs:30-37`,
+`:128-167`; `crates/memry-core/src/domain/attachments.rs:491`). A failure of
+the device rather than the attachment, no connection or a key store that will
+not answer, schedules nothing
+(`crates/memry-core/src/domain/attachment_download_failures.rs:92-94`).
+Opening the note still downloads, and a download that lands clears the
+schedule (`crates/memry-core/src/api/sync/attachment_fetch.rs:498`).
 
 ## 14.6 Two transfer paths
 
@@ -209,6 +226,13 @@ returns them; both shapes stay wire-compatible in both directions
 the proxied path (`apps/sync-server/src/lib/errors.ts:69-71`; chapter 00 §0.5).
 A client MUST treat it as permanent for that deployment and MUST NOT retry the
 presign route on a timer.
+
+**A failed presign or direct GET falls back to the proxied path** for that
+chunk and the rest of the file. Desktop refreshes a rejected URL once, then
+proxies (`apps/desktop/src/main/sync/attachments.ts:1501-1538`). The Rust core
+proxies at once
+(`crates/memry-core/src/api/sync/attachments_io.rs:350-390`). Without the
+fallback a device that cannot reach R2 fails every download.
 
 Caps:
 
@@ -261,7 +285,7 @@ from the body (`apps/desktop/src/main/sync/note-attachment-metadata.ts:14-23`).
 for**, whether the manifest came from the single GET or under that id's key in
 a batch answer (§14.5.2). It refuses after the signature check and decrypt and
 before it requests a chunk or writes a byte
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:352`;
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:476`;
 `apps/desktop/src/main/sync/attachments.ts:409`, called at `:828`). The
 signature does not catch this: a server that answers with another attachment's
 manifest sends one that some vault device validly signed, and a reader that
@@ -276,8 +300,10 @@ for this one's (#5664).
 NOT count it toward abandoning the download or pruning the reference, as it
 counts a 404, and MUST keep the work for a later pass. The core raises it as
 `SyncError::AttachmentCorrupt` (`crates/memry-core/src/api/errors.rs:402`), and
-its re-drive counts the row failed and leaves it missing
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:122-123`, `:155`). Desktop
+its re-drive counts the row failed and schedules it as a transient failure,
+never given up on
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:243-257`,
+`crates/memry-core/src/domain/attachment_download_failures.rs:97-99`). Desktop
 throws a plain `Error`, which `markDownloadFailed` classifies as transient
 (`packages/sync-client/src/attachment-download-state.ts:117-127`). The
 deleted-asset release keeps its record
@@ -304,12 +330,12 @@ local delete and a local list edit merge in their own transaction
 (`crates/memry-core/src/storage/repositories/projectors/mod.rs:206`,
 `crates/memry-core/src/domain/notes/mod.rs:193`,
 `crates/memry-core/src/domain/notes/attachments.rs:72`). The re-drive walks
-those rows (`crates/memry-core/src/domain/attachments.rs:477`). A body block
+those rows (`crates/memry-core/src/domain/attachments.rs:480`). A body block
 names its file by the manifest's filename, and a recorded id has none until its
 manifest is read, so the block cannot bind before then
 (`crates/memry-core/src/domain/attachments.rs:339`). Opening the note reads
 the manifests of its unnamed ids, whatever the download setting
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:171`,
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:273`,
 `apps/ios/Memry/Features/Notes/NoteReadParts.swift:253`). A core that applied
 notes before #5675 records their ids once, before its next first sync or pass
 (`crates/memry-core/src/sync/note_refs_heal.rs:27`).
@@ -420,9 +446,9 @@ pull, downloads it over the note's vault file
   `fileType`, which desktop's restore does not trust either
   (`apps/desktop/src/main/sync/binary-note-restore.ts:143-151`). The core
   queues it with the referenced ones
-  (`crates/memry-core/src/domain/attachments.rs:477-494`) and writes the bytes
+  (`crates/memry-core/src/domain/attachments.rs:480-499`) and writes the bytes
   to `images/<attachmentId>`
-  (`crates/memry-core/src/api/sync/attachments_io.rs:401-420`).
+  (`crates/memry-core/src/api/sync/attachments_io.rs:421-440`).
 - **A replacement is a new id.** A peer that replaces the file uploads it
   afresh, and attachment ids are random per upload
   (`apps/desktop/src/main/sync/item-handlers/peer-binary-replace.ts:20-23`). A

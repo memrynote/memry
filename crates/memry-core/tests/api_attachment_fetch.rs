@@ -18,6 +18,11 @@
 //! | a waiter downloads what a failed fetch left         | in-flight dedupe, resume     |
 //! | an aborted fetch releases the attachment            | in-flight dedupe (#5247)     |
 //! | a landed file of another length is fetched again    | size = manifest plaintext    |
+//! | a 404 is not asked for on every re-drive            | per-attachment schedule      |
+//! | attachments the server lacks do not hold the batch  | per-attachment schedule      |
+//! | a failure of this device schedules nothing          | per-attachment schedule      |
+//! | a direct GET that fails goes through the Worker     | desktop's proxy fallback     |
+//! | a presign that fails goes through the Worker        | desktop's proxy fallback     |
 
 mod http_fakes;
 
@@ -32,8 +37,10 @@ use http_fakes::{FakeSecureStore, FakeTransport, body_json, error_response, resp
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::SyncError;
+use memry_core::api::sync::AttachmentRedriveFailure;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
+use memry_core::domain::attachment_download_failures::AttachmentFailureReason;
 use memry_core::domain::attachment_refs;
 use memry_core::protocol::attachment_manifest;
 use memry_core::protocol::attachment_upload::{FramedChunk, build_manifest, frame_chunks};
@@ -180,6 +187,21 @@ fn download_script(
     let mut script = vec![no_presign()];
     script.extend(fx.chunks.iter().map(|chunk| raw(&chunk.framed)));
     script
+}
+
+/// Every failed attachment's next attempt is due now.
+fn open_retry_windows(vault: &Vault) {
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .execute(
+                    "UPDATE attachment_download_failures SET next_attempt_at = 0",
+                    [],
+                )
+                .expect("open the windows"))
+        })
+        .expect("the update");
 }
 
 const A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -556,7 +578,9 @@ async fn the_redriver_falls_back_to_single_manifest_gets_on_an_older_server() {
         .expect("re-drive");
     assert_eq!((summary.downloaded, summary.failed), (1, 2));
 
-    // B and C are still missing; the older server is not asked again.
+    // B and C are still missing; the older server is not asked again once
+    // their next attempt is due.
+    open_retry_windows(&vault);
     transport.push(response(200, &a.devices_body));
     transport.push(not_found());
     transport.push(not_found());
@@ -701,5 +725,224 @@ async fn a_batched_manifest_under_another_id_is_refused() {
     assert_eq!(
         std::fs::read(dir.join("images").join(B)).expect("B on disk"),
         b.plaintext
+    );
+}
+
+/// Telemetry from build 1017: the same attachments failed on every sync pass
+/// and path change. A 404 is the server saying it does not have the
+/// attachment, so the next re-drive does not ask again; it is probed a day
+/// later. The reason travels with the count.
+#[tokio::test]
+async fn a_404_is_not_asked_for_on_every_redrive() {
+    let fx = fixture();
+    let (vault, _dir) = scratch_vault_named("vault-404-schedule");
+    reference(&vault);
+    let transport = FakeTransport::new(vec![
+        response(200, &fx.devices_body),
+        error_response(404, "ATTACHMENT_NOT_FOUND", "Attachment manifest not found"),
+    ]);
+    let sync = vault.sync(session(transport.clone()));
+
+    let first = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("re-drive");
+    assert_eq!(first.failed, 1);
+    assert_eq!(
+        first.failures,
+        vec![AttachmentRedriveFailure {
+            reason: AttachmentFailureReason::NotFound,
+            count: 1
+        }]
+    );
+
+    let again = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("re-drive");
+    assert_eq!((again.downloaded, again.failed, again.remaining), (0, 0, 0));
+    assert_eq!(transport.call_count(), 2, "nothing asked again");
+
+    // A download the user asks for lands, and the schedule goes with it.
+    transport.push(response(200, &fx.devices_body));
+    transport.push(response(200, &fx.manifest_body));
+    for answer in download_script(&fx) {
+        transport.push(answer);
+    }
+    sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi)
+        .await
+        .expect("an open downloads it");
+    let rows: i64 = vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT COUNT(*) FROM attachment_download_failures",
+                    [],
+                    |row| row.get(0),
+                )
+                .expect("count"))
+        })
+        .expect("the count");
+    assert_eq!(rows, 0);
+}
+
+/// A re-drive asks for 25 at a time. With 25 the server will never have at
+/// the front, the attachment behind them was never asked for.
+#[tokio::test]
+async fn attachments_the_server_lacks_do_not_hold_the_batch() {
+    let (vault, dir) = scratch_vault_named("vault-404-starve");
+    let gone: Vec<String> = (0..25).map(|index| format!("{index:0>32}")).collect();
+    let mut ids: Vec<&str> = gone.iter().map(String::as_str).collect();
+    ids.push(A);
+    reference_all(&vault, &ids);
+    let a = fixture_for(A);
+    let not_found = || error_response(404, "ATTACHMENT_NOT_FOUND", "gone");
+    let mut script = vec![
+        response(200, &json!({"manifests": {}}).to_string()),
+        response(200, &a.devices_body),
+    ];
+    script.extend((0..25).map(|_| not_found()));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone()));
+
+    let first = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("re-drive");
+    assert_eq!((first.failed, first.remaining), (25, 1));
+
+    transport.push(response(200, &a.devices_body));
+    transport.push(response(200, &a.manifest_body));
+    for answer in download_script(&a) {
+        transport.push(answer);
+    }
+    let second = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("re-drive");
+
+    assert_eq!((second.downloaded, second.failed), (1, 0));
+    assert_eq!(
+        std::fs::read(dir.join("images").join(A)).expect("bytes on disk"),
+        a.plaintext
+    );
+}
+
+/// A key store that will not answer fails every attachment the same way and
+/// says nothing about any of them, so the next trigger asks again as before.
+#[tokio::test]
+async fn a_failure_of_this_device_schedules_nothing() {
+    let fx = fixture();
+    let (vault, _dir) = scratch_vault_named("vault-key-store-blip");
+    reference(&vault);
+    let transport = FakeTransport::new(vec![]);
+    let store = FakeSecureStore::new();
+    let sync = vault.sync(session_over(transport.clone(), Arc::clone(&store)));
+    store.lock_device();
+
+    let first = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("re-drive");
+    assert_eq!(
+        first.failures,
+        vec![AttachmentRedriveFailure {
+            reason: AttachmentFailureReason::KeyStore,
+            count: 1
+        }]
+    );
+
+    store.unlock_device();
+    transport.push(response(200, &fx.devices_body));
+    transport.push(response(200, &fx.manifest_body));
+    for answer in download_script(&fx) {
+        transport.push(answer);
+    }
+    let again = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("re-drive");
+    assert_eq!(again.downloaded, 1);
+}
+
+/// The chunk URLs of `fx`, as the presign route answers them.
+fn presigned(fx: &Fixture) -> Result<HttpResponse, memry_core::api::errors::TransportError> {
+    let urls: serde_json::Map<String, serde_json::Value> = fx
+        .chunks
+        .iter()
+        .map(|chunk| {
+            let hash = chunk.reference.encrypted_hash.clone();
+            let url = format!("https://r2.example.com/{hash}?X-Amz-Signature=x");
+            (hash, json!(url))
+        })
+        .collect();
+    response(
+        200,
+        &json!({"urls": urls, "expiresAt": 4_000_000_000i64}).to_string(),
+    )
+}
+
+fn proxied_chunk_calls(transport: &FakeTransport) -> usize {
+    transport
+        .calls()
+        .iter()
+        .filter(|call| call.url.contains("/sync/attachments/chunks/"))
+        .count()
+}
+
+/// Desktop proxies a chunk whose direct R2 GET fails, and the rest of the
+/// file after it. Without that a device that cannot reach R2 failed the same
+/// attachments on every re-drive.
+#[tokio::test]
+async fn a_direct_get_that_fails_goes_through_the_worker() {
+    let fx = fixture();
+    let (vault, dir) = scratch_vault_named("vault-direct-fails");
+    let mut script = vec![
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+        presigned(&fx),
+        error_response(403, "AccessDenied", "Request has expired"),
+    ];
+    script.extend(fx.chunks.iter().map(|chunk| raw(&chunk.framed)));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone()));
+
+    let summary = sync
+        .fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi)
+        .await
+        .expect("the Worker serves the chunks");
+
+    assert!(summary.downloaded);
+    assert_eq!(proxied_chunk_calls(&transport), fx.chunks.len());
+    assert_eq!(
+        std::fs::read(dir.join("images").join(ATTACHMENT)).expect("bytes on disk"),
+        fx.plaintext
+    );
+}
+
+#[tokio::test]
+async fn a_presign_that_fails_goes_through_the_worker() {
+    let fx = fixture();
+    let (vault, dir) = scratch_vault_named("vault-presign-fails");
+    let mut script = vec![
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+        error_response(404, "NOT_FOUND", "no presign route"),
+    ];
+    script.extend(fx.chunks.iter().map(|chunk| raw(&chunk.framed)));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone()));
+
+    let summary = sync
+        .fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi)
+        .await
+        .expect("the Worker serves the chunks");
+
+    assert!(summary.downloaded);
+    assert_eq!(proxied_chunk_calls(&transport), fx.chunks.len());
+    assert_eq!(
+        std::fs::read(dir.join("images").join(ATTACHMENT)).expect("bytes on disk"),
+        fx.plaintext
     );
 }

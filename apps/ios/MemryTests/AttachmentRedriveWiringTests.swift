@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import os
 import Synchronization
 import Testing
 
@@ -33,6 +34,47 @@ private final class RecordingRedrives: VaultFilling, @unchecked Sendable {
     func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         throw SyncError.Locked
     }
+}
+
+/// A redrive that answers `summary`, or throws `error` when set.
+private final class ScriptedRedrive: VaultFilling, @unchecked Sendable {
+    let summary: AttachmentRedriveSummary
+    let error: SyncError?
+
+    init(
+        summary: AttachmentRedriveSummary = .init(downloaded: 0, deferred: 0, failed: 0, remaining: 0),
+        error: SyncError? = nil
+    ) {
+        self.summary = summary
+        self.error = error
+    }
+
+    func syncInboxAttachments(reachable: Reachable) async throws -> InboxAttachmentSyncSummary {
+        if let error { throw error }
+        return InboxAttachmentSyncSummary(uploaded: 0, downloaded: 0, deferred: 0, failed: 0, released: 0)
+    }
+
+    func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary {
+        if let error { throw error }
+        return summary
+    }
+
+    func isFirstSyncComplete() async throws -> Bool { true }
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary {
+        throw SyncError.Locked
+    }
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        throw SyncError.Locked
+    }
+}
+
+/// The lines a redrive logged, by level.
+private final class LoggedLines: @unchecked Sendable {
+    private let lines = Mutex<[(OSLogType, String)]>([])
+    var errors: [String] { lines.withLock { $0.filter { $0.0 == .error }.map { $0.1 } } }
+    var log: Log { Log(capturing: { level, line in self.lines.withLock { $0.append((level, line)) } }) }
 }
 
 @MainActor
@@ -85,5 +127,35 @@ struct AttachmentRedriveWiringTests {
         let filler = RecordingRedrives()
         await AttachmentRedriver(filler: filler, reachability: { observed }, setting: { setting }).redrive()
         #expect(filler.reachables == judged)
+    }
+
+    /// Build 1017 logged only a count, so telemetry could not say why the same
+    /// attachments kept failing. Each reason now reaches it as its own code.
+    @Test func each_failure_reason_is_logged_with_its_code() async {
+        let lines = LoggedLines()
+        let summary = AttachmentRedriveSummary(
+            downloaded: 0, deferred: 0, failed: 3, remaining: 0,
+            failures: [
+                AttachmentRedriveFailure(reason: .notFound, count: 2),
+                AttachmentRedriveFailure(reason: .unverified, count: 1)
+            ]
+        )
+        await AttachmentRedriver(
+            filler: ScriptedRedrive(summary: summary), reachability: { .wifi }, setting: { .wifi }, log: lines.log
+        ).redrive()
+        #expect(lines.errors == [
+            "attachment redrive failed [code=attachmentRedrive.notFound]",
+            "attachment redrive failed [code=attachmentRedrive.unverified]"
+        ])
+    }
+
+    /// A device with no account key yet cannot download anything, and the
+    /// pass after its unlock redrives again: waiting is not an error.
+    @Test func a_locked_device_logs_no_error() async {
+        let lines = LoggedLines()
+        await AttachmentRedriver(
+            filler: ScriptedRedrive(error: .Locked), reachability: { .wifi }, setting: { .wifi }, log: lines.log
+        ).redrive()
+        #expect(lines.errors.isEmpty)
     }
 }

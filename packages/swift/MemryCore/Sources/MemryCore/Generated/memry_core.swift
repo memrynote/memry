@@ -14332,8 +14332,9 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * metered policy and the bounded queue apply unchanged and large
      * prefetch on cellular stays opt-in per item.
      *
-     * One failure never stops the walk: it is counted and the row stays
-     * missing for the next call.
+     * One failure never stops the walk: it is counted by reason, and the
+     * attachment is asked for again when its next attempt is due, a day after
+     * a 404 and minutes after a blip (`attachment_download_failures`).
      */
     func redriveAttachments(reachable: Reachable) async throws  -> AttachmentRedriveSummary
     
@@ -14684,8 +14685,9 @@ open func fetchNoteManifests(noteId: String)async throws  -> UInt32  {
      * metered policy and the bounded queue apply unchanged and large
      * prefetch on cellular stays opt-in per item.
      *
-     * One failure never stops the walk: it is counted and the row stays
-     * missing for the next call.
+     * One failure never stops the walk: it is counted by reason, and the
+     * attachment is asked for again when its next attempt is due, a day after
+     * a 404 and minutes after a blip (`attachment_download_failures`).
      */
 open func redriveAttachments(reachable: Reachable)async throws  -> AttachmentRedriveSummary  {
     return
@@ -15465,6 +15467,63 @@ public func FfiConverterTypeAttachmentManifest_lower(_ value: AttachmentManifest
 
 
 /**
+ * How many of one re-drive's downloads failed for one reason.
+ */
+public struct AttachmentRedriveFailure: Equatable, Hashable {
+    public var reason: AttachmentFailureReason
+    public var count: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(reason: AttachmentFailureReason, count: UInt32) {
+        self.reason = reason
+        self.count = count
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AttachmentRedriveFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentRedriveFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentRedriveFailure {
+        return
+            try AttachmentRedriveFailure(
+                reason: FfiConverterTypeAttachmentFailureReason.read(from: &buf), 
+                count: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AttachmentRedriveFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeAttachmentFailureReason.write(value.reason, into: &buf)
+        FfiConverterUInt32.write(value.count, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRedriveFailure_lift(_ buf: RustBuffer) throws -> AttachmentRedriveFailure {
+    return try FfiConverterTypeAttachmentRedriveFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRedriveFailure_lower(_ value: AttachmentRedriveFailure) -> RustBuffer {
+    return FfiConverterTypeAttachmentRedriveFailure.lower(value)
+}
+
+
+/**
  * What one re-drive did.
  */
 public struct AttachmentRedriveSummary: Equatable, Hashable {
@@ -15474,13 +15533,18 @@ public struct AttachmentRedriveSummary: Equatable, Hashable {
      */
     public var deferred: UInt32
     /**
-     * Failed this time; still missing, so the next re-drive asks again.
+     * Failed this time; still missing, and asked for again when its next
+     * attempt is due.
      */
     public var failed: UInt32
     /**
      * Missing attachments past this call's batch, left for the next one.
      */
     public var remaining: UInt32
+    /**
+     * Why the `failed` ones failed, one entry per reason.
+     */
+    public var failures: [AttachmentRedriveFailure]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -15489,15 +15553,20 @@ public struct AttachmentRedriveSummary: Equatable, Hashable {
          * Held back by the metered policy (FR-045). Not a failure.
          */deferred: UInt32, 
         /**
-         * Failed this time; still missing, so the next re-drive asks again.
+         * Failed this time; still missing, and asked for again when its next
+         * attempt is due.
          */failed: UInt32, 
         /**
          * Missing attachments past this call's batch, left for the next one.
-         */remaining: UInt32) {
+         */remaining: UInt32, 
+        /**
+         * Why the `failed` ones failed, one entry per reason.
+         */failures: [AttachmentRedriveFailure] = []) {
         self.downloaded = downloaded
         self.deferred = deferred
         self.failed = failed
         self.remaining = remaining
+        self.failures = failures
     }
 
     
@@ -15519,7 +15588,8 @@ public struct FfiConverterTypeAttachmentRedriveSummary: FfiConverterRustBuffer {
                 downloaded: FfiConverterUInt32.read(from: &buf), 
                 deferred: FfiConverterUInt32.read(from: &buf), 
                 failed: FfiConverterUInt32.read(from: &buf), 
-                remaining: FfiConverterUInt32.read(from: &buf)
+                remaining: FfiConverterUInt32.read(from: &buf), 
+                failures: FfiConverterSequenceTypeAttachmentRedriveFailure.read(from: &buf)
         )
     }
 
@@ -15528,6 +15598,7 @@ public struct FfiConverterTypeAttachmentRedriveSummary: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.deferred, into: &buf)
         FfiConverterUInt32.write(value.failed, into: &buf)
         FfiConverterUInt32.write(value.remaining, into: &buf)
+        FfiConverterSequenceTypeAttachmentRedriveFailure.write(value.failures, into: &buf)
     }
 }
 
@@ -28678,6 +28749,158 @@ public func FfiConverterTypeApproverStatus_lower(_ value: ApproverStatus) -> Rus
 
 
 /**
+ * Why one download failed, as a stable code a shell can log.
+ */
+
+public enum AttachmentFailureReason: Equatable, Hashable {
+    
+    /**
+     * The server answered 404 or 410 for the manifest or a chunk.
+     */
+    case notFound
+    /**
+     * The manifest's signer could not be placed, or its signature failed.
+     */
+    case unverified
+    /**
+     * The manifest or the bytes did not open or did not match.
+     */
+    case corrupt
+    /**
+     * The server asked this device to slow down.
+     */
+    case rateLimited
+    /**
+     * A 5xx or a response that would not parse.
+     */
+    case server
+    /**
+     * Any other refusal: a 4xx, an expired session, a revoked device.
+     */
+    case refused
+    /**
+     * No connection: the request never got an answer.
+     */
+    case network
+    /**
+     * The secure store would not hand over the key.
+     */
+    case keyStore
+    /**
+     * The local database or disk failed.
+     */
+    case storage
+    case other
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AttachmentFailureReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentFailureReason: FfiConverterRustBuffer {
+    typealias SwiftType = AttachmentFailureReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentFailureReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .notFound
+        
+        case 2: return .unverified
+        
+        case 3: return .corrupt
+        
+        case 4: return .rateLimited
+        
+        case 5: return .server
+        
+        case 6: return .refused
+        
+        case 7: return .network
+        
+        case 8: return .keyStore
+        
+        case 9: return .storage
+        
+        case 10: return .other
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AttachmentFailureReason, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .notFound:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .unverified:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .corrupt:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .rateLimited:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .server:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .refused:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .network:
+            writeInt(&buf, Int32(7))
+        
+        
+        case .keyStore:
+            writeInt(&buf, Int32(8))
+        
+        
+        case .storage:
+            writeInt(&buf, Int32(9))
+        
+        
+        case .other:
+            writeInt(&buf, Int32(10))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentFailureReason_lift(_ buf: RustBuffer) throws -> AttachmentFailureReason {
+    return try FfiConverterTypeAttachmentFailureReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentFailureReason_lower(_ value: AttachmentFailureReason) -> RustBuffer {
+    return FfiConverterTypeAttachmentFailureReason.lower(value)
+}
+
+
+
+/**
  * Why the server refused an owed upload (#5532).
  */
 
@@ -35910,6 +36133,31 @@ fileprivate struct FfiConverterSequenceTypeAttachmentChunkRef: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAttachmentRedriveFailure: FfiConverterRustBuffer {
+    typealias SwiftType = [AttachmentRedriveFailure]
+
+    public static func write(_ value: [AttachmentRedriveFailure], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAttachmentRedriveFailure.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AttachmentRedriveFailure] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AttachmentRedriveFailure]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAttachmentRedriveFailure.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeBacklink: FfiConverterRustBuffer {
     typealias SwiftType = [Backlink]
 
@@ -39395,7 +39643,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_manifests() != 9013) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_redrive_attachments() != 2191) {
+    if (uniffi_memry_core_checksum_method_vaultsync_redrive_attachments() != 31394) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_detach_attachment() != 19928) {

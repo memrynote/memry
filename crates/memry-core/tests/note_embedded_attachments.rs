@@ -287,7 +287,7 @@ fn row(vault: &Vault, attachment_id: &'static str) -> Option<CachedAttachment> {
 fn missing(vault: &Vault) -> Vec<String> {
     vault
         .db_handle()
-        .call_blocking(|conn| attachments::missing_downloads(conn))
+        .call_blocking(|conn| attachments::missing_downloads(conn, 0))
         .expect("read")
 }
 

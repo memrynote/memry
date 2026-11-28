@@ -308,7 +308,11 @@ impl VaultSync {
     ///
     /// Presign is tried once. `STORAGE_PRESIGN_UNAVAILABLE` is permanent for
     /// the deployment, so the proxied path is used for the rest of this file
-    /// and the route is not asked again within it.
+    /// and the route is not asked again within it. A presign that fails, or a
+    /// direct GET that fails, sends this chunk and the rest of the file through
+    /// the Worker too, as desktop does (`apps/desktop/src/main/sync/attachments.ts`,
+    /// `downloadChunkDirectOrProxied`): a device that cannot reach R2, or holds
+    /// an expired URL, still downloads.
     ///
     /// **Resumable per chunk** (#1829). Each verified plaintext chunk lands in
     /// `images/.partial/<attachment_id>/<index>` before the next is asked for,
@@ -343,24 +347,39 @@ impl VaultSync {
             .iter()
             .map(|chunk| chunk.encrypted_hash.clone())
             .collect();
-        let presigned = if hashes.is_empty() {
+        let mut presigned = if hashes.is_empty() {
             None
         } else {
             protocol_attachments::presign_all(&self.session.http(), &self.vault_id, &hashes)
                 .await
-                .map_err(attachment_error)?
+                .inspect_err(|error| {
+                    eprintln!(
+                        "memry-core: attachment {attachment_id}: presign failed, proxying: {error}"
+                    );
+                })
+                .ok()
+                .flatten()
         };
 
         for chunk in missing {
-            let framed = match presigned
+            let url = presigned
                 .as_ref()
                 .and_then(|batch| batch.urls.get(&chunk.encrypted_hash))
-            {
-                // A presigned GET goes straight to R2 and carries no session
-                // header, so it is an absolute-url fetch rather than an API call.
-                Some(url) => protocol_attachments::fetch_chunk_presigned(&self.session.http(), url)
+                .cloned();
+            // A presigned GET goes straight to R2 and carries no session
+            // header, so it is an absolute-url fetch rather than an API call.
+            let direct = match url {
+                Some(url) => protocol_attachments::fetch_chunk_presigned(&self.session.http(), &url)
                     .await
-                    .map_err(attachment_error)?,
+                    .inspect_err(|error| {
+                        eprintln!("memry-core: attachment {attachment_id}: direct chunk GET failed, proxying: {error}");
+                        presigned = None;
+                    })
+                    .ok(),
+                None => None,
+            };
+            let framed = match direct {
+                Some(framed) => framed,
                 None => protocol_attachments::fetch_chunk_proxied(
                     &self.session.http(),
                     &self.vault_id,
