@@ -228,6 +228,11 @@ export function createWikiLinkSpec(
         }
       }
 
+      // A span with a style is text with marks (a colour, a weight), as the
+      // markdown importer reads it and main builds it; promoting it to a node
+      // would drop them.
+      if (element.hasAttribute('style')) return undefined
+
       // Text-only promotion is for inline elements. On a block element (`<li>`,
       // `<p>`, `<blockquote>`, `<td>`) it swallows the block around the link,
       // so `- [[Note]]` lost its bullet (#3191). The `[[X]]` text inside still
