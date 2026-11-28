@@ -583,7 +583,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(list.isHittable, "picking a note collapsed the list the user brought back")
         // The open note deleted, then another picked: the note goes from
         // none to one beside the rail.
-        deleteNotes([first])
+        swipeToDelete(first)
         row(second).tap()
         XCTAssertTrue(page(second).waitForExistence(timeout: 10))
         Thread.sleep(forTimeInterval: 1)
@@ -969,9 +969,11 @@ final class NotesSplitUITests: XCTestCase {
         pane.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
     }
 
-    /// A note list row by title.
+    /// A note list row by title, not the open note's backlink to it.
     private func row(_ title: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        app.buttons.matching(NSPredicate(
+            format: "label CONTAINS %@ AND NOT (identifier BEGINSWITH 'note.backlink.')", title
+        )).firstMatch
     }
 
     /// The detail column showing `title`.
@@ -1027,15 +1029,34 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the new note has no row in the list")
     }
 
+    /// Deletes from a fresh launch, so no block holds the caret and the
+    /// swipe's touch brings no on-screen keyboard up over the question. A
+    /// relaunch that cannot reach the list fails the test, never skips it.
     private func deleteNotes(_ titles: [String]) {
-        for title in titles {
-            let row = row(title)
-            XCTAssertTrue(row.waitForExistence(timeout: 10), "no row for \(title)")
-            row.press(forDuration: 1)
-            app.buttons["Delete note"].tap()
-            app.buttons["Delete"].firstMatch.tap()
-            XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+        app.terminate()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        do {
+            try openNotes()
+        } catch {
+            return XCTFail("cleanup could not reopen Notes to delete \(titles): \(error)")
         }
+        titles.forEach(swipeToDelete)
+    }
+
+    /// Deletes by the row's swipe. The row's context menu cost two of
+    /// XCTest's 60 s idle waits per note, and at times took no tap on
+    /// Delete note: on the iPadOS 26 simulator an open context menu never
+    /// reports its animations done, Photos' own included.
+    private func swipeToDelete(_ title: String) {
+        let row = row(title)
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "no row for \(title)")
+        row.swipeLeft()
+        let question = app.sheets["Delete this note?"]
+        // A swipe across a narrow list runs its Delete action itself.
+        if !question.waitForExistence(timeout: 2) { app.buttons["trash"].firstMatch.tap() }
+        XCTAssertTrue(question.waitForExistence(timeout: 5), "Delete asked nothing")
+        question.buttons["Delete"].tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
     private func attach(_ name: String) {
