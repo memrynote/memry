@@ -73,12 +73,17 @@ fn healed(token: &str) -> String {
     out
 }
 
-/// `maskInlineTokens`: every token outside a code fence as a placeholder.
-pub(super) fn mask(markdown: &str) -> String {
+/// `maskInlineTokens`: every token outside a code fence as desktop's numbered
+/// placeholder (`MEMRYTKN<word><index>X`), and the tokens, healed, by index.
+/// The raw-HTML scan runs on this text, as desktop's does, so a tag holding a
+/// token is as long to it as it is to desktop. [`hexify`] makes the placeholders
+/// the rest of the seed reads.
+pub(super) fn mask_numbered(markdown: &str) -> (String, Vec<String>) {
     if !markdown.contains("((") {
-        return markdown.to_owned();
+        return (markdown.to_owned(), Vec::new());
     }
     let mut fence = FenceTracker::default();
+    let mut found = Vec::new();
     let lines: Vec<String> = markdown
         .split('\n')
         .map(|line| {
@@ -89,15 +94,48 @@ pub(super) fn mask(markdown: &str) -> String {
             let mut last = 0;
             for (start, end) in tokens(line) {
                 out.push_str(&line[last..start]);
-                let token = healed(&line[start..end]);
-                out.push_str(&format!("{}{}X", prefix(), hex::encode(token)));
+                out.push_str(&format!("{}{}X", prefix(), found.len()));
+                found.push(healed(&line[start..end]));
                 last = end;
             }
             out.push_str(&line[last..]);
             out
         })
         .collect();
-    lines.join("\n")
+    (lines.join("\n"), found)
+}
+
+/// `text` with each numbered placeholder `tokens` holds written as the
+/// placeholder that carries its token's bytes in hex, which needs no table to
+/// put back ([`restore`]). One a token does not hold stays as it is.
+pub(super) fn hexify(text: &str, tokens: &[String]) -> String {
+    if tokens.is_empty() || !holds_placeholder(text) {
+        return text.to_owned();
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(prefix()) {
+        out.push_str(&rest[..at]);
+        let digits = &rest[at + prefix().len()..];
+        let length = digits.bytes().take_while(u8::is_ascii_digit).count();
+        let token = digits[length..]
+            .starts_with('X')
+            .then(|| digits[..length].parse::<usize>().ok())
+            .flatten()
+            .and_then(|index| tokens.get(index));
+        match token {
+            Some(token) => {
+                out.push_str(&format!("{}{}X", prefix(), hex::encode(token)));
+                rest = &digits[length + 1..];
+            }
+            None => {
+                out.push_str(prefix());
+                rest = digits;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// `restoreInlineTokens`: every placeholder back to its token.
@@ -193,18 +231,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_token_outside_a_fence_round_trips_through_its_placeholder() {
-        let masked = mask("a ((date:x_y\\_z)) b\n```\n((date:q))\n```");
+    fn a_token_outside_a_fence_round_trips_through_its_placeholders() {
+        let (masked, tokens) = mask_numbered("a ((date:x_y\\_z)) b\n```\n((date:q))\n```");
         assert!(!masked.contains("((date:x"));
         assert!(masked.contains("```\n((date:q))\n```"));
-        assert_eq!(restore(&masked), "a ((date:x_y_z)) b\n```\n((date:q))\n```");
-        assert_eq!(
-            mask("((mention:a(b)) ((mention:c))"),
-            format!(
-                "((mention:a(b)) {}{}X",
-                prefix(),
-                hex::encode("((mention:c))")
-            )
-        );
+        assert_eq!(tokens, ["((date:x_y_z))"]);
+        assert!(masked.contains(&format!("{}0X", prefix())));
+        let hex = hexify(&masked, &tokens);
+        assert!(!hex.contains(&format!("{}0X", prefix())));
+        assert_eq!(restore(&hex), "a ((date:x_y_z)) b\n```\n((date:q))\n```");
+        let (masked, tokens) = mask_numbered("((mention:a(b)) ((mention:c))");
+        assert_eq!(masked, format!("((mention:a(b)) {}0X", prefix()));
+        assert_eq!(tokens, ["((mention:c))"]);
+    }
+
+    #[test]
+    fn a_placeholder_no_token_holds_stays_as_it_is() {
+        let text = format!("{}7X {}x", prefix(), prefix());
+        assert_eq!(hexify(&text, &["((date:a))".to_owned()]), text);
     }
 }

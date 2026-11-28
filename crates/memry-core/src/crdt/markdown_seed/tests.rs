@@ -54,10 +54,10 @@ fn a_foreign_details_block_stays_its_text() {
 }
 
 #[test]
-fn raw_html_keeps_its_lines_as_literal_paragraphs() {
-    let plan = plan("<kbd>Ctrl</kbd> raw\n\nafter");
+fn a_tag_the_editor_handles_keeps_its_lines_as_literal_paragraphs() {
+    let plan = plan("<b>Ctrl</b> raw\n\nafter");
     assert_eq!(plan.fallbacks[0].reason, "HTML");
-    assert_eq!(plan.blocks[0], SeedBlock::literal("<kbd>Ctrl</kbd> raw"));
+    assert_eq!(plan.blocks[0], SeedBlock::literal("<b>Ctrl</b> raw"));
     assert_eq!(
         plan.blocks[1],
         SeedBlock::new(SeedKind::Paragraph, vec![text("after")])

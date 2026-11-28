@@ -5,12 +5,18 @@
 //! it as markup, judged on the block as the writer spells it, so text that
 //! holds none keeps its bytes.
 //!
+//! A tag the editor does not handle, spelled whole on one line, is written as it
+//! is and pairs with no mark outside it ([`super::raw_html`]): the reader keeps
+//! what is inside it as text, so a backslash there would be one more at each
+//! round trip.
+//!
 //! Ported for a paragraph or a heading. Link text holding a backtick is
 //! [`Unsupported`]: desktop keeps a code span inside link text
 //! (`codeSpanRanges`), which this port does not decide.
 
 use super::Unsupported;
 use super::items::Item;
+use super::raw_html::spelled_tags;
 use super::roundtrip::UNSERIALIZED;
 use super::run_writer::{delimiter, spells_runs_with_underscores};
 use super::shapes::is_table_separator;
@@ -75,7 +81,7 @@ pub(super) fn escape_items(items: Vec<Item>, heading: bool) -> Result<Vec<Item>,
     }
     for segment in &block.segments {
         for (offset, ch) in items[segment.item].text.chars().enumerate() {
-            if ch == '_' {
+            if ch == '_' && !block.verbatim[segment.at + offset] {
                 forced[segment.at + offset] = true;
             }
         }
@@ -102,6 +108,8 @@ fn escape_pass(
                 return Err(UNSERIALIZED);
             } else if ch == '\n' && place.one_line {
                 out.push_str("<br>");
+            } else if block.verbatim[at] {
+                out.push(ch);
             } else if forced[at] || is_markup(block, pairing, at, segment.in_link) {
                 out.push('\\');
                 out.push(ch);
@@ -131,6 +139,8 @@ struct Spelling {
     /// Per character: a mark's closing delimiter, or a link's `](href)`,
     /// which the writer moves before a break that ends their run.
     closers: Vec<bool>,
+    /// Per character: inside a tag spelled whole, which is written as it is.
+    verbatim: Vec<bool>,
     /// Where each escapable text run starts.
     segments: Vec<Segment>,
 }
@@ -141,6 +151,20 @@ impl Spelling {
             self.spelling.push(c);
             self.delimiters.push(delimiter);
             self.closers.push(closer);
+            self.verbatim.push(false);
+        }
+    }
+
+    /// A text run's characters, each tag it spells whole standing as a node
+    /// does: no markup to the characters around it.
+    fn push_text(&mut self, text: &str) {
+        let at = self.spelling.len();
+        self.push(text.chars(), false, false);
+        for (start, end) in spelled_tags(text) {
+            for i in at + start..at + end {
+                self.spelling[i] = NODE;
+                self.verbatim[i] = true;
+            }
         }
     }
 }
@@ -151,6 +175,7 @@ fn spell(items: &[Item]) -> Spelling {
         spelling: Vec::new(),
         delimiters: Vec::new(),
         closers: Vec::new(),
+        verbatim: Vec::new(),
         segments: Vec::new(),
     };
     for (index, item) in items.iter().enumerate() {
@@ -163,7 +188,7 @@ fn spell(items: &[Item]) -> Spelling {
                 at: block.spelling.len(),
                 in_link: true,
             });
-            block.push(item.text.chars(), false, false);
+            block.push_text(&item.text);
             block.push([']', '('], false, true);
             block.push(href.chars(), false, true);
             block.push([')'], false, true);
@@ -175,7 +200,7 @@ fn spell(items: &[Item]) -> Spelling {
                 at: block.spelling.len(),
                 in_link: false,
             });
-            block.push(item.text.chars(), false, false);
+            block.push_text(&item.text);
             block.push(delimiter.chars(), true, true);
         }
     }

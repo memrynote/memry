@@ -178,12 +178,6 @@ fn is_link_reference_definition(line: &str) -> bool {
 /// superset of the line shapes desktop claims outside BlockNote's parser or
 /// that BlockNote turns into a block this seed does not build.
 pub(super) fn line_fallback(line: &str) -> Option<&'static str> {
-    let chars: Vec<char> = line.chars().collect();
-    if chars.windows(2).any(|pair| {
-        pair[0] == '<' && (pair[1].is_ascii_alphabetic() || matches!(pair[1], '/' | '!' | '?'))
-    }) {
-        return Some("HTML");
-    }
     if super::mentions::undecided(line) {
         return Some("mention or date token this port cannot decide");
     }
