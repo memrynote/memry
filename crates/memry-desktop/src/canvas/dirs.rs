@@ -117,7 +117,11 @@ fn portable_name(parent: &Path, name: &str) -> String {
         counter += 1;
         target = format!("{canonical} {counter}");
     }
-    match rename_no_replace(&parent.join(name), &parent.join(&target)) {
+    let from = parent.join(name);
+    // A reserved name (`con`, `nul`, `com1`) made outside Windows is reached only verbatim.
+    #[cfg(windows)]
+    let from = crate::vault::fs_atomic::verbatim_path(parent).map_or(from, |dir| dir.join(name));
+    match rename_no_replace(&from, &parent.join(&target)) {
         Ok(()) => target,
         Err(error) => {
             tracing::warn!(scope = "CanvasReconcile", kind = ?error.kind(), "could not rename a canvas folder to its portable name");

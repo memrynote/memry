@@ -216,7 +216,15 @@ fn directories_are_adopted_renamed_portable_and_restored() {
     w.canvases.create_folder(None, "Kept", NOW).unwrap();
     fs::remove_dir(w.vault.join("canvases/Kept")).unwrap();
     fs::create_dir_all(w.vault.join("canvases/Empty/Inner")).unwrap();
-    fs::create_dir_all(w.vault.join("canvases/con")).unwrap();
+    // Windows makes a reserved name (`con`) only through the verbatim form; a plain path is the
+    // console device.
+    #[cfg(windows)]
+    let reserved = memry_desktop::vault::fs_atomic::verbatim_path(&w.vault.join("canvases"))
+        .unwrap()
+        .join("con");
+    #[cfg(not(windows))]
+    let reserved = w.vault.join("canvases/con");
+    fs::create_dir_all(reserved).unwrap();
     fs::create_dir_all(w.vault.join("canvases/.staging")).unwrap();
 
     let done = w.reconcile();
