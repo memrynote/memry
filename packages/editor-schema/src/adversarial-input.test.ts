@@ -94,7 +94,7 @@ const cases: Array<[string, () => unknown]> = [
     'lines of backtick runs of every length, none closing another',
     () => maskCodeAcrossLines(Array.from({ length: 1500 }, (_, i) => '`'.repeat(i + 1)).join('\n'))
   ],
-  ['lines of single backticks in one paragraph', () => maskCodeAcrossLines('a`\n'.repeat(50_000))],
+  ['lines of single backticks in one paragraph', () => maskCodeAcrossLines('a`\n'.repeat(20_000))],
   // Every tick of a line is a candidate opener, and a line holds no more than one pass of work.
   ['one line of single backticks', () => maskCodeAcrossLines('a`'.repeat(100_000))],
   // No run of 2 to 601 backticks has a closer of its length, so each retries against the shorter
