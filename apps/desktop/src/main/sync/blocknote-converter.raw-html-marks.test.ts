@@ -116,3 +116,22 @@ describe('a mark boundary inside a tag the editor handles, spelled in text', () 
     expect(back.written).toBe(markdown)
   })
 })
+
+describe('a <br> inside a tag the editor does not handle', () => {
+  it.each(['a <kq a="<br>x"> b', '<kq a="<br>>">', 'a <?x <br> y?> b', '**a <kq a="<br>x"> b**'])(
+    'is the characters of the tag in %j, with no token among them',
+    async (markdown) => {
+      const { runs, written } = await read(markdown)
+      const found = runs.map((run) => run.text ?? '').join('')
+      expect(found).not.toMatch(/MEMRYHBK/)
+      expect(found).toContain('<br>')
+      expect(written).toBe(markdown)
+    }
+  )
+
+  it('is the characters of the tag in a table cell', async () => {
+    const { written } = await read('| a | b |\n| - | - |\n| <kq a="<br>x"> | y |')
+    expect(written).not.toMatch(/MEMRYHBK/)
+    expect(written).toContain('<kq a="<br>x">')
+  })
+})
