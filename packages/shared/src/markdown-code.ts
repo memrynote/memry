@@ -206,10 +206,12 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
     if (!closesComment) htmlBlock = HTML_BLOCK_COMMENT.test(line)
 
     const tableRow = TABLE_ROW_LINE.test(line)
+    const opens = commentOpens(line)
+    let ticks: TickRuns | null = null
     let i = 0
     while (i < line.length) {
       const tick = nextTick(line, i)
-      const opened = nextCommentOpen(line, i)
+      const opened = opens(i)
       if (tick === -1 && !opened) break
 
       if (opened && (tick === -1 || opened.at < tick)) {
@@ -254,7 +256,8 @@ function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): 
         break
       }
 
-      const span = codeSpanAt(line, tick)
+      ticks ??= new TickRuns(line)
+      const span = ticks.spanAt(tick)
       if (!span) {
         const runEnd = tickRunEnd(line, tick)
         result += line.slice(i, runEnd)
@@ -289,13 +292,23 @@ function opensHtmlBlock(
   return htmlBlock && !closesComment && i === 0 && !form.proseOnly
 }
 
-function nextCommentOpen(line: string, from: number): { form: CommentForm; at: number } | null {
-  let best: { form: CommentForm; at: number } | null = null
-  for (const form of COMMENT_FORMS) {
-    const at = line.indexOf(form.open, from)
-    if (at !== -1 && (!best || at < best.at)) best = { form, at }
+/**
+ * `opens(from)` is the first comment opener at or after `from`, for a `from`
+ * that only moves forward along `line`. Each form's last hit stands until the
+ * position passes it, and a miss stands for good, so the line is read once per
+ * form however many backticks or comments it holds.
+ */
+function commentOpens(line: string): (from: number) => { form: CommentForm; at: number } | null {
+  const found: number[] = COMMENT_FORMS.map(() => -2)
+  return (from) => {
+    let best: { form: CommentForm; at: number } | null = null
+    COMMENT_FORMS.forEach((form, index) => {
+      if (found[index] !== -1 && found[index] < from) found[index] = line.indexOf(form.open, from)
+      const at = found[index]
+      if (at !== -1 && (!best || at < best.at)) best = { form, at }
+    })
+    return best
   }
-  return best
 }
 
 /** Same row test as `escapeWikiLinkPipesInTableRows`: both ends are pipes. */
@@ -312,11 +325,13 @@ const TABLE_ROW_LINE = /^\s*\|.*\|\s*$/
  */
 function cellPipe(line: string, from: number, legacyTables: boolean): number {
   let depth = 0
+  let ticks: TickRuns | null = null
   for (let i = from; i < line.length; i++) {
     if (line[i] === '\\') {
       i++
     } else if (line[i] === '`' && !legacyTables) {
-      const span = codeSpanAt(line, i)
+      ticks ??= new TickRuns(line)
+      const span = ticks.spanAt(i)
       i = (span ? span.end : tickRunEnd(line, i)) - 1
     } else if (line.startsWith('[[', i)) {
       depth++
@@ -362,12 +377,14 @@ function findLaterClose(
 }
 
 function indexOutsideCodeSpans(line: string, marker: string): number {
+  let ticks: TickRuns | null = null
   let i = 0
   for (;;) {
     const at = line.indexOf(marker, i)
     const tick = nextTick(line, i)
     if (at === -1 || tick === -1 || at < tick) return at
-    const span = codeSpanAt(line, tick)
+    ticks ??= new TickRuns(line)
+    const span = ticks.spanAt(tick)
     i = span ? span.end : tickRunEnd(line, tick)
   }
 }
@@ -396,33 +413,76 @@ function tickRunEnd(line: string, tick: number): number {
 }
 
 /**
- * The code span that opens in the run of backticks at `tick`, or null when the
- * run is text. The parser reads a run of `n` as a span closed by the next run
- * of exactly `n`; with none, it retries from each later backtick of the run
- * against the shorter run left (`a``x b`c` is `a`, a span `x b`, then `c`), so
- * the comment scan has to see the same span, or it masks a comment the parser
- * then reads inside code. A run of three or more that opens the line is a
- * fence's, which the parser reads whole whatever its info string holds, so it
- * pairs only with a run of its own length.
+ * The backtick runs of one line, found once, so that every opener asks what
+ * follows it in log time instead of reading the line again.
  */
-function codeSpanAt(line: string, tick: number): { start: number; end: number } | null {
-  const runEnd = tickRunEnd(line, tick)
-  const first = new Map<number, number>()
-  const length = runEnd - tick
-  for (let at = runEnd; at < line.length;) {
-    const start = line.indexOf('`', at)
-    if (start === -1) break
-    const end = tickRunEnd(line, start)
-    if (end - start <= length && !first.has(end - start)) {
-      first.set(end - start, start)
-      if (end - start === length) break
+class TickRuns {
+  private readonly starts: number[] = []
+  private readonly ends: number[] = []
+  /** The runs of each width, as indexes into `starts`. */
+  private readonly byWidth = new Map<number, number[]>()
+
+  constructor(private readonly line: string) {
+    for (
+      let at = line.indexOf('`');
+      at !== -1;
+      at = line.indexOf('`', this.ends[this.ends.length - 1])
+    ) {
+      const end = tickRunEnd(line, at)
+      const width = end - at
+      const same = this.byWidth.get(width)
+      if (same) same.push(this.starts.length)
+      else this.byWidth.set(width, [this.starts.length])
+      this.starts.push(at)
+      this.ends.push(end)
     }
-    at = end
   }
-  const fenceOpener = length >= 3 && /^ {0,3}$/.test(line.slice(0, tick))
-  for (let width = length; width >= (fenceOpener ? length : 1); width--) {
-    const close = first.get(width)
-    if (close !== undefined) return { start: runEnd - width, end: close + width }
+
+  /** The index of the run that holds the backtick at `tick`. */
+  private runAt(tick: number): number {
+    let low = 0
+    let high = this.starts.length - 1
+    while (low < high) {
+      const mid = (low + high + 1) >> 1
+      if (this.starts[mid] <= tick) low = mid
+      else high = mid - 1
+    }
+    return low
   }
-  return null
+
+  /** The first run of `width` backticks after run `k`, as an index, or -1. */
+  private firstAfter(width: number, k: number): number {
+    const same = this.byWidth.get(width)
+    if (!same) return -1
+    let low = 0
+    let high = same.length
+    while (low < high) {
+      const mid = (low + high) >> 1
+      if (same[mid] > k) high = mid
+      else low = mid + 1
+    }
+    return low === same.length ? -1 : same[low]
+  }
+
+  /**
+   * The code span that opens in the run of backticks at `tick`, or null when
+   * the run is text. The parser reads a run of `n` as a span closed by the next
+   * run of exactly `n`; with none, it retries from each later backtick of the
+   * run against the shorter run left (`a``x b`c` is `a`, a span `x b`, then
+   * `c`), so the comment scan has to see the same span, or it masks a comment
+   * the parser then reads inside code. A run of three or more that opens the
+   * line is a fence's, which the parser reads whole whatever its info string
+   * holds, so it pairs only with a run of its own length.
+   */
+  spanAt(tick: number): { start: number; end: number } | null {
+    const k = this.runAt(tick)
+    const runEnd = this.ends[k]
+    const length = runEnd - tick
+    const fenceOpener = length >= 3 && tick <= 3 && /^ *$/.test(this.line.slice(0, tick))
+    for (let width = length; width >= (fenceOpener ? length : 1); width--) {
+      const close = this.firstAfter(width, k)
+      if (close !== -1) return { start: runEnd - width, end: this.starts[close] + width }
+    }
+    return null
+  }
 }
