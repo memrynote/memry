@@ -57,6 +57,37 @@ describe('what the nesting cap counts', () => {
     })
   })
 
+  describe('marks a list item or a table cell ends', () => {
+    it.each([
+      ['bullets', repeat(105, (i) => `- <i>item${i}`, '\n')],
+      ['numbered items', repeat(105, (i) => `${i + 1}. <i>item${i}`, '\n')],
+      ['quoted bullets', repeat(105, (i) => `> - <i>item${i}`, '\n')],
+      ['nested bullets', `- a\n${repeat(105, (i) => `  - <i>item${i}`, '\n')}`],
+      ['rows of cells', `| a | b |\n| - | - |\n${repeat(105, (i) => `| <b>c${i} | x |`, '\n')}`],
+      ['cells of a row', `${repeat(106, () => '| <b>c')} |\n${repeat(106, () => '| -')} |`]
+    ])('holds the identical marks of %s three at a time', (_label, markdown) => {
+      expect(hidden(markdown)).toEqual([])
+    })
+
+    it('still counts the different marks each item leaves in the active list', () => {
+      expect(hidden(repeat(CAP + 5, (i) => `- <b data-n="${i}">x`, '\n'))).toHaveLength(5)
+      const rows = repeat(CAP + 5, (i) => `| <b data-n="${i}">x |`, '\n')
+      expect(hidden(`| a |\n| - |\n${rows}`)).toHaveLength(5)
+    })
+
+    it.each([
+      ['a pipe in a paragraph', repeat(CAP + 5, () => 'a | <b>x', '\n')],
+      ['pipes of one line, no table', repeat(CAP + 5, () => '| <b>x ', '')],
+      [
+        'a numbered line that continues a paragraph',
+        `a\n${repeat(CAP + 5, (i) => `${i + 2}. <b>x`, '\n')}`
+      ],
+      ['an indented line', `a\n${repeat(CAP + 5, () => '    - <b>x', '\n')}`]
+    ])('does not end the marks of %s', (_label, markdown) => {
+      expect(hidden(markdown)).toHaveLength(5)
+    })
+  })
+
   describe('tags outside a paragraph', () => {
     it('keeps the tags of an HTML block open past the blank line after it', () => {
       expect(hidden(repeat(CAP + 5, () => '<blockquote>x', '\n\n'))).toHaveLength(5)
