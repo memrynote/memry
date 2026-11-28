@@ -23,9 +23,7 @@ pub use gate::{
 };
 pub use grants::{TurnGrant, TurnGrants};
 pub use host::{AgentEvent, AgentEventError, AgentEvents, HostParts, TrackEvent, VaultGateHost};
-pub use service::{
-    AgentFactory, AgentService, ToolCall, ToolsNotPorted, VaultAgent, stop_chat_server,
-};
+pub use service::{AgentFactory, AgentService, ToolCall, VaultAgent, stop_chat_server};
 pub use trust::{edit_vault_trust_list, vault_trust_list};
 pub use turns::{KillBackend, TrackedBackend, Turn, TurnError};
 pub use write_gate::{

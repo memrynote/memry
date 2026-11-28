@@ -44,6 +44,8 @@ mod agent_mcp;
 mod agent_mcp_http;
 #[path = "agent_mcp_parts.rs"]
 mod agent_mcp_parts;
+#[path = "agent_read_tools.rs"]
+mod agent_read_tools;
 #[path = "agent_store.rs"]
 mod agent_store;
 #[path = "agent_write_gate.rs"]

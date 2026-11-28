@@ -3,3 +3,4 @@
 pub mod mcp;
 pub mod runtime;
 pub mod store;
+pub mod tools;
