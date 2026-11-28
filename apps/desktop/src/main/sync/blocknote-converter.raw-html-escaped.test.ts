@@ -77,7 +77,7 @@ const HANDLED_SPELLINGS = [
   '<ul><li>x</li></ul>',
   '<ol><li>x</li></ol>',
   '<table><tr><td>x</td></tr></table>',
-  '<details data-memry-toggle>x</details>',
+  '<details data-memry-toggle>x',
   '<input type="checkbox">'
 ]
 
@@ -143,6 +143,16 @@ describe('text that spells a tag the editor handles', () => {
     expect(written).toBe('**\\<i>x\\</i>**')
     const runs = runsOf(await read(written))
     expect(runs).toEqual([{ type: 'text', text: '<i>x</i>', styles: { bold: true } }])
+  })
+
+  it('writes a tag that ends a mark inside the mark, not as the break the mark moves past', async () => {
+    // A `<br>` ending a run is the break the escaper spelled for a heading's line, and
+    // the closing delimiters move before it; an escaped `<br>` is the text.
+    for (const text of ['x<br>', 'x <br>', '<br>']) {
+      const written = await write([typed(text, { bold: true })])
+      expect(written).toBe(`**${text.replace(/<br>$/, '\\<br>')}**`)
+      expect(runsOf(await read(written))).toEqual([{ type: 'text', text, styles: { bold: true } }])
+    }
   })
 
   it('writes a tag in a heading, a list item, a quote and a cell', async () => {
