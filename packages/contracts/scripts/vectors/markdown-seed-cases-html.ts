@@ -110,6 +110,12 @@ export const MARKDOWN_SEED_HTML_CASES: ReadonlyArray<{
     pins: 'an escaped tag is text wherever the block holds inline content, inside a mark and a link label too'
   },
   {
+    name: 'raw html: a backslash before a span',
+    markdown:
+      'a \\<span style="color:red">x\\</span> \\<span>y\\</span> \\<span class="k">z\\</span> \\</span> b',
+    pins: 'the backslash escapes the angle bracket of a span tag, coloured or plain, so the tag is text and the backslash is gone, and no span tag closes or ends a colour'
+  },
+  {
     name: 'raw html: escaped tags past the nesting cap',
     markdown: `${'\\<b>'.repeat(150)}x${'\\</b>'.repeat(150)}`,
     pins: 'an escaped tag opens nothing and counts toward no cap, so a hundred and fifty of them are text'
