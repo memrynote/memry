@@ -252,7 +252,10 @@ final class EditorSession {
         let moves = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification]
         keyboardObservers += moves.map {
             NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.syncToolbar() }
+                MainActor.assumeIsolated {
+                    self?.syncToolbar()
+                    self?.placeToolbar()
+                }
             }
         }
         // #2820: typing is committed when editing ends, and leaving the app
@@ -331,7 +334,7 @@ final class EditorSession {
 
     // MARK: Input views
 
-    @ObservationIgnored lazy var accessory: UIView = floatingAccessory(EditorKeyboardToolbar(session: self))
+    @ObservationIgnored lazy var accessory: AccessoryStrip = floatingAccessory(EditorKeyboardToolbar(session: self))
     @ObservationIgnored private lazy var panelView: UIInputView = host(EditorPanelView(session: self), height: keyboardHeight)
 
     private func host<Content: View>(_ content: Content, height: CGFloat?) -> UIInputView {
@@ -368,11 +371,13 @@ final class EditorSession {
     /// redraw, which reloads the input views: the main thread never rested,
     /// and the menu took no tap. Auto Layout sizes the view from its content,
     /// which says when its height changes, as when a `[[` menu opens.
-    private func floatingAccessory<Content: View>(_ content: Content) -> UIView {
+    private func floatingAccessory<Content: View>(_ content: Content) -> AccessoryStrip {
         weak var hosted: UIView?
+        weak var strip: AccessoryStrip?
         let view = UIHostingConfiguration {
             content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in
                 hosted?.invalidateIntrinsicContentSize()
+                strip?.invalidateIntrinsicContentSize()
             }
         }
         .margins(.all, 0)
@@ -380,7 +385,9 @@ final class EditorSession {
         hosted = view
         view.backgroundColor = .clear
         view.translatesAutoresizingMaskIntoConstraints = false
-        return view
+        let accessory = AccessoryStrip(toolbar: view)
+        strip = accessory
+        return accessory
     }
 
     nonisolated(unsafe) private static var hostingKey: UInt8 = 0
@@ -490,6 +497,7 @@ final class EditorSession {
         if let field {
             focusMemory.forget()
             self.field = field
+            placeToolbar()
             readFocusedBlock(of: field)
             selectionChanged(in: field)
         } else {

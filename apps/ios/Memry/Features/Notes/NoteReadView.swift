@@ -323,6 +323,7 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .restoresScroll(scrollKey)
+        .modifier(NotePageDrop(session: editorModel.session))
         .modifier(NoteHeadingScroll(heading: model.route.heading, blocks: model.blocks, jump: $outlineJump))
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.
