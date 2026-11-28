@@ -251,10 +251,17 @@ final class EditorSession {
         }
         let moves = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification]
         keyboardObservers += moves.map { name in
-            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                let screen = note.object as? UIScreen
+                let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
                 MainActor.assumeIsolated {
-                    self?.syncToolbar()
-                    if name == UIResponder.keyboardDidChangeFrameNotification { DispatchQueue.main.async { self?.revealCaret() } }
+                    guard let self else { return }
+                    self.syncToolbar()
+                    // #4344, as for the keys showing: only this window's keys.
+                    guard name == UIResponder.keyboardDidChangeFrameNotification, isLocal, self.panel == .none,
+                          let screen, screen === self.field?.textView.window?.windowScene?.screen
+                    else { return }
+                    DispatchQueue.main.async { [weak self] in self?.revealCaret() }
                 }
             }
         }
@@ -306,7 +313,9 @@ final class EditorSession {
     /// them, so the reveals UIKit runs for each keyboard change leave a line
     /// under the toolbar: on an iPad mini in landscape, a new note's first
     /// line after Return in the title. This one runs after them, a turn
-    /// later: one of them still reveals the title's caret.
+    /// later: one of them still reveals the title's caret. Only a line on
+    /// screen that the toolbar covers moves: a page the user scrolled away
+    /// from the caret stays where it is as the keys change.
     private func revealCaret() {
         guard let textView = field?.textView, textView.isFirstResponder, accessory.window != nil,
               let caret = textView.selectedTextRange?.end
@@ -316,7 +325,9 @@ final class EditorSession {
         guard let page = ancestor as? UIScrollView else { return }
         var line = textView.convert(textView.caretRect(for: caret), to: page)
         let toolbarTop = accessory.convert(accessory.bounds, to: page).minY
-        line.size.height += max(0, page.bounds.maxY - page.adjustedContentInset.bottom - toolbarTop)
+        let visible = page.bounds.inset(by: page.adjustedContentInset)
+        guard visible.minY <= line.minY, line.maxY <= visible.maxY, line.maxY > toolbarTop else { return }
+        line.size.height += visible.maxY - toolbarTop
         page.scrollRectToVisible(line, animated: true)
     }
 
