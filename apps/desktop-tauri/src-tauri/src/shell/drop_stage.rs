@@ -10,10 +10,15 @@ use memry_desktop::shell::drop_stage::{DropStaging, STALE_AFTER, StageError};
 use tauri::{AppHandle, Manager, WebviewWindow, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
+use crate::startup::{self, Stage};
 
 /// Staged copies live beside the profile, not in the OS cache directory: `MEMRY_APP_DATA_DIR`
 /// then sandboxes them with everything else, so a test run never writes into a real profile.
 const STAGING_DIR: &str = "drop-staging";
+
+pub fn register_stages() {
+    startup::register(Stage::Handlers, "drop staging", init);
+}
 
 /// Creates the staging area, manages it, and deletes copies older than a day in the background.
 pub fn init(app: &AppHandle<Wry>) -> Result<(), CommandError> {
