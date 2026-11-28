@@ -15,7 +15,9 @@
 
 pub mod checks;
 pub mod crash;
+mod docs;
 mod install;
+mod journal_day_merges;
 mod preflight;
 mod source;
 pub mod sync_state;
@@ -25,7 +27,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use memry_core::storage::import::{DATA_FILE, ImportWriter};
+use memry_core::storage::import::{DATA_FILE, DocumentState, ImportWriter};
 use rusqlite::Connection;
 use serde::Serialize;
 use zeroize::Zeroizing;
@@ -67,11 +69,7 @@ pub struct VaultImportInput<'a> {
 }
 
 /// One Yjs document Step 37 read from the Electron store and folded to a single state.
-pub struct FoldedDoc {
-    pub doc_id: String,
-    pub state: Vec<u8>,
-    pub watermark: Option<u64>,
-}
+pub use super::ystore_import::FoldedDoc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImportProgress {
@@ -99,6 +97,15 @@ impl StagedVault {
     pub fn report(&self) -> &VaultStageReport {
         &self.report
     }
+
+    /// The staged document `doc_id` (state vector and canonical body text), for Step 37's check
+    /// 3 against the folded Electron state; `None` when the import wrote no log for it.
+    pub fn document_state(&self, doc_id: &str) -> Result<Option<DocumentState>, ImportError> {
+        Ok(memry_core::storage::import::document_state(
+            &self.paths.staging.join(DATA_FILE),
+            doc_id,
+        )?)
+    }
 }
 
 /// What a run read and wrote. No secrets and no note text: counts and table names only.
@@ -111,6 +118,9 @@ pub struct VaultStageReport {
     pub dropped: BTreeMap<String, u64>,
     /// Source rows carried over with less than the source held, by named reason.
     pub notices: BTreeMap<String, u64>,
+    /// Pushes queued by Electron's runtime-start replays ([`tables::replay::runtime_start`]),
+    /// by rule: `dirtyRecordsQueued`, `deletedNotesRecreated`.
+    pub queued: BTreeMap<String, u64>,
     pub merged_tables: Vec<String>,
     pub checks_passed: Vec<u8>,
 }
@@ -137,6 +147,8 @@ pub struct TableCtx<'a> {
     pub now_ms: i64,
     /// [`VaultImportInput::electron_device_id`].
     pub electron_device_id: Option<&'a str>,
+    /// [`VaultImportInput::docs`].
+    pub docs: &'a [FoldedDoc],
 }
 
 #[derive(Debug, Clone)]
@@ -226,12 +238,12 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &input.electron_index_db,
         &paths.staging,
     )?;
-    let preflight = preflight::run(&sources, input)?;
+    let preflight = preflight::run(&sources)?;
+    journal_day_merges::refuse_local_folds(sources.conn(tables::SourceDb::Data), &input.docs)?;
     let mut writer = ImportWriter::create(&paths.staging)?;
     crash::point("stage:writer-created");
 
     let mut report = VaultStageReport {
-        dropped: preflight.dropped_keys,
         ..VaultStageReport::default()
     };
     let total = preflight.tables.len();
@@ -259,6 +271,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                     writer: &mut writer,
                     now_ms: input.now_ms,
                     electron_device_id: input.electron_device_id.as_deref(),
+                    docs: &input.docs,
                 };
                 let stats = import(&mut ctx)?;
                 table.target_count = stats.written;
@@ -279,11 +292,37 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
             .insert(format!("{}/{}", mapping.db.name(), mapping.table), table);
     }
 
+    let replayed = tables::replay::runtime_start(&mut TableCtx {
+        source: sources.conn(tables::SourceDb::Data),
+        index: sources.conn(tables::SourceDb::Index),
+        vault_dir: &input.vault_dir,
+        vault_id: &input.vault_id,
+        writer: &mut writer,
+        now_ms: input.now_ms,
+        electron_device_id: input.electron_device_id.as_deref(),
+        docs: &input.docs,
+    })?;
+    for (rule, count) in [
+        ("dirtyRecordsQueued", replayed.dirty),
+        ("deletedNotesRecreated", replayed.recreated),
+    ] {
+        if count > 0 {
+            report.queued.insert(rule.to_owned(), count);
+        }
+    }
+    docs::import_documents(
+        input,
+        sources.conn(tables::SourceDb::Data),
+        sources.conn(tables::SourceDb::Index),
+        &mut writer,
+    )?;
     checks::run(
         &mut report,
         &sources,
         &writer,
         input.electron_device_id.as_deref(),
+        &input.docs,
+        input.now_ms,
     )?;
     drop(sources);
     source::remove(&paths.staging)?;
@@ -329,6 +368,6 @@ fn remove_staging(paths: &Paths) -> Result<(), ImportError> {
 
 #[cfg(test)]
 #[path = "../../../tests/support/electron_db.rs"]
-mod electron_db;
+pub(crate) mod electron_db;
 #[cfg(test)]
 mod tests;

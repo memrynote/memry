@@ -8,6 +8,7 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 use memry_core::domain::external_feed::same_text;
 use memry_core::domain::note_files::StampMark;
+use memry_core::domain::note_pulled_marks::PulledMark;
 use memry_core::domain::note_snapshots;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::frontmatter::{
@@ -17,9 +18,10 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
-use super::place::{Found, Mark, Patch, Pulled, header_tags_of, owed_aliases, patch};
+use super::place::{Found, Patch, header_tags_of, moves, owed_aliases, patch};
 use crate::attachments;
 use crate::locks::Locks;
+use crate::sync::attachments::place_after_write;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
@@ -106,8 +108,6 @@ pub struct Pass {
     pub(super) own_files: Arc<OwnFiles>,
     /// Reaches the notes writer, for a pulled place's move (`place`).
     pub(super) store: Arc<dyn SecureStore>,
-    /// The notes a pull changed whose pass has not taken the change yet (`place`).
-    pub(super) pulled: Pulled,
     /// The days whose file a pass left off its date's path this session, logged once
     /// (`day_place`).
     pub(super) refused_days: Mutex<HashSet<String>>,
@@ -134,16 +134,8 @@ impl Pass {
             settings,
             own_files,
             store,
-            pulled: Pulled::default(),
             refused_days: Mutex::default(),
         }
-    }
-
-    /// A pull changed the note: its next pass gives its file the record's place and frontmatter
-    /// (`place`). `title_before` is its title before the pull: the file is renamed only when
-    /// the pulled title differs from it.
-    pub fn mark_pulled(&self, note_id: &str, title_before: Option<&str>) {
-        self.pulled.mark(note_id, title_before);
     }
 
     /// Writes the note's body to its file, or says why the file was kept.
@@ -172,7 +164,7 @@ impl Pass {
                 let outcome = self.file_unfiled(&mut lane, note_id, (read_at, read_mark), between);
                 // The first file takes the record's place and frontmatter.
                 if matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged) {
-                    self.pulled.take(note_id);
+                    self.forget_pulled(note_id);
                 }
                 return outcome;
             }
@@ -182,7 +174,7 @@ impl Pass {
         // pulled one. A row not read yet keeps it, as a file changed since its hash does: the
         // pass after the read places the file.
         if row.file_type != FileType::Markdown.as_str() {
-            self.pulled.take(note_id);
+            self.forget_pulled(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
         // A large file owing its record's aliases gets its `aliases` key alone (`owed`).
@@ -198,7 +190,7 @@ impl Pass {
         let file = match read_note(&self.root, &row.path) {
             Ok(Some(file)) => file,
             Ok(None) => {
-                self.pulled.take(note_id);
+                self.forget_pulled(note_id);
                 return Outcome::Kept(Keep::NoFile);
             }
             Err(error) => return Outcome::Failed(format!("the file could not be read: {error}")),
@@ -208,20 +200,27 @@ impl Pass {
         }
         // A live day's file stands at its date's path (`day_place`, #5786).
         let day_place = self.place_day(&mut lane, &row);
-        // A pulled change: taken here, and given back to the next pass when this one stops.
-        let pulled = match self.pulled.take(note_id) {
+        // A pulled change: read here, and settled only once the file took it, so every stop
+        // before (and a quit) leaves the mark to the next pass.
+        let mark = match self.pulled_mark(note_id) {
+            Ok(mark) => mark,
+            Err(why) => return Outcome::Failed(why),
+        };
+        let pulled = match mark {
             None => None,
             Some(mark) => match self.vault.note_files().placed(note_id) {
-                Ok(record) => record.map(|record| (mark, record)),
-                Err(error) => {
-                    self.pulled.put_back(note_id, mark);
-                    return Outcome::Failed(format!("the pulled record: {error}"));
+                Ok(Some(record)) => Some((mark, record)),
+                // No live record to place: a later local pass is never a pulled one.
+                Ok(None) => {
+                    self.forget_pulled(note_id);
+                    None
                 }
+                Err(error) => return Outcome::Failed(format!("the pulled record: {error}")),
             },
         };
-        // The mark a pass that keeps the file gives back, so the pass after the wait (a body
-        // not pulled yet, #5509) still gives the file the pulled change; a pass that wrote it
-        // gives it back only for a failed move to be tried again.
+        // The mark a pass that keeps the file leaves, so the pass after the wait (a body not
+        // pulled yet, #5509) still gives the file the pulled change; a pass that wrote it
+        // settles it, unless a failed move is to be tried again.
         let mut waiting = pulled.as_ref().map(|(mark, _)| mark.clone());
         let mut move_again = false;
         // A file owing its record's aliases (`owed`) gets them from a pull's patch, or alone.
@@ -234,15 +233,16 @@ impl Pass {
         };
         let pays =
             owed.is_some() || (pulled.as_ref()).is_some_and(|(_, record)| record.aliases.is_some());
-        let wait = |waiting: Option<Mark>, move_again: bool, outcome: Outcome| {
+        let wait = |waiting: Option<PulledMark>, move_again: bool, outcome: Outcome| {
             let wrote = matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged);
             if wrote && pays {
                 self.paid(note_id);
             }
             // A deleted note's mark goes: one that comes back is pulled again.
-            let gone = outcome == Outcome::Kept(Keep::NoNote);
-            if let Some(mark) = waiting.filter(|_| !gone && (!wrote || move_again)) {
-                self.pulled.put_back(note_id, mark);
+            if outcome == Outcome::Kept(Keep::NoNote) {
+                self.forget_pulled(note_id);
+            } else if let Some(mark) = waiting.filter(|_| wrote && !move_again) {
+                self.settle_pulled(note_id, &mark);
             }
             outcome
         };
@@ -252,7 +252,7 @@ impl Pass {
         let places = pulled
             .as_ref()
             .zip(waiting.as_mut())
-            .filter(|((mark, record), _)| record.date.is_none() && mark.moves());
+            .filter(|((mark, record), _)| record.date.is_none() && moves(mark));
         if let Some(((mark, record), waiting)) = places {
             let found = Found {
                 path: &row.path,
@@ -265,8 +265,7 @@ impl Pass {
                 // The file and its row stay where they were, and the body is written there: a
                 // move that cannot happen never holds the file back from the note's edits.
                 Err(why) => {
-                    waiting.move_failed(note_id, &why);
-                    move_again = waiting.moves();
+                    move_again = self.retry_pulled(note_id, waiting, &why);
                 }
             }
         }
@@ -364,6 +363,8 @@ impl Pass {
         }
         // An attachment rename the body carries moves the file on this device too (#1714).
         attachments::reconcile_renames(&self.root, &self.vault, note_id, &file.raw, &output);
+        // A download that landed before this body moves where the body links it.
+        place_after_write(&self.root, &self.vault.db_handle(), note_id);
         // A body grown past the class (typed, merged) makes the note a large file: the editor
         // stops taking edits, as Electron's write-back degrades the note. Recorded before the
         // row, so a row write that fails leaves no large file the editor still takes edits of.

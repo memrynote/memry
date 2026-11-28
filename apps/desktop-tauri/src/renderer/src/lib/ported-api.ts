@@ -1,3 +1,4 @@
+import { onAttachmentMaterialized, onAttachmentUploadFailed } from '../services/attachment-events'
 import {
   diagnosticsApi,
   feedbackService,
@@ -45,7 +46,9 @@ const ported: Record<string, unknown> = {
   onClockSkewWarning,
   onInitialSyncProgress,
   onSecurityWarning,
-  onCertificatePinFailed
+  onCertificatePinFailed,
+  onAttachmentMaterialized,
+  onAttachmentUploadFailed
 }
 
 export interface PortedApiHost {

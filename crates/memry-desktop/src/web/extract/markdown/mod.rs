@@ -12,6 +12,7 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
+use crate::web::extract::error::ExtractError;
 use crate::web::extract::utils::js::{WS, trim};
 
 static WBR: LazyLock<Regex> =
@@ -77,17 +78,20 @@ fn space_before_images(markdown: &str) -> String {
     out
 }
 
-pub fn create_markdown_content(content: &str) -> String {
+/// `createMarkdownContent(content, url)`. The one error is a page past Turndown's parse caps
+/// ([`ExtractError::TooLarge`]); every other failure becomes JS's partial-conversion notice.
+pub fn create_markdown_content(content: &str) -> Result<String, ExtractError> {
     // <wbr> hints are invisible in browsers but would insert spaces during conversion.
     let content = WBR.replace_all(content, "");
     let mut markdown = match turndown::turndown(&content) {
         Ok(markdown) => markdown,
+        Err(error @ ExtractError::TooLarge(_)) => return Err(error),
         // JS logs the error and returns the HTML under a notice.
         Err(error) => {
             tracing::error!(%error, "Error converting HTML to Markdown");
-            return format!(
+            return Ok(format!(
                 "Partial conversion completed with errors. Original HTML:\n\n{content}"
-            );
+            ));
         }
     };
     // The title heading at the start goes.
@@ -97,5 +101,5 @@ pub fn create_markdown_content(content: &str) -> String {
     let markdown = remove_empty_links(&markdown);
     let markdown = space_before_images(&markdown);
     let markdown = EXTRA_NEWLINES.replace_all(&markdown, "\n\n");
-    trim(&markdown).to_string()
+    Ok(trim(&markdown).to_string())
 }

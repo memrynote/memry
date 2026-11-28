@@ -219,8 +219,10 @@ fn queued_pushes_become_one_outbox_row_each_and_deletes_keep_their_tombstone() {
     );
 }
 
+/// A `note_body` row whose document the store copy does not hold (36c4): the push has no state
+/// to send, so the run stops with a message the user can act on.
 #[test]
-fn a_note_body_queue_row_is_refused_with_a_message_the_user_can_act_on() {
+fn a_note_body_queue_row_without_its_document_is_refused_with_a_message_the_user_can_act_on() {
     let vault = Vault::new();
     queue(
         &vault.data_conn(),
@@ -231,12 +233,8 @@ fn a_note_body_queue_row_is_refused_with_a_message_the_user_can_act_on() {
         100,
     );
     assert_refused(&vault, |e| {
-        matches!(e, ImportError::NotReady { area: "note edit history", detail }
-            if detail.contains("note_body"))
-            && e.to_string().starts_with(
-                "This version of MemryNote cannot move this vault's note edit history yet. \
-                 Nothing was changed.",
-            )
+        matches!(e, ImportError::OrphanBodyQueueRow { doc_ids } if doc_ids == &["-0QKFMSbJ-18"])
+            && e.to_string().contains("Nothing was changed.")
     });
 }
 

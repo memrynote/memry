@@ -65,6 +65,12 @@ pub fn create_main(
                 &origins,
                 &scripts::init_script(shell_globals(app)),
             ));
+    // The Electron app's localStorage, until the page reports it applied (Step 37, #3554).
+    if let Some(paths) = app.try_state::<AppPaths>()
+        && let Some(script) = crate::migration::local_storage::pending_script(&paths.data_dir)
+    {
+        builder = builder.initialization_script(scripts::app_page_only(&origins, &script));
+    }
     builder = chrome::apply(builder);
     #[cfg(target_os = "macos")]
     {

@@ -17,6 +17,7 @@ import type { RecentlyOpenedItem, RecentlyOpenedItemType } from '@memry/contract
 // barrel, and reaching past it makes this hook demand a real TabProvider they
 // do not build.
 import { useActiveTab } from '@/contexts/tabs'
+import { recentsService } from '@/services/recents-service'
 
 export const recentlyOpenedKeys = {
   all: ['recently-opened'] as const,
@@ -35,7 +36,7 @@ export function useRecentlyOpened(limit: number): {
 } {
   const query = useQuery({
     queryKey: recentlyOpenedKeys.list(limit),
-    queryFn: () => window.api.recents.list(limit),
+    queryFn: () => recentsService.list(limit),
     staleTime: 30_000
   })
 
@@ -75,9 +76,9 @@ export function useRecordRecentlyOpened(): void {
       if (last !== undefined && now - last < THROTTLE_MS) return
       lastWriteRef.current.set(key, now)
 
-      void Promise.resolve(window.api.recents.record({ itemId, itemType })).then(() =>
-        queryClient.invalidateQueries({ queryKey: recentlyOpenedKeys.all })
-      )
+      void recentsService
+        .record({ itemId, itemType })
+        .then(() => queryClient.invalidateQueries({ queryKey: recentlyOpenedKeys.all }))
     }, DWELL_MS)
 
     return () => clearTimeout(timer)

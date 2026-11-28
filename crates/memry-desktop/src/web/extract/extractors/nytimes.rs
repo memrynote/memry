@@ -268,7 +268,7 @@ impl NytimesExtractor {
                     if cx.qs(&attr_selector)?.is_none() {
                         let wrapper = cx.doc.create_element("div");
                         cx.doc.set_attribute(wrapper, INJECTED_ATTR, "");
-                        let fragment = cx.doc.parse_fragment(&render_blocks(blocks)?);
+                        let fragment = cx.doc.parse_fragment(&render_blocks(blocks)?)?;
                         cx.doc.append_child(wrapper, fragment)?;
                         let root = cx.root;
                         let body = cx.doc.body_of(root).ok_or_else(|| {

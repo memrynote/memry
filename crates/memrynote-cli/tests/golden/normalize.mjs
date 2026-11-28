@@ -23,13 +23,15 @@ export function expandTokens(value, dirs, aliases) {
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
 const ISO = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/g
 const MS = /\b\d{13}\b/g
+// A measured run time (`vault reindex`): it differs between any two runs.
+const DURATION = /"durationMs":( ?)\d+/g
 // A path below a folder token: its Windows separators (raw or escaped inside JSON) become `/`, so
 // one expected file holds on every OS.
 const BELOW_TOKEN = /<(?:vault|home|tmp)>(?:(?:\\\\|\\|\/)[^\\/"'\s]+)+/g
 
 /** The folders of the run become `<vault>`, `<home>`, `<tmp>` (as written and as escaped inside
  *  JSON; separators below them `/`), ids `<idN>` by first appearance in `ids` (one map per scenario), ISO timestamps
- *  `<iso>`, 13-digit epoch milliseconds `<ms>`. */
+ *  `<iso>`, 13-digit epoch milliseconds `<ms>`, the value of a `durationMs` key `<duration>`. */
 export function normalize(text, dirs, ids = new Map()) {
   let out = text
   for (const [token, dir] of [
@@ -45,7 +47,10 @@ export function normalize(text, dirs, ids = new Map()) {
     if (!ids.has(id)) ids.set(id, `<id${ids.size + 1}>`)
     return ids.get(id)
   })
-  return out.replace(ISO, '<iso>').replace(MS, '<ms>')
+  return out
+    .replace(ISO, '<iso>')
+    .replace(MS, '<ms>')
+    .replace(DURATION, '"durationMs":$1<duration>')
 }
 
 export const NORMALIZE_CASES = [
@@ -54,5 +59,6 @@ export const NORMALIZE_CASES = [
   '2026-01-02T03:04:05.678Z 2026-01-02T03:04:05Z 2026-01-02T03:04:05.678+03:00 2026-01-02',
   '1767225600000 12345678901234 123456789012 a1767225600000',
   'undefined\n\n',
+  '{"durationMs":12} {\n  "durationMs": 3,\n  "notes": 0\n}',
   String.raw`mkdir '/tmp/x\appdata\f\.memry' "/tmp/x/vault\\a\\b" "/tmp/x/home\""`
 ]

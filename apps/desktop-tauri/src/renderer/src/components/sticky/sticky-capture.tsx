@@ -65,7 +65,7 @@ export function StickyCapture(): React.JSX.Element {
       setSending(true)
       setSendError('')
       try {
-        const result = await window.api.sticky.send({ draftId, content: draft.content, kind })
+        const result = await stickyService.send({ draftId, content: draft.content, kind })
         if (!result.success) {
           setSendError(result.error)
           return
@@ -148,7 +148,7 @@ export function StickyCapture(): React.JSX.Element {
 
   const undoSend = useCallback(async () => {
     if (!sent?.undoToken) return
-    const result = await window.api.sticky.undoSend(sent.undoToken)
+    const result = await stickyService.undoSend(sent.undoToken)
     setSent(null)
     if (result.success) draft.adopt(result.draft)
     else setSendError(result.error)
@@ -170,7 +170,7 @@ export function StickyCapture(): React.JSX.Element {
             canUndo={sent.undoToken !== null}
             modKey={MOD_KEY}
             onOpen={() =>
-              void window.api.sticky.openTarget({ kind: sent.kind, targetId: sent.targetId })
+              void stickyService.openTarget({ kind: sent.kind, targetId: sent.targetId })
             }
             onUndo={() => void undoSend()}
             onDone={() => void stickyService.tuck()}

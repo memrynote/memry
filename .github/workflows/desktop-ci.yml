@@ -218,6 +218,10 @@ jobs:
       - name: Check HTML text vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:html-text:check
 
+      # The inbox folder scoring vectors come from Electron's inbox/folder-scoring.ts the same way.
+      - name: Check inbox suggestion vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:inbox-suggest:check
+
       # The agent MCP contract vectors come from Electron's tool schemas and MCP server the same way.
       - name: Check agent MCP vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:agent-mcp:check

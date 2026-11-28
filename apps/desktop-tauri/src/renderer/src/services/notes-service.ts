@@ -679,6 +679,10 @@ const ported = {
   exportHtml: async (input: ExportNoteInput): Promise<ExportNoteResult> => {
     const { success, path, code, error } = await commands.notesExportHtml(input)
     return { success, path: path ?? undefined, code: code ?? undefined, error: error ?? undefined }
+  },
+  exportPdf: async (input: ExportNoteInput): Promise<ExportNoteResult> => {
+    const { success, path, code, error } = await commands.notesExportPdf(input)
+    return { success, path: path ?? undefined, code: code ?? undefined, error: error ?? undefined }
   }
 } satisfies Partial<NotesClientAPI>
 
@@ -732,6 +736,7 @@ type NotesServiceApi = Omit<
   | 'update'
   | 'appendBlocks'
   | 'exportHtml'
+  | 'exportPdf'
   | 'getSimilar'
   | 'getTagSuggestions'
   | 'cluster'
@@ -739,6 +744,7 @@ type NotesServiceApi = Omit<
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
   exportHtml: (input: ExportNoteInput) => Promise<ExportNoteResult>
+  exportPdf: (input: ExportNoteInput) => Promise<ExportNoteResult>
 }
 
 export const notesService: NotesServiceWithVersions = createWindowApiForwarder<

@@ -443,6 +443,7 @@ async fn the_calendar_does_not_show_the_day_as_a_note() {
         start_at: "2019-12-01T00:00:00.000Z".to_owned(),
         end_at: "2020-02-01T00:00:00.000Z".to_owned(),
         include_unselected_sources: true,
+        include_completed_tasks: false,
         include_external: false,
         external_providers: None,
         enabled_property_names: Vec::new(),

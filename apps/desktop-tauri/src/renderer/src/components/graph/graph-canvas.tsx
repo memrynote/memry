@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useTheme } from 'next-themes'
+import { useReducedMotionConfig } from 'motion/react'
 import '@react-sigma/core/lib/style.css'
 import type Graph from 'graphology'
 import type { GraphDataResponse, GraphSettings, GraphViewState } from '@memry/contracts/graph-api'
@@ -121,6 +122,8 @@ export function GraphCanvas({
   onLayoutChange
 }: GraphCanvasProps): React.JSX.Element {
   const { resolvedTheme } = useTheme()
+  // The app's Reduce motion setting (ThemeSyncManager's MotionConfig), else the OS preference.
+  const reduceMotion = useReducedMotionConfig()
   const [webglAvailable] = useState(() => hasWebGLSupport())
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
@@ -443,7 +446,7 @@ export function GraphCanvas({
         />
         <LayoutManager
           layout={graphSettings.layout}
-          animate={graphSettings.animateLayout}
+          animate={graphSettings.animateLayout && !reduceMotion}
           graph={graph}
           revision={revision}
           physicsHandleRef={physicsHandleRef}

@@ -16,6 +16,7 @@
 //! | a note with no file at open gets its file                | the open reconcile lists it           |
 //! | a pulled note's aliases reach its file and survive B's    | the first file's frontmatter          |
 //! | a pulled rename, move, tag or property reaches B          | `writeback::place`, `note_events.rs`  |
+//! | a pulled rename reaches B's file after a restart          | the pull mark in `data.db`, reconcile |
 //! | a note create the server lost reaches a second device     | the manifest check asks, then re-uploads |
 //! | a deleted note stays deleted after a run from cursor 0    | a marker answered, nothing re-uploaded |
 //! | a deleted note stays deleted after a first sync           | a marker answered, nothing re-uploaded |

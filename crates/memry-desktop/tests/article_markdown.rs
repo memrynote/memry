@@ -29,7 +29,7 @@ fn compare(inputs: Vec<(String, Value)>) -> usize {
         };
         compared += 1;
         let expected = vector["markdown"].as_str().unwrap();
-        let actual = create_markdown_content(html);
+        let actual = create_markdown_content(html).expect("within the caps");
         if actual != expected {
             failures.push(format!(
                 "{name}:\n  html: {html:?}\n  rust: {actual:?}\n  node: {expected:?}"

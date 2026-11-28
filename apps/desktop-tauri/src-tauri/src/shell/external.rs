@@ -11,7 +11,7 @@ use memry_desktop::shell::file_open::Resolution;
 use memry_desktop::shell::local_scheme::{
     LocalScheme, locate, normalize_absolute, resolve_local_scheme_path,
 };
-use tauri::{AppHandle, Wry};
+use tauri::{AppHandle, Runtime, Wry};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::commands::error::{CommandError, ErrorKind};
@@ -132,7 +132,7 @@ pub fn reveal_path(app: &AppHandle<Wry>, path: &str) -> Result<(), CommandError>
     reveal(app, &allowed_path(app, path)?.real)
 }
 
-fn reveal(app: &AppHandle<Wry>, target: &Path) -> Result<(), CommandError> {
+pub(crate) fn reveal<R: Runtime>(app: &AppHandle<R>, target: &Path) -> Result<(), CommandError> {
     #[cfg(feature = "e2e")]
     if crate::e2e::record_os_open(app, &format!("reveal {}", target.display())) {
         return Ok(());

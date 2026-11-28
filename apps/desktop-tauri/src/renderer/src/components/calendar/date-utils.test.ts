@@ -1,4 +1,7 @@
+import { dirname, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { runInTz } from '@/lib/test-support/run-in-tz'
 import {
   addLocalMonths,
   addLocalYears,
@@ -155,4 +158,24 @@ describe('addLocalMonths / addLocalYears', () => {
     expect(addLocalYears('2028-02-29', 1)).toBe('2029-02-28')
     expect(addLocalYears('2028-02-29', -4)).toBe('2024-02-29')
   })
+})
+
+describe('parseLocalDate weekday', () => {
+  // Week view headers read the weekday from parseLocalDate; `new Date('2026-11-04')` is UTC
+  // midnight, which is Tuesday evening in UTC-3. Runs in a child node because the threads pool
+  // cannot change TZ in-process; date-utils.ts is import-free so node can load it directly.
+  const moduleUrl = pathToFileURL(
+    resolve(dirname(expect.getState().testPath!), 'date-utils.ts')
+  ).href
+
+  it.each(['America/Sao_Paulo', 'America/Los_Angeles', 'Asia/Istanbul', 'Pacific/Kiritimati'])(
+    'reports Wednesday for 2026-11-04 in %s',
+    (tz) => {
+      const source = `
+        const { parseLocalDate } = await import(${JSON.stringify(moduleUrl)})
+        process.stdout.write(JSON.stringify(parseLocalDate('2026-11-04').getDay()))
+      `
+      expect(runInTz<number>(tz, source)).toBe(3)
+    }
+  )
 })
