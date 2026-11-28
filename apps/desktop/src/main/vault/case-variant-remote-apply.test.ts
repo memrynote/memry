@@ -130,6 +130,14 @@ function fileSystemIgnoresCase(): boolean {
 
 const renameSynced = vi.fn()
 
+/**
+ * How long the app's watcher may take to hear a folder's change. macOS reports
+ * one through FSEvents, which fseventsd delivers up to 30 s late when other
+ * processes keep it busy, and a process's first stream starts late too. A test
+ * waits on `watch` and up to two more folder events, 150 s in all.
+ */
+const FS_EVENTS_TIMEOUT_MS = 45_000
+
 describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder', () => {
   let vault: ReturnType<typeof createTestVault>
   let data: TestDatabaseResult
@@ -254,7 +262,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
         await flushProjectionEvents()
         expected()
       },
-      { timeout: 10_000, interval: 100 }
+      { timeout: FS_EVENTS_TIMEOUT_MS, interval: 100 }
     )
     await drainIngestBackfill()
     await flushProjectionEvents()
@@ -354,7 +362,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     )
     expect(noteCreates()).toEqual([])
     expect(metadataRows()).toEqual(expected)
-  }, 20_000)
+  }, 150_000)
 
   // The file's mtime is sync's own write. Stamped onto the row, a note that was
   // only pulled reads as edited since its sync, and the first pull into a doc
@@ -386,7 +394,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
         { id: 'remote-file', modifiedAt: '2026-01-12T00:00:00.000Z' }
       ])
     )
-  }, 20_000)
+  }, 150_000)
 
   it('the watcher pushes an applied attachment replaced before it was adopted', async () => {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'))
@@ -414,7 +422,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       unsynced: ['replaced'],
       updates: [['note', 'replaced']]
     })
-  }, 20_000)
+  }, 150_000)
 
   it('the watcher keeps the emoji of an applied attachment', async () => {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'))
@@ -429,7 +437,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       .where(eq(noteMetadata.id, 'remote-file'))
       .get()
     expect(row?.emoji).toBe('X')
-  }, 20_000)
+  }, 150_000)
 
   // The projection runs behind the canonical write, so the index row can be
   // missing when the file arrives: the re-key takes emoji and local-only from
@@ -451,7 +459,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       .where(eq(noteMetadata.id, 'remote'))
       .get()
     expect(row).toEqual({ emoji: 'X', localOnly: true })
-  }, 20_000)
+  }, 150_000)
 
   it('the watcher keeps the id of a note applied into a non-ASCII case-variant folder', async () => {
     fs.mkdirSync(path.join(vault.path, 'ärzte'))
@@ -460,7 +468,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     await settleOn(() => expect(cacheRows()).toEqual([{ id: 'remote', path: 'ärzte/a.md' }]))
     expect(metadataRows()).toEqual([{ id: 'remote', path: 'ärzte/a.md' }])
     expect(noteCreates()).toEqual([])
-  }, 20_000)
+  }, 150_000)
 
   // An HFS+ vault stores names decomposed (NFD), and sync writes them composed
   // (NFC). The volume ignores both case and normalization, so the row moves to
@@ -474,7 +482,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     await settleOn(() => expect(cacheRows()).toEqual(expected))
     expect(metadataRows()).toEqual(expected)
     expect(noteCreates()).toEqual([])
-  }, 20_000)
+  }, 150_000)
 
   // APFS folds `İ` (U+0130) to `i` + U+0307, as `toLowerCase` does, not to a
   // plain `i`, so `İş/` and `iş/` are two folders on the disk and two notes
@@ -492,7 +500,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(fs.readFileSync(path.join(vault.path, 'iş/a.md'), 'utf8')).toContain('local')
     expect(fs.readFileSync(path.join(vault.path, 'İş/a.md'), 'utf8')).toContain('remote')
     expect(noteCreates()).toEqual([])
-  }, 20_000)
+  }, 150_000)
 
   it('an outside case-only file rename stays a synced rename', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n', { remote: false })
@@ -507,7 +515,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       .where(eq(noteMetadata.id, 'n1'))
       .get()
     expect(row?.title).toBe('Apple')
-  }, 20_000)
+  }, 150_000)
 
   // An outside save, then a case-only rename while the watcher still holds the
   // save's change: the change lands after the rename under the old spelling.
@@ -537,7 +545,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
     expect(cacheRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
     expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
-  }, 20_000)
+  }, 150_000)
 
   // The same rename made while the app is closed: vault open sees only the
   // new spelling, and the changed file name marks it as the user's rename,
@@ -578,7 +586,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       .mocked(enqueueLocalSyncUpdate)
       .mock.calls.filter(([, id]) => id.startsWith('twin-'))
     expect(updates).toEqual([])
-  }, 20_000)
+  }, 150_000)
 
   it('keeps both rows of two remote notes that share one file', async () => {
     await watch()
@@ -592,7 +600,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     ])
     expect(fs.readFileSync(path.join(vault.path, 'Supernotes/a.md'), 'utf8')).toContain('upper')
     expect(noteCreates()).toEqual([])
-  }, 20_000)
+  }, 150_000)
 
   /** Each feed of a file body into a doc, as the twin whose body it is. */
   const fedBodies = () =>
@@ -624,7 +632,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
 
     expect(fedBodies().filter(([id]) => id !== 'control')).toEqual([])
     expect(metadataRows().map((row) => row.id)).toEqual(['control', 'remote-lower', 'remote-upper'])
-  }, 20_000)
+  }, 150_000)
 
   it('vault open leaves case twins sharing a file to their own bodies on write-back', async () => {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'))
