@@ -34,6 +34,11 @@ const CASES: Array<[string, string]> = [
   ['a link address cut inside a parenthesis, by a tab', '[b](x(y\tz\nw) w)'],
   ['an image address cut inside a parenthesis', '![i](x(y z) w)'],
   ['a link address that has a paren and no blank', '[b](x(y)z)'],
+  ['an angled address across lines, the text a raw tag would be', '[b](<x\ny>)'],
+  ['an angled address across lines, in a line of text', 'a [b](<x\ny>) c'],
+  ['an angled address across lines, in an image', '![b](<x\ny>)'],
+  ['an angled address across lines, in a table cell', '| a |\n|---|\n| [b](<x\ny>) |'],
+  ['a mention token in a link address', '[b](((mention:https%3A%2F%2Fwww.example.com%2Fx)))'],
   ['a fence language with backticks and a blank before them', '```  ``` x\nc\n```'],
   ['a fence language with a backtick', '```  `` x\nc\n```'],
   ['a tilde fence language with backticks', '~~~  ``` x\nc\n~~~'],
@@ -48,5 +53,14 @@ describe('write-back reaches a fixed point', () => {
     const second = await seed(written ?? '')
     expect(shape(second), `seed(write(seed(m))) for ${JSON.stringify(written)}`).toBe(shape(first))
     expect(await yDocToCanonicalMarkdown(second)).toBe(written)
+  })
+
+  // The brackets are escaped so the parse reads text, which shows as `[b](<x\ny>)`.
+  it.each([
+    ['an angled address across lines', '[b](<x\ny>)', '[b\\](<x\ny>)'],
+    ['the same in a line of text', 'a [b](<x\ny>) c', 'a [b\\](<x\ny>) c'],
+    ['the same in an image', '![b](<x\ny>)', '\\![b\\](<x\ny>)']
+  ])('%s keeps its text', async (_name, markdown, expected) => {
+    expect(await yDocToCanonicalMarkdown(await seed(markdown))).toBe(expected)
   })
 })

@@ -25,7 +25,7 @@ The directions:
 
 | Direction              | Mechanism                                                                                                                                                                                        |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:522`) with the repairs of §12.1.1; in the core, `markdown_seed` for the four writes of §12.1.0 and no others |
+| markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:523`) with the repairs of §12.1.1; in the core, `markdown_seed` for the four writes of §12.1.0 and no others |
 | document to markdown   | desktop only, in the vault write-back (`apps/desktop/src/main/sync/crdt-writeback.ts:598`)                                                                                                       |
 | document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                           |
 
@@ -36,10 +36,10 @@ for four writes and no others:
 
 | Write                                | Entry point                                                                                                                                                                                                                                          | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:437`), called through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`) by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:112`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`crates/memry-core/src/crdt/markdown_seed/mod.rs:434-436`, `:443-445`)                                                                                                                                                                                                                                                                                                                                                     |
+| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:414`), called through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`) by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:112`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`crates/memry-core/src/crdt/markdown_seed/mod.rs:411-413`, `:420-422`)                                                                                                                                                                                                                                                                                                                                                     |
 | a note created from a template       | `seed_document`, through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`), called by `create_note` in the note's create transaction (`crates/memry-core/src/domain/templates.rs:155`)                                         | seeds the new, empty body with the `{{title}}`-substituted content, the same bytes as the payload `content` and `seed_markdown`. The same empty-body rule as the journal row                                                                                                                                                                                                                                                                                                                                                                                                            |
-| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:457`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)                                                                                           | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| text pasted into a block on iOS      | `plan` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:299`), through `BlockEdit::PasteMarkdown` (`crates/memry-core/src/crdt/body_edit/paste.rs:25`)                                                                                              | reads the text as desktop's converter reads a vault file, not as BlockNote's own paste of `text/plain` (`apps/desktop/src/renderer/src/components/note/content-area/table-cell-paste.ts:69-88`), which builds no callout, math block, toggle or embed (`crates/memry-core/src/crdt/markdown_seed/mod.rs:18-22`); each `\r\n` and `\r` reads as `\n` (`:300-301`). The blocks go in at the caret: below the text before it, above the text after it, which moves to a block of the target's type, and in place of an empty block (`crates/memry-core/src/crdt/body_edit/paste.rs:50-60`) |
+| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:434`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)                                                                                           | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| text pasted into a block on iOS      | `plan` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:300`), through `BlockEdit::PasteMarkdown` (`crates/memry-core/src/crdt/body_edit/paste.rs:25`)                                                                                              | reads the text as desktop's converter reads a vault file, not as BlockNote's own paste of `text/plain` (`apps/desktop/src/renderer/src/components/note/content-area/table-cell-paste.ts:69-88`), which builds no callout, math block, toggle or embed (`crates/memry-core/src/crdt/markdown_seed/mod.rs:18-22`); each `\r\n` and `\r` reads as `\n` (`:300-301`). The blocks go in at the caret: below the text before it, above the text after it, which moves to a block of the target's type, and in place of an empty block (`crates/memry-core/src/crdt/body_edit/paste.rs:50-60`) |
 
 **The seeded document MUST be the one desktop builds from the same bytes.** Each stage of
 desktop's conversion is ported with its quirks, and
@@ -59,7 +59,7 @@ text (`:42-52`). A built table keeps every cell, as desktop's converter does: a 
 span splits no cell, and a body row wider than the header row widens the table, the header and the
 shorter rows padded with empty cells. A header row spelled like a delimiter row (`| --- |`) widens
 like any other (`:54-59`, `crates/memry-core/src/crdt/markdown_seed/table.rs:22-38`;
-`packages/editor-schema/src/inline/cell-code-spans.ts:150-169`,
+`packages/editor-schema/src/inline/cell-code-spans.ts:162-181`,
 `packages/editor-schema/src/table-width.ts:82-91`, `:119-142`). A callout or a structured quote is
 claimed as desktop claims it: when serializing its parsed body gives back its bytes, or when
 the canonical form it would write instead settles, and a quote that parses to one paragraph
@@ -117,7 +117,7 @@ at a paragraph's start or end or in a run of three or more, is not decided and s
 `crates/memry-core/src/crdt/markdown_seed/items.rs:31`,
 `crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:23`, `:36`, `:44`, `:136-147`). A code block's `language`is its
 fence's info string,`""`for an untagged fence or an indented run, never BlockNote's`javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
-`crates/memry-core/src/crdt/markdown_seed/blocks.rs:296-322`).
+`crates/memry-core/src/crdt/markdown_seed/blocks.rs:290-316`).
 BlockNote trims it, so ` `  ` x `is the language `` ``` x ``, with or without a backtick in it (desktop's
 code-span mask leaves such a line alone,`packages/editor-schema/src/inline/cell-code-spans.ts:49`, `:172`). No backtick fence can
 hold a language with a backtick, so write-back spells such a block with a tilde fence, longer than any
@@ -128,7 +128,7 @@ takes the tilde fence as it takes any other.
 **Comments, and what the core follows from the parse rather than from the markdown.**
 
 - **`%% … %%` comments are `htmlComment` nodes (§12.7).** Desktop masks every comment outside
-  code before any line is split (`apps/desktop/src/main/sync/blocknote-converter.ts:473-475`,
+  code before any line is split (`apps/desktop/src/main/sync/blocknote-converter.ts:474-476`,
   `packages/shared/src/html-comments.ts:131`, boundaries from `walkMarkdown`,
   `packages/shared/src/markdown-code.ts:150`, including a comment that crosses a table cell end
   as text and a code span's pipe as part of the cell, `:320`), and again on each chunk it parses.
@@ -137,7 +137,7 @@ takes the tilde fence as it takes any other.
   code span, a link label and a code block, and in a prop
   (`crates/memry-core/src/crdt/markdown_seed/comments.rs:101`, `:311`;
   `crates/memry-core/src/crdt/markdown_seed/comment_nodes.rs:84`;
-  `packages/editor-schema/src/parse-markdown.ts:220`, `:290`, `:300`). A `%%` that never closes,
+  `packages/editor-schema/src/parse-markdown.ts:228`, `:296`, `:306`). A `%%` that never closes,
   or sits in code, is text. Desktop serializes a comment back as its source, so it decides
   a callout or a quote whose body holds one by a proof the core does not run: a body of
   one paragraph stays a flat quote, any other keeps its lines as literal text
@@ -146,13 +146,13 @@ takes the tilde fence as it takes any other.
   and a title included, to a comment's token after the pipe escape, outside code, an image and an
   escape, and only when the whole link is on one line
   (`packages/editor-schema/src/inline/empty-links.ts:82`,
-  `packages/editor-schema/src/parse-markdown.ts:380`). The core reads the link where its parse
+  `packages/editor-schema/src/parse-markdown.ts:386`). The core reads the link where its parse
   finds it and writes the same node. One whose address crosses a line is no node: it stays the
   text it was, a soft break in it included, in every block that holds text. Desktop escapes the
   `[` and `]` of such a link so the parse reads no link there, and leaves it alone inside a
   link's address or an image, where the parse reads the text as written, and on a fence's info
   line (`packages/editor-schema/src/inline/empty-links.ts:133`); the core builds the same text
-  where its inline parse finds the link (`crates/memry-core/src/crdt/markdown_seed/inline.rs:201-205`).
+  where its inline parse finds the link (`crates/memry-core/src/crdt/markdown_seed/inline.rs:202-206`).
 - **A link or an image whose address no markdown writes back as itself is text.** The parse ends an
   address at its first blank, so `[b](x(y\nz) w)` is a link to `x(y`, `![i](x(y z) w)` an image of
   it, and `[b]([](u\nv))` a link to `[](u`. Written, `x(y` gains a backslash the parser keeps, so each
@@ -163,9 +163,9 @@ takes the tilde fence as it takes any other.
   brackets before it masks the empty-label links, reading a code span as BlockNote does, across a
   line (`packages/editor-schema/src/inline/unwritable-links.ts:45`,
   `packages/editor-schema/src/inline/code-mask.ts:16`,
-  `packages/editor-schema/src/parse-markdown.ts:380`); the core reads the same text
+  `packages/editor-schema/src/parse-markdown.ts:386`); the core reads the same text
   (`crates/memry-core/src/crdt/markdown_seed/links.rs:34`,
-  `crates/memry-core/src/crdt/markdown_seed/inline.rs:187`, `:284`). Seed, write, seed builds the
+  `crates/memry-core/src/crdt/markdown_seed/inline.rs:188`, `:285`). Seed, write, seed builds the
   document the first seed built, and the second write the bytes of the first
   (`apps/desktop/src/main/sync/writeback-fixed-point.test.ts`).
 - **A `<!--` comment is not built.** It keeps the block-level fallback above, and a `<!--`
@@ -178,34 +178,34 @@ takes the tilde fence as it takes any other.
   `crates/memry-core/src/crdt/markdown_seed/toggles.rs:162`).
 - **A mask's word never reaches a document.** The read path hides a construct behind a word drawn
   once per process (`MEMRYCMT…X`, `MEMRYHBK…;`, a code span's blanks, a `<details>` tag, a spaced
-  address, a `((mention:…))` token) and swaps it back in every string a block carries: a run's
+  address, a raw-HTML tag, a `((mention:…))` token) and swaps it back in every string a block carries: a run's
   text, a link's address, and every prop, a code fence's language, an image's alt and address, a
   `$$` block's formula and a marker line's address among them. A comment there is its bytes. A
   hard break is no part of an address, so `[a](u  \nv)` is the address `u`, the one the parser
   reads with no mask. The core restores the same strings in one pass over the plan
-  (`crates/memry-core/src/crdt/markdown_seed/props.rs:22`, `:34`;
-  `crates/memry-core/src/crdt/markdown_seed/runs.rs:200`), as desktop does
-  (`packages/editor-schema/src/parse-markdown.ts:129`, `:169`;
+  (`crates/memry-core/src/crdt/markdown_seed/props.rs:25`, `:37`;
+  `crates/memry-core/src/crdt/markdown_seed/runs.rs:201`), as desktop does
+  (`packages/editor-schema/src/parse-markdown.ts:132`, `:176`, `:291`;
   `packages/editor-schema/src/note-markdown.ts:98`; `packages/shared/src/hard-breaks.ts:298`).
   A word left in a document would be written into the vault as text no other process can decode.
 - **A `((date:…))` or `((mention:…))` token is its node, as desktop's seed makes it (§12.1.1.1,
   §12.1.1.2).** Desktop hides each token outside a fence behind a placeholder before the parse,
   so no `_` or `*` in a payload reads as emphasis, and puts it back in every run
   (`packages/editor-schema/src/inline/token-masking.ts:64`, `:90`, called from
-  `packages/editor-schema/src/parse-markdown.ts:391`, `:190`). The raw-HTML scan that follows reads a token as that
+  `packages/editor-schema/src/parse-markdown.ts:397`, `:139`). The raw-HTML scan that follows reads a token as that
   numbered placeholder, so a `<` in a payload opens no tag. The core does the same, then writes each
   placeholder as a word that carries the token's bytes in hex (`MEMRYTKN<word><hex>X`), which needs
   no table to put back
   (`crates/memry-core/src/crdt/markdown_seed/mentions.rs:81`, `:111`, `:142`, called from
   `crates/memry-core/src/crdt/markdown_seed/blocks.rs:52` and
-  `crates/memry-core/src/crdt/markdown_seed/runs.rs:350`). Once the blocks exist, each token in
+  `crates/memry-core/src/crdt/markdown_seed/runs.rs:352`). Once the blocks exist, each token in
   a run with no mark, of any block but a code block or a diagram, table cells and children
   included, becomes the node `inline_tokens` decides
-  (`crates/memry-core/src/crdt/markdown_seed/mod.rs:334`,
+  (`crates/memry-core/src/crdt/markdown_seed/mod.rs:335`,
   `crates/memry-core/src/crdt/markdown_seed/mentions.rs:185-198`,
   `crates/memry-core/src/crdt/inline_tokens/mod.rs:161`). That includes the literal paragraphs
   a block's fallback keeps. A fallback of the whole text returns before the promotion, so its
-  tokens stay text (`crates/memry-core/src/crdt/markdown_seed/mod.rs:322-332`). A token the core
+  tokens stay text (`crates/memry-core/src/crdt/markdown_seed/mod.rs:323-333`). A token the core
   cannot decide keeps its block's lines as literal text, reported as "mention or date token this
   port cannot decide" (`crates/memry-core/src/crdt/markdown_seed/prepare.rs:181-182`,
   `crates/memry-core/src/crdt/markdown_seed/mentions.rs:177`): a link whose host the core's URL
@@ -214,7 +214,11 @@ takes the tilde fence as it takes any other.
   `crates/memry-core/src/crdt/inline_tokens/link.rs:35`, `:44`); a date that only salvage
   accepts and whose `dateISO` is not in the ECMAScript date-time format
   (`crates/memry-core/src/crdt/inline_tokens/date.rs:117`, `:136`); and a date payload whose
-  JSON holds a `\u` escape serde refuses (`:66`). A token in a link's address, an image or any other prop is put back as it is in a run, after the raw-HTML tag that held it (`crates/memry-core/src/crdt/markdown_seed/props.rs:22`, `crates/memry-core/src/crdt/markdown_seed/raw_html.rs:304`). The `date mention:`
+  JSON holds a `\u` escape serde refuses (`:66`). A token in a link's address, an image or any other prop is put back as it is in a run,
+  after the raw-HTML tag that held it, as desktop's `restoreMasks` does
+  (`packages/editor-schema/src/parse-markdown.ts:132`;
+  `crates/memry-core/src/crdt/markdown_seed/props.rs:25`,
+  `crates/memry-core/src/crdt/markdown_seed/raw_html.rs:270`). The `date mention:`
   and `link mention:` cases of the `markdown-seed` vectors pin the document
   (`packages/contracts/scripts/vectors/markdown-seed-cases-mentions.ts:40-121`).
 - **An image's `url` is the DOM's `img.src`.** An absolute address is written in the WHATWG
@@ -231,8 +235,8 @@ takes the tilde fence as it takes any other.
   (`packages/editor-schema/src/inline/cell-code-spans.ts:162-181`,
   `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:37`). A code span at the start of a
   block keeps its leading space too: `` ` *a` b `` is the code ` *a`
-  (`packages/editor-schema/src/parse-markdown.ts:170`,
-  `crates/memry-core/src/crdt/markdown_seed/runs.rs:294`). A code span of nothing but spaces and
+  (`packages/editor-schema/src/parse-markdown.ts:188`,
+  `crates/memry-core/src/crdt/markdown_seed/runs.rs:296`). A code span of nothing but spaces and
   tabs is hidden the same way on any line, a pipe or not, so a block that holds only such a span
   (`` ` ` ``, `` - `  ` ``) keeps it: read back as plain blanks, the block was empty and went
   with it (`packages/editor-schema/src/inline/cell-code-spans.ts:174`,
@@ -246,7 +250,7 @@ takes the tilde fence as it takes any other.
   stays text, and never inside a fence; an empty to-do has no box to be a setext underline, so it
   counts after any line (`# H\n- [ ]`, `one\n- [x]`). Desktop gives each such line a placeholder word for the
   parser and takes it back out (`packages/editor-schema/src/empty-blocks.ts:24-30`, `:37-53`,
-  `:63-78`, `:29`, `:37`, called from `packages/editor-schema/src/parse-markdown.ts:406`, `:426`), and strips
+  `:63-78`, `:29`, `:37`, called from `packages/editor-schema/src/parse-markdown.ts:412`, `:432`), and strips
   any it left inside text, so the last
   line of `1. \n2. ` is an empty numbered item, not a paragraph; the core does the same
   (`crates/memry-core/src/crdt/markdown_seed/empty_blocks.rs:28`, `:140`, `:54`,
@@ -261,9 +265,9 @@ takes the tilde fence as it takes any other.
   code span and a link are not trimmed, a space beside a comment stays, and a code block's
   text is left alone
   (`packages/editor-schema/src/inline/emphasis-runs.ts:462`,
-  `packages/editor-schema/src/parse-markdown.ts:315`, `:428`;
+  `packages/editor-schema/src/parse-markdown.ts:321`, `:434`;
   `crates/memry-core/src/crdt/markdown_seed/emphasis_edges.rs:51`, `:82`, `:144`, `:154`, called from
-  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:114`).
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:108`).
 - **A quoted callout, a quote and a `$$` math block are claimed where the parser opens a
   block, not only after a blank line.** A `>` line opens one unless the line above is a `>`
   line; any other line opens one after a blank line, a heading, a fence, a thematic break, a
@@ -323,12 +327,12 @@ takes the tilde fence as it takes any other.
   as literal text, as before, and a line with a `<` it cannot place (a `<` before a letter, `/`,
   `!` or `?` outside code that the scan does not cover) the same way
   (`packages/editor-schema/src/inline/raw-html.ts:56`, `:293`, `:317`, `:421`, `:448`, `:466`,
-  `packages/editor-schema/src/parse-markdown.ts:397`, `:425`,
+  `packages/editor-schema/src/parse-markdown.ts:403`, `:431`,
   `packages/editor-schema/src/inline/markdown-escapes.ts:117`, `:286`;
   `crates/memry-core/src/crdt/markdown_seed/handled.rs:64`, `:78`, `:127`,
   `crates/memry-core/src/crdt/markdown_seed/nesting.rs:9`,
-  `crates/memry-core/src/crdt/markdown_seed/raw_html.rs:150`, `:173`, `:206`, `:304`,
-  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:52`, `:191`,
+  `crates/memry-core/src/crdt/markdown_seed/raw_html.rs:150`, `:173`, `:206`, `:270`,
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:52`, `:185`,
   `crates/memry-core/src/crdt/markdown_seed/escapes.rs:84`, `:111`).
 - **`<details>` markup behind quote markers or a heading's `#`s is text.** A lossless parse hides
   the `<` of a `<details>`, `<summary>…</summary>` or `</details>` line that follows any
@@ -345,7 +349,7 @@ takes the tilde fence as it takes any other.
   (`packages/editor-schema/src/blocks/block-starts.ts:31-33`,
   `packages/editor-schema/src/blocks/markdown.ts:706`, `:752`,
   `packages/editor-schema/src/blocks/quote.ts:126`,
-  `packages/editor-schema/src/parse-markdown.ts:383`;
+  `packages/editor-schema/src/parse-markdown.ts:389`;
   `crates/memry-core/tests/markdown_seed_vectors.rs:55-67`).
 - **A block nesting marker, or a run indented under a list item, keeps the whole source
   literal.** A `<!-- memry:block-nesting-level=N -->` line sets the nesting level of the text
@@ -391,7 +395,7 @@ takes the tilde fence as it takes any other.
   core does not decide: it keeps the line as literal text. A code span of spaces is not such a
   paragraph, since its blanks are hidden from the parse (above)
   (`crates/memry-core/src/crdt/markdown_seed/collapse.rs:31`, `:47`,
-  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:141`).
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:135`).
 
 **Why the core parses here at all.** A day seeded from a template on the phone would otherwise
 hold only `seed_markdown` until desktop built its document, and the first keystroke on the phone
@@ -418,7 +422,7 @@ opened from a template on the phone, and neither write closes it.
 **Normative, and a client MUST NOT assume otherwise.** Desktop does more than BlockNote's
 markdown parse and export.
 
-- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:522`)
+- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:523`)
   runs `prepareFragmentSeed` (`:560`), which takes writing tools markers, CriticMarkup and link
   reference definitions out of the text before the parse, then `applyFragmentSeed` (`:619`),
   which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:680`).
@@ -427,7 +431,7 @@ markdown parse and export.
   (`apps/desktop/src/main/sync/crdt-writeback.ts:684`,
   `apps/desktop/src/main/sync/writeback-conversion.ts:36`,
   `apps/desktop/src/main/sync/writing-markdown.ts:441`). It runs `yDocToMarkdown`
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:183`), which serialises with
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:184`), which serialises with
   `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:382-384`) and then runs
   `restoreMarkdownSource` (`:213`), and it applies `serializeCriticMarkup` last
   (`apps/desktop/src/main/sync/writing-markdown.ts:474`). Before it does, it carries each
@@ -445,7 +449,7 @@ the whole text to literal paragraphs (§12.1.0).
 #### 12.1.1.1 Link mentions are promoted at seed
 
 **Normative.** `prepareFragmentSeed` promotes every `((mention:…))` token
-(`apps/desktop/src/main/sync/blocknote-converter.ts:600`,
+(`apps/desktop/src/main/sync/blocknote-converter.ts:601`,
 `packages/editor-schema/src/inline/link-mention-normalize.ts:18-33`, `:42-44`, through
 `packages/editor-schema/src/inline/inline-token-promote.ts:177-223`):
 
@@ -493,7 +497,7 @@ open such a body before they sync, desktop or iOS.
 #### 12.1.1.2 Date mentions are promoted at seed
 
 **Normative.** `prepareFragmentSeed` promotes every `((date:…))` token, after the link mentions
-of §12.1.1.1 (`apps/desktop/src/main/sync/blocknote-converter.ts:600`,
+of §12.1.1.1 (`apps/desktop/src/main/sync/blocknote-converter.ts:601`,
 `packages/editor-schema/src/inline/date-mention-normalize.ts:17-28`), through the same traversal
 (`packages/editor-schema/src/inline/inline-token-promote.ts:177-223`):
 
@@ -679,7 +683,7 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:64-70`), and
   (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:353-371`,
   `:577-603`). See §12.4.
 - **Carve-out C — a non-empty `criticMarkupMarks` disables source restoration**
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:198`), so a note carrying
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:199`), so a note carrying
   suggestions is **never** byte-identical after any write-back, on any client.
 
 **Core obligation.** The `content` a client puts in a create record becomes vault bytes
@@ -921,10 +925,10 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 | `prosemirror`              | XmlFragment                                              | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1893-1899`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                | **the body is lost**                                                                                                                                              |
 | `meta`                     | Map (`title`, `date`)                                    | `apps/desktop/src/main/sync/crdt-provider.ts:1956-1958`, `:1977-1979`                                                                                                                                                                                                                              | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                            | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                     |
 | `tags`                     | Array\<string\>                                          | `apps/desktop/src/main/sync/crdt-provider.ts:1960-1964`, `apps/desktop/src/main/sync/crdt-feed.ts:127-133`                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:1059` (a note file the write-back creates)                  | a new file has no `tags:` until the record push brings them; an existing file's `tags:` is owned by the file and the note record, never by this array             |
-| `markdownSource`           | Map (`record: {source, htmlComments?, losslessBlocks?}`) | `packages/shared/src/markdown-source.ts:188-197` via `apps/desktop/src/main/sync/blocknote-converter.ts:522-529`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:196`, `:213`                                           | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
-| `linkReferenceDefinitions` | Array                                                    | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:635`                                                                                                                                                                                           | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:383-384` | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
+| `markdownSource`           | Map (`record: {source, htmlComments?, losslessBlocks?}`) | `packages/shared/src/markdown-source.ts:188-197` via `apps/desktop/src/main/sync/blocknote-converter.ts:523-530`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:197`, `:214`                                           | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
+| `linkReferenceDefinitions` | Array                                                    | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:636`                                                                                                                                                                                           | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:384-385` | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
 | `linkReferenceUsages`      | Array                                                    | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                                | same (`:191`)                                                                                             | same                                                                                                                                                              |
-| `criticMarkupMarks`        | Array                                                    | `packages/shared/src/critic-markup/yjs.ts:55-67` via `apps/desktop/src/main/sync/blocknote-converter.ts:634`; renderer comment actions `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:821`; write-back `apps/desktop/src/main/sync/critic-mark-anchors.ts:96`         | `apps/desktop/src/main/sync/writing-markdown.ts:446`; carve-out C (§12.2)                                 | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
+| `criticMarkupMarks`        | Array                                                    | `packages/shared/src/critic-markup/yjs.ts:55-67` via `apps/desktop/src/main/sync/blocknote-converter.ts:635`; renderer comment actions `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:821`; write-back `apps/desktop/src/main/sync/critic-mark-anchors.ts:96`         | `apps/desktop/src/main/sync/writing-markdown.ts:446`; carve-out C (§12.2)                                 | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
 
 Root name constants:
 `CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'`
@@ -1473,7 +1477,7 @@ The parse rebuilds the span from its code: the shortest backtick fence no run
 in it matches, with one space on each side when the code opens or closes with
 a backtick or with a space on both ends
 (`packages/editor-schema/src/inline/link-code-spans.ts:16`, `:25`,
-`packages/editor-schema/src/parse-markdown.ts:420`;
+`packages/editor-schema/src/parse-markdown.ts:426`;
 `crates/memry-core/src/crdt/markdown_seed/runs.rs:148`, `:175`). House style
 writes each code-span-shaped run of link text without escapes, so
 ``[`a*b`](u)`` comes back as written
@@ -1486,8 +1490,8 @@ field for a title. The destination counts only when it has no leading or
 trailing whitespace, no newline and no backtick, and the link mark accepts both
 it and its address half; anything else keeps BlockNote's address half
 (`packages/editor-schema/src/inline/link-destinations.ts:71`, `:112`,
-`packages/editor-schema/src/parse-markdown.ts:388`;
-`crates/memry-core/src/crdt/markdown_seed/links.rs:26`). House style writes an
+`packages/editor-schema/src/parse-markdown.ts:394`;
+`crates/memry-core/src/crdt/markdown_seed/links.rs:61`). House style writes an
 `href` with whitespace back unescaped, so the bytes survive every save
 (`packages/editor-schema/src/inline/emphasis-runs.ts:224`). A reader that opens
 the link uses the address half (`linkDestination`,
@@ -1774,13 +1778,13 @@ only inside desktop main's `yDocToMarkdown`. The core never calls them.
   empty list item or heading as text. It claimed a callout, quote or math block
   only after a blank line and never inside a list item. So desktop reads a record
   without it the same way, and a cut row or a flat quote keeps the file's bytes
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:204-210`,
-  `packages/editor-schema/src/parse-markdown.ts:353-356`, `:406`, `:426`,
-  `packages/editor-schema/src/note-markdown.ts:274`).
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:205-211`,
+  `packages/editor-schema/src/parse-markdown.ts:359-362`, `:412`, `:432`,
+  `packages/editor-schema/src/note-markdown.ts:278`).
   The write is skipped when the value is already identical, so no spurious Y
   update (`packages/shared/src/markdown-source.ts:196`). Recording is budgeted at
   `MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES = floor(NOTE_SYNC_MAX_BYTES / 2)`
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:668`).
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:669`).
 
 **Q12.3 — the conflict rule.** A user's hand-written formatting loses to the
 house style. **This is correct and frozen as desktop behaviour. A second
