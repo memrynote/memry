@@ -153,7 +153,7 @@ fn a_save_racing_the_removal_keeps_the_canvas_and_a_save_after_it_writes_nothing
         w.canvases.removed_outside(&rel, LATER).unwrap(),
         vec![id.clone()]
     );
-    assert!(matches!(w.save(&id, "late"), Update::NotFound));
+    assert!(matches!(w.save_over(&id, "late", None), Update::NotFound));
     assert!(!path.exists());
 }
 
