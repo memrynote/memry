@@ -854,6 +854,7 @@ Pasted Markdown is read the same way MemryNote reads a note file, so a paste giv
 - A code fence tagged `mermaid` becomes a [diagram](#diagrams).
 - A line holding only an image becomes an image block, and a YouTube link written as an image (`![](https://www.youtube.com/watch?v=…)`) becomes a playable embed.
 - A toggle that MemryNote saved (`<details data-memry-toggle>`) becomes a [toggle](#toggle-lists) again. A plain `<details>` section from somewhere else stays as text, as it does in a file.
+- Raw HTML that MemryNote does not render stays as text. `<kbd>Ctrl</kbd>`, `<sup>2</sup>`, `<mark>`, `<div>`, `<summary>` and a `<script>` block with its body keep every character, and a block tag such as `<div>` no longer splits the paragraph it is in. The tags MemryNote does render (`<b>`, `<i>`, `<a>`, `<img>`, `<br>`, headings, lists, tables, `<hr>`, `<blockquote>`, `<pre>`, `<video>` and colour or underline spans) become formatting or blocks, as in a file. A tag inside code stays as written.
 
 Pasting into an empty line replaces it. Pasting in the middle of a paragraph splits it: a first line of plain text joins the text before the cursor, and a callout, equation or table starts its own block. A selected block, such as an image you clicked, is replaced by the paste. When a paste replaces the end of a block that has nested blocks, the nested blocks move under the last pasted block. Columns pasted into a column add their blocks to that column. **Undo** takes back the whole paste in one step.
 
@@ -1113,6 +1114,21 @@ is that nothing is _lost_ on the way through:
   the same address. Bold, italic and strikethrough in that text are kept, written around the link,
   and saving again does not change the line. In a list item, a soft line break inside link text
   stays inside one link, so the item keeps its link and gains no blank line.
+- **Raw HTML MemryNote does not render stays text.** `<kbd>Ctrl</kbd>+<kbd>K</kbd>`, `<sup>`,
+  `<mark>`, `<div>`, `<summary>`, `<x-y>`, a `<script>` or `<style>` block with its body, a
+  declaration (`<!x>`), a processing instruction (`<?x?>`) and a CDATA section keep every
+  character they had. The editor shows the tag as typed, a tag has no effect on the words
+  around it, and a block tag no longer splits its paragraph in two. A tag that fits on one
+  line is read as one piece, so `<x a="*b*">` makes nothing italic. A `<` that opens no
+  complete tag, a tag that runs onto a second line, and a tag with a `|` in it, which a table
+  row splits at, keep their `<` as text and read the rest as ordinary markdown. Tags in code
+  and a `<` that starts a link address (`[a](<b c>)`) are not tags. The tags MemryNote does
+  render (`<b>`, `<strong>`, `<i>`, `<em>`, `<u>`, `<s>`, `<del>`, `<strike>`, `<code>`, `<a>`,
+  `<img>`, `<br>`, a `<span>` with a `style`, `<details data-memry-toggle>`,
+  `<input type=checkbox>`, and the tags that make a heading, list, table, rule, quote, code
+  block, video, audio or captioned image) are read as before. Past 100 of them open at
+  once, the next ones and their closing tags stay as text too, so a pasted block of thousands of
+  nested `<b>` or `<ul><li>` opens at once instead of hanging the editor.
 - **Code inside link text keeps the link.** ``[`a`](https://…)`` stays a link. The editor
   cannot style text as both code and a link, so it shows the backticks inside the link, and the
   file keeps the code span.
