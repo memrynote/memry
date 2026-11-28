@@ -1,80 +1,39 @@
-# Health
+# Health (Insights)
 
-The Health tab is the inbox's actionable punch list — failed sync jobs, broken source URLs, and items that need user input.
+The **Insights** tab shows how you capture and process your inbox: how much is waiting, how fast
+you file it, when you capture, and what you filed last. It is read-only; nothing on it needs
+action.
 
-<!-- screenshot: inbox health tab with failed jobs and retry buttons -->
+<!-- screenshot: inbox insights tab with stat cards, capture heatmap and recent filings -->
 
-## What Shows Up
+## Stat Cards
 
-The Health view collects:
+| Card                 | Value                                             | Line below it                                                   |
+| -------------------- | ------------------------------------------------- | --------------------------------------------------------------- |
+| **Captured**         | Items waiting in the inbox now                    | "+N this week": items captured in the last seven days           |
+| **Processed**        | Items filed in the last seven days                | "N% rate": processed this week as a share of captured this week |
+| **Stale**            | Waiting items older than the stale threshold      | "needs attention" when any are stale, "all clear" when none are |
+| **Avg Time to File** | Average time from capture to filing, last 30 days | —                                                               |
 
-- **Failed sync jobs** — items that couldn't push, pull, or upload an attachment
-- **Broken source URLs** — saved links that no longer resolve (404, DNS failure)
-- **Missing fields** — items captured without required metadata (rare; usually from older builds)
-- **Stale items** — past the threshold from [Settings → Tasks](/user-guide/settings#tasks)
-- **Quota warnings** — when the vault is approaching its storage limit
+The stale threshold is **Stale Inbox Days** in [Settings → Tasks](/user-guide/settings#tasks).
 
-If everything is healthy, the tab is empty.
+## Capture Activity
 
-## Failed Sync Jobs
+A heatmap of when you capture, by weekday and two-hour block of the day, over the last 84 days.
+Hover a cell to see its count. The line under it names your peak, for example
+"Peak: Tuesday 10 AM–12 PM", or says "No captures yet".
 
-Each failed job shows:
+## By Type
 
-- The item the job was for (with a link)
-- The error message
-- A **Retry** button
-- The number of retry attempts so far
+One bar per content type (link, note, image, voice, video, clip, PDF, social, reminder) with the
+number of waiting items of that type, most first.
 
-Retrying re-queues the job. If retries keep failing, the underlying cause is likely:
+## Recent Filings
 
-| Symptom               | Likely cause           | Fix                         |
-| --------------------- | ---------------------- | --------------------------- |
-| "Network unreachable" | Offline                | Reconnect                   |
-| "Unauthorized"        | Sign-in expired        | Sign in again               |
-| "Quota exceeded"      | Vault at storage limit | Free up space or upgrade    |
-| "Blob hash mismatch"  | Rare corruption        | Push from the source device |
-
-## Broken Source URLs
-
-Saved links that fail an integrity check (HEAD request returns 4xx / 5xx, or DNS fails) get a broken-URL chip.
-
-Per-item actions:
-
-- **Open archived copy** (if available)
-- **Update URL** (paste a new link)
-- **Convert to note** (capture whatever you remember as content)
-- **Archive** (acknowledge it's gone)
-
-## Missing Fields
-
-Older builds occasionally captured items with required fields missing. The Health tab surfaces them and offers a one-click form to fill in missing metadata.
-
-You won't see these on a fresh install — they're a migration artifact.
-
-## Stale Items
-
-Items older than the **Stale Inbox Days** setting show a stale chip. Stale doesn't break anything; it's a periodic reminder.
-
-The default is 30 days; tune it in [Settings → Tasks](/user-guide/settings#tasks).
-
-## Quota Warnings
-
-Approaching the vault's storage limit triggers a warning row. From there:
-
-- See storage breakdown by category — same as [Settings → Vault](/user-guide/settings#vault)
-- Find largest items (helpful for attachment cleanup)
-- Empty Trash and clear orphaned attachments
-
-## When to Visit
-
-- After a long offline stretch (sync jobs to retry)
-- After a sign-in or device-rotation event (auth-related failures)
-- Periodically (stale items, quota)
-
-A quick weekly pass through Health keeps things tidy.
+The last six items you filed: the item's title, where it went, and how long ago. An item turned
+into a task shows "Converted to task". With nothing filed yet the list says "No items filed yet".
 
 ## See Also
 
-- [How Sync Works](/user-guide/sync/how-sync-works)
-- [Conflict & Health](/user-guide/sync/conflict-health) — the sync-side health view (different surface, similar idea)
-- [Settings → Vault](/user-guide/settings#vault)
+- [Filters & Views](/user-guide/inbox/filters)
+- [Conflict & Health](/user-guide/sync/conflict-health) — sync problems are shown there, not in the inbox

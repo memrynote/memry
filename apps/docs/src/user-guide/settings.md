@@ -91,7 +91,6 @@ A list of devices that have been linked to your account. Rename or revoke from t
 ### Security
 
 - **Recovery Key** — re-display the recovery phrase after passphrase confirmation
-- **Rotate Keys** — re-encrypt the vault key with a new master key and reseal it for each linked device
 - **Sign Out** — clears the session (with a confirmation dialog)
 
 The Account page footer links to the memrynote GitHub repository and issue tracker for starring the

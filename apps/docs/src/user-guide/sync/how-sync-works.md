@@ -282,6 +282,6 @@ notes, and you can rename it again.
 ## See Also
 
 - [Linking Another Device](/user-guide/sync/linking-devices)
-- [Recovery Key & Rotation](/user-guide/sync/recovery-rotation)
+- [Recovery Key](/user-guide/sync/recovery-rotation)
 - [Conflict & Health](/user-guide/sync/conflict-health)
 - [Sync Protocol](/architecture/sync-protocol) (architecture deep-dive)

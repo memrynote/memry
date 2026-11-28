@@ -1,6 +1,6 @@
-# Recovery Key & Rotation
+# Recovery Key
 
-What the recovery phrase is for, where to find it, and when to rotate the vault key.
+What the recovery phrase is for, where to find it, and what to do if it or a device leaks.
 
 <!-- screenshot: recovery phrase display screen -->
 
@@ -81,37 +81,30 @@ and it explains everything before it does anything:
 Only use it when the phrase is gone for good. If there is any chance of finding it — a password
 manager, a printout, another device still signed in — recover instead.
 
-## Key Rotation
+## If You Think Your Key Leaked
 
-The **rotation wizard** generates a new vault key, re-encrypts all payloads under it, and reseals the new key for every linked device.
+If a device is lost or stolen, or someone may have seen your recovery phrase, cut off access to
+your account:
 
-### When to Rotate
+- **Revoke the device.** On any other signed-in device, open the
+  [Devices list](/user-guide/sync/linking-devices#revoking-a-device) and click **Revoke** on the
+  lost one. A device cannot revoke itself.
+- **Log out everywhere.** On [memrynote.com](/user-guide/sync/web-account#profile), **Log out
+  everywhere** revokes every device and session on your account. Each device must sign in again
+  afterward.
+- **Protect your email account.** Signing in uses a code sent to your email (or your Google
+  account), so whoever controls that account can sign in again.
 
-| Situation                                     | Rotate?                                    |
-| --------------------------------------------- | ------------------------------------------ |
-| Lost or stolen device that wasn't revoked yet | Yes — immediately                          |
-| Recovery phrase exposed                       | Yes                                        |
-| Major OS or backup compromise                 | Yes                                        |
-| Suspect API key leak                          | No (rotate the API key, not the vault key) |
-| Routine maintenance                           | Optional; rotation is safe but takes time  |
+**Sign Out** in [Settings → Account](/user-guide/settings#account) acts on this device only. It
+stops sync here and removes this device's keys; other devices stay signed in.
 
-### Running Rotation
+### Known Limitation: The Vault Key Cannot Be Replaced
 
-1. [Settings → Account → Security](/user-guide/settings#account) → **Rotate Keys**
-2. Confirm your passphrase
-3. The wizard:
-   - Generates a new vault key
-   - Re-encrypts payloads (streamed; resumable)
-   - Reseals the new key for each linked device
-   - Bumps `crypto_version` on sync items
-
-For large vaults, rotation can take a while. It's safe to interrupt — the wizard resumes from the last checkpoint.
-
-### Effects
-
-- Old sealed keys on revoked devices are now useless even if they were exfiltrated
-- The new key is unknown to the server (it sees only ciphertext)
-- The recovery phrase remains valid (rotation doesn't reset it)
+memrynote cannot rotate the vault key. The key derives from your recovery phrase, and nothing
+re-encrypts your synced data under a new key. A leaked recovery phrase stays valid for your
+account, and revoking a device or logging out everywhere does not change any key. Anyone who has
+the phrase and can sign in to your account can decrypt your synced data, so keep both the phrase
+and your email account secure.
 
 ## Recovery Phrase vs Passphrase
 
