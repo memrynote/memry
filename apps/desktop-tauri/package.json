@@ -154,7 +154,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "4.1.10",
+    "@vitest/coverage-v8": "4.1.11",
     "@wdio/cli": "9.32.0",
     "@wdio/globals": "9.31.3",
     "@wdio/local-runner": "9.32.0",
@@ -172,7 +172,7 @@
     "tsx": "4.21.0",
     "typescript": "^7.0.2",
     "vite": "^7.3.6",
-    "vitest": "4.1.10",
+    "vitest": "4.1.11",
     "webdriverio": "9.32.0",
     "yaml": "2.9.0"
   }
