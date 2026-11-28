@@ -288,8 +288,16 @@ fn a_links_preview_and_article_land_on_the_capture_and_in_the_outbox() {
             .expect("content")
             .contains("Small teams")
     );
+    // The article's `Updated` reports the capture write; the runner records the job complete
+    // after it, as `jobs.ts` does, so wait for the job to leave the queue.
+    let inbox = w.inbox(&open);
+    until("the article job settles", || {
+        statuses(&inbox, &id)
+            .iter()
+            .all(|(_, status)| !matches!(status, InboxJobStatus::Pending | InboxJobStatus::Running))
+    });
     assert_eq!(
-        statuses(&w.inbox(&open), &id),
+        statuses(&inbox, &id),
         vec![
             (InboxJobType::MetadataScrape, InboxJobStatus::Complete),
             (InboxJobType::ArticleExtract, InboxJobStatus::Complete),
