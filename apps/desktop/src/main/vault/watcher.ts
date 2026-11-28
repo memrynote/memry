@@ -321,7 +321,7 @@ export class VaultWatcher {
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath, stats?: Stats) => {
-        if (this.addedFileKeys.unchanged(filePath, this.identityKeyOf(filePath))) return
+        if (this.addedFileKeys.unchanged(filePath, this.statOf(filePath))) return
         this.addedFileKeys.forget(filePath)
         this.recentIdentities.recordChange(filePath, stats)
         this.debouncedChange?.(filePath)
@@ -719,11 +719,14 @@ export class VaultWatcher {
   private handleFileAdd(eventPath: string, renamedFile = false): Promise<void> {
     const prior = this.addsInFlight.get(eventPath)
     const add = async (): Promise<void> => {
-      const key = this.identityKeyOf(eventPath)
-      if (!renamedFile && this.addedFileKeys.unchanged(eventPath, key)) return
+      const stats = this.statOf(eventPath)
+      const takenAt = Date.now()
+      if (!renamedFile && this.addedFileKeys.unchanged(eventPath, stats)) return
       // A failed add leaves no key, so chokidar's add of the file retries it.
       this.addedFileKeys.forget(eventPath)
-      if ((await this.addFile(eventPath)) && key !== null) this.addedFileKeys.record(eventPath, key)
+      if ((await this.addFile(eventPath)) && stats) {
+        this.addedFileKeys.record(eventPath, stats, takenAt)
+      }
     }
     const run = prior ? prior.then(add, add) : add()
     this.addsInFlight.set(eventPath, run)
@@ -734,10 +737,9 @@ export class VaultWatcher {
     return run
   }
 
-  private identityKeyOf(filePath: string): string | null {
+  private statOf(filePath: string): Stats | null {
     try {
-      const stats = lstatSync(filePath, { throwIfNoEntry: false })
-      return stats ? buildAddedFileIdentityKey(stats) : null
+      return lstatSync(filePath, { throwIfNoEntry: false }) ?? null
     } catch (error) {
       logger.debug(`No identity for ${filePath}: ${String(error)}`)
       return null

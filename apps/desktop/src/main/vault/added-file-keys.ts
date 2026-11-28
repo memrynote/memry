@@ -11,11 +11,26 @@
  * A key is taken before the add reads the file, so a write while the add
  * runs, which chokidar can fold into its event, changes the key.
  *
+ * A key proves the file unchanged only if any later write moves its mtime.
+ * An mtime with a fraction of a second comes from a disk that keeps finer
+ * times (APFS, NTFS, ext4), where `awaitWriteFinish` holds the add 100 ms past
+ * the last write. HFS+ keeps whole seconds, FAT and exFAT two, and so do some
+ * network shares: there a same-size edit inside the add's second kept the key,
+ * its change was dropped, and the next in-app edit wrote the old body over
+ * it. Such a key counts only when it was taken 2 s past the mtime, as git's
+ * racy-clean check does.
+ *
  * @module vault/added-file-keys
  */
 
+import type { Stats } from 'fs'
+import { buildAddedFileIdentityKey } from './rename-tracker'
+
 /** How long a key lives: past the latest FSEvents delivery seen on a loaded machine. */
 const ADDED_KEY_TTL_MS = 120_000
+
+/** FAT's mtime step, the coarsest a vault disk keeps. */
+const COARSE_MTIME_STEP_MS = 2000
 
 interface Entry {
   key: string
@@ -26,8 +41,14 @@ export class AddedFileKeys {
   private entries = new Map<string, Entry>()
   private sweptAt = 0
 
-  /** The add of `filePath`, keyed `key` when it began, ran to its end. */
-  record(filePath: string, key: string): void {
+  /** The add of `filePath`, which found `stats` at `takenAt` as it began, ran to its end. */
+  record(filePath: string, stats: Stats, takenAt: number): void {
+    const key = buildAddedFileIdentityKey(stats)
+    const wholeSecond = stats.mtimeMs % 1000 === 0
+    if (key === null || (wholeSecond && takenAt - stats.mtimeMs < COARSE_MTIME_STEP_MS)) {
+      this.entries.delete(filePath)
+      return
+    }
     const now = Date.now()
     if (now - this.sweptAt >= ADDED_KEY_TTL_MS) {
       this.sweptAt = now
@@ -38,10 +59,11 @@ export class AddedFileKeys {
     this.entries.set(filePath, { key, recordedAt: now })
   }
 
-  /** Whether `filePath` is unchanged since an add read it. */
-  unchanged(filePath: string, key: string | null): boolean {
+  /** Whether `filePath`, which has `stats` now, is unchanged since an add read it. */
+  unchanged(filePath: string, stats: Stats | null): boolean {
     const entry = this.entries.get(filePath)
-    return key !== null && entry?.key === key && Date.now() - entry.recordedAt < ADDED_KEY_TTL_MS
+    const key = stats && buildAddedFileIdentityKey(stats)
+    return !!key && entry?.key === key && Date.now() - entry.recordedAt < ADDED_KEY_TTL_MS
   }
 
   forget(filePath: string): void {
