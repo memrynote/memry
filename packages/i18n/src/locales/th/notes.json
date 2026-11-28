@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "ชื่อหมวดหมู่",
     "tagNamePlaceholder": "ชื่อแท็ก",
     "uncategorized": "ไม่มีหมวดหมู่",
+    "view": {
+      "label": "มุมมองแท็ก",
+      "categories": "หมวดหมู่",
+      "az": "ก–ฮ"
+    },
+    "azList": {
+      "heading": "แท็กทั้งหมด",
+      "empty": "ยังไม่มีแท็ก"
+    },
     "search": {
       "placeholder": "ค้นหาหมวดหมู่และแท็ก",
       "empty": "ไม่มีหมวดหมู่หรือแท็กที่ตรงกับการค้นหา"

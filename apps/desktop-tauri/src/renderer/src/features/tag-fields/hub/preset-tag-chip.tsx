@@ -1,6 +1,6 @@
 import * as React from 'react'
 import type { PresetOffer } from '@memry/contracts/tag-schema-api'
-import { getTagColors } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useResolvedTag } from '../use-tag-schemas'
 import { cn } from '@/lib/utils'
@@ -20,7 +20,7 @@ export function PresetTagChip({
   const colors = getTagColors(color, tag)
   return (
     <span
-      style={{ backgroundColor: `${colors.text}1F`, color: colors.text }}
+      style={{ backgroundColor: `${colors.text}1F`, color: tagLabelColor(colors.text) }}
       className={cn(
         'inline-flex h-6 min-w-0 items-center gap-1 rounded-[6px] ps-2 pe-2 text-xs font-medium',
         className

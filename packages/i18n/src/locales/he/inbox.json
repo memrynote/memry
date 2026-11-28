@@ -279,12 +279,10 @@
         "description": "{count, plural, one {בעוד שעה} two {בעוד שעתיים} other {בעוד # שעות}}"
       },
       "tomorrow": {
-        "label": "מחר",
-        "description": "מחר ב-9:00"
+        "label": "מחר"
       },
       "nextWeek": {
-        "label": "בשבוע הבא",
-        "description": "יום שני ב-9:00"
+        "label": "בשבוע הבא"
       },
       "inMinutes": {
         "label": "{count, plural, one {בעוד דקה} two {בעוד שתי דקות} other {בעוד # דקות}}"

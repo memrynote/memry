@@ -279,12 +279,10 @@
         "description": "Pagkalipas ng {count, plural, one {# oras} other {# oras}}"
       },
       "tomorrow": {
-        "label": "Bukas",
-        "description": "Bukas nang 9 AM"
+        "label": "Bukas"
       },
       "nextWeek": {
-        "label": "Sa susunod na linggo",
-        "description": "Lunes nang 9 AM"
+        "label": "Sa susunod na linggo"
       },
       "inMinutes": {
         "label": "Pagkalipas ng {count, plural, one {# minuto} other {# minuto}}"

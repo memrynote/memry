@@ -132,4 +132,28 @@ describe('useTemplates', () => {
     })
     expect(mocks.logError).toHaveBeenCalled()
   })
+
+  it('throws a refused name as a coded failure the editor can show, unlike other failures', async () => {
+    mocks.service.create.mockResolvedValueOnce({
+      success: false,
+      error: 'A template named “Weekly” already exists. Choose a different name.',
+      errorCode: 'template-name-taken'
+    })
+    mocks.service.update.mockResolvedValueOnce({
+      success: false,
+      error: 'A template named “Daily” already exists. Choose a different name.',
+      errorCode: 'template-name-taken'
+    })
+    const { result } = renderHook(() => useTemplates({ autoLoad: false }))
+
+    await act(async () => {
+      const created = result.current.createTemplate({ name: 'Weekly', content: '' })
+      await expect(created).rejects.toMatchObject({
+        message: 'A template named “Weekly” already exists. Choose a different name.',
+        code: 'template-name-taken'
+      })
+      const updated = result.current.updateTemplate({ id: 'tpl-2', name: 'Daily' })
+      await expect(updated).rejects.toMatchObject({ code: 'template-name-taken' })
+    })
+  })
 })

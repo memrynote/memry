@@ -53,6 +53,7 @@ beforeEach(() => {
   vi.mocked(window.api.templates.get).mockResolvedValue(
     template('## Agenda\nTopics to cover\n## Notes\n') as never
   )
+  vi.mocked(window.api.templates.list).mockResolvedValue({ templates: [] })
   vi.mocked(window.api.templates.create).mockResolvedValue({
     success: true,
     template: template('## Notes\n', 'Person')
@@ -113,6 +114,23 @@ describe('TagTemplateSection without a template', () => {
           entityId: 'tpl-1'
         })
       )
+    )
+  })
+
+  it('numbers the template name when another template already has the tag name', async () => {
+    vi.mocked(window.api.templates.list).mockResolvedValue({
+      templates: [{ id: 'tpl-0', name: 'person', isBuiltIn: false }]
+    })
+    const user = userEvent.setup()
+    renderSection(resolvedTag())
+
+    await user.click(screen.getByRole('button', { name: 'Create template' }))
+
+    await waitFor(() =>
+      expect(window.api.templates.create).toHaveBeenCalledWith({
+        name: 'Person 2',
+        content: '## Notes\n'
+      })
     )
   })
 

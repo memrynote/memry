@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "カテゴリー名",
     "tagNamePlaceholder": "タグ名",
     "uncategorized": "未分類",
+    "view": {
+      "label": "タグの表示",
+      "categories": "カテゴリー",
+      "az": "五十音順"
+    },
+    "azList": {
+      "heading": "すべてのタグ",
+      "empty": "タグはまだありません"
+    },
     "search": {
       "placeholder": "カテゴリーとタグを検索",
       "empty": "検索に一致するカテゴリーやタグはありません"

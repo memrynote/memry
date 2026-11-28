@@ -6,6 +6,8 @@ import { calendarService, type CalendarProjectionItem } from '@/services/calenda
 import { calendarRangeKeys } from '@/hooks/use-calendar-range'
 import { VISUAL_TYPE_META } from './visual-type-meta'
 import { filterCalendarItems } from './calendar-search-filter'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { isHour12 } from '@/lib/time-format'
 
 const SEARCH_WINDOW_YEARS_PAST = 2
 const SEARCH_WINDOW_YEARS_FUTURE = 3
@@ -16,6 +18,9 @@ interface CalendarSearchProps {
 
 export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   // Captured when search opens so proximity sorting stays stable across renders.
@@ -55,8 +60,13 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
   )
 
   const timeFormatter = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { hour: 'numeric', minute: '2-digit' }),
-    [i18n.language]
+    () =>
+      new Intl.DateTimeFormat(i18n.language, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: isHour12(clockFormat)
+      }),
+    [i18n.language, clockFormat]
   )
 
   const close = (): void => {

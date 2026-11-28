@@ -3,6 +3,8 @@ import { useT } from '@memry/i18n/renderer'
 import { Calendar } from '@/lib/icons'
 import type { ProjectLinkedEvent } from '@memry/rpc/tasks'
 import { HubRow, HUB_ROW_TITLE } from './hub-row'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { isHour12 } from '@/lib/time-format'
 
 interface EventRowProps {
   event: ProjectLinkedEvent
@@ -12,6 +14,9 @@ interface EventRowProps {
 
 export const EventRow = ({ event, onOpen }: EventRowProps): React.JSX.Element => {
   const { t, i18n } = useT('tasks')
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
 
   const when = useMemo(() => {
     const start = new Date(event.startAt)
@@ -22,10 +27,11 @@ export const EventRow = ({ event, onOpen }: EventRowProps): React.JSX.Element =>
     if (event.isAllDay) return date
     const time = new Intl.DateTimeFormat(i18n.language, {
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: isHour12(clockFormat)
     }).format(start)
     return `${date} · ${time}`
-  }, [event.startAt, event.isAllDay, i18n.language])
+  }, [event.startAt, event.isAllDay, i18n.language, clockFormat])
 
   return (
     <HubRow

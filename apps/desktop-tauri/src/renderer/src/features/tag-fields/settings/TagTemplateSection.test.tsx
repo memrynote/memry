@@ -9,7 +9,7 @@ const toastMock = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), warning:
 vi.mock('sonner', () => ({ toast: toastMock }))
 
 const openTab = vi.hoisted(() => vi.fn())
-const templates = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn() }))
+const templates = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn(), list: vi.fn() }))
 vi.mock('@/services/templates-service', () => ({ templatesService: templates }))
 vi.mock('@/contexts/tabs', () => ({ useTabs: () => ({ openTab }) }))
 
@@ -53,6 +53,7 @@ beforeEach(() => {
   editSchema.mockResolvedValue({ snapshot: {} })
   Object.assign(window.api.tags, { editSchema })
   templates.get.mockResolvedValue(template('## Agenda\nTopics to cover\n## Notes\n'))
+  templates.list.mockResolvedValue({ templates: [] })
   templates.create.mockResolvedValue({
     success: true,
     template: template('## Notes\n', 'Person')
@@ -113,6 +114,23 @@ describe('TagTemplateSection without a template', () => {
           entityId: 'tpl-1'
         })
       )
+    )
+  })
+
+  it('numbers the template name when another template already has the tag name', async () => {
+    templates.list.mockResolvedValue({
+      templates: [{ id: 'tpl-0', name: 'person', isBuiltIn: false }]
+    })
+    const user = userEvent.setup()
+    renderSection(resolvedTag())
+
+    await user.click(screen.getByRole('button', { name: 'Create template' }))
+
+    await waitFor(() =>
+      expect(templates.create).toHaveBeenCalledWith({
+        name: 'Person 2',
+        content: '## Notes\n'
+      })
     )
   })
 

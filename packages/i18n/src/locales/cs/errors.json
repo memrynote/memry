@@ -392,7 +392,8 @@
     "createFailed": "Nepodařilo se vytvořit šablonu",
     "updateFailed": "Nepodařilo se aktualizovat šablonu",
     "deleteFailed": "Nepodařilo se smazat šablonu",
-    "duplicateFailed": "Nepodařilo se duplikovat šablonu"
+    "duplicateFailed": "Nepodařilo se duplikovat šablonu",
+    "nameTaken": "Šablona s názvem „{name}“ již existuje. Zvolte jiný název."
   },
   "customIcon": {
     "unreadableImage": "Tento obrázek se nepodařilo načíst. Zkuste soubor PNG, JPG, GIF, WEBP nebo SVG.",

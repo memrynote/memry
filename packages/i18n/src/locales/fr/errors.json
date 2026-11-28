@@ -392,7 +392,8 @@
     "createFailed": "Impossible de créer le modèle",
     "updateFailed": "Impossible de mettre à jour le modèle",
     "deleteFailed": "Impossible de supprimer le modèle",
-    "duplicateFailed": "Impossible de dupliquer le modèle"
+    "duplicateFailed": "Impossible de dupliquer le modèle",
+    "nameTaken": "Un modèle nommé « {name} » existe déjà. Choisissez un autre nom."
   },
   "customIcon": {
     "unreadableImage": "Impossible de lire cette image. Essayez un fichier PNG, JPG, GIF, WEBP ou SVG.",

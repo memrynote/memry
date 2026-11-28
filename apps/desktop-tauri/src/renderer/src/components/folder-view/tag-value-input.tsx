@@ -12,7 +12,7 @@ import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, tagLabelColor, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { rankTagSuggestions, type TagSuggestion } from '@/lib/tag-suggestions'
 import { useT } from '@memry/i18n/renderer'
 
@@ -177,7 +177,10 @@ export function TagValueInput({
                 >
                   <span
                     className="min-w-0 truncate rounded-full px-1.5 py-0.5 text-[11px] font-medium"
-                    style={{ backgroundColor: withAlpha(colors.text, 0.12), color: colors.text }}
+                    style={{
+                      backgroundColor: withAlpha(colors.text, 0.12),
+                      color: tagLabelColor(colors.text)
+                    }}
                   >
                     {tag.name}
                   </span>

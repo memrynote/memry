@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "Naziv kategorije",
     "tagNamePlaceholder": "Naziv oznake",
     "uncategorized": "Nekategorizirano",
+    "view": {
+      "label": "Prikaz oznaka",
+      "categories": "Kategorije",
+      "az": "A–Ž"
+    },
+    "azList": {
+      "heading": "Sve oznake",
+      "empty": "Još nema oznaka"
+    },
     "search": {
       "placeholder": "Pretraži kategorije i oznake",
       "empty": "Nijedna kategorija ni oznaka ne odgovara pretraživanju"

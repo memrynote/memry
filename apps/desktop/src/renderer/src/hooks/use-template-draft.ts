@@ -15,7 +15,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useTemplates } from '@/hooks/use-templates'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { TEMPLATE_NAME_TAKEN } from '@memry/contracts/templates-api'
+import { extractErrorMessage, getIpcErrorCode } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { toTemplateProperties, type EditableProperty } from '@/lib/template-properties'
 import { useT } from '@memry/i18n/renderer'
@@ -65,6 +66,11 @@ export interface UseTemplateDraftResult {
   templateId: string | undefined
   isDirty: boolean
   canSave: boolean
+  /**
+   * Set when the last save was refused because another template has this
+   * name. Shown next to the name field, and cleared once the name changes.
+   */
+  nameError: string | null
   save: () => Promise<boolean>
   /**
    * The user chose to throw the pending edits away (template deleted, close
@@ -101,6 +107,7 @@ export function useTemplateDraft({
   const [fields, setFieldsState] = useState<TemplateDraftFields>(mountedFields)
   const [templateId, setTemplateId] = useState<string | undefined>(initialTemplateId)
   const [isSaving, setIsSaving] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
 
   // The payload as last persisted (or as loaded). Dirtiness and the no-op
   // skip are both measured against this, so a round-trip back to the original
@@ -159,6 +166,7 @@ export function useTemplateDraft({
           return false
         }
         persistedRef.current = payload
+        setNameError(null)
         setTemplateId(created.id)
         onCreated?.(created)
         return true
@@ -177,12 +185,21 @@ export function useTemplateDraft({
         return false
       }
       persistedRef.current = payload
+      setNameError(null)
       // Only drop the stash if nothing newer replaced it while this was in
       // flight.
       if (unsavedEdits.get(id) === snapshot) unsavedEdits.delete(id)
       onSaved?.(updated)
       return true
     } catch (err) {
+      if (getIpcErrorCode(err) === TEMPLATE_NAME_TAKEN) {
+        // The message is already localized by main. With the editor gone there
+        // is no name field to put it next to, so the unmount flush toasts it.
+        const message = extractErrorMessage(err, t('templateEditor.toast.saveFailed'))
+        if (mountedRef.current) setNameError(message)
+        else toast.error(message)
+        return false
+      }
       log.error('Failed to save template:', err)
       toast.error(extractErrorMessage(err, t('templateEditor.toast.saveFailed')))
       return false
@@ -224,6 +241,7 @@ export function useTemplateDraft({
     (update: Partial<TemplateDraftFields>) => {
       fieldsRef.current = { ...fieldsRef.current, ...update }
       setFieldsState(fieldsRef.current)
+      if (update.name !== undefined) setNameError(null)
       if (mountedRef.current) {
         discardedRef.current = false
         return
@@ -278,6 +296,7 @@ export function useTemplateDraft({
     templateId,
     isDirty,
     canSave,
+    nameError,
     save,
     discard
   }

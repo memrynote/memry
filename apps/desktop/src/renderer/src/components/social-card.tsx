@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { ExternalLink, AlertCircle, Loader2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { isHour12 } from '@/lib/time-format'
 import type { SocialMetadata, InboxMetadata } from '@/types'
 import { useT } from '@memry/i18n/renderer'
 import {
@@ -319,7 +320,7 @@ const SocialPreview = ({
           )}
           {timestamp && (
             <span className="text-xs text-[var(--muted-foreground)] block mt-1">
-              {new Date(timestamp).toLocaleString()}
+              {new Date(timestamp).toLocaleString(undefined, { hour12: isHour12() })}
             </span>
           )}
         </div>

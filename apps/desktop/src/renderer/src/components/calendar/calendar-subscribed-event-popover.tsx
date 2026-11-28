@@ -40,6 +40,7 @@ import {
   CalendarCardSection
 } from './calendar-card'
 import { CalendarEventNotes } from './calendar-event-notes'
+import { isHour12 } from '@/lib/time-format'
 
 const log = createLogger('CalendarReadOnlyEventCard')
 
@@ -70,7 +71,8 @@ function whenLabel(item: CalendarProjectionItem, locale: string): string {
     day: 'numeric',
     month: 'short',
     hour: 'numeric',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: isHour12()
   })
   return item.endAt ? format.formatRange(start, new Date(item.endAt)) : format.format(start)
 }

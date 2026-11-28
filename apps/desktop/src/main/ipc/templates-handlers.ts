@@ -26,6 +26,26 @@ import {
   deleteTemplate,
   duplicateTemplate
 } from '../vault/templates'
+import { TemplateNameTakenError } from '../lib/errors'
+import { getMainI18n } from '../lib/main-i18n'
+
+/**
+ * A refused name is an expected outcome the editor shows next to the name
+ * field: it gets a code to branch on and a message already in the user's
+ * language. Any other failure keeps going to `withErrorHandler`.
+ */
+function nameTakenFailure(error: unknown): {
+  success: false
+  error: string
+  errorCode: TemplateNameTakenError['code']
+} {
+  if (!(error instanceof TemplateNameTakenError)) throw error
+  return {
+    success: false,
+    error: getMainI18n().t('errors:template.nameTaken', { name: error.templateName }),
+    errorCode: error.code
+  }
+}
 
 /**
  * Register all template-related IPC handlers.
@@ -55,8 +75,12 @@ export function registerTemplatesHandlers(): void {
     createValidatedHandler(
       TemplateCreateSchema,
       withErrorHandler(async (input) => {
-        const template = await createTemplate(input)
-        return { success: true, template }
+        try {
+          const template = await createTemplate(input)
+          return { success: true, template }
+        } catch (error) {
+          return nameTakenFailure(error)
+        }
       }, 'errors:template.createFailed')
     )
   )
@@ -67,8 +91,12 @@ export function registerTemplatesHandlers(): void {
     createValidatedHandler(
       TemplateUpdateSchema,
       withErrorHandler(async (input) => {
-        const template = await updateTemplate(input)
-        return { success: true, template }
+        try {
+          const template = await updateTemplate(input)
+          return { success: true, template }
+        } catch (error) {
+          return nameTakenFailure(error)
+        }
       }, 'errors:template.updateFailed')
     )
   )

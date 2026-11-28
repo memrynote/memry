@@ -86,6 +86,25 @@ describe('templates-service', () => {
     })
   })
 
+  it('codes a refused name and shows it in the UI language, as Electron does', async () => {
+    const taken = {
+      kind: 'invalid',
+      code: 'template_name_taken',
+      message: 'a template named `Weekly` already exists'
+    }
+    commands.templatesCreate.mockRejectedValue(taken)
+    commands.templatesUpdate.mockRejectedValue(taken)
+
+    const created = await createTemplate({ name: ' Weekly ' })
+    const updated = await updateTemplate({ id: 'tpl-2', name: 'Weekly' })
+
+    for (const response of [created, updated]) {
+      expect(response).toMatchObject({ success: false, errorCode: 'template-name-taken' })
+      expect(response.error).toContain('Weekly')
+      expect(response.error).not.toBe(taken.message)
+    }
+  })
+
   it('lists, reads, duplicates and deletes through the commands', async () => {
     commands.templatesList.mockResolvedValue([
       { id: 'blank', name: 'Blank Note', description: 'Start', icon: '📄', isBuiltIn: true },

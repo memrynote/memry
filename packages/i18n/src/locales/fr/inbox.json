@@ -279,12 +279,10 @@
         "description": "Dans {count, plural, one {# heure} many {# heures} other {# heures}}"
       },
       "tomorrow": {
-        "label": "Demain",
-        "description": "Demain à 9 h"
+        "label": "Demain"
       },
       "nextWeek": {
-        "label": "La semaine prochaine",
-        "description": "Lundi à 9 h"
+        "label": "La semaine prochaine"
       },
       "inMinutes": {
         "label": "Dans {count, plural, one {# minute} many {# minutes} other {# minutes}}"

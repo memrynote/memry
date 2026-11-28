@@ -69,6 +69,18 @@ describe('ReminderPicker', () => {
     expect(onSelect).toHaveBeenCalledWith(new Date(2026, 4, 10, 14, 0, 0, 0), 'bring account notes')
   })
 
+  it('names preset times in the 24h clock format the user chose', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+    renderWithProviders(<ReminderPicker onSelect={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /remind/ }))
+
+    expect(screen.getByText('Tomorrow at 09:00')).toBeInTheDocument()
+    expect(screen.getByText('Monday at 09:00')).toBeInTheDocument()
+    expect(screen.queryByText(/AM/)).not.toBeInTheDocument()
+  })
+
   it('moves into custom mode, formats the selected time, and submits a custom reminder', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const onSelect = vi.fn()

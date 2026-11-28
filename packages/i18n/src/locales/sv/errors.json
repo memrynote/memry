@@ -392,7 +392,8 @@
     "createFailed": "Det gick inte att skapa mallen",
     "updateFailed": "Det gick inte att uppdatera mallen",
     "deleteFailed": "Det gick inte att radera mallen",
-    "duplicateFailed": "Det gick inte att duplicera mallen"
+    "duplicateFailed": "Det gick inte att duplicera mallen",
+    "nameTaken": "En mall med namnet ”{name}” finns redan. Välj ett annat namn."
   },
   "customIcon": {
     "unreadableImage": "Bilden kunde inte läsas. Prova en PNG-, JPG-, GIF-, WEBP- eller SVG-fil.",

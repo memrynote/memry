@@ -65,7 +65,7 @@ import {
 } from '@/features/tag-fields/folder-view-tag-fields'
 import { TagTableProvider } from '@/features/tag-fields/tag-table'
 import { useTagScopeActions } from '@/components/folder-view/use-tag-scope-actions'
-import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, tagLabelColor, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
@@ -1023,7 +1023,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 className="inline-flex min-w-0 max-w-56 shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
                 style={{
                   backgroundColor: withAlpha(tagColors?.text ?? '', 0.12),
-                  color: tagColors?.text
+                  color: tagLabelColor(tagColors?.text ?? '')
                 }}
               >
                 <span

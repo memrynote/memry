@@ -29,6 +29,7 @@
     "./markdown-code": "./src/markdown-code.ts",
     "./inline-tags": "./src/inline-tags.ts",
     "./note-names": "./src/note-names.ts",
+    "./template-names": "./src/template-names.ts",
     "./tag-fold": "./src/tag-fold.ts",
     "./sanitize-svg": "./src/sanitize-svg.ts",
     "./footnotes": "./src/footnotes.ts",

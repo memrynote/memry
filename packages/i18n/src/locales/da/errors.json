@@ -392,7 +392,8 @@
     "createFailed": "Kunne ikke oprette skabelonen",
     "updateFailed": "Kunne ikke opdatere skabelonen",
     "deleteFailed": "Kunne ikke slette skabelonen",
-    "duplicateFailed": "Kunne ikke duplikere skabelonen"
+    "duplicateFailed": "Kunne ikke duplikere skabelonen",
+    "nameTaken": "Der findes allerede en skabelon med navnet “{name}”. Vælg et andet navn."
   },
   "customIcon": {
     "unreadableImage": "Billedet kunne ikke læses. Prøv en PNG-, JPG-, GIF-, WEBP- eller SVG-fil.",

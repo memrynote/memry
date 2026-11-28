@@ -6,7 +6,7 @@ import { getSetting, setSetting } from '@main/database/queries/settings'
 import { headerObjectNoteIds } from '@main/database/queries/tag-schema-counts'
 import type { DataDb, IndexDb } from '../database/types'
 import { getMainI18n } from '../lib/main-i18n'
-import { createTemplate } from '../vault/templates'
+import { availableTemplateName, createTemplate } from '../vault/templates'
 import { syncTagDefinitionUpdate } from './runtime-effects'
 import { PRESET_CATALOG, presetSpec, type PresetSpec } from './preset-catalog'
 import { ensureFieldDefinition, fieldNameFor, saveSchemaEdit } from './schema/edit'
@@ -152,7 +152,7 @@ export async function addPreset(
     : {
         id: (
           await createTemplate({
-            name: t(spec.template.nameKey),
+            name: availableTemplateName(t(spec.template.nameKey)),
             content: templateBody(spec),
             tags: [],
             properties: []

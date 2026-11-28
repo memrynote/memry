@@ -33,6 +33,7 @@ import {
   type CalendarSourceRecord,
   type IcsCalendarMutationResponse
 } from '@/services/calendar-service'
+import { isHour12 } from '@/lib/time-format'
 
 /** The file extension, shown as-is in every language. */
 const ICS_TILE = 'ics'
@@ -159,7 +160,8 @@ export function IcsCalendarSubscriptions(): React.JSX.Element {
   const sources = data?.sources ?? []
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, {
     dateStyle: 'medium',
-    timeStyle: 'short'
+    timeStyle: 'short',
+    hour12: isHour12()
   })
   const rowActionError =
     updateMutation.error ?? removeMutation.error ?? refreshMutation.error ?? null

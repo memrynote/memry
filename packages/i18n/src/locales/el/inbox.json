@@ -279,12 +279,10 @@
         "description": "Σε {count, plural, one {# ώρα} other {# ώρες}}"
       },
       "tomorrow": {
-        "label": "Αύριο",
-        "description": "Αύριο στις 9 π.μ."
+        "label": "Αύριο"
       },
       "nextWeek": {
-        "label": "Την επόμενη εβδομάδα",
-        "description": "Δευτέρα στις 9 π.μ."
+        "label": "Την επόμενη εβδομάδα"
       },
       "inMinutes": {
         "label": "Σε {count, plural, one {# λεπτό} other {# λεπτά}}"

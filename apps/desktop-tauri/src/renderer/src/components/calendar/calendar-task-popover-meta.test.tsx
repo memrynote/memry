@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { CalendarTaskPopoverMeta } from './calendar-task-popover-meta'
 import type { Tag } from '@/components/note/tags-row'
 import type { Status } from '@/data/tasks-data'
+import { tagLabelColor } from '@/components/note/tags-row/tag-colors'
 
 const NOW = new Date('2026-04-29T10:00:00')
 
@@ -87,7 +88,7 @@ describe('CalendarTaskPopoverMeta', () => {
         tags={[{ id: 'focus', name: 'focus', color: 'rose' }]}
       />
     )
-    expect(screen.getByText('focus')).toHaveStyle({ color: '#E07888' })
+    expect(screen.getByText('focus')).toHaveStyle({ color: tagLabelColor('#E07888') })
   })
 
   it('hides description when empty', () => {

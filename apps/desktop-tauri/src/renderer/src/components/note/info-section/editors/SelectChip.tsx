@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { getTagColors, withAlpha } from '../../tags-row/tag-colors'
+import { getTagColors, withAlpha, tagLabelColor } from '../../tags-row/tag-colors'
 
 interface SelectChipProps {
   value: string
@@ -23,7 +23,7 @@ export function SelectChip({ value, color, onClick, className }: SelectChipProps
 
   const chipStyle = {
     backgroundColor: withAlpha(colors.text, 0.12),
-    color: colors.text
+    color: tagLabelColor(colors.text)
   }
 
   if (onClick) {

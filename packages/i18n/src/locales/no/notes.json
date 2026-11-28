@@ -1519,6 +1519,15 @@
     "categoryNamePlaceholder": "Kategorinavn",
     "tagNamePlaceholder": "Taggnavn",
     "uncategorized": "Uten kategori",
+    "view": {
+      "label": "Taggvisning",
+      "categories": "Kategorier",
+      "az": "A–Å"
+    },
+    "azList": {
+      "heading": "Alle tagger",
+      "empty": "Ingen tagger ennå"
+    },
     "search": {
       "placeholder": "Søk i kategorier og tagger",
       "empty": "Ingen kategorier eller tagger samsvarer med søket"

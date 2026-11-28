@@ -31,7 +31,8 @@ const COMMAND_CODE_KEYS = new Map<string, string>([
   ['property_exists', 'errors:property.alreadyExists'],
   ['property_not_found', 'errors:property.notFound'],
   ['property_definitions_unreadable', 'errors:property.definitionsFileUnreadable'],
-  ['property_definitions_write_failed', 'errors:property.definitionsFileWriteFailed']
+  ['property_definitions_write_failed', 'errors:property.definitionsFileWriteFailed'],
+  ['template_name_taken', 'errors:template.nameTaken']
 ])
 
 const COMMAND_KEYS = new Set(COMMAND_CODE_KEYS.values())

@@ -14,6 +14,7 @@ import {
   type CanvasEntityType
 } from '@memry/contracts/canvas-api'
 import { getActiveLocale } from '@/lib/active-locale'
+import { isHour12 } from '@/lib/time-format'
 
 /** The custom drag MIME a card drop consumes ({ entityType, entityId } JSON). */
 export const CANVAS_ITEM_DRAG_MIME = 'application/x-memry-canvas-item'
@@ -511,6 +512,10 @@ export function formatEventTime(startAt: string, isAllDay: boolean, allDayLabel:
   const locale = getActiveLocale()
   const date = parsed.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
   if (isAllDay) return `${date} · ${allDayLabel}`
-  const time = parsed.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })
+  const time = parsed.toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: isHour12()
+  })
   return `${date} · ${time}`
 }

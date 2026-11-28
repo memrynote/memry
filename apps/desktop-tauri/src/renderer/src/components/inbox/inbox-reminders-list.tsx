@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils'
 import { formatCompactRelativeTime } from '@/lib/inbox-utils'
 import type { ReminderPanel, ReminderPanelEntry } from '@/lib/reminder-panel'
+import { isHour12 } from '@/lib/time-format'
 
 interface InboxRemindersListProps {
   panel: ReminderPanel
@@ -71,7 +72,8 @@ function formatUpcoming(date: Date): string {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: isHour12()
   })
 }
 

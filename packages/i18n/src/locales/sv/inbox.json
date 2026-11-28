@@ -279,12 +279,10 @@
         "description": "Om {count, plural, one {# timme} other {# timmar}}"
       },
       "tomorrow": {
-        "label": "Imorgon",
-        "description": "Imorgon kl. 09:00"
+        "label": "Imorgon"
       },
       "nextWeek": {
-        "label": "Nästa vecka",
-        "description": "Måndag kl. 09:00"
+        "label": "Nästa vecka"
       },
       "inMinutes": {
         "label": "Om {count, plural, one {# minut} other {# minuter}}"

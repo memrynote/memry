@@ -208,7 +208,7 @@ impl Schemas {
         let template = if own_template {
             None
         } else {
-            let created = self.templates.create(
+            let created = self.templates.create_numbered(
                 &TemplateCreateInput {
                     name: self.t(spec.template_name_key),
                     content: self.template_body(spec),

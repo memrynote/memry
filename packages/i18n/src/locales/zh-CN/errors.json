@@ -392,7 +392,8 @@
     "createFailed": "创建模板失败",
     "updateFailed": "更新模板失败",
     "deleteFailed": "删除模板失败",
-    "duplicateFailed": "复制模板失败"
+    "duplicateFailed": "复制模板失败",
+    "nameTaken": "已存在名为“{name}”的模板，请换一个名称。"
   },
   "customIcon": {
     "unreadableImage": "无法读取该图片。请尝试 PNG、JPG、GIF、WEBP 或 SVG 文件。",

@@ -12,6 +12,7 @@
 //! | a refused delete keeps the legacy file                       | file goes only after the tombstone    |
 //! | every built-in is Electron's, field for field                | `BUILT_IN_TEMPLATES` (fixture)        |
 //! | a property the editor sends without a value saves as null    | `TemplatePropertySchema.value`        |
+//! | a taken name refuses a create or rename; a duplicate numbers | `assertNameFree`, `duplicateTemplate` |
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -20,7 +21,9 @@ use std::sync::{Arc, Mutex};
 use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::{SecureStoreError, StorageError};
 use memry_core::api::vault::Vault;
+use memry_core::domain::template_store::TemplateWriteError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::error::{FailureKind, map_core};
 use memry_desktop::templates::{
     BUILT_IN_TIMESTAMP, TemplateCreateInput, TemplateProperty, TemplatePropertyType,
     TemplateUpdateInput, Templates,
@@ -212,9 +215,12 @@ fn task_block_suffixes_never_reach_a_body_written_or_read() {
 #[test]
 fn a_name_is_1_to_200_units_and_a_property_needs_a_name() {
     let lib = library();
-    let refused = |result: Result<_, StorageError>| {
+    let refused = |result: Result<_, TemplateWriteError>| {
         assert!(
-            matches!(result, Err(StorageError::Invalid { .. })),
+            matches!(
+                result,
+                Err(TemplateWriteError::Storage(StorageError::Invalid { .. }))
+            ),
             "{result:?}"
         )
     };
@@ -370,5 +376,45 @@ fn a_property_the_editor_sends_without_a_value_saves_as_null() {
             json!({ "name": "Owner", "type": "text", "value": null }),
             serde_json::to_value(stage()).expect("JSON"),
         ]
+    );
+}
+
+#[test]
+fn a_taken_name_refuses_a_create_or_rename_and_a_duplicate_takes_the_next_number() {
+    let lib = library();
+    let weekly = lib.templates.create(&input("Weekly"), NOW).expect("create");
+    let other = lib.templates.create(&input("Other"), NOW).expect("create");
+
+    let refused = lib
+        .templates
+        .create(&input(" weekly"), NOW + 1)
+        .expect_err("a taken name");
+    assert!(matches!(refused, TemplateWriteError::NameTaken { ref name } if name == "weekly"));
+    let failure = map_core(&refused);
+    assert_eq!(
+        (failure.kind, failure.code),
+        (FailureKind::Invalid, "template_name_taken")
+    );
+    let rename = TemplateUpdateInput {
+        id: other.id.clone(),
+        name: Some("Daily Standup".into()),
+        ..TemplateUpdateInput::default()
+    };
+    assert!(matches!(
+        lib.templates.update(&rename, NOW + 1),
+        Err(TemplateWriteError::NameTaken { .. })
+    ));
+
+    let first = lib
+        .templates
+        .duplicate(&weekly.id, "Weekly", NOW + 2)
+        .expect("duplicate");
+    let second = lib
+        .templates
+        .duplicate("weekly-review", "weekly", NOW + 3)
+        .expect("duplicate");
+    assert_eq!(
+        (first.name.as_str(), second.name.as_str()),
+        ("Weekly 2", "weekly 3")
     );
 }

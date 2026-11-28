@@ -392,7 +392,8 @@
     "createFailed": "Die Vorlage konnte nicht erstellt werden",
     "updateFailed": "Die Vorlage konnte nicht aktualisiert werden",
     "deleteFailed": "Die Vorlage konnte nicht gelöscht werden",
-    "duplicateFailed": "Die Vorlage konnte nicht dupliziert werden"
+    "duplicateFailed": "Die Vorlage konnte nicht dupliziert werden",
+    "nameTaken": "Eine Vorlage mit dem Namen „{name}“ existiert bereits. Wähle einen anderen Namen."
   },
   "customIcon": {
     "unreadableImage": "Dieses Bild konnte nicht gelesen werden. Versuch es mit einer PNG-, JPG-, GIF-, WEBP- oder SVG-Datei.",

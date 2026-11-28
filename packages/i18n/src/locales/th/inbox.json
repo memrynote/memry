@@ -279,12 +279,10 @@
         "description": "ในอีก {count, plural, other {# ชั่วโมง}}"
       },
       "tomorrow": {
-        "label": "พรุ่งนี้",
-        "description": "พรุ่งนี้ เวลา 9:00 น."
+        "label": "พรุ่งนี้"
       },
       "nextWeek": {
-        "label": "สัปดาห์หน้า",
-        "description": "วันจันทร์ เวลา 9:00 น."
+        "label": "สัปดาห์หน้า"
       },
       "inMinutes": {
         "label": "ในอีก {count, plural, other {# นาที}}"

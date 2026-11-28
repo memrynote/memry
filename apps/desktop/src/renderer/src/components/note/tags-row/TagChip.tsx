@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X, Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
-import { getTagColors, withAlpha } from './tag-colors'
+import { getTagColors, withAlpha, tagLabelColor } from './tag-colors'
 import { useT } from '@memry/i18n/renderer'
 
 export interface Tag {
@@ -56,7 +56,7 @@ export function TagChip({
   }
   const pillStyle = {
     backgroundColor: withAlpha(colors.text, 0.12),
-    color: colors.text,
+    color: tagLabelColor(colors.text),
     ...(isFocused && !isSelected ? ringStyle : {})
   }
 

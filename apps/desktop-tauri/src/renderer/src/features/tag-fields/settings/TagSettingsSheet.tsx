@@ -7,7 +7,8 @@ import {
   COLOR_NAMES,
   getTagColors,
   isHexColor,
-  withAlpha
+  withAlpha,
+  tagLabelColor
 } from '@/components/note/tags-row/tag-colors'
 import { TagIconChip } from '@/components/settings/tag-icon-chip'
 import { Button } from '@/components/ui/button'
@@ -74,7 +75,7 @@ export function TagSettingsSheet({ tag, onClose }: TagSettingsSheetProps): React
       <header className="flex items-start gap-3 px-5 pb-4 pt-5">
         <div
           className="flex size-8 shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: withAlpha(tint, 0.12), color: tint }}
+          style={{ backgroundColor: withAlpha(tint, 0.12), color: tagLabelColor(tint) }}
         >
           {icon ? (
             <NoteIconDisplay value={icon} className="size-4 text-[15px] leading-none" />

@@ -8,7 +8,7 @@ import { FileText, ChevronRight, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { Note } from '@/hooks/use-notes-query'
-import { formatTimeOfDay } from '@/lib/time-format'
+import { formatTimeOfDay, isHour12 } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useT } from '@memry/i18n/renderer'
 
@@ -53,7 +53,8 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: isHour12()
     })
     const title = t('note.generatedTitle', { date })
     onCreate?.(title)

@@ -3,7 +3,7 @@ import { tagKey } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagColors, withAlpha, tagLabelColor } from '@/components/note/tags-row/tag-colors'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -166,7 +166,7 @@ export function useInlineTagObject(
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span
               className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium"
-              style={{ backgroundColor: withAlpha(color, 0.12), color }}
+              style={{ backgroundColor: withAlpha(color, 0.12), color: tagLabelColor(color) }}
             >
               <TagGlyph look={lookOfTag(resolved)} className="size-3" />
               {tagName}

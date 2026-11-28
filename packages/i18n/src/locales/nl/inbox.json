@@ -279,12 +279,10 @@
         "description": "Over {count, plural, one {# uur} other {# uur}}"
       },
       "tomorrow": {
-        "label": "Morgen",
-        "description": "Morgen om 9:00"
+        "label": "Morgen"
       },
       "nextWeek": {
-        "label": "Volgende week",
-        "description": "Maandag om 9:00"
+        "label": "Volgende week"
       },
       "inMinutes": {
         "label": "Over {count, plural, one {# minuut} other {# minuten}}"

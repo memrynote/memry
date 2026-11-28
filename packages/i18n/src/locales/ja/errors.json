@@ -392,7 +392,8 @@
     "createFailed": "テンプレートを作成できませんでした",
     "updateFailed": "テンプレートを更新できませんでした",
     "deleteFailed": "テンプレートを削除できませんでした",
-    "duplicateFailed": "テンプレートを複製できませんでした"
+    "duplicateFailed": "テンプレートを複製できませんでした",
+    "nameTaken": "「{name}」という名前のテンプレートはすでに存在します。別の名前を付けてください。"
   },
   "customIcon": {
     "unreadableImage": "その画像を読み取れませんでした。PNG、JPG、GIF、WEBP、SVG のいずれかのファイルをお試しください。",

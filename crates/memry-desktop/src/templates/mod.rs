@@ -6,6 +6,9 @@
 //! door: a name of 1 to 200 UTF-16 units, property objects of `TemplatePropertySchema`, task
 //! block suffixes stripped from every body written and read (`stripTaskBlockSuffixes`), and the
 //! built-ins' fixed timestamp. A duplicate is a create from the source as read, as Electron's.
+//! A create or rename to a name another template has is refused by the core
+//! ([`TemplateWriteError::NameTaken`]); a duplicate and a preset's template take the next free
+//! name instead (`Name 2`), as Electron's `availableTemplateName`.
 //!
 //! A delete also removes the template's pre-sync file, `.memry/templates/<id>.md`, once the
 //! tombstone is committed: left behind, the file would be imported again by a vault whose
@@ -21,7 +24,9 @@ use std::sync::Arc;
 use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::domain::template_admin::{TemplateEdit, is_built_in};
-use memry_core::domain::template_store::{Template, TemplateFields, TemplateStore};
+use memry_core::domain::template_store::{
+    Template, TemplateFields, TemplateStore, TemplateWriteError,
+};
 use memry_core::domain::templates::{self, AbsentValue};
 use memry_core::markdown::shared::task_block::strip_task_block_suffixes;
 use memry_core::seams::secure_store::SecureStore;
@@ -362,7 +367,25 @@ impl Templates {
         &self,
         input: &TemplateCreateInput,
         now_ms: i64,
-    ) -> Result<TemplateView, StorageError> {
+    ) -> Result<TemplateView, TemplateWriteError> {
+        self.create_with(input, now_ms, false)
+    }
+
+    /// [`Self::create`] under the next free name: `name`, `name 2`, `name 3`, ...
+    pub fn create_numbered(
+        &self,
+        input: &TemplateCreateInput,
+        now_ms: i64,
+    ) -> Result<TemplateView, TemplateWriteError> {
+        self.create_with(input, now_ms, true)
+    }
+
+    fn create_with(
+        &self,
+        input: &TemplateCreateInput,
+        now_ms: i64,
+        numbered: bool,
+    ) -> Result<TemplateView, TemplateWriteError> {
         check_name(&input.name)?;
         let fields = TemplateFields {
             name: input.name.clone(),
@@ -372,15 +395,19 @@ impl Templates {
             properties: property_values(&input.properties)?,
             content: strip_task_block_suffixes(&input.content),
         };
-        let id = self.store.create(&fields, now_ms)?;
-        self.written(&id)
+        let id = if numbered {
+            self.store.create_numbered(&fields, now_ms)?
+        } else {
+            self.store.create(&fields, now_ms)?
+        };
+        Ok(self.written(&id)?)
     }
 
     pub fn update(
         &self,
         input: &TemplateUpdateInput,
         now_ms: i64,
-    ) -> Result<TemplateView, StorageError> {
+    ) -> Result<TemplateView, TemplateWriteError> {
         if let Some(name) = &input.name {
             check_name(name)?;
         }
@@ -397,16 +424,17 @@ impl Templates {
             content: input.content.as_deref().map(strip_task_block_suffixes),
         };
         self.store.update(&input.id, &edit, now_ms)?;
-        self.written(&input.id)
+        Ok(self.written(&input.id)?)
     }
 
-    /// A new template named `name` from a built-in or a live one (`duplicateTemplate`).
+    /// A new template named `name`, or the next free name after it, from a built-in or a live
+    /// one (`duplicateTemplate`).
     pub fn duplicate(
         &self,
         id: &str,
         name: &str,
         now_ms: i64,
-    ) -> Result<TemplateView, StorageError> {
+    ) -> Result<TemplateView, TemplateWriteError> {
         check_name(name)?;
         let source = self.get(id)?.ok_or_else(|| not_found(id))?;
         let fields = TemplateFields {
@@ -417,8 +445,8 @@ impl Templates {
             properties: source.properties,
             content: source.content,
         };
-        let copy = self.store.create(&fields, now_ms)?;
-        self.written(&copy)
+        let copy = self.store.create_numbered(&fields, now_ms)?;
+        Ok(self.written(&copy)?)
     }
 
     /// Tombstones a template of the vault, then removes its pre-sync file.
