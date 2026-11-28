@@ -154,3 +154,47 @@ async fn a_pulled_rename_and_tags_are_not_pushed_back() {
     assert!(!b.path().exists(), "the old file is not made again");
     filed(&b.env, &note, "Renamed.md");
 }
+
+/// A pulled rename outlives a quit before B's pass (#5309): B's vault is closed when the pull
+/// lands, so no pass runs, and the next app run over the same vault and `data.db` moves the
+/// file at its open. Red with the pull mark in memory.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pulled_rename_reaches_the_file_after_a_restart() {
+    let server = Server::start();
+    let b = Disk::new(&server).await;
+    let note = b.note.clone();
+    for _ in 0..2 {
+        b.sync().await;
+    }
+    let a = Peer::new(&server).await;
+    for _ in 0..2 {
+        a.sync().await;
+    }
+    let writer = a.core.notes_writer(a.store.clone()).unwrap();
+    writer.rename(note.clone(), "Renamed".into()).unwrap();
+    a.sync().await;
+
+    // B quits before the write-back runs: the pull commits with no vault open in the tier.
+    let Disk {
+        mut env, driver, ..
+    } = b;
+    env.close();
+    for _ in 0..2 {
+        pass(&driver).await;
+    }
+    drop(driver);
+    assert_eq!(env.read(FILE), "first words\n", "no pass ran");
+    assert!(!env.vault.join("Renamed.md").exists());
+
+    let mut env = env.restart(|store| Some(creates(store)));
+    env.open();
+    env.facts_until(|fact| {
+        matches!(
+            fact,
+            Applied::Renamed { note_id, old_path, new_path, kind: MoveKind::Renamed }
+                if *note_id == note && old_path == FILE && new_path == "Renamed.md"
+        )
+    });
+    until_holds(&env, "Renamed.md", "first words");
+    assert!(!env.vault.join(FILE).exists(), "the old file is gone");
+}

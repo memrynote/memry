@@ -32,16 +32,6 @@ impl VaultTier {
         }
     }
 
-    /// [`Self::schedule`] for a note a pull changed: its pass also gives its file the record's
-    /// place and frontmatter (`vault::writeback::place`). `title_before` is the note's title
-    /// before the pull ([`memry_core::sync::driver::observer::AppliedRecord::title_before`]).
-    pub fn schedule_pulled(&self, note_id: &str, title_before: Option<&str>) {
-        if let Some(open) = self.current() {
-            open.pass.mark_pulled(note_id, title_before);
-        }
-        self.schedule(note_id);
-    }
-
     /// Takes the file `note_id` owes ([`super::owed`]) when `vault` is the open one, and schedules
     /// its write-back.
     pub fn take_owed_file(&self, vault: &Arc<Vault>, note_id: &str) -> Taken {

@@ -15,6 +15,7 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde_json::Value;
 
 use super::ImportError;
+use super::vault_db::tables::LEDGER_TABLE;
 
 /// `vault.crypto.verifier.v1` (`crypto/vault-key-state.ts:17`).
 const VERIFIER_KEY: &str = "vault.crypto.verifier.v1";
@@ -36,6 +37,9 @@ pub struct VaultEvidence {
     /// moves that key into the legacy entry, never into a provider's slot, so the user enters
     /// it again after choosing a cloud provider (#3554 comment from #4483).
     pub inline_ai_reenter: bool,
+    /// The newest `__drizzle_migrations.created_at`: the schema Electron last migrated the
+    /// database to. `None` without a ledger.
+    pub ledger: Option<i64>,
 }
 
 fn sqlite(error: rusqlite::Error) -> ImportError {
@@ -123,12 +127,23 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
                     .and_then(Value::as_str)
                     .is_some_and(|key| !key.trim().is_empty())
         });
+    let ledger = if has_column(db, LEDGER_TABLE, "created_at")? {
+        db.query_row(
+            &format!("SELECT max(CAST(created_at AS INTEGER)) FROM \"{LEDGER_TABLE}\""),
+            [],
+            |r| r.get::<_, Option<i64>>(0),
+        )
+        .map_err(sqlite)?
+    } else {
+        None
+    };
     Ok(VaultEvidence {
         vault_id,
         key_verifier: setting(VERIFIER_KEY)?,
         device_id,
         device_public_key,
         inline_ai_reenter,
+        ledger,
     })
 }
 

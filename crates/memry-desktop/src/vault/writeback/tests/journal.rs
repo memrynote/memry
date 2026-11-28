@@ -311,7 +311,10 @@ fn pulled_day(f: &mut super::Fixture) -> String {
     journal
         .remove_property(PULLED_DAY.into(), "energy".into())
         .unwrap();
-    f.pass.mark_pulled(&id, Some(PULLED_DAY));
+    f.vault
+        .note_files()
+        .mark_pulled(&id, Some(PULLED_DAY))
+        .unwrap();
     id
 }
 
@@ -365,7 +368,10 @@ fn a_pulled_empty_alias_list_clears_the_days_aliases_and_no_list_keeps_them() {
         "UPDATE journal_aliases SET aliases = '[]' WHERE journal_id = ?1",
         &id,
     );
-    f.pass.mark_pulled(&id, Some(PULLED_DAY));
+    f.vault
+        .note_files()
+        .mark_pulled(&id, Some(PULLED_DAY))
+        .unwrap();
     let Outcome::Wrote { version_kept, .. } = f.run(&id) else {
         panic!(
             "the cleared list did not reach the file: {}",
@@ -380,7 +386,10 @@ fn a_pulled_empty_alias_list_clears_the_days_aliases_and_no_list_keeps_them() {
         "UPDATE journal_aliases SET aliases = '[\"Launch\"]' WHERE journal_id = ?1",
         &id,
     );
-    f.pass.mark_pulled(&id, Some(PULLED_DAY));
+    f.vault
+        .note_files()
+        .mark_pulled(&id, Some(PULLED_DAY))
+        .unwrap();
     assert!(matches!(f.run(&id), Outcome::Wrote { .. }));
     let relaunched = f.read(PULLED_FILE);
     assert!(
@@ -392,7 +401,10 @@ fn a_pulled_empty_alias_list_clears_the_days_aliases_and_no_list_keeps_them() {
         "DELETE FROM journal_aliases WHERE journal_id = ?1",
     ] {
         f.sql(clear, &id);
-        f.pass.mark_pulled(&id, Some(PULLED_DAY));
+        f.vault
+            .note_files()
+            .mark_pulled(&id, Some(PULLED_DAY))
+            .unwrap();
         f.run(&id);
         assert_eq!(f.read(PULLED_FILE), relaunched, "{clear}");
     }

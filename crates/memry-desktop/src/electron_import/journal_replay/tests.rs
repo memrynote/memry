@@ -226,8 +226,9 @@ fn the_memry_folder_is_refused_in_any_case() {
     let w = world();
     let mut names = vec![".MEMRY", ".Memry"];
     if cfg!(windows) {
-        // Windows drops trailing dots and spaces from a path component.
-        names.extend([".memry.", ".memry ", ".MEMRY. ."]);
+        // Windows drops trailing dots and spaces from a path component, and NTFS may give
+        // `.memry` an 8.3 short name.
+        names.extend([".memry.", ".memry ", ".MEMRY. .", "MEMRY~1", "memry~12"]);
     }
     let entries: Vec<Value> = names
         .iter()

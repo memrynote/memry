@@ -74,7 +74,7 @@ fn a_refused_move_is_logged_once_per_session() {
         // cached "never"; ask every call site again.
         tracing::callsite::rebuild_interest_cache();
         for _ in 0..3 {
-            f.pass.mark_pulled(&id, None);
+            f.vault.note_files().mark_pulled(&id, None).unwrap();
             f.run(&id);
         }
     });

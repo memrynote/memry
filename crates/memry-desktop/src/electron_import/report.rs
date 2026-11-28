@@ -1,5 +1,6 @@
 //! `electron-import-report.json`: what the first-launch migration carried, counted. It holds no
-//! secret, no note text and no path of user content; config keys and step names only.
+//! secret and no note text. Paths are the vault folders the config names and vault-relative
+//! paths; config keys, check and step names otherwise.
 //!
 //! The file is a format this and later builds read back (a deferred vault adds its section to
 //! it), so it is versioned and every field is additive: a field this build does not know, at
@@ -19,8 +20,113 @@ pub struct VerificationReport {
     pub version: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub app_state: Option<AppStateReport>,
+    /// The secrets phase's outcome; set once it finished, so a resumed run skips it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secrets: Option<Value>,
+    /// Every vault of the plan, in plan order (`currentVault` first).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub vaults: Vec<VaultSection>,
+    /// Why the last run stopped; `None` once a run finished.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure: Option<Failure>,
     #[serde(flatten)]
     pub extra: Map<String, Value>,
+}
+
+/// One vault of the plan. `prep` and `stage` are the 37e1 and Step 36 report sections.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultSection {
+    /// As the Electron config records it.
+    pub path: String,
+    pub status: VaultStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault_id: Option<String>,
+    /// The CRDT store directory name under `crdt-stores/`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub store: Option<String>,
+    /// The other vaults of a shared-store group, or the entry a same-folder one repeats.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub shared_with: Vec<String>,
+    /// The error of an unreadable vault.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prep: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub checks_passed: Vec<u8>,
+    /// sha256 of the Electron `data.db` and its WAL as the import read them, hex: the marker's
+    /// downgrade fingerprint. A rerun that finds another one imports the vault again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_fingerprint: Option<String>,
+    /// Checks not run, by number, with the reason.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub checks_not_run: Map<String, Value>,
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+impl VaultSection {
+    pub fn new(path: &str, status: VaultStatus) -> Self {
+        Self {
+            path: path.to_owned(),
+            status,
+            reason: None,
+            vault_id: None,
+            store: None,
+            shared_with: Vec::new(),
+            detail: None,
+            prep: None,
+            stage: None,
+            checks_passed: Vec::new(),
+            source_fingerprint: None,
+            checks_not_run: Map::new(),
+            extra: Map::new(),
+        }
+    }
+}
+
+/// Where a vault stands. `Prepared` and `Staged` are a run's progress, read by the next run
+/// after a crash; the rest are final. A status a later build writes reads as `Unknown`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum VaultStatus {
+    Prepared,
+    Staged,
+    Imported,
+    /// `core/data.db` carried the import marker before this run reached the vault.
+    AlreadyImported,
+    /// The vault was opened natively first; Electron's files stay as they are.
+    NativeFirst,
+    /// Imported by an earlier attempt and opened in this app since, then written by the
+    /// previous app (or the attempt is unknown): the core is kept, Electron's files stay as they
+    /// are, and `detail` tells the user what was not moved.
+    Kept,
+    Sandbox,
+    SameFolder,
+    /// Imported when the vault is first opened (`migrate_vault`), except a shared store.
+    Deferred,
+    /// The vault's `data.db` reads wrong; opening it fails until it reads.
+    Unreadable,
+    /// Opened with no Electron `data.db` beside it: nothing to import.
+    NoData,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Failure {
+    /// The failing check or error kind, as telemetry's `errorCode` names it.
+    pub check: String,
+    /// The error panel's message.
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault: Option<String>,
 }
 
 impl Default for VerificationReport {
@@ -28,6 +134,9 @@ impl Default for VerificationReport {
         Self {
             version: REPORT_VERSION,
             app_state: None,
+            secrets: None,
+            vaults: Vec::new(),
+            failure: None,
             extra: Map::new(),
         }
     }
