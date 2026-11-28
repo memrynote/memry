@@ -146,7 +146,8 @@ vi.mock('jose', () => ({
 }))
 
 import { auth } from './auth'
-import { captureServerError } from '../services/analytics'
+import { captureServerError, safeWaitUntil } from '../services/analytics'
+import { IOS_BETA_SEGMENT_ID } from '../services/ios-beta'
 import { checkEmailRateLimit, storeOtp } from '../services/otp'
 import { sendEmail } from '../services/email'
 import { getUserByEmail, getUserById, updateUserEmail } from '../services/user'
@@ -1219,6 +1220,86 @@ describe('auth routes', () => {
       expect(res.status).toBe(401)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
+    })
+  })
+
+  // ==========================================================================
+  // Signup -> Resend iOS beta segment
+  // ==========================================================================
+
+  describe('new signups join the iOS beta segment', () => {
+    const SIGNUP_ROUTES = [
+      ['/auth/otp/verify', { email: 'new@example.com', code: '123456' }],
+      ['/auth/oauth/google/callback', { code: 'auth-code', state: 'valid-state' }],
+      ['/auth/oauth/google/native', { idToken: 'mock-id-token' }]
+    ] as const
+
+    let fetchedUrls: string[]
+
+    beforeEach(() => {
+      fetchedUrls = []
+      vi.stubGlobal('fetch', async (url: string) => {
+        fetchedUrls.push(url)
+        return Response.json({ id_token: 'mock-id-token', id: 'contact-1' })
+      })
+    })
+
+    const signUp = async (
+      path: string,
+      body: Record<string, unknown>,
+      options: { environment: string; isNewUser: boolean }
+    ): Promise<string[]> => {
+      const { getOrCreateUserByEmail } = await import('../services/user')
+      vi.mocked(getOrCreateUserByEmail).mockResolvedValueOnce({
+        user: { id: 'user-1', email: 'new@example.com', kdf_salt: null },
+        isNewUser: options.isNewUser
+      } as never)
+      const res = await app.request(path, jsonPost(path, body), {
+        ...createEnv({ environment: options.environment }),
+        GOOGLE_IOS_CLIENT_ID: 'mock-ios-client-id'
+      })
+      expect(res.status).toBe(200)
+      await Promise.all(vi.mocked(safeWaitUntil).mock.calls.map(([, task]) => task))
+      return fetchedUrls.filter((url) => url.startsWith('https://api.resend.com'))
+    }
+
+    it.each(SIGNUP_ROUTES)(
+      '%s files a new production account into the segment',
+      async (path, body) => {
+        const resendUrls = await signUp(path, body, { environment: 'production', isNewUser: true })
+
+        expect(resendUrls).toEqual([
+          'https://api.resend.com/contacts',
+          `https://api.resend.com/contacts/new%40example.com/segments/${IOS_BETA_SEGMENT_ID}`
+        ])
+      }
+    )
+
+    it.each(SIGNUP_ROUTES)('%s leaves an existing account alone', async (path, body) => {
+      const resendUrls = await signUp(path, body, { environment: 'production', isNewUser: false })
+
+      expect(resendUrls).toEqual([])
+    })
+
+    it.each(SIGNUP_ROUTES)('%s keeps staging signups off the segment', async (path, body) => {
+      const resendUrls = await signUp(path, body, { environment: 'staging', isNewUser: true })
+
+      expect(resendUrls).toEqual([])
+    })
+
+    it('signs the user in and settles the background task when Resend fails', async () => {
+      vi.stubGlobal('fetch', async (url: string) => {
+        fetchedUrls.push(url)
+        throw new Error('network down')
+      })
+
+      // signUp asserts the 200 and awaits the scheduled task, which must not reject.
+      const resendUrls = await signUp('/auth/otp/verify', SIGNUP_ROUTES[0][1], {
+        environment: 'production',
+        isNewUser: true
+      })
+
+      expect(resendUrls).toEqual(['https://api.resend.com/contacts'])
     })
   })
 

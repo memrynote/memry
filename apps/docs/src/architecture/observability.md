@@ -574,6 +574,14 @@ Store Connect (the TestFlight invite) and to the Resend iOS beta segment, where 
 person through Resend, never the other way. Landing `/ios-beta` signups carry neither property, so
 `signup_source` separates desktop signups from web ones.
 
+Every new account joins the same segment. When `getOrCreateUserByEmail` reports `isNewUser` on any
+of the three sign-in routes (`/auth/otp/verify`, `/auth/oauth/google/callback`,
+`/auth/oauth/google/native`), `routes/auth.ts` schedules `addSignupToIosBetaSegment`
+(`services/ios-beta.ts`) with `waitUntil`. It runs only when `ENVIRONMENT` is `production`, so staging
+and local accounts stay off the list, and a Resend failure is logged without failing the sign-in.
+These contacts carry no properties. Existing accounts signing in again are not added, and deleting
+an account does not remove its contact.
+
 Errors additionally become `$exception` events for PostHog Error Tracking (`exceptionEvent` in
 `services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
 grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default. They

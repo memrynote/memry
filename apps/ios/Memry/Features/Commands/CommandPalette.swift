@@ -65,9 +65,15 @@ private struct CommandPalettePresenter: ViewModifier {
         }
     }
 
+    /// Runs the picked command on the next main-actor turn. `onDismiss`
+    /// fires inside SwiftUI's presentation update, and a command that takes
+    /// the first responder there (New Note's key holder) animates the
+    /// keyboard into a render that re-enters that update: a Swift
+    /// exclusivity trap in `SheetBridge`.
     private func runChosen() {
-        chosen?()
-        chosen = nil
+        guard let chosen else { return }
+        self.chosen = nil
+        Task { @MainActor in chosen() }
     }
 }
 
