@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 225
+    "caseCount": 226
   },
   "cases": [
     {
@@ -1295,6 +1295,12 @@
       "pins": "the backslash escapes the angle bracket of a span tag, coloured or plain, so the tag is text and the backslash is gone, and no span tag closes or ends a colour",
       "markdown": "a \\<span style=\"color:red\">x\\</span> \\<span>y\\</span> \\<span class=\"k\">z\\</span> \\</span> b",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a <span style=\\\"color:red\\\">x</span> <span>y</span> <span class=\\\"k\\\">z</span> </span> b\""
+    },
+    {
+      "name": "raw html: an escaped tag in a details line no toggle claimed",
+      "pins": "the backslash escapes the angle bracket of a handled tag on a details markup line too, so the line is the text it spells with the tag bare and the backslash is gone",
+      "markdown": "<details>\n<summary>kq0 \\<b>x\\</b> \\<i>y\\</i> z</summary>\nkq1\n</details>\n\n<summary>\\<a href=\"u\">w\\</a></summary>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>kq0 <b>x</b> <i>y</i> z</summary>\"\n3 element hardBreak\n3 text \"kq1\"\n3 element hardBreak\n3 text \"</details>\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<summary><a href=\\\"u\\\">w</a></summary>\""
     },
     {
       "name": "raw html: escaped tags past the nesting cap",

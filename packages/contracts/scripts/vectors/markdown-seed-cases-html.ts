@@ -116,6 +116,12 @@ export const MARKDOWN_SEED_HTML_CASES: ReadonlyArray<{
     pins: 'the backslash escapes the angle bracket of a span tag, coloured or plain, so the tag is text and the backslash is gone, and no span tag closes or ends a colour'
   },
   {
+    name: 'raw html: an escaped tag in a details line no toggle claimed',
+    markdown:
+      '<details>\n<summary>kq0 \\<b>x\\</b> \\<i>y\\</i> z</summary>\nkq1\n</details>\n\n<summary>\\<a href="u">w\\</a></summary>',
+    pins: 'the backslash escapes the angle bracket of a handled tag on a details markup line too, so the line is the text it spells with the tag bare and the backslash is gone'
+  },
+  {
     name: 'raw html: escaped tags past the nesting cap',
     markdown: `${'\\<b>'.repeat(150)}x${'\\</b>'.repeat(150)}`,
     pins: 'an escaped tag opens nothing and counts toward no cap, so a hundred and fifty of them are text'

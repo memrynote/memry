@@ -234,13 +234,42 @@ impl Closers {
 /// `</details>` line has every `<` hidden, so it parses as text.
 fn escape_details_markup(line: &str) -> String {
     if summary_line(line).is_some() {
-        return encode_html_comments(line).replace('<', details_lt_token());
+        return hide_lt(&encode_html_comments(line));
     }
     if details_open_line(line) || line == "</details>" {
-        line.replace('<', details_lt_token())
+        hide_lt(line)
     } else {
         line.to_owned()
     }
+}
+
+/// `hideDetailsLt`: `markup` with every `<` hidden behind the token. A
+/// backslash before the `<` of a tag the editor handles is the escape the
+/// writer spells such a tag with ([`super::raw_html`]): no part of the text, so
+/// it goes with the `<` it escapes.
+fn hide_lt(markup: &str) -> String {
+    let escaped: Vec<usize> = if markup.contains("\\<") {
+        super::raw_html::scan(markup, true)
+            .into_iter()
+            .filter(|span| span.escaped)
+            .map(|span| span.start)
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let mut escaped = escaped.into_iter().peekable();
+    let mut out = String::with_capacity(markup.len());
+    for (at, ch) in markup.chars().enumerate() {
+        if ch != '<' {
+            out.push(ch);
+            continue;
+        }
+        if escaped.next_if_eq(&at).is_some() {
+            out.pop();
+        }
+        out.push_str(details_lt_token());
+    }
+    out
 }
 
 #[cfg(test)]

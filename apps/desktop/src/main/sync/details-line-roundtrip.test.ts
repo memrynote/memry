@@ -17,6 +17,7 @@ import { canonicalFragment } from '../../../../../packages/contracts/scripts/fra
 import {
   markdownToYFragment,
   yDocToCanonicalMarkdown,
+  yDocToMarkdown,
   yFragmentToBlocks
 } from './blocknote-converter'
 
@@ -84,6 +85,13 @@ describe('a <details> markup line holding a handled tag', () => {
     const written = await seed(await write(doc))
     expect(shape(written)).toBe(shape(doc))
   })
+
+  it.each(CASES)(
+    "writes the author's bytes back for an untouched note: %s",
+    async (_name, markdown) => {
+      expect(await yDocToMarkdown(await seed(markdown))).toBe(markdown)
+    }
+  )
 
   it('reads a bare tag and its escaped spelling as the same text', async () => {
     const bare = await seed(FOREIGN('Use <i>this</i>'))
