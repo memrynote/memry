@@ -31,11 +31,13 @@ import { editorSchema } from './editor-schema'
 import { parseMarkdownPreservingBlanks } from './markdown-utils'
 
 /**
- * CPU time the process has used, in ms. The bounds below are on the work a read
- * does; wall time also counts the seconds a loaded machine makes it wait.
+ * CPU time this thread has used, in ms. The bounds below are on the work a read
+ * does; wall time also counts the seconds a loaded machine makes it wait, and
+ * `process.cpuUsage` counts every test file the renderer project runs in its
+ * other worker threads.
  */
 function cpuMs(): number {
-  const { user, system } = process.cpuUsage()
+  const { user, system } = process.threadCpuUsage()
   return (user + system) / 1000
 }
 
