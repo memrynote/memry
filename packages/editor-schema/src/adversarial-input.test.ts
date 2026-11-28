@@ -164,6 +164,13 @@ describe('adversarial markdown input', () => {
     }
   )
 
+  // Each nested link costs the parser a few stack frames. 0.54.2 read links nested 2125 deep, and the
+  // linear-time patch must not lower that.
+  it('BlockNote reads links nested 2050 deep', () => {
+    const depth = 2050
+    expect(markdownToHTML(`${'[a '.repeat(depth)}${'](u)'.repeat(depth)}`)).toContain('href="u"')
+  })
+
   it('a long table row ends a paragraph in linear time', () => {
     // Before the fix the long row never returned, so the short one fails first.
     expect(elapsed(() => endsParagraphBefore(pipes(24)))).toBeLessThan(LIMIT_MS)
