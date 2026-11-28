@@ -116,7 +116,12 @@ export const CanvasPage = ({ canvasId }: CanvasPageProps): React.JSX.Element => 
         {/* Keyed so a canvasId prop change swaps in a fresh editor once the new
             scene arrives — initialData is mount-only, and a reused editor would
             persist the old scene under the new canvas id. */}
-        <LazyCanvasEditor key={canvas.id} canvasId={canvas.id} initialScene={canvas.scene} />
+        <LazyCanvasEditor
+          key={canvas.id}
+          canvasId={canvas.id}
+          initialScene={canvas.scene}
+          initialSha256={canvas.sha256}
+        />
       </React.Suspense>
     </div>
   )

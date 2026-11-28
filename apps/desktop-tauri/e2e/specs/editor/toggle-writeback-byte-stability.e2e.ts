@@ -12,18 +12,18 @@
 // needs no sync; it waits on `e2e_writeback_debug_state` for a pass that compared the body with
 // the file, without which "the bytes did not change" passes when nothing saved.
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 
 import { blockText, editorDocument, type EditorBlock } from '../../harness/editor'
-import { invokeTest } from '../../harness/invoke-test'
-import {
-  getNoteHandleByTitle,
-  openNoteByTitle,
-  type WritebackDebugState
-} from '../../harness/note-sync-helpers'
-import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
+import { vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
-import type { TauriApp } from '../../harness/tauri-lifecycle'
+import {
+  indexedBaseline,
+  nudgeDocument,
+  openInEditor,
+  seedVaultFile,
+  waitForWritebackToSettle,
+  writebackDebug
+} from '../../harness/seeded-note'
 import { test, expect } from '../../harness/test'
 
 const TOGGLE = [
@@ -45,92 +45,6 @@ interface Shape {
   type: string
   text: string
   children: Shape[]
-}
-
-function seedVaultFile(vaultPath: string, title: string, body: string): string {
-  const absPath = path.join(vaultPath, 'notes', `${title}.md`)
-  fs.mkdirSync(path.dirname(absPath), { recursive: true })
-  fs.writeFileSync(absPath, body, 'utf8')
-  return absPath
-}
-
-/**
- * The bytes the file settles on once the app has claimed it. Taking the baseline after the file
- * stops moving makes the later comparison mean "did saving it change anything".
- */
-async function indexedBaseline(
-  page: Page,
-  title: string,
-  absPath: string
-): Promise<{ id: string; bytes: string }> {
-  const note = await getNoteHandleByTitle(page, title)
-  let bytes = fs.readFileSync(absPath, 'utf8')
-  await expect
-    .poll(
-      () => {
-        const next = fs.readFileSync(absPath, 'utf8')
-        const settled = next === bytes
-        bytes = next
-        return settled
-      },
-      { timeout: 20_000, intervals: [1000] }
-    )
-    .toBe(true)
-  return { id: note.id, bytes }
-}
-
-async function openInEditor(page: Page, title: string): Promise<void> {
-  await openNoteByTitle(page, title)
-  await page.locator(NOTE_EDITOR).first().waitFor({ state: 'visible', timeout: 15_000 })
-  await page.waitForFunction(
-    () => Boolean((window as unknown as { __memryActiveEditor?: unknown }).__memryActiveEditor),
-    undefined,
-    { timeout: 30_000 }
-  )
-}
-
-/**
- * An edit and its undoing at the end of the document, through the editor API: a click into a
- * document with a toggle can land on its fold, and the fold state is part of the bytes under
- * test. Opening a note alone schedules no write-back.
- */
-async function nudgeDocument(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const editor = (
-      window as unknown as {
-        __memryActiveEditor?: {
-          document: Array<{ id: string }>
-          insertBlocks(blocks: unknown[], ref: string, where: 'after'): unknown
-          removeBlocks(ids: string[]): unknown
-        }
-      }
-    ).__memryActiveEditor
-    if (!editor) throw new Error('window.__memryActiveEditor not exposed')
-    const before = editor.document.map((block) => block.id)
-    editor.insertBlocks(
-      [{ type: 'paragraph', content: [{ type: 'text', text: 'nudge', styles: {} }] }],
-      before[before.length - 1],
-      'after'
-    )
-    const added = editor.document.filter((block) => !before.includes(block.id))
-    editor.removeBlocks(added.map((block) => block.id))
-  })
-}
-
-const writebackDebug = (app: TauriApp, noteId: string) =>
-  invokeTest<WritebackDebugState | null>(app, 'e2e_writeback_debug_state', { noteId })
-
-/** Waits until a write-back pass of the note ran and none is due. */
-async function waitForWritebackToSettle(app: TauriApp, noteId: string): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        const debug = await writebackDebug(app, noteId)
-        return { performed: (debug?.performedCount ?? 0) >= 1, pending: debug?.pending ?? true }
-      },
-      { timeout: 30_000 }
-    )
-    .toEqual({ performed: true, pending: false })
 }
 
 /** The document as {type, text, children}, so assertions read like the note. */

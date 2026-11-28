@@ -1,3 +1,4 @@
+import { onAttachmentMaterialized, onAttachmentUploadFailed } from '../services/attachment-events'
 import {
   diagnosticsApi,
   feedbackService,
@@ -5,17 +6,27 @@ import {
   onLocaleChanged,
   telemetryService
 } from '../services/app-services'
+import { onReadwiseStatusChanged, readwiseService } from '../services/readwise-service'
 import {
   onSettingsChanged,
   onSettingsOpenRequested,
   settingsService
 } from '../services/settings-service'
+import {
+  onCertificatePinFailed,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onQueueCleared,
+  onSecurityWarning,
+  onSyncStatusChanged,
+  syncService
+} from '../services/sync-service'
 
 /**
  * What Step 09 (#3526) puts on `window.api`: settings, language, telemetry, feedback and
- * diagnostics, each over its Rust commands. Callers keep the Electron names. Other domains
- * replace the rest as they port; Step 43 (#3560) deletes this file once every caller imports
- * its service. The window functions of Step 10 (#3527) are imported from
+ * diagnostics, each over its Rust commands, and Step 17's (#3534) sync operations and events.
+ * Callers keep the Electron names. Other domains replace the rest as they port; Step 43 (#3560)
+ * deletes this file once every caller imports its service. The window functions of Step 10 (#3527) are imported from
  * `services/window-service` and are not on `window.api`.
  */
 const ported: Record<string, unknown> = {
@@ -24,9 +35,20 @@ const ported: Record<string, unknown> = {
   telemetry: telemetryService,
   feedback: feedbackService,
   diagnostics: diagnosticsApi,
+  syncOps: syncService,
+  import: { readwise: readwiseService },
+  onReadwiseStatusChanged,
   onSettingsChanged,
   onSettingsOpenRequested,
-  onLocaleChanged
+  onLocaleChanged,
+  onSyncStatusChanged,
+  onQueueCleared,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onSecurityWarning,
+  onCertificatePinFailed,
+  onAttachmentMaterialized,
+  onAttachmentUploadFailed
 }
 
 export interface PortedApiHost {
@@ -41,7 +63,7 @@ export interface PortedApiHost {
  * A ported domain that only covers some of its Electron names (settings leaves AI, calendar,
  * voice, terminal and global-shortcut functions to later steps): a name it lacks resolves on
  * the layer below, so the call rejects with `NotPortedError` instead of throwing synchronously
- * on `undefined`.
+ * on `undefined`. Nested domains layer the same way.
  */
 function withFallback(domain: unknown, below: unknown): unknown {
   if (typeof domain !== 'object' || domain === null || below === null || below === undefined) {
@@ -49,10 +71,12 @@ function withFallback(domain: unknown, below: unknown): unknown {
   }
   return new Proxy(domain, {
     get(target, property, receiver) {
-      // oxlint-disable-next-line anti-slop/no-reflect-get -- a layering proxy resolves arbitrary property keys by definition
-      if (property in target) return Reflect.get(target, property, receiver)
       // oxlint-disable-next-line anti-slop/no-reflect-get -- same layering proxy
-      return Reflect.get(Object(below), property)
+      const lower: unknown = Reflect.get(Object(below), property)
+      // A nested domain (`import.readwise`) layers over its own shim the same way.
+      // oxlint-disable-next-line anti-slop/no-reflect-get -- a layering proxy resolves arbitrary property keys by definition
+      if (property in target) return withFallback(Reflect.get(target, property, receiver), lower)
+      return lower
     }
   })
 }

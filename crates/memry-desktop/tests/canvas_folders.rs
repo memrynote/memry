@@ -6,7 +6,7 @@
 //! | a folder is a directory, found again in any case            | `folder-store.ts:323-375`        |
 //! | a rename carries its canvases and their documents           | `folder-store.ts:395-545`        |
 //! | a taken destination or a cycle is refused before the disk   | `folder-store.ts:412-428`        |
-//! | a refused record write moves the directory back             | `folder-store.ts:520-533`        |
+//! | a move past the depth cap is refused before the disk         | `folder-store.ts:429-442`        |
 //! | a delete trashes the directory and never removes it otherwise | `folder-store.ts:650-741`      |
 //! | the icon is a record change only                            | `folder-store.ts:617-635`        |
 
@@ -53,7 +53,7 @@ fn a_rename_carries_its_canvases_and_their_documents() {
         .unwrap();
     assert_eq!(renamed.unwrap().path, "Archive");
     assert!(!w.vault.join("canvases/Work").exists());
-    let read = w.canvases.get(&id, NOW + 2).unwrap().unwrap();
+    let read = w.canvases.get(&id).unwrap().unwrap();
     assert_eq!(read.summary.folder.as_deref(), Some("Archive"));
     assert!(read.scene.contains(r#""id":"a""#));
 
@@ -97,13 +97,15 @@ fn a_taken_destination_or_a_cycle_is_refused_before_the_disk() {
 }
 
 #[test]
-fn a_refused_record_write_moves_the_directory_back() {
+fn a_move_past_the_depth_cap_is_refused_before_the_disk() {
     let w = world();
     w.canvases
         .create_folder(Some("A/B/C/D/E/F"), "G", NOW)
         .unwrap();
     w.canvases.create_folder(Some("X"), "Y", NOW).unwrap();
     let plan = w.create("Plan", Some("X/Y"), "a");
+    // The destination folder has a record and no directory: a move would make one.
+    std::fs::remove_dir(w.vault.join("canvases/A/B/C/D/E/F/G")).unwrap();
 
     // `A/B/C/D/E/F/G/X` is 8 deep, so `X/Y` would land at 9.
     let deep = w.canvases.move_folder("X", Some("A/B/C/D/E/F/G"), NOW + 1);
@@ -112,7 +114,7 @@ fn a_refused_record_write_moves_the_directory_back() {
         Err(FolderError::Refused(CanvasFolderError::Depth))
     ));
     assert!(w.vault.join("canvases/X/Y/Plan.excalidraw").is_file());
-    assert!(!w.vault.join("canvases/A/B/C/D/E/F/G/X").exists());
+    assert!(!w.vault.join("canvases/A/B/C/D/E/F/G").exists());
     assert!(w.scene_of(&plan.canvas.summary.id).contains(r#""id":"a""#));
 }
 
@@ -125,12 +127,7 @@ fn a_delete_trashes_the_directory_and_never_removes_it_otherwise() {
     assert_eq!(ids, vec![plan.canvas.summary.id.clone()]);
     assert!(!w.vault.join("canvases/Work").exists());
     assert!(w.vault.join(".trash/Work/Q3/Plan.excalidraw").is_file());
-    assert!(
-        w.canvases
-            .get(&plan.canvas.summary.id, NOW)
-            .unwrap()
-            .is_none()
-    );
+    assert!(w.canvases.get(&plan.canvas.summary.id).unwrap().is_none());
     assert!(w.canvases.list_folders().unwrap().is_empty());
 
     let w = world_with(refusing_trash);

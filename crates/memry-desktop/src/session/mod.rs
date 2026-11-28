@@ -17,6 +17,8 @@
 //! The session is synchronous: its methods block and the Tauri adapters call them from
 //! `spawn_blocking`.
 
+pub mod at_rest_key;
+mod headless;
 mod hooks;
 mod open;
 pub mod projection;
@@ -39,8 +41,10 @@ use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 
-pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
+pub use headless::{HeadlessOpen, open_headless};
+pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage, VaultMigrator};
 use hooks::{Hooks, run_with_deadline};
+pub(crate) use open::prepare_core_dir;
 use projection::{ProjectionRuntime, Projector};
 pub use repair::{CreateOrOpenError, RepairOutcome};
 use response::MovesRecovered;
@@ -51,6 +55,7 @@ use crate::error::{CoreError, FailureKind};
 use crate::registry::create::create_vault_folder;
 use crate::registry::vault_icon::{self, IconError};
 use crate::registry::{GetVaultsResponse, RegistryError, SandboxInfo, StoredVault, VaultRegistry};
+use crate::sync::first_sync_running::FirstSyncRunning;
 
 /// The Electron projection drain default, per hook.
 pub const HOOK_DEADLINE: Duration = Duration::from_secs(5);
@@ -150,6 +155,9 @@ pub struct OpenVault {
     pub name: String,
     pub vault: Arc<Vault>,
     pub search: Arc<Search>,
+    /// Whether this vault's first sync runs: sync holds it, the note index defers its search
+    /// reindex while it does (#5409).
+    pub first_sync: FirstSyncRunning,
 }
 
 /// What [`Session::open_startup`] did. `Failed` carries the error so the shell can offer
@@ -311,6 +319,36 @@ impl Session {
     /// The `Vault` is dropped only after all of them returned or overran.
     pub fn on_close(&self, name: &str, hook: CloseHook) {
         lock(&self.inner.hooks).close.push((name.to_owned(), hook));
+    }
+
+    /// Runs before every open creates `.memry/core` ([`VaultMigrator`]).
+    pub fn set_vault_migrator(&self, migrate: VaultMigrator) {
+        lock(&self.inner.hooks).migrate = Some(migrate);
+    }
+
+    fn vault_migrator(&self) -> Option<VaultMigrator> {
+        lock(&self.inner.hooks).migrate.clone()
+    }
+
+    /// [`Self::on_open`] and [`Self::on_close`] for a service that starts after the vault may
+    /// already be open: `open` also runs for the vault open now. Queued behind a running open,
+    /// close or switch, so no vault opens or closes in between; never call it from a hook.
+    pub fn attach_lifecycle(&self, name: &str, stage: OpenStage, open: OpenHook, close: CloseHook) {
+        let _queue = lock(&self.inner.lifecycle);
+        self.on_open(name, stage, Arc::clone(&open));
+        self.on_close(name, close);
+        if let Some(current) = self.current()
+            && let Err(error) = open(&current)
+        {
+            tracing::warn!(hook = name, %error, "a lifecycle hook failed on the open vault");
+        }
+    }
+
+    /// Runs `f` on the open vault, queued behind a running open, close or switch, so the vault
+    /// stays open until `f` returns. `None` when no vault is open; never call it from a hook.
+    pub fn with_current<T>(&self, f: impl FnOnce(&OpenVault) -> T) -> Option<T> {
+        let _queue = lock(&self.inner.lifecycle);
+        self.current().map(|open| f(&open))
     }
 
     /// Registered before a vault opens; each open starts a lane for it.
@@ -526,6 +564,8 @@ pub(crate) fn canonical(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod fixture;
+#[cfg(test)]
+mod headless_tests;
 #[cfg(test)]
 mod identity;
 #[cfg(test)]

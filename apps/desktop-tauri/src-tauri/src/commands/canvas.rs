@@ -1,11 +1,16 @@
-//! The canvas commands (`canvas:*` of `ipc/canvas-handlers.ts` but the asset and live-canvas
-//! ones), each one call of `memry_desktop::canvas::service`. Every write announces itself with
+//! The canvas commands (`canvas:*` of `ipc/canvas-handlers.ts`), each one call of
+//! `memry_desktop::canvas::service`, `canvas::assets` or `canvas::live`. Every write announces itself with
 //! Electron's payloads: [`CanvasCreatedEvent`], [`CanvasUpdatedEvent`], [`CanvasDeletedEvent`],
 //! and [`CanvasTooLargeEvent`] for a canvas saved here and held back from sync.
 
 use std::sync::Arc;
 
+use memry_desktop::canvas::assets::{
+    AssetError, CanvasUploadAssetInput, MemryAssetDescriptor, UploadedAsset,
+};
+use memry_desktop::canvas::folders::FolderError;
 use memry_desktop::canvas::library::{read_canvas_library, write_canvas_library};
+use memry_desktop::canvas::live::LiveCanvases;
 use memry_desktop::canvas::service::{
     CanvasCreateInput, CanvasError, CanvasService, CanvasSummaryView, CanvasUpdateInput,
     CanvasView, Update, Written,
@@ -13,7 +18,7 @@ use memry_desktop::canvas::service::{
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tauri::{AppHandle, Manager, Runtime, Wry};
+use tauri::{AppHandle, Manager, Runtime, Window, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
@@ -36,13 +41,24 @@ pub(crate) fn canvases<R: Runtime>(app: &AppHandle<R>) -> Result<CanvasService, 
     CanvasService::open(&open, store).map_err(|error| CommandError::from_core(&error))
 }
 
+/// A folder refusal fails as the folder commands do (`CANVAS_FOLDER_*`, `errors:canvasFolder.*`);
+/// any other refusal is `canvas_write_refused`, which the renderer shows as Electron's
+/// `canvas.actionFailed`. The English message stays for the logs.
 fn failed(error: CanvasError) -> CommandError {
-    match &error {
-        CanvasError::Storage(storage) => CommandError::from_core(storage),
-        _ => CommandError::new(
+    match error {
+        CanvasError::Storage(storage) => CommandError::from_core(&storage),
+        CanvasError::Folder(refused) => match FolderError::Refused(refused).refusal() {
+            Some((code, key)) => CommandError::new(ErrorKind::Invalid, code, key),
+            None => CommandError::new(
+                ErrorKind::Invalid,
+                "canvas_write_refused",
+                refused.to_string(),
+            ),
+        },
+        other => CommandError::new(
             ErrorKind::Invalid,
             "canvas_write_refused",
-            error.to_string(),
+            other.to_string(),
         ),
     }
 }
@@ -72,6 +88,8 @@ pub struct CanvasUpdateResponse {
     #[serde(flatten)]
     pub summary: CanvasSummaryView,
     pub too_large: bool,
+    /// The document's sha256 after the save: the saver's next `expectedSha256`.
+    pub sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -127,7 +145,7 @@ pub async fn canvas_get<R: Runtime>(
     id: String,
 ) -> Result<Option<CanvasView>, CommandError> {
     blocking("canvas_get", move || {
-        canvases(&app)?.get(&id, now_ms()).map_err(failed)
+        canvases(&app)?.get(&id).map_err(failed)
     })
     .await
 }
@@ -141,12 +159,13 @@ pub async fn canvas_update<R: Runtime>(
 ) -> Result<CanvasUpdateResponse, CommandError> {
     blocking("canvas_update", move || {
         let outcome = canvases(&app)?.update(&input, now_ms()).map_err(failed)?;
-        let (summary, too_large, conflict_copy) = match outcome {
+        let (summary, too_large, sha256, conflict_copy) = match outcome {
             Update::Saved {
                 summary,
                 too_large,
+                sha256,
                 conflict_copy,
-            } => (summary, too_large, conflict_copy),
+            } => (summary, too_large, sha256, conflict_copy),
             Update::Conflict => {
                 return Err(CommandError::new(
                     ErrorKind::Invalid,
@@ -179,7 +198,11 @@ pub async fn canvas_update<R: Runtime>(
                 },
             );
         }
-        Ok(CanvasUpdateResponse { summary, too_large })
+        Ok(CanvasUpdateResponse {
+            summary,
+            too_large,
+            sha256,
+        })
     })
     .await
 }
@@ -310,4 +333,150 @@ pub async fn canvas_library_save<R: Runtime>(
         Ok(CanvasLibrarySaveResponse { changed })
     })
     .await
+}
+
+/// `CanvasCanUploadAssetResponse`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CanvasCanUploadAssetResponse {
+    pub can_upload: bool,
+}
+
+/// `CanvasGetAssetResponse`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct CanvasGetAssetResponse {
+    #[serde(rename = "ref")]
+    pub reference: Option<String>,
+}
+
+/// `CanvasListAssetsResponse`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct CanvasListAssetsResponse {
+    pub assets: Vec<MemryAssetDescriptor>,
+}
+
+/// The `{ ok }` of `canvas:live-opened` and `canvas:live-closed`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct CanvasLiveAck {
+    pub ok: bool,
+}
+
+fn asset_failed(error: AssetError) -> CommandError {
+    match error {
+        AssetError::Storage(storage) => CommandError::from_core(&storage),
+        AssetError::Write(write) => CommandError::new(
+            ErrorKind::Invalid,
+            "canvas_write_refused",
+            write.to_string(),
+        ),
+        AssetError::UploadUnavailable => CommandError::new(
+            ErrorKind::Invalid,
+            "canvas_asset_upload_unavailable",
+            error.to_string(),
+        ),
+        AssetError::Escape => CommandError::new(
+            ErrorKind::Invalid,
+            "canvas_asset_refused",
+            error.to_string(),
+        ),
+    }
+}
+
+/// `canvas:upload-asset`: only bytes this vault already stores (a dedup hit); the upload of new
+/// bytes is 30f's.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_upload_asset<R: Runtime>(
+    app: AppHandle<R>,
+    input: CanvasUploadAssetInput,
+) -> Result<UploadedAsset, CommandError> {
+    blocking("canvas_upload_asset", move || {
+        canvases(&app)?
+            .upload_asset(&input, now_ms())
+            .map_err(asset_failed)
+    })
+    .await
+}
+
+/// `canvas:can-upload-asset`: `false` until the attachment upload lands (30f), Electron's answer
+/// with no sync. The editor then keeps new images inline in the scene.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_can_upload_asset() -> Result<CanvasCanUploadAssetResponse, CommandError> {
+    Ok(CanvasCanUploadAssetResponse { can_upload: false })
+}
+
+/// `canvas:get-asset`.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_get_asset<R: Runtime>(
+    app: AppHandle<R>,
+    canvas_id: String,
+    file_id: String,
+) -> Result<CanvasGetAssetResponse, CommandError> {
+    blocking("canvas_get_asset", move || {
+        let reference = canvases(&app)?
+            .asset_ref(&canvas_id, &file_id)
+            .map_err(|error| CommandError::from_core(&error))?;
+        Ok(CanvasGetAssetResponse { reference })
+    })
+    .await
+}
+
+/// `canvas:list-assets`.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_list_assets<R: Runtime>(
+    app: AppHandle<R>,
+    canvas_id: String,
+) -> Result<CanvasListAssetsResponse, CommandError> {
+    blocking("canvas_list_assets", move || {
+        let assets = canvases(&app)?
+            .list_assets(&canvas_id)
+            .map_err(|error| CommandError::from_core(&error))?;
+        Ok(CanvasListAssetsResponse { assets })
+    })
+    .await
+}
+
+fn live<R: Runtime>(app: &AppHandle<R>) -> tauri::State<'_, LiveCanvases> {
+    app.manage(LiveCanvases::default());
+    app.state::<LiveCanvases>()
+}
+
+/// The page of window `label` closed or started a new document: it has no canvas mounted any
+/// more (`forgetWindow`). Called from `release_page_resources`, which the window's `Destroyed`
+/// reaches; a reloaded editor opens its canvas again.
+pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    live(app).forget_window(label);
+}
+
+/// `canvas:live-opened`: the calling window now has the canvas in its editor.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_live_opened<R: Runtime>(
+    app: AppHandle<R>,
+    window: Window<R>,
+    canvas_id: String,
+) -> Result<CanvasLiveAck, CommandError> {
+    if canvas_id.is_empty() {
+        return Ok(CanvasLiveAck { ok: false });
+    }
+    live(&app).open(&canvas_id, window.label());
+    Ok(CanvasLiveAck { ok: true })
+}
+
+/// `canvas:live-closed`: only the window that owns the canvas releases it.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_live_closed<R: Runtime>(
+    app: AppHandle<R>,
+    window: Window<R>,
+    canvas_id: String,
+) -> Result<CanvasLiveAck, CommandError> {
+    if canvas_id.is_empty() {
+        return Ok(CanvasLiveAck { ok: false });
+    }
+    live(&app).close(&canvas_id, window.label());
+    Ok(CanvasLiveAck { ok: true })
 }

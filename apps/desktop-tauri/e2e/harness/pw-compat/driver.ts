@@ -2,7 +2,7 @@ import { EXPECT_TIMEOUT_MS } from '../budgets'
 import { HarnessError } from '../errors'
 import { sleep } from '../wait'
 import { INSTALL_SCRIPT } from './in-page.mjs'
-import { type KeyAction, pressActions, typeActions } from './keys'
+import { type KeyAction, heldFlags, pressActions, typeActions } from './keys'
 import { type LocatorSpec } from './selector-spec'
 
 /** The slice of a WebdriverIO browser the adapter drives. */
@@ -217,10 +217,18 @@ export class PageCore {
       { type: 'pointerDown', button: index },
       { type: 'pointerUp', button: index }
     ]).flat()
-    await this.pointer(
-      [{ type: 'pointerMove', x: Math.round(x), y: Math.round(y), origin: 'viewport' }, ...presses],
-      modifiers
-    )
+    if (modifiers.length > 0) await this.pw('hold', heldFlags(modifiers))
+    try {
+      await this.pointer(
+        [
+          { type: 'pointerMove', x: Math.round(x), y: Math.round(y), origin: 'viewport' },
+          ...presses
+        ],
+        modifiers
+      )
+    } finally {
+      if (modifiers.length > 0) await this.pw('hold', null)
+    }
     await this.pw('fixup', Math.round(x), Math.round(y), index, clickCount)
   }
 

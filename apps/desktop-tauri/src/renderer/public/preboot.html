@@ -1,25 +1,45 @@
 <!doctype html>
 <!--
-  The preboot and startup-error windows (`src-tauri/src/windows/preboot.rs`). The page carries no
-  script: the shell fills it with `eval` after load, which sets `data-view`, `lang`, `dir` and the
-  text of the `[data-slot]` elements.
+  The preboot and startup-error windows (`src-tauri/src/windows/preboot.rs`). The shell fills the
+  page with `eval` after load, which sets `data-view`, `lang`, `dir` and the text of the
+  `[data-slot]` elements. `preboot.js` drives the migration view only; the window gate lets the
+  `preboot` window reach its three `migration_*` commands and the `startup-error` window none.
 -->
 <html>
   <head>
     <meta charset="utf-8" />
     <style>
+      :root {
+        --canvas: #f6f5f0;
+        --ink: #1a1a1a;
+        --ink-rgb: 26, 26, 26;
+        /* 3.7:1 against the bar's track (WCAG 1.4.11); the dark scheme keeps the brand orange. */
+        --tint: #c2410c;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --canvas: #121212;
+          --ink: #bcbab6;
+          --ink-rgb: 188, 186, 182;
+          --tint: #f97316;
+        }
+      }
       html,
       body {
         margin: 0;
         height: 100%;
+      }
+      [hidden] {
+        display: none !important;
       }
       body {
         display: flex;
         align-items: center;
         justify-content: center;
         box-sizing: border-box;
-        background: #f6f5f0;
-        color: #191919;
+        background: var(--canvas);
+        color: var(--ink);
         font:
           14px -apple-system,
           BlinkMacSystemFont,
@@ -32,10 +52,12 @@
         display: none;
       }
       [data-view='preboot'] .preboot,
-      [data-view='error'] .error {
+      [data-view='error'] .error,
+      [data-view='migration'] .migration {
         display: block;
       }
-      [data-view='error'] body {
+      [data-view='error'] body,
+      [data-view='migration'] body {
         padding: 28px;
       }
       .preboot {
@@ -47,7 +69,7 @@
         height: 22px;
         margin: 0 auto 16px;
         border-radius: 50%;
-        border: 2px solid rgba(25, 25, 25, 0.15);
+        border: 2px solid rgba(var(--ink-rgb), 0.15);
         border-top-color: #ff671a;
         animation: spin 0.8s linear infinite;
       }
@@ -66,13 +88,28 @@
         margin-bottom: 6px;
       }
       .sub {
-        opacity: 0.55;
+        opacity: 0.75;
         font-size: 13px;
       }
       .error {
         max-width: 420px;
       }
-      .error .title {
+      /* Auto margins centre the view and, unlike `align-items: center`, never push a tall view
+         (a long translation) above the top, where the user could not scroll to it. */
+      [data-view='migration'] body {
+        align-items: flex-start;
+        overflow-y: auto;
+      }
+      .migration {
+        max-inline-size: 420px;
+        inline-size: 100%;
+        margin-block: auto;
+      }
+      .migration h1 {
+        margin: 0;
+      }
+      .error .title,
+      .migration .title {
         font-size: 16px;
         margin-bottom: 10px;
       }
@@ -87,24 +124,103 @@
           SFMono-Regular,
           Menlo,
           monospace;
-        opacity: 0.6;
-        background: rgba(25, 25, 25, 0.05);
+        opacity: 0.8;
+        background: rgba(var(--ink-rgb), 0.05);
         border-radius: 6px;
         padding: 10px;
         white-space: pre-wrap;
         word-break: break-word;
         max-height: 110px;
         overflow: auto;
+        text-align: start;
         -webkit-user-select: text;
         user-select: text;
       }
       .logs {
         margin-top: 10px;
         font-size: 12px;
-        opacity: 0.6;
+        opacity: 0.75;
         word-break: break-all;
         -webkit-user-select: text;
         user-select: text;
+      }
+      .migration .phase {
+        font-size: 13px;
+        opacity: 0.75;
+        margin-block-end: 8px;
+      }
+      .migration .bar {
+        block-size: 6px;
+        border-radius: 3px;
+        background: rgba(var(--ink-rgb), 0.12);
+        overflow: hidden;
+        margin-block-end: 14px;
+      }
+      .migration .fill {
+        block-size: 100%;
+        inline-size: 0;
+        background: var(--tint);
+        transition: inline-size 300ms ease-out;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .migration .fill {
+          transition: none;
+        }
+      }
+      .migration .note {
+        font-size: 13px;
+        opacity: 0.75;
+        line-height: 1.5;
+        margin-block-end: 12px;
+      }
+      .migration .check {
+        font-weight: 600;
+        font-size: 13px;
+        margin-block-end: 6px;
+      }
+      .migration .panel,
+      .migration .actions {
+        display: none;
+      }
+      [data-state='failed'] .migration .panel,
+      [data-state='failed'] .migration .actions {
+        display: block;
+      }
+      [data-state='failed'] .migration .bar {
+        display: none;
+      }
+      .migration .actions {
+        margin-block-start: 14px;
+      }
+      .migration button {
+        block-size: 36px;
+        padding-inline: 16px;
+        margin-inline-end: 8px;
+        border-radius: 8px;
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        color: var(--canvas);
+      }
+      .migration button.secondary {
+        background: transparent;
+        color: var(--ink);
+        border-color: rgba(var(--ink-rgb), 0.45);
+      }
+      .migration button:focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: 2px;
+      }
+      .migration button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .migration .missing {
+        margin-block-start: 8px;
+        font-size: 13px;
+        opacity: 0.75;
       }
     </style>
   </head>
@@ -120,5 +236,35 @@
       <div class="details" dir="ltr" data-slot="details"></div>
       <div class="logs" data-slot="logs"></div>
     </div>
+    <div class="view migration">
+      <h1 class="title" id="migration-title" data-slot="title"></h1>
+      <div class="phase" data-slot="phase" aria-live="polite" hidden></div>
+      <div
+        class="bar"
+        role="progressbar"
+        aria-labelledby="migration-title"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      >
+        <div class="fill"></div>
+      </div>
+      <div class="body" id="migration-body" data-slot="body"></div>
+      <div class="note" data-slot="note" hidden></div>
+      <div class="panel" role="alert">
+        <div class="check" id="migration-check" data-slot="check-line" hidden></div>
+        <div class="details" dir="ltr" data-slot="details" hidden></div>
+      </div>
+      <div class="actions">
+        <button
+          type="button"
+          data-slot="retry"
+          aria-describedby="migration-body migration-check"
+        ></button>
+        <button type="button" class="secondary" data-slot="show-details"></button>
+        <div class="missing" data-slot="report-missing" role="status" hidden></div>
+      </div>
+    </div>
+    <script src="preboot.js"></script>
   </body>
 </html>

@@ -161,6 +161,7 @@ fn coordinator_sealing(
         db.clone(),
         Declaration::subscribed(),
         sealer,
+        "device-a",
     )
 }
 

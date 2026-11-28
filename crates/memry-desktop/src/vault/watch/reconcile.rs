@@ -248,6 +248,20 @@ impl Reconciler {
         self.reported.remove(rel);
     }
 
+    /// A consumer gave the file reported new at `rel` the note `note_id` ([`Reported::name`]).
+    pub fn named(&mut self, rel: &str, note_id: &str) {
+        // Invariant: a report names a note only while that note's row is at the report's path,
+        // or has no row (its going makes the file new again, #5579). The word can land late,
+        // after the row moved away and another file appeared at `rel` (#5423 OL-F12): stamping
+        // that file would send its edits into the moved note. A failed read stamps nothing.
+        match self.files.by_id(note_id) {
+            Ok(Some(row)) if row.path != rel => return,
+            Ok(_) => {}
+            Err(error) => return self.storage_failed(&error),
+        }
+        self.reported.name(rel, note_id);
+    }
+
     /// The root itself was touched: if it is gone the vault is away.
     pub fn check_reachable(&mut self) {
         if !is_vault_reachable(&self.root) {

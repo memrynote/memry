@@ -17,6 +17,7 @@
       "filterAll": "Sve datoteke"
     },
     "exportCancelled": "Izvoz otkazan",
+    "exportVaultChanged": "Dok ste birali gdje spremiti, otvoren je drugi trezor. Ponovno izvezite bilješku.",
     "dataDbRecovery": {
       "title": "Popravi bazu podataka trezora",
       "message": "Memryjeva baza podataka za ovaj trezor je oštećena.",
@@ -89,5 +90,53 @@
     },
     "logFolder": "Zapisnici: {path}",
     "reloaded": "MemryNote se ponovno učitao nakon rušenja. Nedavne izmjene možda su izgubljene."
+  },
+  "migration": {
+    "running": {
+      "title": "Premještanje vaših podataka",
+      "note": "Ovo se događa samo jednom. Ostavite MemryNote otvoren dok ne završi."
+    },
+    "phase": {
+      "preparing": "Priprema…",
+      "secrets": "Premještanje vaših tajni…",
+      "vault": "Premještanje trezora {current} od {total}…",
+      "checking": "Provjera vaših podataka…"
+    },
+    "failed": {
+      "title": "Vaši podaci nisu premješteni",
+      "note": "Ništa nije izgubljeno. Prethodna aplikacija MemryNote i njezini podaci nisu promijenjeni.",
+      "check": "Neuspjela provjera: {check}",
+      "electronRunning": "Prethodna aplikacija MemryNote još je otvorena. Zatvorite je pa pokušajte ponovno.",
+      "diskSpace": "Nema dovoljno slobodnog prostora na disku za premještanje podataka. Oslobodite prostor pa pokušajte ponovno.",
+      "electronSchema": "Prethodna aplikacija MemryNote nije dovršila ažuriranje trezora. Ažurirajte tu aplikaciju, jednom otvorite trezor u njoj, zatvorite je pa pokušajte ponovno.",
+      "sharedStore": "Neki trezori dijele istu povijest sinkronizacije pa se ne mogu premjestiti. Za njih i dalje koristite prethodnu aplikaciju MemryNote.",
+      "vaultUnreachable": "Trezor se trenutačno ne može pročitati. Provjerite je li njegov disk povezan pa pokušajte ponovno.",
+      "secrets": "Neki spremljeni podaci za prijavu nisu se mogli pročitati. Pokušajte ponovno. Ako se to nastavi, provjerite je li privjesak ključeva otključan.",
+      "verification": "Provjera premještenih podataka nije prošla pa je MemryNote sve ostavio kako je bilo.",
+      "notReady": "Ova verzija aplikacije MemryNote još ne može premjestiti podatke ovog trezora. Vaši su podaci i dalje u prethodnoj aplikaciji MemryNote. Nastavite je koristiti i ažurirajte MemryNote da biste pokušali ponovno.",
+      "io": "Datoteka se nije mogla pročitati ili zapisati tijekom premještanja podataka. Provjerite ima li na disku slobodnog prostora i mogu li se mape vaših trezora zapisivati, pa pokušajte ponovno.",
+      "sourceChanged": "Prethodna aplikacija MemryNote promijenila je svoje podatke tijekom premještanja. Zatvorite je pa pokušajte ponovno.",
+      "coreFileExists": "Trezor već sadrži podatke iz ove verzije MemryNotea pa nije zamijenjen. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "malformedRow": "Dio podataka prethodne aplikacije u obliku je koji se ne može premjestiti. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "deleteWithoutDevice": "Brisanje u jednom trezoru još nije sinkronizirano. Otvorite prethodnu aplikaciju MemryNote, pustite je da završi sinkronizaciju, zatvorite je pa pokušajte ponovno.",
+      "deviceKeyMismatch": "Ključ uređaja prethodne aplikacije ne odgovara registraciji sinkronizacije ovog uređaja pa vaša prijava nije premještena. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "keyVerifierMismatch": "Ključ šifriranja prethodne aplikacije ne odgovara vašem računu pa vaša prijava nije premještena. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "targetOccupied": "Ova verzija MemryNotea već je prijavljena pa prijava prethodne aplikacije nije premještena preko nje. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti."
+    },
+    "done": {
+      "title": "Vaši podaci su spremni",
+      "body": "Otvaranje MemryNotea…"
+    },
+    "retry": "Pokušaj ponovno",
+    "showDetails": "Prikaži pojedinosti",
+    "reportMissing": "Izvješća još nema.",
+    "completed": {
+      "title": "Vaši podaci su u ovoj verziji",
+      "body": "Vaše bilješke, postavke i prijava sada su u ovoj verziji MemryNotea. Podaci prethodne aplikacije ostaju netaknuti u {path}."
+    },
+    "notice": {
+      "title": "Promjene u prethodnoj aplikaciji",
+      "body": "Trezor je promijenjen u prethodnoj aplikaciji MemryNote nakon premještanja u ovu verziju. Te promjene nisu ovdje: ostaju u podacima prethodne aplikacije u {path}. Sinkronizirane promjene stižu sinkronizacijom."
+    }
   }
 }

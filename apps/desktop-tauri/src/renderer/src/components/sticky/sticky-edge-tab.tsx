@@ -4,6 +4,7 @@ import { useT } from '@memry/i18n/renderer'
 import { Plus, StickyNote } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
+import { stickyService } from '@/services/sticky-service'
 
 const log = createLogger('Component:StickyEdgeTab')
 
@@ -27,7 +28,7 @@ export function StickyEdgeTab(): React.JSX.Element {
   const load = useCallback(async () => {
     try {
       const [list, settings] = await Promise.all([
-        window.api.sticky.listDrafts(),
+        stickyService.listDrafts(),
         window.api.settings.getStickySettings()
       ])
       setDrafts(list)
@@ -40,12 +41,12 @@ export function StickyEdgeTab(): React.JSX.Element {
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect -- IPC read on mount and on drafts-changed subscription
     void load()
-    return window.api.sticky.onDraftsChanged(() => void load())
+    return stickyService.onDraftsChanged(() => void load())
   }, [load])
 
   const peek = (open: boolean): void => {
     setPeeking(open)
-    void window.api.sticky.peek(open)
+    stickyService.peek(open).catch((err: unknown) => log.error('Failed to peek the edge tab', err))
   }
 
   const tab = (
@@ -110,5 +111,7 @@ export function StickyEdgeTab(): React.JSX.Element {
 }
 
 function unfold(draftId: string | null): void {
-  void window.api.sticky.unfold(draftId)
+  stickyService
+    .unfold(draftId)
+    .catch((err: unknown) => log.error('Failed to unfold the sticky', err))
 }

@@ -17,6 +17,7 @@
       "filterAll": "Všetky súbory"
     },
     "exportCancelled": "Export zrušený",
+    "exportVaultChanged": "Počas výberu miesta na uloženie bol otvorený iný trezor. Exportujte poznámku znova.",
     "dataDbRecovery": {
       "title": "Oprava databázy trezora",
       "message": "Databáza Memry pre tento trezor je poškodená.",
@@ -89,5 +90,53 @@
     },
     "logFolder": "Denníky: {path}",
     "reloaded": "MemryNote sa po páde znova načítal. Nedávne úpravy sa mohli stratiť."
+  },
+  "migration": {
+    "running": {
+      "title": "Presúvanie vašich údajov",
+      "note": "Stane sa to len raz. Nechajte MemryNote otvorený, kým sa to neskončí."
+    },
+    "phase": {
+      "preparing": "Príprava…",
+      "secrets": "Presúvanie vašich tajných údajov…",
+      "vault": "Presúvanie trezoru {current} z {total}…",
+      "checking": "Kontrola vašich údajov…"
+    },
+    "failed": {
+      "title": "Vaše údaje neboli presunuté",
+      "note": "Nič sa nestratilo. Predchádzajúca aplikácia MemryNote a jej údaje sú bez zmeny.",
+      "check": "Neúspešná kontrola: {check}",
+      "electronRunning": "Predchádzajúca aplikácia MemryNote je stále otvorená. Ukončite ju a skúste to znova.",
+      "diskSpace": "Na disku nie je dosť voľného miesta na presun vašich údajov. Uvoľnite miesto a skúste to znova.",
+      "electronSchema": "Predchádzajúca aplikácia MemryNote nedokončila aktualizáciu trezoru. Aktualizujte túto aplikáciu, raz v nej otvorte trezor, ukončite ju a skúste to znova.",
+      "sharedStore": "Niektoré trezory zdieľajú jednu históriu synchronizácie, a preto ich nemožno presunúť. Pre ne naďalej používajte predchádzajúcu aplikáciu MemryNote.",
+      "vaultUnreachable": "Trezor sa teraz nedá prečítať. Skontrolujte, či je jeho disk pripojený, a skúste to znova.",
+      "secrets": "Niektoré uložené prihlasovacie údaje sa nepodarilo prečítať. Skúste to znova. Ak sa to opakuje, skontrolujte, či je kľúčenka odomknutá.",
+      "verification": "Kontrola presunutých údajov neprešla, preto MemryNote nechal všetko tak, ako bolo.",
+      "notReady": "Táto verzia MemryNote zatiaľ nedokáže presunúť údaje tohto trezoru. Vaše údaje sú stále v predchádzajúcej aplikácii MemryNote. Naďalej ju používajte a aktualizujte MemryNote, aby ste to mohli skúsiť znova.",
+      "io": "Počas presunu údajov sa nepodarilo prečítať alebo zapísať súbor. Skontrolujte, či je na disku voľné miesto a či sa dá zapisovať do priečinkov vašich trezorov, a skúste to znova.",
+      "sourceChanged": "Predchádzajúca aplikácia MemryNote počas presunu zmenila svoje údaje. Ukončite ju a skúste to znova.",
+      "coreFileExists": "Trezor už obsahuje údaje z tejto verzie MemryNote, preto nebol nahradený. Ďalej používajte predchádzajúcu aplikáciu a pošlite podpore správu z „Zobraziť podrobnosti“.",
+      "malformedRow": "Časť údajov predchádzajúcej aplikácie je v tvare, ktorý sa nedá presunúť. Ďalej používajte predchádzajúcu aplikáciu a pošlite podpore správu z „Zobraziť podrobnosti“.",
+      "deleteWithoutDevice": "Odstránenie v jednom trezore ešte nie je synchronizované. Otvorte predchádzajúcu aplikáciu MemryNote, nechajte ju dokončiť synchronizáciu, ukončite ju a skúste to znova.",
+      "deviceKeyMismatch": "Kľúč zariadenia predchádzajúcej aplikácie nezodpovedá registrácii synchronizácie tohto zariadenia, preto prihlásenie nebolo presunuté. Ďalej používajte predchádzajúcu aplikáciu a pošlite podpore správu z „Zobraziť podrobnosti“.",
+      "keyVerifierMismatch": "Šifrovací kľúč predchádzajúcej aplikácie nezodpovedá vášmu účtu, preto prihlásenie nebolo presunuté. Ďalej používajte predchádzajúcu aplikáciu a pošlite podpore správu z „Zobraziť podrobnosti“.",
+      "targetOccupied": "Táto verzia MemryNote je už prihlásená, preto prihlásenie predchádzajúcej aplikácie nebolo presunuté cez ňu. Ďalej používajte predchádzajúcu aplikáciu a pošlite podpore správu z „Zobraziť podrobnosti“."
+    },
+    "done": {
+      "title": "Vaše údaje sú pripravené",
+      "body": "Otvára sa MemryNote…"
+    },
+    "retry": "Skúsiť znova",
+    "showDetails": "Zobraziť podrobnosti",
+    "reportMissing": "Zatiaľ neexistuje žiadna správa.",
+    "completed": {
+      "title": "Vaše údaje sú v tejto verzii",
+      "body": "Vaše poznámky, nastavenia a prihlásenie sú teraz v tejto verzii MemryNote. Údaje predchádzajúcej aplikácie zostávajú nedotknuté v {path}."
+    },
+    "notice": {
+      "title": "Zmeny v predchádzajúcej aplikácii",
+      "body": "Trezor sa zmenil v predchádzajúcej aplikácii MemryNote po presune do tejto verzie. Tieto zmeny tu nie sú: zostávajú v údajoch predchádzajúcej aplikácie v {path}. Synchronizované zmeny prídu cez synchronizáciu."
+    }
   }
 }

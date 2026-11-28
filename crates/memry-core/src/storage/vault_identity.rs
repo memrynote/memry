@@ -1,9 +1,10 @@
 //! The vault's identity: one UUID v4 in `meta.vault.id`, minted once, read on every open.
 //!
-//! It is stamped into synced records (a canvas carries it as `vaultId`), so it must not
-//! depend on where the folder lives: a path-derived id changed when the folder was renamed or
-//! moved. Desktop's Electron build keeps the same kind of per-database id
-//! (`getOrCreateVaultUuid`), so canvases filter the same way on both.
+//! An unbound vault stamps it into synced records (a canvas carries it as `vaultId`), so it
+//! must not depend on where the folder lives: a path-derived id changed when the folder was
+//! renamed or moved. Once the vault is bound to a server vault, records state the server id
+//! instead and list under either (`sync::server_vault::RecordVault`, #5505), as Electron's adopted
+//! `getOrCreateVaultUuid` does.
 //!
 //! **Never overwritten.** A present value is the id, whatever it holds; an empty or
 //! malformed one is an error, not a reason to mint over it (a second id would orphan every
@@ -55,15 +56,34 @@ fn is_uuid(value: &str) -> bool {
             .all(|g| g.bytes().all(|c| c.is_ascii_hexdigit()))
 }
 
+/// The stored id, or `None` before the first mint.
+pub(crate) fn read(conn: &Connection) -> Result<Option<String>, StorageError> {
+    conn.query_row("SELECT value FROM meta WHERE key = ?1", [KEY], |row| {
+        row.get::<_, String>(0)
+    })
+    .optional()
+    .map_err(failed)
+}
+
+/// The Electron import's write into a fresh staged database: Electron's `vault_metadata` uuid,
+/// byte for byte, so the canvases and agent records that carry it stay this vault's. A value
+/// that is not a UUID is refused here rather than by every later open.
+pub(crate) fn write_imported(conn: &Connection, id: &str) -> Result<(), StorageError> {
+    if !is_uuid(id) {
+        return Err(StorageError::Failed {
+            what: "the Electron vault uuid is not a UUID".to_owned(),
+        });
+    }
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+        params![KEY, id],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
 /// The vault's id, minted on first use. Call after migrations, on the writer.
 pub fn resolve(conn: &mut Connection) -> Result<String, StorageError> {
-    let read = |conn: &Connection| -> Result<Option<String>, StorageError> {
-        conn.query_row("SELECT value FROM meta WHERE key = ?1", [KEY], |row| {
-            row.get::<_, String>(0)
-        })
-        .optional()
-        .map_err(failed)
-    };
     if read(conn)?.is_none() {
         conn.execute(
             "INSERT OR IGNORE INTO meta (key, value) VALUES (?1, ?2)",

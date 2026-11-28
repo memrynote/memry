@@ -72,6 +72,7 @@ fn reads_the_checked_values_from_a_copy_and_leaves_the_vault_byte_identical() {
             device_id: Some("me".to_owned()),
             device_public_key: Some("my-key=".to_owned()),
             inline_ai_reenter: true,
+            ledger: None,
         }
     );
     assert_eq!(
@@ -108,4 +109,51 @@ fn a_vault_without_a_database_has_no_evidence() {
         None
     );
     assert!(!vault.path().join(".memry").exists());
+}
+
+/// Electron reads only the `singleton` row (`vault-adoption.ts:24-28`); a row before it in the
+/// table is never the vault's id.
+#[test]
+fn the_vault_id_is_the_singleton_row_s_and_no_other() {
+    let scratch = tempfile::tempdir().unwrap();
+    let vault = tempfile::tempdir().unwrap();
+    let _writer = electron_vault(
+        vault.path(),
+        SCHEMA,
+        "INSERT INTO vault_metadata VALUES ('aaa-older', 'not-the-vault', 1, 1);
+         INSERT INTO vault_metadata VALUES ('singleton', 'vault-uuid-1', 1, 1);",
+    );
+    let evidence = read_vault_evidence(vault.path(), scratch.path())
+        .unwrap()
+        .unwrap();
+    assert_eq!(evidence.vault_id.as_deref(), Some("vault-uuid-1"));
+
+    let other = tempfile::tempdir().unwrap();
+    let _writer = electron_vault(
+        other.path(),
+        SCHEMA,
+        "INSERT INTO vault_metadata VALUES ('aaa-older', 'not-the-vault', 1, 1);",
+    );
+    let evidence = read_vault_evidence(other.path(), scratch.path())
+        .unwrap()
+        .unwrap();
+    assert_eq!(evidence.vault_id, None);
+}
+
+#[test]
+fn a_singleton_uuid_that_is_not_utf8_text_fails_naming_the_row() {
+    let scratch = tempfile::tempdir().unwrap();
+    for value in ["CAST(X'FF00' AS TEXT)", "X'0102'", "42"] {
+        let vault = tempfile::tempdir().unwrap();
+        let _writer = electron_vault(
+            vault.path(),
+            "CREATE TABLE vault_metadata (id TEXT PRIMARY KEY, vault_uuid);",
+            &format!("INSERT INTO vault_metadata VALUES ('singleton', {value});"),
+        );
+        let error = read_vault_evidence(vault.path(), scratch.path()).unwrap_err();
+        assert!(
+            error.to_string().contains("vault_metadata row 'singleton'"),
+            "{value}: {error}"
+        );
+    }
 }

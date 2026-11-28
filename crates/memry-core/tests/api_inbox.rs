@@ -12,6 +12,7 @@ use http_fakes::FakeSecureStore;
 use memry_core::api::inbox::Inbox;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
+use memry_core::domain::inbox::enrich::VoiceMemoName;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::storage::repositories::sync_items;
 use serde_json::Value;
@@ -119,6 +120,95 @@ fn a_voice_memo_is_titled_and_transcribed() {
     assert_eq!(stats.reviewable, 1);
 }
 
+/// Desktop's transcription writes (`transcription.ts`): the run clears the last failure, a
+/// failure keeps its reason in `processingError`, and the transcript names a memo that still has
+/// its default title as `memoNameMode` says.
+#[test]
+fn desktop_transcription_writes_keep_the_failure_and_follow_the_memo_name_mode() {
+    let (vault, inbox) = open();
+    let memo = |name: &str| {
+        let id = inbox.new_id();
+        let path = format!("attachments/inbox/{id}/voice-memo.wav");
+        inbox
+            .capture_voice(
+                id.clone(),
+                7.0,
+                "wav".into(),
+                10,
+                path,
+                vec![],
+                Some("pending".into()),
+                None,
+            )
+            .expect("capture");
+        if name != "Voice memo (0:07)" {
+            inbox.rename(id.clone(), name.into()).expect("rename");
+        }
+        id
+    };
+
+    let id = memo("Voice memo (0:07)");
+    let failed = inbox
+        .fail_transcription(
+            id.clone(),
+            "Rate limit exceeded. Please try again later.".into(),
+        )
+        .expect("failed");
+    assert_eq!(failed.transcription_status.as_deref(), Some("failed"));
+    assert_eq!(
+        payload(&vault, &id)["processingError"],
+        "Rate limit exceeded. Please try again later."
+    );
+    inbox
+        .start_transcription(id.clone(), "processing".into())
+        .expect("started");
+    assert_eq!(payload(&vault, &id)["transcriptionStatus"], "processing");
+    assert_eq!(payload(&vault, &id)["processingError"], Value::Null);
+    inbox
+        .fail_transcription(id.clone(), "late".into())
+        .expect("failed");
+    let done = inbox
+        .complete_transcription(
+            id.clone(),
+            "Call the bank. Then lunch.".into(),
+            VoiceMemoName::Keep,
+        )
+        .expect("complete");
+    assert_eq!(done.title, "Voice memo (0:07)");
+    assert_eq!(
+        done.transcription.as_deref(),
+        Some("Call the bank. Then lunch.")
+    );
+    assert_eq!(done.transcription_status.as_deref(), Some("complete"));
+    assert_eq!(payload(&vault, &id)["processingError"], Value::Null);
+
+    let id = memo("Voice memo");
+    let named = inbox
+        .complete_transcription(
+            id,
+            "Call the bank. Then lunch.".into(),
+            VoiceMemoName::Transcript,
+        )
+        .expect("complete");
+    assert_eq!(named.title, "Call the bank.");
+
+    let id = memo("Voice memo (0:07)");
+    let stamped = VoiceMemoName::Title("Voice memo 2026-11-17 09:05".into());
+    let named = inbox
+        .complete_transcription(id, "Call the bank.".into(), stamped.clone())
+        .expect("complete");
+    assert_eq!(named.title, "Voice memo 2026-11-17 09:05");
+
+    // A title the user chose is never replaced.
+    let id = memo("Dentist");
+    for name in [VoiceMemoName::Transcript, stamped] {
+        let kept = inbox
+            .complete_transcription(id.clone(), "Call the bank.".into(), name)
+            .expect("complete");
+        assert_eq!(kept.title, "Dentist");
+    }
+}
+
 #[test]
 fn text_captures_file_and_convert_through_the_surface() {
     let (_vault, inbox) = open();
@@ -180,4 +270,47 @@ fn the_review_reminder_reads_desktops_defaults_and_writes_the_synced_keys() {
         .expect("settings");
     assert_eq!(payload["settings"]["inbox"]["reviewReminderTime"], "07:30");
     assert!(payload["fieldClocks"]["inbox.reviewReminderEnabled"].is_object());
+}
+
+#[test]
+fn a_link_preview_stores_its_hero_as_the_thumbnail_in_the_same_write() {
+    let (vault, inbox) = open();
+    let link = inbox
+        .capture_link("https://example.com/post".into(), None, false)
+        .expect("capture")
+        .item;
+    let outside = inbox.complete_link_with_thumbnail(
+        link.id.clone(),
+        Some("Post".into()),
+        None,
+        r#"{"fetchStatus":"complete"}"#.into(),
+        Some("attachments/inbox/other/thumbnail.png".into()),
+    );
+    assert!(outside.is_err(), "a hero outside the capture's folder");
+    assert_eq!(
+        inbox
+            .get(link.id.clone())
+            .expect("get")
+            .expect("item")
+            .processing_status
+            .as_deref(),
+        Some("pending"),
+        "a refused hero writes nothing"
+    );
+    let hero = format!("attachments/inbox/{}/thumbnail.png", link.id);
+    let done = inbox
+        .complete_link_with_thumbnail(
+            link.id.clone(),
+            Some("Post".into()),
+            Some("About it.".into()),
+            r#"{"url":"https://example.com/post","fetchStatus":"complete"}"#.into(),
+            Some(hero.clone()),
+        )
+        .expect("complete");
+    assert_eq!(done.thumbnail_path.as_deref(), Some(hero.as_str()));
+    assert_eq!(done.title, "Post");
+    assert_eq!(done.processing_status.as_deref(), Some("complete"));
+    let pushed = payload(&vault, &link.id);
+    assert_eq!(pushed["thumbnailPath"], Value::from(hero));
+    assert_eq!(pushed["processingStatus"], "complete");
 }

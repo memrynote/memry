@@ -579,7 +579,10 @@
       "journalOff": "Naka-off ang Talaarawan sa Mga setting.",
       "sendFailed": "Hindi naipadala ang sticky.",
       "undoExpired": "Huli na para i-undo ito.",
-      "undoFailed": "Hindi na-undo ang pagpapadala."
+      "undoFailed": "Hindi na-undo ang pagpapadala.",
+      "journalBusy": "Sine-save pa ang entry sa talaarawan ngayong araw. Subukang muli maya-maya.",
+      "folderExcluded": "Naka-exclude ang folder na Sticky. Alisin ito sa mga naka-exclude na folder sa Mga setting para makapagpadala ng mga tala.",
+      "projectMissing": "Hindi umiiral ang proyekto ng gawaing ito. Pumili ng default na proyekto sa Mga setting, o ipadala ito bilang tala."
     },
     "inputLabel": "Teksto ng sticky",
     "dismissError": "Isara"

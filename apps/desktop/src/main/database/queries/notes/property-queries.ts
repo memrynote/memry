@@ -11,7 +11,7 @@ import {
 } from '@memry/db-schema/schema/notes-cache'
 import type { PropertyNoteUsage, PropertyUsage } from '@memry/contracts/properties-api'
 import type { IndexDb } from '../../types'
-import { serializeValue, deserializeValue } from './query-helpers'
+import { serializeValue, deserializeValue, fileValueOf } from './query-helpers'
 import { setPropertyRefs } from './property-ref-queries'
 import { resolvePropertyType, valueFitsType } from '@main/vault/property-type'
 
@@ -25,11 +25,25 @@ export interface PropertyValue {
   type: PropertyType
 }
 
+/**
+ * Where a note's property values come from: `file` when parsed from its
+ * frontmatter, `wire` for any other writer (a sync payload, a UI edit that
+ * does not go through the file).
+ */
+export type PropertyValueSource = 'file' | 'wire'
+
+/**
+ * Replaces a note's property rows. `yaml_string` records only what a parsed
+ * file said; values from the wire or the UI carry no YAML type, because the
+ * wire turns a date and a list into text (REVIEW-5738). Their rows leave it
+ * NULL and read back as rows older builds wrote.
+ */
 export function setNoteProperties(
   db: IndexDb,
   noteId: string,
   properties: Record<string, unknown>,
-  getType: (name: string, value: unknown) => PropertyType
+  getType: (name: string, value: unknown) => PropertyType,
+  source: PropertyValueSource
 ): void {
   db.delete(noteProperties).where(eq(noteProperties.noteId, noteId)).run()
 
@@ -43,7 +57,8 @@ export function setNoteProperties(
         noteId,
         name,
         value: serializeValue(value),
-        type
+        type,
+        yamlString: source === 'file' ? typeof value === 'string' : null
       }
     })
     db.insert(noteProperties).values(propertyRecords).run()
@@ -80,21 +95,48 @@ export function setNotePropertyType(
     .run()
 }
 
-export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
-  const results = db
+function notePropertyRows(db: IndexDb, noteId: string) {
+  return db
     .select()
     .from(noteProperties)
     .where(eq(noteProperties.noteId, noteId))
     .orderBy(sql`rowid`)
     .all()
+}
 
-  return results.map((row) => ({
+export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
+  return notePropertyRows(db, noteId).map((row) => ({
     name: row.name,
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     value: deserializeValue(row.value, row.type as PropertyType),
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     type: row.type as PropertyType
   }))
+}
+
+/**
+ * A note's properties as its file holds them, for a header rebuilt from the
+ * index (#5558). `getNoteProperties` keeps the text the properties panel shows
+ * instead. A row stores a date or a list as text, so a quoted string that
+ * spells one reads back as the date or the list: a value in `file` that stores
+ * as the row's text is taken as it is, keeping its YAML type, and a row that
+ * records a string (`yamlString`) stays that string. A row older builds wrote
+ * records neither (#5721).
+ */
+export function getNoteFileProperties(
+  db: IndexDb,
+  noteId: string,
+  file: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return Object.fromEntries(
+    notePropertyRows(db, noteId).map((row) => {
+      const own = Object.hasOwn(file, row.name) ? file[row.name] : undefined
+      if (own !== undefined && serializeValue(own) === row.value) return [row.name, own]
+      if (row.yamlString) return [row.name, row.value]
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
+      return [row.name, fileValueOf(row.value, row.type as PropertyType)]
+    })
+  )
 }
 
 export function getNotePropertiesAsRecord(db: IndexDb, noteId: string): Record<string, unknown> {

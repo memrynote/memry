@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+
+PackageIdentifier: MemryNote.MemryNote
+PackageVersion: 2026.1111.1
+PackageLocale: en-US
+Publisher: memrynote
+PublisherUrl: https://memrynote.com/
+PublisherSupportUrl: https://github.com/memrynote/memry/issues
+PrivacyUrl: https://memrynote.com/privacy
+PackageName: MemryNote
+PackageUrl: https://memrynote.com/
+License: AGPL-3.0
+LicenseUrl: https://github.com/memrynote/memry/blob/main/LICENSE
+ShortDescription: Notes, tasks, journal and calendar in one app, with notes stored as Markdown files and end-to-end encrypted sync.
+Description: |-
+  MemryNote is a desktop app for notes, tasks, a daily journal and a calendar.
+  Your vault is a folder of Markdown files on your own disk, so any editor can open it.
+  The app works offline and needs no account.
+  Sync between devices is optional and paid, and every change is encrypted on your device before upload.
+  The apps are open source under AGPL-3.0.
+Moniker: memrynote
+Tags:
+  - calendar
+  - e2ee
+  - encryption
+  - journal
+  - kanban
+  - local-first
+  - markdown
+  - notes
+  - pkm
+  - privacy
+  - tasks
+ReleaseNotesUrl: https://github.com/memrynote/memry/releases/tag/v2026-11-11
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

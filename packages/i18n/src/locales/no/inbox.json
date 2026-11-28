@@ -579,7 +579,10 @@
       "journalOff": "Journal er slått av i Innstillinger.",
       "sendFailed": "Kunne ikke sende stickyen.",
       "undoExpired": "Det er for sent å angre dette.",
-      "undoFailed": "Kunne ikke angre sendingen."
+      "undoFailed": "Kunne ikke angre sendingen.",
+      "journalBusy": "Dagens journaloppføring lagres fortsatt. Prøv igjen om litt.",
+      "folderExcluded": "Mappen Sticky er ekskludert. Fjern den fra de ekskluderte mappene i Innstillinger for å sende notater.",
+      "projectMissing": "Prosjektet til denne oppgaven finnes ikke. Velg et standardprosjekt i Innstillinger, eller send den som et notat."
     },
     "inputLabel": "Sticky-tekst",
     "dismissError": "Lukk"

@@ -21,6 +21,12 @@ vi.mock('@/services/calendar-service', () => ({
   }
 }))
 
+// The `{ key, value }` change the ported subscription hands its listeners, driven below.
+vi.mock('@/services/settings-service', () => ({
+  onSettingsChanged: (callback: (change: { key: string; value: unknown }) => void) =>
+    window.api.onSettingsChanged(callback)
+}))
+
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { clockFormat: '24h' } })
 }))

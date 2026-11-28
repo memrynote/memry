@@ -100,16 +100,16 @@ Quick-add speaks the same shorthand as the note editor, so a marker means the sa
 Ship the beta @next friday !high +Memry #launch [[Roadmap]] every 2 weeks
 ```
 
-| Marker    | Sets          | Notes                                                              |
-| --------- | ------------- | ------------------------------------------------------------------ |
-| `@…`      | Due date      | Any phrase from [Natural Language Dates](#natural-language-dates)  |
-| `!…`      | Priority      | `!urgent`, `!high`, `!medium`, `!low` — `!u`, `!h`, `!m`, `!l` too |
-| `+…`      | Project       | `+work`, `+Personal`, `+project-alpha`                             |
-| `#…`      | Tag           | Every `#tag` counts, so a task can take several                    |
-| `[[…]]`   | A linked note | Opens a note picker as you type                                    |
-| `every …` | Repeat        | See [Repeats](#repeats)                                            |
+| Marker    | Sets          | Notes                                                                   |
+| --------- | ------------- | ----------------------------------------------------------------------- |
+| `@…`      | Due date      | Any phrase from [Natural Language Dates](#natural-language-dates)       |
+| `!…`      | Priority      | `!urgent`, `!high`, `!medium`, `!low` — `!u`, `!h`, `!m`, `!l` too      |
+| `+…`      | Project       | `+work`, `+Personal`, `+project-alpha`                                  |
+| `#…`      | Tag           | Every `#tag` counts, in any language: `#launch`, `#프로젝트`, `#2024년` |
+| `[[…]]`   | A linked note | Opens a note picker as you type                                         |
+| `every …` | Repeat        | See [Repeats](#repeats)                                                 |
 
-Each marker has to start a word, so ordinary writing is safe: `Ship it!`, `Learn C++`, `Compute 1+2` and `Close issue#12` are captured exactly as typed. A marker the app cannot resolve — `+nowhere` for a project that doesn't exist — stays in the title rather than disappearing.
+Each marker has to start a word, so ordinary writing is safe: `Ship it!`, `Learn C++`, `Compute 1+2`, `Close issue#12` and `Fix #12` are captured exactly as typed, since a tag needs at least one letter. A marker the app cannot resolve — `+nowhere` for a project that doesn't exist — stays in the title rather than disappearing.
 
 ::: tip Changed in this release
 `#` used to mean **project**. It now means **tag**, matching the note editor. Use `+` for projects: `#Work` files a `Work` tag, `+Work` files into the Work project. Priority is a single `!` — `!high`, not `!!high` — and the old `!today` date shorthand is gone; `@today` does more.
@@ -204,6 +204,12 @@ A sub-issue added in the drawer is a task under this one, not a new line in the 
 The quick-add markers work in a task's title in a note too. Type them and they are applied when you press <kbd>Enter</kbd> or leave the title: `Buy milk #groceries @friday !high` saves as _Buy milk_, tagged, due Friday, high priority. While you type, dashed chips show what is about to be set.
 
 Only markers you add count. Text that was already in the title — `Fix #123 crash`, a line brought in from another app — stays title text when you edit something else on the line. A marker that names nothing, such as `+nosuchproject`, stays in the title as typed.
+
+### Note links in the title
+
+A task written in a note keeps its note links. Type `[[` or `@` followed by a note's name in the title, and a note picker opens. Press <kbd>Enter</kbd> or <kbd>Tab</kbd> to pick a note, and the title gets `[[Note title]]`. An `@` that reads as a date, such as `@tomorrow`, still sets the due date and opens no picker.
+
+The row in the note, the Tasks list and the detail drawer show each `[[…]]` as a link. Click a link to open its note. Click anywhere else on the title to edit it.
 
 ### From the keyboard
 

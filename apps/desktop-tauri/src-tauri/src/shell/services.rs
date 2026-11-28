@@ -2,6 +2,7 @@
 //! (`I18n`), telemetry with its crash marker and log shipping (`Telemetry`), and the settings and
 //! account services (`Handlers`). Each is managed state that commands read; none is rebuilt per call.
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -14,6 +15,7 @@ use memry_desktop::ai::local_agent::LocalAgent;
 use memry_desktop::ai::local_provider::LocalProviderStore;
 use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
+use memry_desktop::calendar::service::CalendarService;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::fold::agent::FoldAgents;
@@ -62,8 +64,8 @@ fn compiled() -> Compiled {
     }
 }
 
-/// Whether this launch reports telemetry, before the telemetry service exists: the stored
-/// choice, else the build's default.
+/// Whether this launch reports telemetry, before the telemetry service exists: off under the
+/// `MEMRY_TELEMETRY_ENABLED=false` launch switch, else the stored choice, else the build's default.
 pub fn telemetry_enabled(app: &AppHandle<Wry>) -> bool {
     let env = app.state::<LaunchEnv>();
     let stored = memry_desktop::telemetry::TelemetryConfig::new(&app.state::<AppPaths>().data_dir);
@@ -101,7 +103,17 @@ fn load_config_and_locale(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     std::fs::create_dir_all(&data_dir).map_err(|e| failed("app_data_dir", e))?;
     let config = Arc::new(AppConfig::load(data_dir.join(CONFIG_FILE)));
     app.manage(config.clone());
+    let initial = boot_locale(&config, sys_locale::get_locale);
+    app.manage(Arc::new(LocaleService::new(initial)));
+    Ok(())
+}
 
+/// The locale to boot with: the app config's, overridden by the current vault's language
+/// preference. The first-launch migration asks again once Electron's config is merged in.
+pub fn boot_locale(
+    config: &Arc<AppConfig>,
+    os_locale: impl FnOnce() -> Option<String>,
+) -> &'static str {
     let current = memry_desktop::registry::VaultRegistry::new(config.clone()).current();
     let has_vaults = config.read(|map| {
         map.get("vaults")
@@ -111,15 +123,13 @@ fn load_config_and_locale(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let vault_language = current
         .as_deref()
         .and_then(|path| vault_config::preferences_language(Path::new(path)));
-    let initial = locale::resolve_startup(
-        &config,
+    locale::resolve_startup(
+        config,
         has_vaults,
         current.is_some(),
         vault_language.as_deref(),
-        sys_locale::get_locale,
-    );
-    app.manage(Arc::new(LocaleService::new(initial)));
-    Ok(())
+        os_locale,
+    )
 }
 
 /// Node's `process.arch` vocabulary, which the server's `arch` field has always held.
@@ -133,10 +143,24 @@ fn node_arch() -> &'static str {
 }
 
 /// Logs a pin failure; a mismatch also reaches the renderer as `sync:certificate-pin-failed`
-/// (`certificate-pins.ts`). An unverified chain is not a pin mismatch, so it is only logged.
-struct PinFailures(AppHandle<Wry>);
+/// (`error-recovery-handler.ts`), once per host and presented key for the process: every
+/// request to a mismatched host fails the same way, and the renderer needs to hear it once. An
+/// unverified chain is not a pin mismatch, so it is only logged.
+pub struct PinFailures<R: Runtime> {
+    app: AppHandle<R>,
+    told: Mutex<HashSet<(String, String)>>,
+}
 
-impl PinFailureSink for PinFailures {
+impl<R: Runtime> PinFailures<R> {
+    pub fn new(app: AppHandle<R>) -> Self {
+        Self {
+            app,
+            told: Mutex::default(),
+        }
+    }
+}
+
+impl<R: Runtime> PinFailureSink for PinFailures<R> {
     fn pin_failed(&self, failure: PinFailure) {
         match failure.reason {
             PinFailureReason::Mismatch => {
@@ -146,8 +170,16 @@ impl PinFailureSink for PinFailures {
                     actual = failure.actual_hash,
                     "the sync host presented a certificate none of its pins match"
                 );
+                let first = self
+                    .told
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .insert((failure.hostname.clone(), failure.actual_hash.clone()));
+                if !first {
+                    return;
+                }
                 broadcast(
-                    &self.0,
+                    &self.app,
                     SyncCertificatePinFailedEvent {
                         hostname: failure.hostname,
                         actual_hash: failure.actual_hash,
@@ -164,7 +196,26 @@ impl PinFailureSink for PinFailures {
     }
 }
 
+/// Held while telemetry starts: the first-launch migration can start it from its own thread.
+static TELEMETRY_START: Mutex<()> = Mutex::new(());
+
+/// The telemetry service, started now if its stage has not run yet. The first-launch migration
+/// sends its events before `Stage::Telemetry`, once the import carried Electron's opt-out.
+pub fn telemetry_started(app: &AppHandle<Wry>) -> Option<Arc<Service>> {
+    if let Err(error) = start_telemetry(app) {
+        tracing::warn!(scope = "Telemetry", "telemetry not started: {error}");
+    }
+    telemetry(app)
+}
+
 fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
+    let _one_start = TELEMETRY_START
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    if app.try_state::<Arc<Service>>().is_some() {
+        // The first-launch migration started it.
+        return Ok(());
+    }
     let paths = app.state::<AppPaths>();
     let env = app.state::<LaunchEnv>();
     let runtime = RuntimeConfig::resolve(&compiled(), &env);
@@ -191,7 +242,7 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
     let (transport, no_redirect): (SyncTransport, NoRedirectTransport) = app_transports(
         &runtime.loopback_hosts(),
-        Arc::new(PinFailures(app.clone())),
+        Arc::new(PinFailures::new(app.clone())),
     );
     let service = Arc::new(Service::start(
         &paths.data_dir,
@@ -320,6 +371,10 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         device,
     )));
     app.manage(AiProxy::new(memry_desktop::http::builder()));
+    app.manage(Arc::new(CalendarService::new(
+        identity.clone(),
+        settings.clone(),
+    )));
     app.manage(keychain);
     app.manage(identity);
     app.manage(settings);

@@ -119,6 +119,26 @@ describe('DownloadQueue', () => {
     expect(paced).toHaveLength(2)
   })
 
+  it("spends a manifest read outside the queue from its transfers' pacing budget", async () => {
+    vi.useFakeTimers()
+    const fn = vi.fn(async (id: string, _p: string, opts?: { pace?: () => Promise<void> }) => {
+      await opts?.pace?.()
+      return makeResult(id)
+    })
+    const q = new DownloadQueue(fn, undefined, new DownloadPacer(1, 50))
+
+    await q.pace()
+    let downloaded = false
+    void q.enqueue({ ownerId: 'n1', attachmentId: 'a1', targetPath: '/p1' }).then(() => {
+      downloaded = true
+    })
+
+    await vi.advanceTimersByTimeAsync(49)
+    expect(downloaded).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(downloaded).toBe(true)
+  })
+
   it('pauses everything on 429 honouring Retry-After, then resumes', async () => {
     vi.useFakeTimers()
     let calls = 0
@@ -473,6 +493,36 @@ describe('DownloadQueue', () => {
       const before = manual.calls.length
       ;(monitor as unknown as { setOnline: (v: boolean) => void }).setOnline(false)
       expect(manual.calls.length).toBe(before)
+    })
+
+    // A vault switch waits for running transfers before its databases close
+    // (REVIEW-5700): dispose aborts them, a transfer waiting for a pacing
+    // token included, instead of letting them run on.
+    it('dispose() aborts running transfers, one waiting for a pacing token too', async () => {
+      vi.useFakeTimers()
+      const fn = vi.fn(
+        async (
+          id: string,
+          _p: string,
+          opts?: { pace?: () => Promise<void>; signal?: AbortSignal }
+        ) => {
+          await opts?.pace?.()
+          await new Promise((_, reject) =>
+            opts?.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+          )
+          return makeResult(id)
+        }
+      )
+      const q = new DownloadQueue(fn, undefined, new DownloadPacer(1, 60_000))
+      const transferring = q.enqueue({ ownerId: 'n1', attachmentId: 'a1', targetPath: '/p1' })
+      const pacing = q.enqueue({ ownerId: 'n2', attachmentId: 'a2', targetPath: '/p2' })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fn).toHaveBeenCalledTimes(2)
+
+      q.dispose()
+
+      await expect(transferring).rejects.toBeInstanceOf(DownloadQueueClearedError)
+      await expect(pacing).rejects.toBeInstanceOf(DownloadQueueClearedError)
     })
 
     it('dispose() detaches from the network monitor', async () => {

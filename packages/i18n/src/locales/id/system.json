@@ -17,6 +17,7 @@
       "filterAll": "Semua file"
     },
     "exportCancelled": "Ekspor dibatalkan",
+    "exportVaultChanged": "Brankas lain dibuka saat Anda memilih tempat menyimpan. Ekspor catatan lagi.",
     "dataDbRecovery": {
       "title": "Perbaiki database vault",
       "message": "Database Memry untuk vault ini rusak.",
@@ -89,5 +90,53 @@
     },
     "logFolder": "Log: {path}",
     "reloaded": "MemryNote dimuat ulang setelah mengalami crash. Suntingan terbaru mungkin hilang."
+  },
+  "migration": {
+    "running": {
+      "title": "Memindahkan data Anda",
+      "note": "Ini hanya terjadi sekali. Biarkan MemryNote tetap terbuka sampai selesai."
+    },
+    "phase": {
+      "preparing": "Menyiapkan…",
+      "secrets": "Memindahkan rahasia Anda…",
+      "vault": "Memindahkan brankas {current} dari {total}…",
+      "checking": "Memeriksa data Anda…"
+    },
+    "failed": {
+      "title": "Data Anda tidak dipindahkan",
+      "note": "Tidak ada yang hilang. Aplikasi MemryNote sebelumnya dan datanya tidak berubah.",
+      "check": "Pemeriksaan yang gagal: {check}",
+      "electronRunning": "Aplikasi MemryNote sebelumnya masih terbuka. Tutup aplikasinya, lalu coba lagi.",
+      "diskSpace": "Ruang disk kosong tidak cukup untuk memindahkan data Anda. Kosongkan sebagian ruang, lalu coba lagi.",
+      "electronSchema": "Aplikasi MemryNote sebelumnya belum selesai memperbarui sebuah brankas. Perbarui aplikasi itu, buka brankas di dalamnya sekali, tutup aplikasinya, lalu coba lagi.",
+      "sharedStore": "Beberapa brankas berbagi satu riwayat sinkronisasi sehingga tidak dapat dipindahkan. Tetap gunakan aplikasi MemryNote sebelumnya untuk brankas itu.",
+      "vaultUnreachable": "Sebuah brankas tidak dapat dibaca saat ini. Pastikan drive-nya terhubung, lalu coba lagi.",
+      "secrets": "Sebagian detail masuk yang tersimpan tidak dapat dibaca. Coba lagi. Jika terus terjadi, pastikan keychain Anda tidak terkunci.",
+      "verification": "Pemeriksaan data yang dipindahkan tidak lolos, jadi MemryNote membiarkan semuanya seperti semula.",
+      "notReady": "Versi MemryNote ini belum dapat memindahkan data brankas ini. Data Anda masih ada di aplikasi MemryNote sebelumnya. Tetap gunakan aplikasi itu, dan perbarui MemryNote untuk mencoba lagi.",
+      "io": "Sebuah file tidak dapat dibaca atau ditulis saat data Anda dipindahkan. Pastikan disk memiliki ruang kosong dan folder vault Anda dapat ditulisi, lalu coba lagi.",
+      "sourceChanged": "Aplikasi MemryNote sebelumnya mengubah datanya selama pemindahan. Tutup aplikasinya, lalu coba lagi.",
+      "coreFileExists": "Sebuah vault sudah berisi data dari versi MemryNote ini, jadi tidak diganti. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "malformedRow": "Sebagian data aplikasi sebelumnya berbentuk yang tidak dapat dipindahkan. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "deleteWithoutDevice": "Penghapusan di sebuah vault belum disinkronkan. Buka aplikasi MemryNote sebelumnya, biarkan sinkronisasinya selesai, tutup aplikasinya, lalu coba lagi.",
+      "deviceKeyMismatch": "Kunci perangkat aplikasi sebelumnya tidak cocok dengan pendaftaran sinkronisasi perangkat ini, jadi info masuk Anda tidak dipindahkan. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "keyVerifierMismatch": "Kunci enkripsi aplikasi sebelumnya tidak cocok dengan akun Anda, jadi info masuk Anda tidak dipindahkan. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "targetOccupied": "Versi MemryNote ini sudah masuk ke akun, jadi info masuk aplikasi sebelumnya tidak dipindahkan menimpanya. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan."
+    },
+    "done": {
+      "title": "Data Anda sudah siap",
+      "body": "Membuka MemryNote…"
+    },
+    "retry": "Coba lagi",
+    "showDetails": "Tampilkan detail",
+    "reportMissing": "Belum ada laporan.",
+    "completed": {
+      "title": "Data Anda kini ada di versi ini",
+      "body": "Catatan, pengaturan, dan info masuk Anda kini ada di versi MemryNote ini. Data aplikasi sebelumnya tetap utuh di {path}."
+    },
+    "notice": {
+      "title": "Perubahan di aplikasi sebelumnya",
+      "body": "Sebuah brankas berubah di aplikasi MemryNote sebelumnya setelah dipindahkan ke versi ini. Perubahan itu tidak ada di sini: perubahan tersebut tetap di data aplikasi sebelumnya di {path}. Perubahan yang sudah disinkronkan tiba melalui sinkronisasi."
+    }
   }
 }

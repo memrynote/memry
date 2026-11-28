@@ -17,6 +17,7 @@
       "filterAll": "Tous les fichiers"
     },
     "exportCancelled": "Exportation annulée",
+    "exportVaultChanged": "Un autre coffre a été ouvert pendant que vous choisissiez où enregistrer. Exportez à nouveau la note.",
     "dataDbRecovery": {
       "title": "Réparer la base de données du coffre",
       "message": "La base de données de Memry pour ce coffre est endommagée.",
@@ -89,5 +90,53 @@
     },
     "logFolder": "Journaux : {path}",
     "reloaded": "MemryNote a été rechargé après un plantage. Les modifications récentes ont peut-être été perdues."
+  },
+  "migration": {
+    "running": {
+      "title": "Transfert de vos données",
+      "note": "Cela n'arrive qu'une fois. Gardez MemryNote ouvert jusqu'à la fin."
+    },
+    "phase": {
+      "preparing": "Préparation…",
+      "secrets": "Transfert de vos secrets…",
+      "vault": "Transfert du coffre {current} sur {total}…",
+      "checking": "Vérification de vos données…"
+    },
+    "failed": {
+      "title": "Vos données n'ont pas été transférées",
+      "note": "Rien n'a été perdu. L'ancienne app MemryNote et ses données sont inchangées.",
+      "check": "Vérification en échec : {check}",
+      "electronRunning": "L'ancienne app MemryNote est toujours ouverte. Quittez-la, puis réessayez.",
+      "diskSpace": "L'espace disque libre ne suffit pas pour transférer vos données. Libérez de l'espace, puis réessayez.",
+      "electronSchema": "L'ancienne app MemryNote n'a pas fini de mettre à jour un coffre. Mettez cette app à jour, ouvrez-y le coffre une fois, quittez-la, puis réessayez.",
+      "sharedStore": "Certains coffres partagent un même historique de synchronisation et ne peuvent donc pas être transférés. Continuez à utiliser l'ancienne app MemryNote pour eux.",
+      "vaultUnreachable": "Un coffre ne peut pas être lu pour le moment. Vérifiez que son disque est connecté, puis réessayez.",
+      "secrets": "Certaines informations de connexion enregistrées n'ont pas pu être lues. Réessayez. Si cela continue, vérifiez que votre trousseau est déverrouillé.",
+      "verification": "Une vérification de vos données transférées a échoué, MemryNote a donc tout laissé tel quel.",
+      "notReady": "Cette version de MemryNote ne peut pas encore transférer les données de ce coffre. Vos données sont toujours dans l'ancienne app MemryNote. Continuez à l'utiliser et mettez MemryNote à jour pour réessayer.",
+      "io": "Un fichier n'a pas pu être lu ou écrit pendant le transfert de vos données. Vérifiez que le disque a de l'espace libre et que les dossiers de vos coffres sont accessibles en écriture, puis réessayez.",
+      "sourceChanged": "L'ancienne app MemryNote a modifié ses données pendant le transfert. Quittez-la, puis réessayez.",
+      "coreFileExists": "Un coffre contient déjà des données de cette version de MemryNote, il n'a donc pas été remplacé. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "malformedRow": "Une partie des données de l'ancienne app a une forme qui ne peut pas être transférée. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "deleteWithoutDevice": "Une suppression dans un coffre n'est pas encore synchronisée. Ouvrez l'ancienne app MemryNote, laissez-la terminer la synchronisation, quittez-la, puis réessayez.",
+      "deviceKeyMismatch": "La clé d'appareil de l'ancienne app ne correspond pas à l'enregistrement de synchronisation de cet appareil, votre connexion n'a donc pas été transférée. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "keyVerifierMismatch": "La clé de chiffrement de l'ancienne app ne correspond pas à votre compte, votre connexion n'a donc pas été transférée. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "targetOccupied": "Cette version de MemryNote est déjà connectée, la connexion de l'ancienne app n'a donc pas été transférée par-dessus. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails."
+    },
+    "done": {
+      "title": "Vos données sont prêtes",
+      "body": "Ouverture de MemryNote…"
+    },
+    "retry": "Réessayer",
+    "showDetails": "Afficher les détails",
+    "reportMissing": "Il n'y a pas encore de rapport.",
+    "completed": {
+      "title": "Vos données sont dans cette version",
+      "body": "Vos notes, réglages et connexion se trouvent maintenant dans cette version de MemryNote. Les données de l'ancienne app restent intactes dans {path}."
+    },
+    "notice": {
+      "title": "Modifications faites dans l'ancienne app",
+      "body": "Un coffre a été modifié dans l'ancienne app MemryNote après son transfert vers cette version. Ces modifications ne sont pas ici : elles restent dans les données de l'ancienne app, dans {path}. Les modifications synchronisées arrivent par la synchronisation."
+    }
   }
 }

@@ -17,6 +17,7 @@
       "filterAll": "Todos los archivos"
     },
     "exportCancelled": "Exportación cancelada",
+    "exportVaultChanged": "Se abrió otra bóveda mientras elegías dónde guardar. Vuelve a exportar la nota.",
     "dataDbRecovery": {
       "title": "Reparar la base de datos de la bóveda",
       "message": "La base de datos de Memry para esta bóveda está dañada.",
@@ -89,5 +90,53 @@
     },
     "logFolder": "Registros: {path}",
     "reloaded": "MemryNote se recargó después de un fallo. Es posible que se hayan perdido los cambios recientes."
+  },
+  "migration": {
+    "running": {
+      "title": "Moviendo tus datos",
+      "note": "Esto ocurre una sola vez. Mantén MemryNote abierto hasta que termine."
+    },
+    "phase": {
+      "preparing": "Preparando…",
+      "secrets": "Moviendo tus secretos…",
+      "vault": "Moviendo la bóveda {current} de {total}…",
+      "checking": "Comprobando tus datos…"
+    },
+    "failed": {
+      "title": "Tus datos no se movieron",
+      "note": "No se perdió nada. La app anterior de MemryNote y sus datos no cambiaron.",
+      "check": "Comprobación fallida: {check}",
+      "electronRunning": "La app anterior de MemryNote sigue abierta. Ciérrala y vuelve a intentarlo.",
+      "diskSpace": "No hay suficiente espacio libre en el disco para mover tus datos. Libera espacio y vuelve a intentarlo.",
+      "electronSchema": "La app anterior de MemryNote no ha terminado de actualizar una bóveda. Actualiza esa app, abre la bóveda en ella una vez, ciérrala y vuelve a intentarlo.",
+      "sharedStore": "Algunas bóvedas comparten un mismo historial de sincronización, así que no se pueden mover. Sigue usando la app anterior de MemryNote para ellas.",
+      "vaultUnreachable": "Ahora no se puede leer una bóveda. Comprueba que su unidad esté conectada y vuelve a intentarlo.",
+      "secrets": "No se pudieron leer algunos datos de inicio de sesión guardados. Vuelve a intentarlo. Si sigue pasando, comprueba que tu llavero esté desbloqueado.",
+      "verification": "Una comprobación de tus datos movidos no se superó, así que MemryNote lo dejó todo como estaba.",
+      "notReady": "Esta versión de MemryNote todavía no puede mover los datos de esta bóveda. Tus datos siguen en la app anterior de MemryNote. Sigue usándola y actualiza MemryNote para volver a intentarlo.",
+      "io": "No se pudo leer o escribir un archivo al mover tus datos. Comprueba que el disco tiene espacio libre y que se puede escribir en las carpetas de tus bóvedas, y vuelve a intentarlo.",
+      "sourceChanged": "La app anterior de MemryNote cambió sus datos durante el traslado. Ciérrala y vuelve a intentarlo.",
+      "coreFileExists": "Una bóveda ya tiene datos de esta versión de MemryNote, así que no se reemplazó. Sigue usando la app anterior y envía a soporte el informe de Mostrar detalles.",
+      "malformedRow": "Parte de los datos de la app anterior tiene un formato que no se puede mover. Sigue usando la app anterior y envía a soporte el informe de Mostrar detalles.",
+      "deleteWithoutDevice": "Una eliminación en una bóveda aún no se ha sincronizado. Abre la app anterior de MemryNote, deja que termine de sincronizar, ciérrala y vuelve a intentarlo.",
+      "deviceKeyMismatch": "La clave de dispositivo de la app anterior no coincide con el registro de sincronización de este dispositivo, así que tu inicio de sesión no se movió. Sigue usando la app anterior y envía a soporte el informe de Mostrar detalles.",
+      "keyVerifierMismatch": "La clave de cifrado de la app anterior no coincide con tu cuenta, así que tu inicio de sesión no se movió. Sigue usando la app anterior y envía a soporte el informe de Mostrar detalles.",
+      "targetOccupied": "Esta versión de MemryNote ya tiene una sesión iniciada, así que el inicio de sesión de la app anterior no se movió encima. Sigue usando la app anterior y envía a soporte el informe de Mostrar detalles."
+    },
+    "done": {
+      "title": "Tus datos están listos",
+      "body": "Abriendo MemryNote…"
+    },
+    "retry": "Reintentar",
+    "showDetails": "Mostrar detalles",
+    "reportMissing": "Todavía no hay informe.",
+    "completed": {
+      "title": "Tus datos ya están en esta versión",
+      "body": "Tus notas, ajustes e inicio de sesión ya están en esta versión de MemryNote. Los datos de la app anterior siguen intactos en {path}."
+    },
+    "notice": {
+      "title": "Cambios hechos en la app anterior",
+      "body": "Una bóveda cambió en la app anterior de MemryNote después de pasar a esta versión. Esos cambios no están aquí: siguen en los datos de la app anterior, en {path}. Los cambios sincronizados llegan por la sincronización."
+    }
   }
 }

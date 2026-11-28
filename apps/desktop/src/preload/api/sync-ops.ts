@@ -1,6 +1,6 @@
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type { SyncControlSurface, VaultBindingChoice } from '@memry/contracts/ipc-sync-ops'
-import type { CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
+import type { CrdtDocWaitEvent, CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { invoke, logListenerError, subscribe } from '../lib/ipc'
 
 export const syncOps = {
@@ -60,7 +60,8 @@ export const syncAttachments = {
   download: (input: { attachmentId: string; targetPath: string }) =>
     invoke(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, input),
   getDownloadProgress: (input: { attachmentId: string }) =>
-    invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input)
+    invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input),
+  downloadNoteFiles: (input: { noteId: string }) => invoke(SYNC_CHANNELS.DOWNLOAD_NOTE_FILES, input)
 }
 
 // CRDT channels are merged into SYNC_CHANNELS (single flat namespace for the preload bridge)
@@ -121,6 +122,14 @@ export const onCrdtProviderReady = (
   callback: (data: { vaultPath: string | null } | undefined) => void
 ): (() => void) =>
   subscribe<{ vaultPath: string | null } | undefined>(SYNC_EVENTS.PROVIDER_READY, callback)
+
+/** A doc opened with `awaitingRemote` stopped waiting for the server body (#5290). */
+export const onCrdtDocLoaded = (callback: (data: { noteId: string }) => void): (() => void) =>
+  subscribe<{ noteId: string }>(SYNC_EVENTS.DOC_LOADED, callback)
+
+/** What a waiting doc waits on changed after the open (#5290, #5342). */
+export const onCrdtDocWait = (callback: (data: CrdtDocWaitEvent) => void): (() => void) =>
+  subscribe<CrdtDocWaitEvent>(SYNC_EVENTS.DOC_WAIT, callback)
 
 /** A note's file could not be updated from its doc; once per run of failed passes. */
 export const onCrdtWriteBackFailed = (

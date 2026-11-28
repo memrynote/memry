@@ -1,12 +1,209 @@
-//! The single command list. Add a domain's commands under its comment, one fully qualified path
-//! per line, domains in alphabetical order, and its module under `src/commands/`.
+//! The command and event lists. A new command or event goes in `registry/<area>.rs`; a new area
+//! adds its module below and its name to `areas!`.
 
-use tauri::ipc::Invoke;
-use tauri::{Runtime, Wry};
+use tauri::Wry;
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
-use crate::binary;
 use crate::startup::StartupState;
+
+/// `chain!(kind [entries] collect [list] area...)` appends an area's `entries` to `list` and
+/// hands the result to the next area's macro (`area!(kind collect [list] area...)`), and to
+/// `collect![list]` after the last one. Each `registry/<area>.rs` macro answers `commands` and
+/// `events` with its own entries, so an area's change edits only its own file.
+macro_rules! chain {
+    ($kind:ident [$($entries:tt)*] $collect:ident [$($list:tt)*]) => {
+        $collect![$($list)* $($entries)*]
+    };
+    ($kind:ident [$($entries:tt)*] $collect:ident [$($list:tt)*] $area:ident $($areas:ident)*) => {
+        $area!($kind $collect [$($list)* $($entries)*] $($areas)*)
+    };
+}
+
+/// Every area. The order is the order of the commands in `bindings.ts`; put a new area beside a
+/// related one rather than at the end, where every new area would edit the same line.
+macro_rules! areas {
+    ($kind:ident $collect:ident) => {
+        chain!(
+            $kind [] $collect []
+            account
+            agent
+            ai
+            app
+            billing
+            calendar_sources
+            canvas_folders
+            editor
+            custom_icons
+            devices
+            diagnostics
+            drop_stage
+            feedback
+            shell_integrations
+            fold
+            folder_view
+            home_pages
+            readwise
+            ios_beta
+            journal
+            launch
+            locale
+            linking
+            notes
+            notification
+            ocr_languages
+            onboarding
+            portals
+            properties
+            shortcuts
+            spell
+            fonts
+            logging
+            menu
+            search
+            settings
+            shell
+            sync
+            sync_account
+            tags
+            telemetry
+            templates
+            terminal_command
+            unsplash
+            updater
+            vault
+            voice
+            window
+            calendar
+            inbox
+            tasks
+            projects
+            bookmarks
+            reminders
+            stickies
+            graph
+            migration
+            canvas
+        )
+    };
+}
+
+#[macro_use]
+mod account;
+#[macro_use]
+mod agent;
+#[macro_use]
+mod ai;
+#[macro_use]
+mod app;
+#[macro_use]
+mod billing;
+#[macro_use]
+mod bookmarks;
+#[macro_use]
+mod calendar;
+#[macro_use]
+mod canvas;
+#[macro_use]
+mod custom_icons;
+#[macro_use]
+mod devices;
+#[macro_use]
+mod diagnostics;
+#[macro_use]
+mod drop_stage;
+#[macro_use]
+mod editor;
+#[macro_use]
+mod feedback;
+#[macro_use]
+mod fold;
+#[macro_use]
+mod folder_view;
+#[macro_use]
+mod fonts;
+#[macro_use]
+mod graph;
+#[macro_use]
+mod home_pages;
+#[macro_use]
+mod inbox;
+#[macro_use]
+mod ios_beta;
+#[macro_use]
+mod journal;
+#[macro_use]
+mod launch;
+#[macro_use]
+mod linking;
+#[macro_use]
+mod locale;
+#[macro_use]
+mod logging;
+#[macro_use]
+mod menu;
+#[macro_use]
+mod migration;
+#[macro_use]
+mod notes;
+#[macro_use]
+mod notification;
+#[macro_use]
+mod ocr_languages;
+#[macro_use]
+mod onboarding;
+#[macro_use]
+mod portals;
+#[macro_use]
+mod projects;
+#[macro_use]
+mod properties;
+#[macro_use]
+mod readwise;
+#[macro_use]
+mod reminders;
+#[macro_use]
+mod search;
+#[macro_use]
+mod settings;
+#[macro_use]
+mod shell;
+#[macro_use]
+mod shell_integrations;
+#[macro_use]
+mod shortcuts;
+#[macro_use]
+mod spell;
+#[macro_use]
+mod stickies;
+#[macro_use]
+mod sync;
+#[macro_use]
+mod sync_account;
+#[macro_use]
+mod tags;
+#[macro_use]
+mod tasks;
+#[macro_use]
+mod telemetry;
+#[macro_use]
+mod templates;
+#[macro_use]
+mod terminal_command;
+#[macro_use]
+mod unsplash;
+#[macro_use]
+mod updater;
+#[macro_use]
+mod vault;
+#[macro_use]
+mod voice;
+#[macro_use]
+mod window;
+mod dispatch;
+mod permission;
+
+pub use dispatch::{PREBOOT_COMMANDS, dispatcher, invoke_handler, window_allows, window_gate};
+pub use permission::app_all_permission;
 
 pub fn builder() -> Builder<Wry> {
     Builder::<Wry>::new()
@@ -19,525 +216,10 @@ pub fn builder() -> Builder<Wry> {
         .dangerously_cast_bigints_to_number()
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
-        .commands(collect_commands![
-            // account
-            crate::commands::account::account_get_info,
-            crate::commands::account::auth_cancel_oauth,
-            crate::commands::account::auth_init_oauth,
-            crate::commands::account::auth_refresh_token,
-            crate::commands::account::auth_request_otp,
-            crate::commands::account::auth_resend_otp,
-            crate::commands::account::auth_retry_oauth,
-            crate::commands::account::auth_verify_otp,
-            crate::commands::account::sync_confirm_recovery_phrase,
-            crate::commands::account::sync_get_recovery_phrase,
-            crate::commands::account::sync_link_via_recovery,
-            crate::commands::account::sync_setup_first_device,
-            crate::commands::account::sync_setup_new_account,
-            // agent
-            crate::commands::agent::agent_get_local_provider_settings::<Wry>,
-            crate::commands::agent::agent_list_local_models::<Wry>,
-            crate::commands::agent::agent_probe_local_provider::<Wry>,
-            crate::commands::agent::agent_set_local_provider_settings::<Wry>,
-            crate::commands::agent::agent_test_local_provider::<Wry>,
-            // ai
-            crate::commands::ai::ai_get_model_status::<Wry>,
-            crate::commands::ai::ai_inline_get_settings::<Wry>,
-            crate::commands::ai::ai_inline_list_models,
-            crate::commands::ai::ai_inline_set_settings::<Wry>,
-            crate::commands::ai::ai_inline_test_connection,
-            crate::commands::ai::ai_load_model::<Wry>,
-            crate::commands::ai::ai_provider_cancel::<Wry>,
-            crate::commands::ai::ai_reindex_embeddings::<Wry>,
-            crate::commands::ai_structured::tags_fill_fields::<Wry>,
-            crate::commands::ai_structured::tags_fill_status::<Wry>,
-            crate::commands::ai_structured::writing_generate_assist::<Wry>,
-            // app
-            crate::commands::app::app_info,
-            // billing
-            crate::commands::billing::account_change_plan,
-            crate::commands::billing::account_get_billing_status,
-            crate::commands::billing::account_open_billing_portal,
-            crate::commands::billing::account_preview_plan_change,
-            crate::commands::billing::account_refresh_billing_status,
-            crate::commands::billing::account_start_checkout,
-            // canvas (the asset and live-canvas commands are not ported yet)
-            crate::commands::canvas::canvas_create::<Wry>,
-            crate::commands::canvas::canvas_delete::<Wry>,
-            crate::commands::canvas::canvas_duplicate::<Wry>,
-            crate::commands::canvas::canvas_get::<Wry>,
-            crate::commands::canvas::canvas_library_list::<Wry>,
-            crate::commands::canvas::canvas_library_save::<Wry>,
-            crate::commands::canvas::canvas_list::<Wry>,
-            crate::commands::canvas::canvas_open_external,
-            crate::commands::canvas::canvas_reveal_in_finder,
-            crate::commands::canvas::canvas_update::<Wry>,
-            crate::commands::canvas_folders::canvas_folder_create::<Wry>,
-            crate::commands::canvas_folders::canvas_folder_delete::<Wry>,
-            crate::commands::canvas_folders::canvas_folder_list::<Wry>,
-            crate::commands::canvas_folders::canvas_folder_move::<Wry>,
-            crate::commands::canvas_folders::canvas_folder_rename::<Wry>,
-            crate::commands::canvas_folders::canvas_folder_set_icon::<Wry>,
-            // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
-            crate::commands::editor::crdt_close_doc::<Wry>,
-            crate::commands::editor::crdt_get_health::<Wry>,
-            crate::commands::editor::crdt_typing_sent::<Wry>,
-            // custom icons (`custom_icons_add` is a binary command)
-            crate::commands::custom_icons::custom_icons_add_from_url,
-            crate::commands::custom_icons::custom_icons_delete,
-            crate::commands::custom_icons::custom_icons_list,
-            crate::commands::custom_icons::custom_icons_rename,
-            // devices
-            crate::commands::devices::sync_get_devices,
-            crate::commands::devices::sync_remove_device,
-            crate::commands::devices::sync_rename_device,
-            // diagnostics
-            crate::commands::diagnostics::diagnostics_preview_report,
-            crate::commands::diagnostics::diagnostics_send_report,
-            // drop staging
-            crate::commands::drop_stage::drop_os_drag_uris,
-            crate::commands::drop_stage::drop_stage_begin,
-            crate::commands::drop_stage::drop_stage_finish,
-            crate::commands::drop_stage::drop_stage_os_files,
-            crate::commands::drop_stage::drop_stage_release,
-            // feedback
-            crate::commands::telemetry::feedback_submit,
-            // badge
-            crate::commands::shell_integrations::badge_set,
-            // flush
-            crate::commands::shell_integrations::flush_done,
-            crate::commands::shell_integrations::flush_ready,
-            // fold
-            crate::commands::fold::fold_get_agent_status::<Wry>,
-            crate::commands::fold::fold_get_last_run::<Wry>,
-            crate::commands::fold::fold_retry::<Wry>,
-            crate::commands::fold::fold_run::<Wry>,
-            // ios beta
-            crate::commands::ios_beta::ios_beta_join,
-            // journal
-            crate::commands::journal::journal_create_entry::<Wry>,
-            crate::commands::journal::journal_cross_into_notes::<Wry>,
-            crate::commands::journal::journal_delete_entry::<Wry>,
-            crate::commands::journal::journal_get_day_context::<Wry>,
-            crate::commands::journal::journal_get_entry::<Wry>,
-            crate::commands::journal::journal_get_heatmap::<Wry>,
-            crate::commands::journal::journal_get_month_entries::<Wry>,
-            crate::commands::journal::journal_get_property_rows::<Wry>,
-            crate::commands::journal::journal_get_same_day_entries::<Wry>,
-            crate::commands::journal::journal_get_streak::<Wry>,
-            crate::commands::journal::journal_get_year_stats::<Wry>,
-            crate::commands::journal::journal_update_entry::<Wry>,
-            // launch
-            crate::commands::launch::launch_report_renderer_marks,
-            // locale
-            crate::commands::locale::locale_get,
-            crate::commands::locale::locale_list,
-            crate::commands::locale::locale_set,
-            // linking
-            crate::commands::linking::sync_approve_linking,
-            crate::commands::linking::sync_complete_linking_qr,
-            crate::commands::linking::sync_finalize_vault_choice,
-            crate::commands::linking::sync_generate_linking_qr,
-            crate::commands::linking::sync_get_linking_sas,
-            crate::commands::linking::sync_link_via_qr,
-            crate::commands::linking::sync_pick_vault_folder,
-            // notes (`notes_upload_attachment` and `notes_upload_attachment_chunk` are binary
-            // commands)
-            crate::commands::attachment_sources::notes_download_attachment_from_url::<Wry>,
-            crate::commands::attachment_sources::notes_insert_existing_attachment::<Wry>,
-            crate::commands::attachment_sources::notes_list_vault_attachments::<Wry>,
-            crate::commands::attachments::notes_attachment_open_external,
-            crate::commands::attachments::notes_attachment_rename::<Wry>,
-            crate::commands::attachments::notes_attachment_resolve::<Wry>,
-            crate::commands::attachments::notes_attachment_reveal_in_finder,
-            crate::commands::attachments::notes_delete_attachment::<Wry>,
-            crate::commands::attachments::notes_list_attachments::<Wry>,
-            crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
-            crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
-            crate::commands::folders::notes_create_folder::<Wry>,
-            crate::commands::folders::notes_delete_folder::<Wry>,
-            crate::commands::folders::notes_get_folder_config::<Wry>,
-            crate::commands::folders::notes_get_folder_template::<Wry>,
-            crate::commands::folders::notes_get_folders::<Wry>,
-            crate::commands::folders::notes_rename_folder::<Wry>,
-            crate::commands::folders::notes_reveal_folder_in_finder,
-            crate::commands::folders::notes_set_folder_config::<Wry>,
-            crate::commands::notes::notes_create::<Wry>,
-            crate::commands::notes::notes_delete,
-            crate::commands::notes::notes_edit_aliases::<Wry>,
-            crate::commands::notes::notes_exists,
-            crate::commands::notes::notes_get,
-            crate::commands::notes::notes_get_all_positions::<Wry>,
-            crate::commands::notes::notes_get_by_path,
-            crate::commands::notes::notes_get_file,
-            crate::commands::notes::notes_get_list_item,
-            crate::commands::notes::notes_get_links,
-            crate::commands::notes::notes_get_local_only_count,
-            crate::commands::notes::notes_get_unlinked_mentions,
-            crate::commands::notes::notes_link_mention::<Wry>,
-            crate::commands::notes::notes_list::<Wry>,
-            crate::commands::notes::notes_open_external,
-            crate::commands::notes::notes_preview_by_title,
-            crate::commands::notes::notes_move::<Wry>,
-            crate::commands::notes::notes_rename::<Wry>,
-            crate::commands::notes::notes_update::<Wry>,
-            crate::commands::notes::notes_apply_template::<Wry>,
-            crate::commands::notes::notes_append_blocks::<Wry>,
-            crate::commands::notes::notes_undo_tag_template::<Wry>,
-            crate::commands::notes::notes_reorder::<Wry>,
-            crate::commands::notes::notes_resolve_by_title,
-            crate::commands::notes::notes_resolve_titles,
-            crate::commands::notes::notes_resolve_wiki_target,
-            crate::commands::notes::notes_reveal_in_finder,
-            crate::commands::notes::notes_set_local_only,
-            // notes: large files
-            crate::commands::large_file::notes_large_file_close,
-            crate::commands::large_file::notes_large_file_open,
-            crate::commands::large_file::notes_large_file_read_lines,
-            crate::commands::large_file::notes_large_file_search,
-            // notes: property definitions
-            crate::commands::property_definitions::notes_add_property_option,
-            crate::commands::property_definitions::notes_add_status_option,
-            crate::commands::property_definitions::notes_create_property_definition,
-            crate::commands::property_definitions::notes_delete_property_definition,
-            crate::commands::property_definitions::notes_ensure_property_definition,
-            crate::commands::property_definitions::notes_get_calendar_property_names,
-            crate::commands::property_definitions::notes_get_property_definitions,
-            crate::commands::property_definitions::notes_get_property_usage,
-            crate::commands::property_definitions::notes_list_notes_with_property,
-            crate::commands::property_definitions::notes_remove_property_option,
-            crate::commands::property_definitions::notes_rename_property_option,
-            crate::commands::property_definitions::notes_set_calendar_property_visibility,
-            crate::commands::property_definitions::notes_update_option_color,
-            crate::commands::property_definitions::notes_update_property_definition,
-            crate::commands::unsplash::notes_download_unsplash_photo,
-            // notes: similarity
-            crate::commands::notes_similarity::notes_cluster::<Wry>,
-            crate::commands::notes_similarity::notes_get_similar::<Wry>,
-            crate::commands::notes_similarity::notes_get_tag_suggestions::<Wry>,
-            // notes: versions
-            crate::commands::notes_versions::notes_delete_version,
-            crate::commands::notes_versions::notes_get_version,
-            crate::commands::notes_versions::notes_get_versions,
-            crate::commands::notes_versions::notes_restore_version,
-            // notification
-            crate::commands::shell_integrations::notification_permission,
-            crate::commands::shell_integrations::notification_show,
-            crate::commands::shell_integrations::notification_supported,
-            // ocr languages
-            crate::commands::ocr_languages::ocr_languages_get_state,
-            crate::commands::ocr_languages::ocr_languages_retry,
-            crate::commands::ocr_languages::ocr_languages_set,
-            // portals
-            crate::commands::portals::portals_get_usage::<Wry>,
-            crate::commands::portals::portals_search::<Wry>,
-            crate::commands::portals::portals_stamp_anchor::<Wry>,
-            // properties
-            crate::commands::properties::properties_get::<Wry>,
-            crate::commands::properties::properties_merge::<Wry>,
-            crate::commands::properties::properties_rename::<Wry>,
-            crate::commands::properties::properties_resolve_refs::<Wry>,
-            crate::commands::properties::properties_set::<Wry>,
-            // shortcut
-            crate::commands::shortcuts::shortcut_register_global_capture,
-            crate::commands::shortcuts::shortcut_set_global_capture,
-            crate::commands::shortcuts::shortcut_register_sticky,
-            crate::commands::shortcuts::shortcut_set_sticky,
-            // spell
-            crate::commands::spell::spell_check_word,
-            crate::commands::spell::spell_add_word,
-            crate::commands::spell::spell_add_words,
-            // stickies
-            crate::commands::stickies::sticky_delete_draft,
-            crate::commands::stickies::sticky_get_session,
-            crate::commands::stickies::sticky_list_drafts,
-            crate::commands::stickies::sticky_resize,
-            crate::commands::stickies::sticky_save_draft,
-            crate::commands::stickies::sticky_tuck,
-            // fonts
-            crate::fonts::system_fonts_list,
-            // log
-            crate::commands::logging::log_write,
-            // menu
-            crate::commands::shell::menu_hide_alt,
-            crate::commands::shell::menu_toggle_alt,
-            // search
-            crate::commands::search::search_add_reason::<Wry>,
-            crate::commands::search::search_clear_reasons::<Wry>,
-            crate::commands::search::search_get_reasons::<Wry>,
-            crate::commands::search::search_get_stats::<Wry>,
-            crate::commands::search::search_query::<Wry>,
-            crate::commands::search::search_quick::<Wry>,
-            // settings
-            crate::commands::settings::app_set_zoom_factor,
-            crate::commands::settings::settings_get_ai,
-            crate::commands::settings::settings_get_group,
-            crate::commands::settings::settings_get_local,
-            crate::commands::settings::settings_get_path,
-            crate::commands::settings::settings_reset_keyboard,
-            crate::commands::settings::settings_set_ai::<Wry>,
-            crate::commands::settings::settings_set_group,
-            crate::commands::settings::settings_set_local,
-            // shell
-            crate::commands::shell::shell_clipboard_read_text,
-            crate::commands::shell::shell_first_paint,
-            crate::commands::shell::shell_heartbeat,
-            crate::commands::shell::shell_show_context_menu,
-            crate::commands::shell::shell_open_external,
-            crate::commands::shell::shell_open_link,
-            crate::commands::shell::shell_open_path,
-            crate::commands::shell::shell_reveal_path,
-            crate::commands::shell::shell_take_crash_reload,
-            // sync
-            crate::commands::sync::sync_get_history::<Wry>,
-            crate::commands::sync::sync_get_large_notes::<Wry>,
-            crate::commands::sync::sync_get_note_sync_state::<Wry>,
-            crate::commands::sync::sync_get_quarantined_items::<Wry>,
-            crate::commands::sync::sync_get_queue_size::<Wry>,
-            crate::commands::sync::sync_get_status::<Wry>,
-            crate::commands::sync::sync_get_synced_settings::<Wry>,
-            crate::commands::sync::sync_get_unsent_notes::<Wry>,
-            crate::commands::sync::sync_pause::<Wry>,
-            crate::commands::sync::sync_resume::<Wry>,
-            crate::commands::sync::sync_trigger::<Wry>,
-            crate::commands::sync::sync_update_synced_setting::<Wry>,
-            // sync account
-            crate::commands::sync_account::account_sign_out,
-            crate::commands::sync_account::sync_get_vault_binding,
-            crate::commands::sync_account::sync_logout,
-            crate::commands::sync_account::sync_resolve_vault_binding,
-            // tags
-            crate::commands::tag_schema::tags_edit_schema,
-            crate::commands::tag_schema::tags_get_linked_here,
-            crate::commands::tag_schema::tags_get_schema_snapshot,
-            crate::commands::tag_schema::tags_preview_impact,
-            crate::commands::tag_schema::tags_search_objects,
-            crate::commands::tags::tags_create_category,
-            crate::commands::tags::tags_delete_category,
-            crate::commands::tags::tags_get_all_with_counts,
-            crate::commands::tags::tags_get_notes_by_tag,
-            crate::commands::tags::tags_is_gone,
-            crate::commands::tags::tags_list_categories,
-            crate::commands::tags::tags_pin_note_to_tag::<Wry>,
-            crate::commands::tags::tags_rename::<Wry>,
-            crate::commands::tags::tags_rename_abandon::<Wry>,
-            crate::commands::tags::tags_rename_unfinished::<Wry>,
-            crate::commands::tags::tags_rename_category,
-            crate::commands::tags_retag::tags_delete::<Wry>,
-            crate::commands::tags_retag::tags_merge::<Wry>,
-            crate::commands::tags_retag::tags_remove_from_note::<Wry>,
-            crate::commands::tags::tags_reorder,
-            crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
-            crate::commands::tags::tags_update_color,
-            crate::commands::tags::tags_update_icon,
-            // telemetry
-            crate::commands::telemetry::telemetry_flush,
-            crate::commands::telemetry::telemetry_get_settings,
-            crate::commands::telemetry::telemetry_set_auto_send_diagnostics,
-            crate::commands::telemetry::telemetry_set_enabled,
-            crate::commands::telemetry::telemetry_track,
-            // templates
-            crate::commands::templates::templates_create,
-            crate::commands::templates::templates_delete,
-            crate::commands::templates::templates_duplicate,
-            crate::commands::templates::templates_get,
-            crate::commands::templates::templates_list,
-            crate::commands::templates::templates_update,
-            // unsplash
-            crate::commands::unsplash::unsplash_search,
-            // updater
-            crate::commands::updater::updater_check_for_updates,
-            crate::commands::updater::updater_download_update,
-            crate::commands::updater::updater_get_state,
-            crate::commands::updater::updater_quit_and_install,
-            crate::commands::updater::updater_set_auto_check,
-            crate::commands::updater::updater_set_auto_download,
-            crate::commands::updater::updater_skip_version,
-            // vault
-            crate::commands::vault::vault_close,
-            crate::commands::vault::vault_create,
-            crate::commands::vault::vault_get_config::<Wry>,
-            crate::commands::vault::vault_get_default_parent,
-            crate::commands::vault::vault_get_status,
-            crate::commands::vault::vault_list,
-            crate::commands::vault::vault_remove,
-            crate::commands::vault::vault_reveal,
-            crate::commands::vault::vault_select,
-            crate::commands::vault::vault_set_default,
-            crate::commands::vault::vault_set_icon,
-            crate::commands::vault::vault_switch,
-            crate::commands::vault::vault_update_config::<Wry>,
-            crate::commands::vault_account::vault_delete_from_account,
-            crate::commands::vault_account::vault_download_remote,
-            crate::commands::vault_account::vault_list_account,
-            // vault activity
-            crate::commands::vault_activity::vault_activity_clear,
-            crate::commands::vault_activity::vault_activity_list,
-            crate::commands::vault_activity::vault_activity_reveal,
-            crate::commands::vault_activity::vault_activity_set_retention,
-            // vault index
-            crate::commands::vault_index::vault_reindex,
-            // vault files
-            crate::commands::vault_files::vault_resolve_embeds,
-            // vault locks
-            crate::commands::vault_locks::vault_locks_list::<Wry>,
-            crate::commands::vault_locks::vault_locks_set::<Wry>,
-            // vault notices
-            crate::commands::vault_notices::vault_notices_delete_kept,
-            crate::commands::vault_notices::vault_notices_list,
-            crate::commands::vault_notices::vault_notices_restore_kept,
-            // voice
-            crate::commands::voice::settings_download_voice_model,
-            crate::commands::voice::settings_get_voice_model_status,
-            crate::commands::voice::settings_get_voice_recording_readiness,
-            crate::commands::voice::settings_get_voice_transcription_openai_key_status,
-            crate::commands::voice::settings_open_os_microphone_settings,
-            crate::commands::voice::settings_set_voice_transcription_openai_key,
-            // window
-            crate::commands::shell::window_close,
-            crate::commands::shell::window_minimize,
-            crate::commands::shell::window_set_caption_rects,
-            crate::commands::shell::window_toggle_maximize,
-        ])
-        .events(collect_events![
-            // account
-            crate::events::AuthOauthCallbackEvent,
-            crate::events::AuthOauthErrorEvent,
-            crate::events::AuthOtpDetectedEvent,
-            crate::events::AuthSessionExpiredEvent,
-            crate::events::AuthSessionRefreshedEvent,
-            // ai
-            crate::events::AiEmbeddingProgressEvent,
-            crate::events::AiInlineSettingsChangedEvent,
-            // app
-            crate::events::AppNavigationRequestedEvent,
-            // canvas
-            crate::events::CanvasCreatedEvent,
-            crate::events::CanvasDeletedEvent,
-            crate::events::CanvasFolderCreatedEvent,
-            crate::events::CanvasFolderDeletedEvent,
-            crate::events::CanvasFolderUpdatedEvent,
-            crate::events::CanvasTooLargeEvent,
-            crate::events::CanvasUpdatedEvent,
-            // crdt
-            crate::events::CrdtProviderReadyEvent,
-            crate::events::CrdtProviderResetEvent,
-            crate::events::CrdtWriteBackFailedEvent,
-            // custom icons
-            crate::events::CustomIconsUpdatedEvent,
-            // flush
-            crate::events::FlushRequestedEvent,
-            // inbox
-            crate::events::InboxOpenItemEvent,
-            // journal
-            crate::events::JournalEntryCreatedEvent,
-            crate::events::JournalEntryDeletedEvent,
-            crate::events::JournalEntryUpdatedEvent,
-            crate::events::JournalEventsDroppedEvent,
-            crate::events::JournalExternalChangeEvent,
-            // locale
-            crate::events::LocaleChangedEvent,
-            // linking
-            crate::events::SyncLinkingApprovedEvent,
-            crate::events::SyncLinkingFinalizedEvent,
-            crate::events::SyncLinkingRequestedEvent,
-            // ocr languages
-            crate::events::OcrLanguagesChangedEvent,
-            // settings
-            crate::events::SettingsChangedEvent,
-            crate::events::SettingsOpenSectionEvent,
-            // menu
-            crate::events::MenuCommandInvokedEvent,
-            // stickies
-            crate::events::StickyDraftsChangedEvent,
-            // sync
-            crate::events::SyncCertificatePinFailedEvent,
-            crate::events::SyncClockSkewWarningEvent,
-            crate::events::SyncInitialSyncProgressEvent,
-            crate::events::SyncItemCorruptEvent,
-            crate::events::SyncItemRecoveredEvent,
-            crate::events::SyncItemSyncedEvent,
-            crate::events::SyncQueueClearedEvent,
-            crate::events::SyncSecurityWarningEvent,
-            crate::events::SyncStatusChangedEvent,
-            // sync account
-            crate::events::SyncDeviceRemovedEvent,
-            crate::events::SyncVaultBindingChangedEvent,
-            // templates
-            crate::events::TemplateCreatedEvent,
-            crate::events::TemplateDeletedEvent,
-            crate::events::TemplateUpdatedEvent,
-            // updater
-            crate::events::UpdaterStateChangedEvent,
-            // notes
-            crate::events::FolderConfigUpdatedEvent,
-            crate::events::NoteCreatedEvent,
-            crate::events::NoteDeletedEvent,
-            crate::events::NoteEventsDroppedEvent,
-            crate::events::NoteFoldUpdatedEvent,
-            crate::events::NoteLinksChangedEvent,
-            crate::events::NoteMovedEvent,
-            crate::events::NoteOutsideEditKeptEvent,
-            crate::events::NoteRenamedEvent,
-            crate::events::NoteTagsChangedEvent,
-            crate::events::NoteUpdatedEvent,
-            crate::events::PropertyDefinitionChangedEvent,
-            // portals
-            crate::events::PortalsUsageChangedEvent,
-            // tags
-            crate::events::TagCategoriesChangedEvent,
-            crate::events::TagColorUpdatedEvent,
-            crate::events::TagDeletedEvent,
-            crate::events::TagNotesChangedEvent,
-            crate::events::TagRenamedEvent,
-            crate::events::TagsProgressEvent,
-            // vault
-            crate::events::VaultActivityChangedEvent,
-            crate::events::VaultConfigChangedEvent,
-            crate::events::VaultErrorEvent,
-            crate::events::VaultIndexProgressEvent,
-            crate::events::VaultIndexRecoveredEvent,
-            crate::events::VaultListChangedEvent,
-            crate::events::VaultNoticesChangedEvent,
-            crate::events::VaultStatusChangedEvent,
-            // vault locks
-            crate::events::VaultLocksChangedEvent,
-            crate::events::VaultLocksExternalEditRestoredEvent,
-            // voice
-            crate::events::VoiceModelProgressEvent,
-            // window
-            crate::events::WindowCaptionHoverChangedEvent,
-            crate::events::WindowCaptionPressedChangedEvent,
-            crate::events::WindowChromeStateChangedEvent,
-        ])
+        .commands(areas!(commands collect_commands))
+        .events(areas!(events collect_events))
         .typ::<StartupState>()
         // `ai_provider_request` is a binary command; its argument and answer still get types.
         .typ::<memry_desktop::ai::proxy::AiProviderRequest>()
         .typ::<memry_desktop::ai::proxy::AiProviderHead>()
-}
-
-/// Sends a call to the binary handler when `command` is one of `binary_commands` and to the
-/// specta handler otherwise. Step 03 (#3520) wraps this closure with its `e2e_` dispatcher.
-pub fn dispatcher<R: Runtime>(
-    binary_commands: &'static [&'static str],
-    binary_handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
-    typed_handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
-) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
-    move |invoke| {
-        if binary_commands.contains(&invoke.message.command()) {
-            binary_handler(invoke)
-        } else {
-            typed_handler(invoke)
-        }
-    }
-}
-
-pub fn invoke_handler(
-    builder: &Builder<Wry>,
-) -> impl Fn(Invoke<Wry>) -> bool + Send + Sync + 'static {
-    dispatcher(
-        binary::COMMANDS,
-        binary::handler(),
-        builder.invoke_handler(),
-    )
 }

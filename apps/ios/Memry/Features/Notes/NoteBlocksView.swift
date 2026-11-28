@@ -42,6 +42,11 @@ struct NoteBlocksView: View {
     /// `true` inside a table cell, whose own `textColor` is the ink. Anywhere
     /// else the body is drawn in the ordinary ink.
     var inheritsInk = false
+    /// Rows are built as they scroll into view. The page's own body sets
+    /// it: a note of two thousand blocks built every row's text view in one
+    /// layout pass (#5507). A table cell or a portal stays eager, as it sits
+    /// in no vertical scroll view of its own.
+    var lazy = false
 
     /// Toggles the reader has opened or closed on this screen, by
     /// `NoteBlockList.toggleKey`.
@@ -55,11 +60,16 @@ struct NoteBlocksView: View {
         // A column list inserted here waits for this redraw to learn the id
         // of the block the caret goes to.
         let _ = editing?.session.resolveColumnFocus(in: blocks)
-        VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            NoteBlockItemsView(
-                items: NoteColumns.layout(NoteBlockList.rows(of: blocks, flipped: flipped)),
-                row: blockView
-            )
+        let items = NoteBlockItemsView(
+            items: NoteColumns.layout(NoteBlockList.rows(of: blocks, flipped: flipped)),
+            row: blockView
+        )
+        Group {
+            if lazy {
+                LazyVStack(alignment: .leading, spacing: Tokens.Space.medium) { items }
+            } else {
+                VStack(alignment: .leading, spacing: Tokens.Space.medium) { items }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: blocks) { old, new in

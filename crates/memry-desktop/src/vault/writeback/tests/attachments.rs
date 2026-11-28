@@ -15,6 +15,7 @@
 //! | a name that climbs out of the folder moves nothing                 | `is_stored_name`             |
 //! | another extension or a hidden character moves nothing             | plan, `is_stored_name`       |
 //! | a link at the file or the folder is never moved through            | file type, `plain_folder`    |
+//! | a download that landed before its body moves where the body links it | `place_linked_downloads`   |
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -23,10 +24,13 @@ use std::path::PathBuf;
 use memry_core::crdt::BODY_FRAGMENT;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::domain::vault_locks::TargetKind;
+use memry_core::sync::attachments::store::files;
 
 use super::{Fixture, Keep, Outcome, assert_wrote, fixture};
 use crate::attachments::{PlannedRename, plan_renames, reconcile_renames};
 use crate::shell::file_service::heal;
+use crate::sync::attachments::place_linked_downloads;
+use crate::sync::attachments::vault_files::DesktopVaultFiles;
 
 fn folder(f: &Fixture, id: &str) -> PathBuf {
     f.root.join("attachments").join(id)
@@ -63,6 +67,10 @@ fn note_with(f: &mut Fixture, rel: &str, name: &str, tail: &str) -> String {
 
 /// The block's `url` set to `attachments/<id>/<name>`: what a rename on another device sends.
 fn point_image_at(f: &Fixture, id: &str, name: &str) {
+    set_image_url(f, id, format!("attachments/{id}/{name}"));
+}
+
+fn set_image_url(f: &Fixture, id: &str, url: String) {
     let blocks = f.vault.notes().blocks(id.to_owned()).unwrap().unwrap();
     let block_id = blocks
         .iter()
@@ -72,7 +80,7 @@ fn point_image_at(f: &Fixture, id: &str, name: &str) {
     let edit = BlockEdit::SetProp {
         block_id,
         name: "url".into(),
-        value: format!("attachments/{id}/{name}"),
+        value: url,
     };
     assert!(f.writer.edit_block(id.to_owned(), edit).unwrap());
 }
@@ -369,4 +377,65 @@ fn a_link_at_the_file_or_the_folder_is_never_moved_through() {
     symlink(&real, folder(&f, id)).unwrap();
     assert_eq!(reconcile(&f, id, "k3f9x2-a.png", "k3f9x2-b.png"), []);
     assert!(real.join("k3f9x2-a.png").is_file() && !real.join("k3f9x2-b.png").exists());
+}
+
+/// A file sync downloaded into the note's folder before the body that links it elsewhere
+/// arrived moves there, with its record, once that body is written (`placeLinkedDownloads`,
+/// `crdt-writeback.ts:724`). A taken path is never replaced.
+#[test]
+fn a_download_that_landed_before_its_body_moves_where_the_body_links_it() {
+    for taken in [false, true] {
+        let mut f = fixture();
+        let id = note_with_image(&mut f, "n.md");
+        attach(&f, &id, "report.zip", "downloaded");
+        if taken {
+            f.write("sources/report.zip", "the user's file");
+        }
+        let landed = format!("attachments/{id}/report.zip");
+        let (owner, path) = (id.clone(), landed.clone());
+        f.vault
+            .db_handle()
+            .call_blocking(move |conn| files::record(conn, &owner, &path, "att-1", 1))
+            .unwrap();
+        set_image_url(&f, &id, "sources/report.zip".into());
+        let outcome = f.run(&id);
+        let written = assert_wrote(&mut f, &outcome, "n.md");
+        assert!(written.contains("](sources/report.zip)"), "{written}");
+        let owner = id.clone();
+        let recorded: Vec<String> = f
+            .vault
+            .db_handle()
+            .call_blocking(move |conn| files::records(conn, &owner))
+            .unwrap()
+            .into_iter()
+            .map(|row| row.path)
+            .collect();
+        if taken {
+            assert_eq!(f.read("sources/report.zip"), "the user's file");
+            assert_eq!(f.read(&landed), "downloaded");
+            assert_eq!(recorded, [landed]);
+        } else {
+            assert_eq!(f.read("sources/report.zip"), "downloaded");
+            assert!(!f.root.join(&landed).exists());
+            assert_eq!(recorded, ["sources/report.zip"]);
+        }
+    }
+}
+
+/// A note with no downloaded file to place never has its body read (`placeLinkedDownloads`
+/// checks the records first): a body that cannot be read fails nothing.
+#[test]
+fn a_note_with_nothing_downloaded_never_reads_its_body() {
+    let mut f = fixture();
+    let id = note_with_image(&mut f, "n.md");
+    fs::remove_file(f.root.join("n.md")).unwrap();
+    fs::create_dir(f.root.join("n.md")).unwrap();
+    let (files_of, owner) = (DesktopVaultFiles::new(f.root.clone()), id.clone());
+
+    let placed = f
+        .vault
+        .db_handle()
+        .call_blocking(move |conn| place_linked_downloads(conn, &files_of, &owner, 1));
+
+    placed.expect("no body read");
 }

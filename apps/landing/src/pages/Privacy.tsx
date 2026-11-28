@@ -9,7 +9,7 @@ export function PrivacyPage() {
         eyebrow="Legal · Privacy"
         title="Privacy Policy"
         intro="memrynote is built on a simple promise: your notes belong to you, and we cannot read them."
-        lastUpdated="November 9, 2026"
+        lastUpdated="November 18, 2026"
       >
         <h2>Summary in 30 seconds</h2>
         <ul>
@@ -19,10 +19,13 @@ export function PrivacyPage() {
             with AI models or used to train them.
           </li>
           <li>
-            Sync uploads only ciphertext. Every byte is encrypted on your device with
-            XChaCha20-Poly1305 before it leaves.
+            Sync encrypts your notes, tasks, journal, and attachments on your device with
+            XChaCha20-Poly1305 before upload. Tag names and folder paths are not encrypted, because
+            sync uses them as item IDs.
           </li>
-          <li>Encryption keys live in your password manager and never touch our servers.</li>
+          <li>
+            Your encryption keys come from a recovery phrase only you hold. We never receive it.
+          </li>
           <li>
             Anonymous usage metrics are optional, on by default, and switchable from Settings →
             Privacy. They never include note content, search queries, file paths, emails, or raw
@@ -135,18 +138,21 @@ export function PrivacyPage() {
             encrypted on your device before upload. We hold ciphertext only.
           </li>
           <li>
-            <strong>Routing metadata.</strong> Vault IDs, blob keys, content hashes, byte counts,
-            and timestamps. These are needed to route updates to your other devices and to count
-            usage against your plan.
+            <strong>Routing metadata.</strong> Vault IDs, item IDs and types, blob keys, content
+            hashes, byte counts, and timestamps. These are needed to route updates to your other
+            devices and to count usage against your plan. A tag&apos;s item ID is its name and a
+            folder&apos;s item ID is its path, so we can read your tag names and folder paths.
           </li>
           <li>
-            <strong>Account identifiers.</strong> Your email address, a hashed password, and
-            verification tokens.
+            <strong>Account identifiers.</strong> Your email address, the one-time codes we email
+            you to sign in, your Google account ID if you sign in with Google, and the devices you
+            linked.
           </li>
         </ul>
         <p>
-          We do not receive plaintext titles, plaintext tags, or any contents of your vault. The
-          server&apos;s view of your notes is a stream of opaque encrypted bytes.
+          We do not receive plaintext titles, bodies, properties, or any other contents of your
+          notes. Apart from the tag names and folder paths above, the server&apos;s view of your
+          notes is a stream of encrypted bytes.
         </p>
 
         <h2>6. What the website collects</h2>
@@ -156,7 +162,8 @@ export function PrivacyPage() {
           how the site is used and diagnose problems. Every form field value is masked in the replay
           by default, and pages that can show your email address (sign-in, account settings) mask
           that text specifically as well, so it is never captured. PostHog sets cookies to keep
-          track of your session.
+          track of your session. PostHog uses the IP address your browser connects from to look up
+          an approximate location (country and city), then discards the address. We do not store it.
         </p>
         <p>
           If you contact us or sign up for an account, we store the email address you submit so we
@@ -186,8 +193,8 @@ export function PrivacyPage() {
         <h2>8. Encryption details</h2>
         <p>
           memrynote uses end-to-end encryption based on the libsodium primitives: XChaCha20-Poly1305
-          for content, Ed25519 for signatures, and Argon2id for password-based key derivation. Your
-          master key is derived from your password on your device and is never sent to us.
+          for content, Ed25519 for signatures, and Argon2id for key derivation. Your master key is
+          derived on your device from a 24-word recovery phrase and is never sent to us.
         </p>
         <p>
           Because we never hold your keys, we cannot decrypt your data. We cannot reset it for you,

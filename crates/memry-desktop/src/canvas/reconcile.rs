@@ -193,9 +193,7 @@ impl CanvasService {
         if let Some(scene) = scene {
             self.rewrite_edges(id, &scene)?;
         }
-        if let Settled::ConflictCopy(copy) = &settled {
-            self.rewrite_edges(&copy.canvas.summary.id, &copy.canvas.scene)?;
-        }
+        self.index_settled_copy(&settled)?;
         Ok(settled)
     }
 
@@ -206,6 +204,15 @@ impl CanvasService {
         path: &str,
         now_ms: i64,
     ) -> Result<Option<Adopted>, CanvasError> {
+        // Checked again under this writer call: a create, a rename or another adopter may have
+        // given the path a row since the listing.
+        let key = canvas_path_key(path);
+        if files::all(conn)?
+            .iter()
+            .any(|(_, named, _)| canvas_path_key(named) == key)
+        {
+            return Ok(None);
+        }
         let document = match read_canvas_file(&self.vault, path) {
             Ok(Some(document)) => document,
             Ok(None) => return Ok(None),
@@ -223,7 +230,6 @@ impl CanvasService {
             let found = Found::File {
                 path: path.to_owned(),
                 document,
-                seen: None,
             };
             self.settle_in(conn, &canvas, found, now_ms)?;
             return Ok(Some(Adopted::Repointed));
@@ -276,6 +282,7 @@ impl CanvasService {
         let row = FileRow {
             path: path.to_owned(),
             sha256,
+            record_sha256: Some(files::scene_sha256(&saved.canvas.scene)),
         };
         files::put(conn, &id, &row, now_ms)?;
         Ok(Some(Adopted::New))

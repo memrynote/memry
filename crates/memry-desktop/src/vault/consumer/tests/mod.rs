@@ -518,7 +518,7 @@ pub(super) fn applier(
     Applier {
         root: root.to_owned(),
         vault: vault.clone(),
-        search: vault.search().unwrap(),
+        search: vault.search(None).unwrap(),
         rows: rows.clone(),
         identity,
         feed: vault.external_feed(store.clone()).ok(),

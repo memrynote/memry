@@ -930,6 +930,13 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func submitAppStoreTransaction(signedTransactionInfo: String) async throws  -> BillingStatus
     
     /**
+     * Sends one feedback submission, already serialised by the shell. Never
+     * retries on its own: a person is waiting on the answer, and sending
+     * twice would email twice.
+     */
+    func sendFeedback(payloadJson: Data) async throws 
+    
+    /**
      * The approver half of linking over this session.
      */
     func deviceApprover()  -> DeviceApprover
@@ -1649,6 +1656,27 @@ open func submitAppStoreTransaction(signedTransactionInfo: String)async throws  
 }
     
     /**
+     * Sends one feedback submission, already serialised by the shell. Never
+     * retries on its own: a person is waiting on the answer, and sending
+     * twice would email twice.
+     */
+open func sendFeedback(payloadJson: Data)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_send_feedback(
+                        self.uniffiCloneHandle(),FfiConverterData.lower(payloadJson)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
      * The approver half of linking over this session.
      */
 open func deviceApprover() -> DeviceApprover  {
@@ -2068,11 +2096,27 @@ public protocol CanvasesProtocol: AnyObject, Sendable {
     func create(title: String?, ownerNoteId: String?, scene: String?) throws  -> CanvasRecord
     
     /**
+     * Every live canvas owned by the note `owner_note_id`, ordered by id: its
+     * whiteboard and any "(conflict copy)" a pull made of it, which keeps the
+     * owner. Empty when the note owns none.
+     */
+    func list(ownerNoteId: String) throws  -> [CanvasRecord]
+    
+    /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
      * A scene over the sync cap is saved here and held back from sync, and
      * the record names its size (`sync_held_bytes`).
      */
     func setScene(id: String, scene: String) throws  -> CanvasRecord
+    
+    /**
+     * Replaces a canvas's scene only if the stored scene is still `expected`,
+     * the `scene` of the record the edit was built on. Checked and written in
+     * one transaction, so a pull between the caller's read and this write is
+     * reported as `Stale` instead of being overwritten. Fails with `NotFound`
+     * for a deleted canvas.
+     */
+    func setSceneExpecting(id: String, scene: String, expected: String) throws  -> CanvasSceneWrite
     
 }
 /**
@@ -2161,6 +2205,21 @@ open func create(title: String?, ownerNoteId: String?, scene: String?)throws  ->
 }
     
     /**
+     * Every live canvas owned by the note `owner_note_id`, ordered by id: its
+     * whiteboard and any "(conflict copy)" a pull made of it, which keeps the
+     * owner. Empty when the note owns none.
+     */
+open func list(ownerNoteId: String)throws  -> [CanvasRecord]  {
+    return try  FfiConverterSequenceTypeCanvasRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_list(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(ownerNoteId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
      * A scene over the sync cap is saved here and held back from sync, and
      * the record names its size (`sync_held_bytes`).
@@ -2172,6 +2231,25 @@ open func setScene(id: String, scene: String)throws  -> CanvasRecord  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterString.lower(scene),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Replaces a canvas's scene only if the stored scene is still `expected`,
+     * the `scene` of the record the edit was built on. Checked and written in
+     * one transaction, so a pull between the caller's read and this write is
+     * reported as `Stale` instead of being overwritten. Fails with `NotFound`
+     * for a deleted canvas.
+     */
+open func setSceneExpecting(id: String, scene: String, expected: String)throws  -> CanvasSceneWrite  {
+    return try  FfiConverterTypeCanvasSceneWrite_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_set_scene_expecting(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(scene),
+        FfiConverterString.lower(expected),uniffiCallStatus
     )
 })
 }
@@ -3122,6 +3200,218 @@ public func FfiConverterTypeDeviceLink_lower(_ value: DeviceLink) -> UInt64 {
 
 
 /**
+ * Where [`CoreDiagnostic`]s go.
+ *
+ * **Synchronous by contract**, as [`crate::api::sync::SyncProgressListener`]
+ * is: it is called from inside the sync it reports on, so an implementation
+ * that blocks stalls that sync. Write the line and return.
+ */
+public protocol DiagnosticsSink: AnyObject, Sendable {
+    
+    func record(event: CoreDiagnostic) 
+    
+}
+/**
+ * Where [`CoreDiagnostic`]s go.
+ *
+ * **Synchronous by contract**, as [`crate::api::sync::SyncProgressListener`]
+ * is: it is called from inside the sync it reports on, so an implementation
+ * that blocks stalls that sync. Write the line and return.
+ */
+open class DiagnosticsSinkImpl: DiagnosticsSink, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_diagnosticssink(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_diagnosticssink(handle, $0) }
+    }
+
+    
+
+    
+open func record(event: CoreDiagnostic)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_diagnosticssink_record(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCoreDiagnostic_lower(event),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceDiagnosticsSink {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceDiagnosticsSink = UniffiVTableCallbackInterfaceDiagnosticsSink(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeDiagnosticsSink.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface DiagnosticsSink: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeDiagnosticsSink.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface DiagnosticsSink: handle missing in uniffiClone")
+            }
+        },
+        record: { (
+            uniffiHandle: UInt64,
+            event: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeDiagnosticsSink.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.record(
+                     event: try FfiConverterTypeCoreDiagnostic_lift(event)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    //
+    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
+    // This is safe because the pointee is initialized once during static init
+    // and never mutated by either side of the FFI.  Its fields are C function pointers.
+    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceDiagnosticsSink> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceDiagnosticsSink>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitDiagnosticsSink() {
+    uniffi_memry_core_fn_init_callback_vtable_diagnosticssink(UniffiCallbackInterfaceDiagnosticsSink.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDiagnosticsSink: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<DiagnosticsSink>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = DiagnosticsSink
+
+    public static func lift(_ handle: UInt64) throws -> DiagnosticsSink {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return DiagnosticsSinkImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: DiagnosticsSink) -> UInt64 {
+         if let rustImpl = value as? DiagnosticsSinkImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DiagnosticsSink {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: DiagnosticsSink, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticsSink_lift(_ handle: UInt64) throws -> DiagnosticsSink {
+    return try FfiConverterTypeDiagnosticsSink.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticsSink_lower(_ value: DiagnosticsSink) -> UInt64 {
+    return FfiConverterTypeDiagnosticsSink.lower(value)
+}
+
+
+
+
+
+
+/**
  * Platform file attributes the core cannot set itself.
  */
 public protocol FileProtection: AnyObject, Sendable {
@@ -3599,12 +3889,36 @@ public protocol InboxProtocol: AnyObject, Sendable {
      */
     func resumePendingJobs() throws  -> InboxJobsResumed
     
+    /**
+     * One review tick (`runReviewTick`) at the shell's local wall clock:
+     * `today` as `YYYY-MM-DD`, `now_minutes` since local midnight. Answers
+     * the reviewable count when the nudge is due, after recording today as
+     * notified, so the next tick today answers `None`.
+     */
+    func reviewDue(today: String, nowMinutes: UInt32) throws  -> Int64?
+    
     func reviewSettings() throws  -> InboxReviewSettings
     
     /**
      * Writes both keys (each carries its own field clock, §6.9).
      */
     func setReviewSettings(settings: InboxReviewSettings) throws 
+    
+    /**
+     * `getSuggestionStats`.
+     */
+    func suggestionStats() throws  -> InboxSuggestionStats
+    
+    /**
+     * `getSuggestions`: up to three folders, then up to three notes to link.
+     * The caller answers an empty list itself when local AI is off.
+     */
+    func suggestions(itemId: String, index: InboxSuggestIndex) throws  -> [InboxSuggestion]
+    
+    /**
+     * `trackSuggestionFeedback`. Local only.
+     */
+    func trackSuggestion(itemId: String, itemType: String, suggestedTo: String, actualTo: String, confidence: Double, suggestedTags: [String], actualTags: [String]) throws 
     
     func addTag(id: String, tag: String) throws 
     
@@ -3648,6 +3962,11 @@ public protocol InboxProtocol: AnyObject, Sendable {
      * gives (unsupported type, empty, over 50 MB).
      */
     func checkFile(mimeType: String, size: UInt64) throws  -> String
+    
+    /**
+     * `convertToEvent`: `start_at` and `end_at` are ISO instants.
+     */
+    func convertToEvent(id: String, startAt: String, endAt: String?, isAllDay: Bool, location: String?, localNow: String) throws  -> InboxFiled
     
     /**
      * Convert → Note: a note at the vault root.
@@ -4114,6 +4433,23 @@ open func resumePendingJobs()throws  -> InboxJobsResumed  {
 })
 }
     
+    /**
+     * One review tick (`runReviewTick`) at the shell's local wall clock:
+     * `today` as `YYYY-MM-DD`, `now_minutes` since local midnight. Answers
+     * the reviewable count when the nudge is due, after recording today as
+     * notified, so the next tick today answers `None`.
+     */
+open func reviewDue(today: String, nowMinutes: UInt32)throws  -> Int64?  {
+    return try  FfiConverterOptionInt64.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_review_due(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(today),
+        FfiConverterUInt32.lower(nowMinutes),uniffiCallStatus
+    )
+})
+}
+    
 open func reviewSettings()throws  -> InboxReviewSettings  {
     return try  FfiConverterTypeInboxReviewSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
@@ -4131,6 +4467,51 @@ open func setReviewSettings(settings: InboxReviewSettings)throws   {try rustCall
     uniffi_memry_core_fn_method_inbox_set_review_settings(
             self.uniffiCloneHandle(),
         FfiConverterTypeInboxReviewSettings_lower(settings),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * `getSuggestionStats`.
+     */
+open func suggestionStats()throws  -> InboxSuggestionStats  {
+    return try  FfiConverterTypeInboxSuggestionStats_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_suggestion_stats(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `getSuggestions`: up to three folders, then up to three notes to link.
+     * The caller answers an empty list itself when local AI is off.
+     */
+open func suggestions(itemId: String, index: InboxSuggestIndex)throws  -> [InboxSuggestion]  {
+    return try  FfiConverterSequenceTypeInboxSuggestion.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_suggestions(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemId),
+        FfiConverterTypeInboxSuggestIndex_lower(index),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `trackSuggestionFeedback`. Local only.
+     */
+open func trackSuggestion(itemId: String, itemType: String, suggestedTo: String, actualTo: String, confidence: Double, suggestedTags: [String], actualTags: [String])throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_track_suggestion(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemId),
+        FfiConverterString.lower(itemType),
+        FfiConverterString.lower(suggestedTo),
+        FfiConverterString.lower(actualTo),
+        FfiConverterDouble.lower(confidence),
+        FfiConverterSequenceString.lower(suggestedTags),
+        FfiConverterSequenceString.lower(actualTags),uniffiCallStatus
     )
 }
 }
@@ -4288,6 +4669,24 @@ open func checkFile(mimeType: String, size: UInt64)throws  -> String  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(mimeType),
         FfiConverterUInt64.lower(size),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * `convertToEvent`: `start_at` and `end_at` are ISO instants.
+     */
+open func convertToEvent(id: String, startAt: String, endAt: String?, isAllDay: Bool, location: String?, localNow: String)throws  -> InboxFiled  {
+    return try  FfiConverterTypeInboxFiled_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_convert_to_event(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(startAt),
+        FfiConverterOptionString.lower(endAt),
+        FfiConverterBool.lower(isAllDay),
+        FfiConverterOptionString.lower(location),
+        FfiConverterString.lower(localNow),uniffiCallStatus
     )
 })
 }
@@ -4650,6 +5049,14 @@ public protocol JournalProtocol: AnyObject, Sendable {
     func resolveWikiTarget(target: String) throws  -> WikiTargetMatch?
     
     /**
+     * The day in every other year with a live entry, later years included,
+     * newest first, flagged against `today` (desktop's
+     * `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+     * without one, and back.
+     */
+    func sameDayEntries(date: String, today: String) throws  -> [JournalMonthDayRecord]
+    
+    /**
      * Seeds an empty day from a template with the shell's locale strings.
      * A day with a live entry is never seeded (`AlreadyExists`). A template
      * not on this device yet throws `NotFound`; the shell retries later.
@@ -4958,6 +5365,23 @@ open func resolveWikiTarget(target: String)throws  -> WikiTargetMatch?  {
     uniffi_memry_core_fn_method_journal_resolve_wiki_target(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(target),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The day in every other year with a live entry, later years included,
+     * newest first, flagged against `today` (desktop's
+     * `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+     * without one, and back.
+     */
+open func sameDayEntries(date: String, today: String)throws  -> [JournalMonthDayRecord]  {
+    return try  FfiConverterSequenceTypeJournalMonthDayRecord.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_same_day_entries(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(today),uniffiCallStatus
     )
 })
 }
@@ -5554,9 +5978,23 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func comments(id: String) throws  -> [ReviewComment]
     
     /**
+     * A binary note's own file (#5668): the PDF, image, audio or video that
+     * is the note's whole content. `None` for a note that names none, which
+     * opens as a body. Fetch the bytes with `VaultSync::fetch_attachment`.
+     */
+    func file(id: String) throws  -> NoteFile?
+    
+    /**
      * Every live folder, parent before child.
      */
     func folders() throws  -> [FolderSummary]
+    
+    /**
+     * The note's `fullWidth` override, desktop's per-note width: `true` or
+     * `false` wins over the device's editor width, `nil` follows it. A note
+     * this vault does not hold reads as `nil`.
+     */
+    func fullWidth(id: String) throws  -> Bool?
     
     /**
      * Whether a live bookmark names `(item_type, item_id)`: the page menu's
@@ -5870,6 +6308,21 @@ open func comments(id: String)throws  -> [ReviewComment]  {
 }
     
     /**
+     * A binary note's own file (#5668): the PDF, image, audio or video that
+     * is the note's whole content. `None` for a note that names none, which
+     * opens as a body. Fetch the bytes with `VaultSync::fetch_attachment`.
+     */
+open func file(id: String)throws  -> NoteFile?  {
+    return try  FfiConverterOptionTypeNoteFile.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_file(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Every live folder, parent before child.
      */
 open func folders()throws  -> [FolderSummary]  {
@@ -5877,6 +6330,21 @@ open func folders()throws  -> [FolderSummary]  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_folders(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The note's `fullWidth` override, desktop's per-note width: `true` or
+     * `false` wins over the device's editor width, `nil` follows it. A note
+     * this vault does not hold reads as `nil`.
+     */
+open func fullWidth(id: String)throws  -> Bool?  {
+    return try  FfiConverterOptionBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_full_width(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
     )
 })
 }
@@ -6335,6 +6803,13 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setCover(id: String, url: String?, offsetY: Double) throws 
     
     /**
+     * Sets the note's `fullWidth` override, as desktop's page-menu toggle
+     * does: always a boolean, never cleared, so `false` pins normal width
+     * against a global Full setting. Every other property stays as it is.
+     */
+    func setFullWidth(id: String, fullWidth: Bool) throws 
+    
+    /**
      * Sets or clears a note's icon (N701).
      *
      * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -6773,6 +7248,21 @@ open func setCover(id: String, url: String?, offsetY: Double)throws   {try rustC
         FfiConverterString.lower(id),
         FfiConverterOptionString.lower(url),
         FfiConverterDouble.lower(offsetY),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Sets the note's `fullWidth` override, as desktop's page-menu toggle
+     * does: always a boolean, never cleared, so `false` pins normal width
+     * against a global Full setting. Every other property stays as it is.
+     */
+open func setFullWidth(id: String, fullWidth: Bool)throws   {try rustCallWithError(FfiConverterTypePropertyWriteError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_full_width(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(fullWidth),uniffiCallStatus
     )
 }
 }
@@ -8411,14 +8901,40 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func reindex() throws  -> ReindexSummary
     
     /**
+     * One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+     * when more remain.
+     *
+     * For a shell that runs core calls on one serial queue: a call per batch
+     * lets the queue's other calls run between batches (#5842). The pass
+     * belongs to the vault, so a step through any of its `Search`es goes on
+     * with it. A step that fails, or finds the pass stale, drops it; the next
+     * step plans again and resumes after the batches already committed.
+     */
+    func reindexStep() throws  -> ReindexSummary?
+    
+    /**
      * Everything matching `query`, in desktop's four groups, each best
      * first and at most `limit` long. `filter` narrows the types, the
      * modified date and the tags; `None` narrows nothing.
      *
      * A query carrying no searchable term returns **empty, not everything**:
      * an empty search box is not a request for the whole vault.
+     *
+     * With semantic search on and its model loaded, notes and journals near
+     * the query's meaning fuse into their groups. The query is embedded
+     * before any database lock is taken, and never waits on a model load:
+     * the first query starts the load and answers from FTS alone, with
+     * `semantic_pending` set.
      */
     func search(query: String, filter: SearchFilter?, limit: UInt32) throws  -> SearchGroups
+    
+    /**
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
+     */
+    func semanticModelLoaded() async  -> Bool
     
     /**
      * Notes and journal days that mention `target_id`'s title or an alias as
@@ -8558,12 +9074,37 @@ open func reindex()throws  -> ReindexSummary  {
 }
     
     /**
+     * One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+     * when more remain.
+     *
+     * For a shell that runs core calls on one serial queue: a call per batch
+     * lets the queue's other calls run between batches (#5842). The pass
+     * belongs to the vault, so a step through any of its `Search`es goes on
+     * with it. A step that fails, or finds the pass stale, drops it; the next
+     * step plans again and resumes after the batches already committed.
+     */
+open func reindexStep()throws  -> ReindexSummary?  {
+    return try  FfiConverterOptionTypeReindexSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_reindex_step(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Everything matching `query`, in desktop's four groups, each best
      * first and at most `limit` long. `filter` narrows the types, the
      * modified date and the tags; `None` narrows nothing.
      *
      * A query carrying no searchable term returns **empty, not everything**:
      * an empty search box is not a request for the whole vault.
+     *
+     * With semantic search on and its model loaded, notes and journals near
+     * the query's meaning fuse into their groups. The query is embedded
+     * before any database lock is taken, and never waits on a model load:
+     * the first query starts the load and answers from FTS alone, with
+     * `semantic_pending` set.
      */
 open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> SearchGroups  {
     return try  FfiConverterTypeSearchGroups_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -8575,6 +9116,29 @@ open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> 
         FfiConverterUInt32.lower(limit),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
+     */
+open func semanticModelLoaded()async  -> Bool  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_search_semantic_model_loaded(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_i8,
+            completeFunc: ffi_memry_core_rust_future_complete_i8,
+            freeFunc: ffi_memry_core_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -9138,6 +9702,267 @@ public func FfiConverterTypeSecureStore_lift(_ handle: UInt64) throws -> SecureS
 #endif
 public func FfiConverterTypeSecureStore_lower(_ value: SecureStore) -> UInt64 {
     return FfiConverterTypeSecureStore.lower(value)
+}
+
+
+
+
+
+
+public protocol SemanticSearchProtocol: AnyObject, Sendable {
+    
+    /**
+     * Unloads the model, deletes the model files and the opt-in, and deletes
+     * this vault's `vectors.db`. Other vaults delete theirs on their next
+     * open, because the opt-in is gone.
+     */
+    func disable(vault: Vault) async throws 
+    
+    /**
+     * Opts this device in, then downloads or resumes. Refuses when the rest
+     * of the download would leave less than 64 MiB free. Idempotent.
+     */
+    func enable(availableBytes: UInt64) async throws  -> ModelState
+    
+    /**
+     * Downloads or resumes only when this device opted in. For foregrounding
+     * and Wi-Fi coming back.
+     */
+    func resume() async throws  -> ModelState
+    
+    /**
+     * Cheap: file sizes and two counts.
+     */
+    func status(vault: Vault)  -> SemanticStatus
+    
+    /**
+     * Runs at most one window of inference per call.
+     */
+    func embedStep(vault: Vault, conditions: StepConditions) async throws  -> StepOutcome
+    
+    /**
+     * `Background` unloads unless the embedder is running. `MemoryWarning`
+     * always unloads, and the next step stops with `MemoryPressure`.
+     */
+    func release(reason: ReleaseReason) 
+    
+}
+open class SemanticSearch: SemanticSearchProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_semanticsearch(self.handle, $0) }
+    }
+    /**
+     * No model load and no network. Build exactly one per process.
+     */
+public convenience init(modelsDir: String, transport: Transport, reachability: Reachability) {
+    let handle =
+        try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_semanticsearch_new(
+        FfiConverterString.lower(modelsDir),
+        FfiConverterTypeTransport_lower(transport),
+        FfiConverterTypeReachability_lower(reachability),uniffiCallStatus
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_semanticsearch(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Unloads the model, deletes the model files and the opt-in, and deletes
+     * this vault's `vectors.db`. Other vaults delete theirs on their next
+     * open, because the opt-in is gone.
+     */
+open func disable(vault: Vault)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_disable(
+                        self.uniffiCloneHandle(),FfiConverterTypeVault_lower(vault)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Opts this device in, then downloads or resumes. Refuses when the rest
+     * of the download would leave less than 64 MiB free. Idempotent.
+     */
+open func enable(availableBytes: UInt64)async throws  -> ModelState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_enable(
+                        self.uniffiCloneHandle(),FfiConverterUInt64.lower(availableBytes)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeModelState_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Downloads or resumes only when this device opted in. For foregrounding
+     * and Wi-Fi coming back.
+     */
+open func resume()async throws  -> ModelState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_resume(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeModelState_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Cheap: file sizes and two counts.
+     */
+open func status(vault: Vault) -> SemanticStatus  {
+    return try!  FfiConverterTypeSemanticStatus_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_semanticsearch_status(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeVault_lower(vault),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Runs at most one window of inference per call.
+     */
+open func embedStep(vault: Vault, conditions: StepConditions)async throws  -> StepOutcome  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_embed_step(
+                        self.uniffiCloneHandle(),FfiConverterTypeVault_lower(vault),FfiConverterTypeStepConditions_lower(conditions)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeStepOutcome_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * `Background` unloads unless the embedder is running. `MemoryWarning`
+     * always unloads, and the next step stops with `MemoryPressure`.
+     */
+open func release(reason: ReleaseReason)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_semanticsearch_release(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeReleaseReason_lower(reason),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticSearch: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SemanticSearch
+
+    public static func lift(_ handle: UInt64) throws -> SemanticSearch {
+        return SemanticSearch(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SemanticSearch) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticSearch {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SemanticSearch, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticSearch_lift(_ handle: UInt64) throws -> SemanticSearch {
+    return try FfiConverterTypeSemanticSearch.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticSearch_lower(_ value: SemanticSearch) -> UInt64 {
+    return FfiConverterTypeSemanticSearch.lower(value)
 }
 
 
@@ -12291,9 +13116,10 @@ public protocol VaultProtocol: AnyObject, Sendable {
      * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
      * when the file cannot be trusted — so this one is not free, and a vault
      * that is never searched never opens it. Hold the handle rather than
-     * rebuilding it per keystroke.
+     * rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+     * into the results while it is on; `None` searches FTS alone.
      */
-    func search() throws  -> Search
+    func search(semantic: SemanticSearch?) throws  -> Search
     
     /**
      * The search sheet's recently opened results, device-local (#4322),
@@ -12548,13 +13374,15 @@ open func notesWriter(store: SecureStore)throws  -> NotesWriter  {
      * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
      * when the file cannot be trusted — so this one is not free, and a vault
      * that is never searched never opens it. Hold the handle rather than
-     * rebuilding it per keystroke.
+     * rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+     * into the results while it is on; `None` searches FTS alone.
      */
-open func search()throws  -> Search  {
+open func search(semantic: SemanticSearch?)throws  -> Search  {
     return try  FfiConverterTypeSearch_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_search(
-            self.uniffiCloneHandle(),uniffiCallStatus
+            self.uniffiCloneHandle(),
+        FfiConverterOptionTypeSemanticSearch.lower(semantic),uniffiCallStatus
     )
 })
 }
@@ -12781,6 +13609,13 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [CalendarCaldavObject], removed: [String], full: Bool, cursor: String?, zones: CalendarFeedZones) throws  -> UInt32
     
     /**
+     * The objects of one CalDAV calendar Memry items are bound to, with
+     * the ETag each binding holds. A pull checks those it did not see
+     * against the server's listing: bound objects have no mirror rows.
+     */
+    func caldavBoundObjects(calendarUrl: String) throws  -> [CalendarCaldavEtag]
+    
+    /**
      * `connectCaldavAccount` after discovery. Returns the account id.
      */
     func caldavConnect(input: CalendarCaldavConnect) throws  -> String
@@ -12812,9 +13647,11 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     
     /**
      * A push landed: the binding records the remote (`body` is what was
-     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     * sent; CalDAV keeps it as `caldavRaw`). `queued_at` is the item's
+     * `CalendarPushItem.queued_at`: the item leaves the queue only if no
+     * change was queued since, so an edit made during the request stays.
      */
-    func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones) throws 
+    func pushDone(sourceType: String, sourceId: String, queuedAt: Int64, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones) throws 
     
     /**
      * A push failed; the item stays queued with the reason.
@@ -12847,7 +13684,8 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
     func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> UInt32
     
@@ -13138,6 +13976,21 @@ open func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [Calen
 }
     
     /**
+     * The objects of one CalDAV calendar Memry items are bound to, with
+     * the ETag each binding holds. A pull checks those it did not see
+     * against the server's listing: bound objects have no mirror rows.
+     */
+open func caldavBoundObjects(calendarUrl: String)throws  -> [CalendarCaldavEtag]  {
+    return try  FfiConverterSequenceTypeCalendarCaldavEtag.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_bound_objects(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(calendarUrl),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * `connectCaldavAccount` after discovery. Returns the account id.
      */
 open func caldavConnect(input: CalendarCaldavConnect)throws  -> String  {
@@ -13231,14 +14084,17 @@ open func pushDeleted(sourceType: String, sourceId: String, bindingId: String)th
     
     /**
      * A push landed: the binding records the remote (`body` is what was
-     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     * sent; CalDAV keeps it as `caldavRaw`). `queued_at` is the item's
+     * `CalendarPushItem.queued_at`: the item leaves the queue only if no
+     * change was queued since, so an edit made during the request stays.
      */
-open func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+open func pushDone(sourceType: String, sourceId: String, queuedAt: Int64, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vaultcalendar_push_done(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(sourceType),
         FfiConverterString.lower(sourceId),
+        FfiConverterInt64.lower(queuedAt),
         FfiConverterString.lower(provider),
         FfiConverterString.lower(calendarId),
         FfiConverterString.lower(remoteEventId),
@@ -13324,7 +14180,8 @@ open func feedRecordError(sourceId: String, code: String)throws   {try rustCallW
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
 open func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> UInt32  {
     return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -13660,12 +14517,12 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
      *
-     * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
-     * recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
-     * says "older content on demand" — so a note outside it arrives with its
+     * **This is not an extra.** With partial pack coverage, [`Self::first_sync`]
+     * leaves the bodies outside the recent window owed until
+     * [`Self::drain_bodies`] reaches them (chapter 10 §10.6.1), and FR-028
+     * says "older content on demand": a note opened before then has its
      * metadata and no body, and [`crate::api::notes::Notes::read`] answers
-     * `NoteBody { present: false }`. Without this call that note could never
-     * become readable, which is spec-defect 136 one layer down.
+     * `NoteBody { present: false }`. This call makes it readable now.
      *
      * **`async`**, and one document rather than the whole feed: a handful of
      * round trips, not tens.
@@ -13680,8 +14537,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func fetchNoteBody(noteId: String) async throws  -> BodyFetchSummary
     
     /**
-     * The first sync: refs to the end, then metadata newest first, then bodies
-     * for the recent window (data-model §C.3, FR-028).
+     * The first sync: note records for the whole vault, then bodies from packs
+     * for the whole vault (data-model §C.3, FR-028, #5233). With partial pack
+     * coverage it pulls the owed bodies of the recent window and leaves the
+     * rest owed for [`Self::drain_bodies`].
      *
      * **`async`, and that is contract, not detail** (spec-defect 90). It is
      * tens of network round trips — a no-op pass over a ninety-four-note vault
@@ -13706,6 +14565,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * through leaves the notes that did arrive visible and readable; it throws,
      * and what it throws is the reason. A shell must render that reason, never
      * an empty state.
+     *
+     * **A [`Self::sync_now`] asked for meanwhile waits for this run**, as a
+     * second pass waits for the first: the shell shows the vault while it
+     * fills, so writes and foregrounds ask for passes during it.
      */
     func firstSync(progress: SyncProgressListener?) async throws  -> FirstSyncSummary
     
@@ -13747,6 +14610,20 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * signer is refused there rather than skipped.
      */
     func fetchAttachment(attachmentId: String, reachable: Reachable) async throws  -> AttachmentFetchSummary
+    
+    /**
+     * Reads the manifest of each attachment `note_id` references that has no
+     * name on this device yet, so `Notes::attachment_for_block` binds the
+     * block naming it (#5675). A block names its file by the manifest's
+     * filename, and a row a pulled note created has none until a manifest is
+     * read. Manifests only: the bytes still go through
+     * [`Self::fetch_attachment`].
+     *
+     * The shell calls it when the user opens the note, whatever the Download
+     * attachments setting. Answers how many it named; one that will not
+     * read is logged and asked again on the next open.
+     */
+    func fetchNoteManifests(noteId: String) async throws  -> UInt32
     
     /**
      * Retries every attachment a note references whose bytes are not here
@@ -13796,6 +14673,29 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data) async throws  -> String
     
     /**
+     * One round of the foreground drain: pulls up to
+     * [`body_drain::DRAIN_ROUND_DOCUMENTS`] of the bodies still owed, then
+     * returns. A shell calls it again while it is in the foreground, the
+     * last round pulled something, and `remaining` is above 0.
+     *
+     * Bounded so a write's [`Self::sync_now`] waits for at most one round:
+     * rounds and passes take the same pass gate. A round with nothing due
+     * makes no request, and so does a round before the `Retry-After` of a
+     * `429` the last one met, whether it ended that round or only answered
+     * its probe or bootstrap open, or one the first sync's bodies pass gave
+     * up on: it pulls nothing. The shell then waits a few seconds and asks
+     * again, and pauses its drain until the next foreground only once the
+     * rounds have pulled nothing for longer than the longest `429` hold.
+     * It opens a bootstrap session
+     * for the round and pulls four documents at a time when the server
+     * grants one (a device's first day, §10.9), one at a time otherwise.
+     *
+     * `progress` gets `Bodies` ticks in live documents of the vault, so a
+     * shell continues the first sync's bar where it stopped.
+     */
+    func drainBodies(progress: SyncProgressListener?) async throws  -> BodyDrainSummary
+    
+    /**
      * Attaches a capture's file to a note it is being filed into.
      *
      * A capture whose upload is cached here is referenced from the note and
@@ -13826,7 +14726,8 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * queued. Safe to call repeatedly. Passes over one vault run one at a
      * time: two overlapping passes would push the same outbox rows twice and
      * report the second copy as rejected, so a second call waits for the
-     * first and then runs its own pass.
+     * first and then runs its own pass. It waits for a running
+     * [`VaultSync::first_sync`] the same way.
      */
     func syncNow() async throws  -> SyncPassSummary
     
@@ -13900,12 +14801,12 @@ open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
     /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
      *
-     * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
-     * recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
-     * says "older content on demand" — so a note outside it arrives with its
+     * **This is not an extra.** With partial pack coverage, [`Self::first_sync`]
+     * leaves the bodies outside the recent window owed until
+     * [`Self::drain_bodies`] reaches them (chapter 10 §10.6.1), and FR-028
+     * says "older content on demand": a note opened before then has its
      * metadata and no body, and [`crate::api::notes::Notes::read`] answers
-     * `NoteBody { present: false }`. Without this call that note could never
-     * become readable, which is spec-defect 136 one layer down.
+     * `NoteBody { present: false }`. This call makes it readable now.
      *
      * **`async`**, and one document rather than the whole feed: a handful of
      * round trips, not tens.
@@ -13934,8 +14835,10 @@ open func fetchNoteBody(noteId: String)async throws  -> BodyFetchSummary  {
 }
     
     /**
-     * The first sync: refs to the end, then metadata newest first, then bodies
-     * for the recent window (data-model §C.3, FR-028).
+     * The first sync: note records for the whole vault, then bodies from packs
+     * for the whole vault (data-model §C.3, FR-028, #5233). With partial pack
+     * coverage it pulls the owed bodies of the recent window and leaves the
+     * rest owed for [`Self::drain_bodies`].
      *
      * **`async`, and that is contract, not detail** (spec-defect 90). It is
      * tens of network round trips — a no-op pass over a ninety-four-note vault
@@ -13960,6 +14863,10 @@ open func fetchNoteBody(noteId: String)async throws  -> BodyFetchSummary  {
      * through leaves the notes that did arrive visible and readable; it throws,
      * and what it throws is the reason. A shell must render that reason, never
      * an empty state.
+     *
+     * **A [`Self::sync_now`] asked for meanwhile waits for this run**, as a
+     * second pass waits for the first: the shell shows the vault while it
+     * fills, so writes and foregrounds ask for passes during it.
      */
 open func firstSync(progress: SyncProgressListener?)async throws  -> FirstSyncSummary  {
     return
@@ -14040,6 +14947,34 @@ open func fetchAttachment(attachmentId: String, reachable: Reachable)async throw
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeAttachmentFetchSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * Reads the manifest of each attachment `note_id` references that has no
+     * name on this device yet, so `Notes::attachment_for_block` binds the
+     * block naming it (#5675). A block names its file by the manifest's
+     * filename, and a row a pulled note created has none until a manifest is
+     * read. Manifests only: the bytes still go through
+     * [`Self::fetch_attachment`].
+     *
+     * The shell calls it when the user opens the note, whatever the Download
+     * attachments setting. Answers how many it named; one that will not
+     * read is logged and asked again on the next open.
+     */
+open func fetchNoteManifests(noteId: String)async throws  -> UInt32  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_fetch_note_manifests(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_u32,
+            completeFunc: ffi_memry_core_rust_future_complete_u32,
+            freeFunc: ffi_memry_core_rust_future_free_u32,
+            liftFunc: FfiConverterUInt32.lift,
             errorHandler: FfiConverterTypeSyncError_lift
         )
 }
@@ -14134,6 +15069,43 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
 }
     
     /**
+     * One round of the foreground drain: pulls up to
+     * [`body_drain::DRAIN_ROUND_DOCUMENTS`] of the bodies still owed, then
+     * returns. A shell calls it again while it is in the foreground, the
+     * last round pulled something, and `remaining` is above 0.
+     *
+     * Bounded so a write's [`Self::sync_now`] waits for at most one round:
+     * rounds and passes take the same pass gate. A round with nothing due
+     * makes no request, and so does a round before the `Retry-After` of a
+     * `429` the last one met, whether it ended that round or only answered
+     * its probe or bootstrap open, or one the first sync's bodies pass gave
+     * up on: it pulls nothing. The shell then waits a few seconds and asks
+     * again, and pauses its drain until the next foreground only once the
+     * rounds have pulled nothing for longer than the longest `429` hold.
+     * It opens a bootstrap session
+     * for the round and pulls four documents at a time when the server
+     * grants one (a device's first day, §10.9), one at a time otherwise.
+     *
+     * `progress` gets `Bodies` ticks in live documents of the vault, so a
+     * shell continues the first sync's bar where it stopped.
+     */
+open func drainBodies(progress: SyncProgressListener?)async throws  -> BodyDrainSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_drain_bodies(
+                        self.uniffiCloneHandle(),FfiConverterOptionTypeSyncProgressListener.lower(progress)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBodyDrainSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
      * Attaches a capture's file to a note it is being filed into.
      *
      * A capture whose upload is cached here is referenced from the note and
@@ -14192,7 +15164,8 @@ open func syncInboxAttachments(reachable: Reachable)async throws  -> InboxAttach
      * queued. Safe to call repeatedly. Passes over one vault run one at a
      * time: two overlapping passes would push the same outbox rows twice and
      * report the second copy as rejected, so a second call waits for the
-     * first and then runs its own pass.
+     * first and then runs its own pass. It waits for a running
+     * [`VaultSync::first_sync`] the same way.
      */
 open func syncNow()async throws  -> SyncPassSummary  {
     return
@@ -15397,6 +16370,93 @@ public func FfiConverterTypeBlockProp_lower(_ value: BlockProp) -> RustBuffer {
 
 
 /**
+ * What one drain round did.
+ */
+public struct BodyDrainSummary: Equatable, Hashable {
+    /**
+     * Documents pulled this round, settled or not.
+     */
+    public var documents: UInt32
+    public var requests: UInt32
+    /**
+     * Live documents still owed a body. Some may be backing off after a
+     * failure, so a round that pulled nothing tells the shell to wait and ask
+     * again even when this is above 0.
+     */
+    public var remaining: UInt32
+    /**
+     * Whether a bootstrap session widened the round (chapter 10 §10.7).
+     */
+    public var elevated: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Documents pulled this round, settled or not.
+         */documents: UInt32, requests: UInt32, 
+        /**
+         * Live documents still owed a body. Some may be backing off after a
+         * failure, so a round that pulled nothing tells the shell to wait and ask
+         * again even when this is above 0.
+         */remaining: UInt32, 
+        /**
+         * Whether a bootstrap session widened the round (chapter 10 §10.7).
+         */elevated: Bool) {
+        self.documents = documents
+        self.requests = requests
+        self.remaining = remaining
+        self.elevated = elevated
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BodyDrainSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBodyDrainSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BodyDrainSummary {
+        return
+            try BodyDrainSummary(
+                documents: FfiConverterUInt32.read(from: &buf), 
+                requests: FfiConverterUInt32.read(from: &buf), 
+                remaining: FfiConverterUInt32.read(from: &buf), 
+                elevated: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BodyDrainSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.documents, into: &buf)
+        FfiConverterUInt32.write(value.requests, into: &buf)
+        FfiConverterUInt32.write(value.remaining, into: &buf)
+        FfiConverterBool.write(value.elevated, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBodyDrainSummary_lift(_ buf: RustBuffer) throws -> BodyDrainSummary {
+    return try FfiConverterTypeBodyDrainSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBodyDrainSummary_lower(_ value: BodyDrainSummary) -> RustBuffer {
+    return FfiConverterTypeBodyDrainSummary.lower(value)
+}
+
+
+/**
  * What one on-demand body fetch did.
  */
 public struct BodyFetchSummary: Equatable, Hashable {
@@ -15860,6 +16920,63 @@ public func FfiConverterTypeCalendarCaldavConnect_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeCalendarCaldavConnect_lower(_ value: CalendarCaldavConnect) -> RustBuffer {
     return FfiConverterTypeCalendarCaldavConnect.lower(value)
+}
+
+
+/**
+ * An object of a CalDAV calendar and its ETag.
+ */
+public struct CalendarCaldavEtag: Equatable, Hashable {
+    public var href: String
+    public var etag: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(href: String, etag: String?) {
+        self.href = href
+        self.etag = etag
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavEtag: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavEtag: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavEtag {
+        return
+            try CalendarCaldavEtag(
+                href: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavEtag, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavEtag_lift(_ buf: RustBuffer) throws -> CalendarCaldavEtag {
+    return try FfiConverterTypeCalendarCaldavEtag.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavEtag_lower(_ value: CalendarCaldavEtag) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavEtag.lower(value)
 }
 
 
@@ -17123,13 +18240,21 @@ public struct CalendarPushItem: Equatable, Hashable {
     public var sourceType: String
     public var sourceId: String
     public var attempts: Int64
+    /**
+     * When the change was queued; `push_done` takes it back.
+     */
+    public var queuedAt: Int64
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(sourceType: String, sourceId: String, attempts: Int64) {
+    public init(sourceType: String, sourceId: String, attempts: Int64, 
+        /**
+         * When the change was queued; `push_done` takes it back.
+         */queuedAt: Int64) {
         self.sourceType = sourceType
         self.sourceId = sourceId
         self.attempts = attempts
+        self.queuedAt = queuedAt
     }
 
     
@@ -17150,7 +18275,8 @@ public struct FfiConverterTypeCalendarPushItem: FfiConverterRustBuffer {
             try CalendarPushItem(
                 sourceType: FfiConverterString.read(from: &buf), 
                 sourceId: FfiConverterString.read(from: &buf), 
-                attempts: FfiConverterInt64.read(from: &buf)
+                attempts: FfiConverterInt64.read(from: &buf), 
+                queuedAt: FfiConverterInt64.read(from: &buf)
         )
     }
 
@@ -17158,6 +18284,7 @@ public struct FfiConverterTypeCalendarPushItem: FfiConverterRustBuffer {
         FfiConverterString.write(value.sourceType, into: &buf)
         FfiConverterString.write(value.sourceId, into: &buf)
         FfiConverterInt64.write(value.attempts, into: &buf)
+        FfiConverterInt64.write(value.queuedAt, into: &buf)
     }
 }
 
@@ -18104,7 +19231,28 @@ public func FfiConverterTypeFieldValue_lower(_ value: FieldValue) -> RustBuffer 
 public struct FirstSyncSummary: Equatable, Hashable {
     public var refsRecorded: UInt32
     public var tombstones: UInt32
+    /**
+     * Records the metadata pass applied. With record packs this is often 0:
+     * the packs and the reconcile applied them (the two counts below).
+     */
     public var metadataApplied: UInt32
+    /**
+     * Record pack entries applied (chapter 08 §8.4.2).
+     */
+    public var recordPackEntries: UInt32
+    /**
+     * Items the manifest reconcile pulled by id (§8.10).
+     */
+    public var reconcilePulled: UInt32
+    /**
+     * Documents the body pack phase proved current.
+     */
+    public var packBodiesSettled: UInt32
+    /**
+     * Documents still owed a body when the run ended: the shell's
+     * [`VaultSync::drain_bodies`] pulls them.
+     */
+    public var bodiesOwed: UInt32
     public var metadataCorrupt: UInt32
     public var bodies: UInt32
     public var updates: UInt32
@@ -18127,7 +19275,24 @@ public struct FirstSyncSummary: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(refsRecorded: UInt32, tombstones: UInt32, metadataApplied: UInt32, metadataCorrupt: UInt32, bodies: UInt32, updates: UInt32, 
+    public init(refsRecorded: UInt32, tombstones: UInt32, 
+        /**
+         * Records the metadata pass applied. With record packs this is often 0:
+         * the packs and the reconcile applied them (the two counts below).
+         */metadataApplied: UInt32, 
+        /**
+         * Record pack entries applied (chapter 08 §8.4.2).
+         */recordPackEntries: UInt32, 
+        /**
+         * Items the manifest reconcile pulled by id (§8.10).
+         */reconcilePulled: UInt32, 
+        /**
+         * Documents the body pack phase proved current.
+         */packBodiesSettled: UInt32, 
+        /**
+         * Documents still owed a body when the run ended: the shell's
+         * [`VaultSync::drain_bodies`] pulls them.
+         */bodiesOwed: UInt32, metadataCorrupt: UInt32, bodies: UInt32, updates: UInt32, 
         /**
          * Documents whose body pull stopped at an update this device could not
          * open (chapter 07 §7.9). Their cursor did **not** advance, so the next
@@ -18144,6 +19309,10 @@ public struct FirstSyncSummary: Equatable, Hashable {
         self.refsRecorded = refsRecorded
         self.tombstones = tombstones
         self.metadataApplied = metadataApplied
+        self.recordPackEntries = recordPackEntries
+        self.reconcilePulled = reconcilePulled
+        self.packBodiesSettled = packBodiesSettled
+        self.bodiesOwed = bodiesOwed
         self.metadataCorrupt = metadataCorrupt
         self.bodies = bodies
         self.updates = updates
@@ -18171,6 +19340,10 @@ public struct FfiConverterTypeFirstSyncSummary: FfiConverterRustBuffer {
                 refsRecorded: FfiConverterUInt32.read(from: &buf), 
                 tombstones: FfiConverterUInt32.read(from: &buf), 
                 metadataApplied: FfiConverterUInt32.read(from: &buf), 
+                recordPackEntries: FfiConverterUInt32.read(from: &buf), 
+                reconcilePulled: FfiConverterUInt32.read(from: &buf), 
+                packBodiesSettled: FfiConverterUInt32.read(from: &buf), 
+                bodiesOwed: FfiConverterUInt32.read(from: &buf), 
                 metadataCorrupt: FfiConverterUInt32.read(from: &buf), 
                 bodies: FfiConverterUInt32.read(from: &buf), 
                 updates: FfiConverterUInt32.read(from: &buf), 
@@ -18184,6 +19357,10 @@ public struct FfiConverterTypeFirstSyncSummary: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.refsRecorded, into: &buf)
         FfiConverterUInt32.write(value.tombstones, into: &buf)
         FfiConverterUInt32.write(value.metadataApplied, into: &buf)
+        FfiConverterUInt32.write(value.recordPackEntries, into: &buf)
+        FfiConverterUInt32.write(value.reconcilePulled, into: &buf)
+        FfiConverterUInt32.write(value.packBodiesSettled, into: &buf)
+        FfiConverterUInt32.write(value.bodiesOwed, into: &buf)
         FfiConverterUInt32.write(value.metadataCorrupt, into: &buf)
         FfiConverterUInt32.write(value.bodies, into: &buf)
         FfiConverterUInt32.write(value.updates, into: &buf)
@@ -19917,6 +21094,442 @@ public func FfiConverterTypeInboxStatsRecord_lift(_ buf: RustBuffer) throws -> I
 #endif
 public func FfiConverterTypeInboxStatsRecord_lower(_ value: InboxStatsRecord) -> RustBuffer {
     return FfiConverterTypeInboxStatsRecord.lower(value)
+}
+
+
+/**
+ * A KNN neighbour of the capture's text, resolved to its note.
+ */
+public struct InboxSuggestHit: Equatable, Hashable {
+    public var noteId: String
+    /**
+     * Vault-relative path of the note's file.
+     */
+    public var path: String
+    public var title: String
+    public var emoji: String?
+    public var snippet: String?
+    /**
+     * Cosine distance (`1 - cosine`), as the vector index answers it.
+     */
+    public var distance: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(noteId: String, 
+        /**
+         * Vault-relative path of the note's file.
+         */path: String, title: String, emoji: String?, snippet: String?, 
+        /**
+         * Cosine distance (`1 - cosine`), as the vector index answers it.
+         */distance: Double) {
+        self.noteId = noteId
+        self.path = path
+        self.title = title
+        self.emoji = emoji
+        self.snippet = snippet
+        self.distance = distance
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestHit: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestHit: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestHit {
+        return
+            try InboxSuggestHit(
+                noteId: FfiConverterString.read(from: &buf), 
+                path: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf), 
+                snippet: FfiConverterOptionString.read(from: &buf), 
+                distance: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestHit, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.noteId, into: &buf)
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+        FfiConverterOptionString.write(value.snippet, into: &buf)
+        FfiConverterDouble.write(value.distance, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestHit_lift(_ buf: RustBuffer) throws -> InboxSuggestHit {
+    return try FfiConverterTypeInboxSuggestHit.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestHit_lower(_ value: InboxSuggestHit) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestHit.lower(value)
+}
+
+
+/**
+ * What the search index contributes to a capture's suggestions.
+ */
+public struct InboxSuggestIndex: Equatable, Hashable {
+    /**
+     * The capture's similarity-input neighbours, nearest first
+     * (`SIMILAR_NOTE_LIMIT` = 20 of them).
+     */
+    public var hits: [InboxSuggestHit]
+    /**
+     * Folders that hold notes.
+     */
+    public var folders: [String]
+    /**
+     * Notes carrying one of the capture's tags; others are ignored.
+     */
+    public var taggedNotes: [InboxTaggedNote]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The capture's similarity-input neighbours, nearest first
+         * (`SIMILAR_NOTE_LIMIT` = 20 of them).
+         */hits: [InboxSuggestHit], 
+        /**
+         * Folders that hold notes.
+         */folders: [String], 
+        /**
+         * Notes carrying one of the capture's tags; others are ignored.
+         */taggedNotes: [InboxTaggedNote]) {
+        self.hits = hits
+        self.folders = folders
+        self.taggedNotes = taggedNotes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestIndex: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestIndex: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestIndex {
+        return
+            try InboxSuggestIndex(
+                hits: FfiConverterSequenceTypeInboxSuggestHit.read(from: &buf), 
+                folders: FfiConverterSequenceString.read(from: &buf), 
+                taggedNotes: FfiConverterSequenceTypeInboxTaggedNote.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestIndex, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeInboxSuggestHit.write(value.hits, into: &buf)
+        FfiConverterSequenceString.write(value.folders, into: &buf)
+        FfiConverterSequenceTypeInboxTaggedNote.write(value.taggedNotes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestIndex_lift(_ buf: RustBuffer) throws -> InboxSuggestIndex {
+    return try FfiConverterTypeInboxSuggestIndex.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestIndex_lower(_ value: InboxSuggestIndex) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestIndex.lower(value)
+}
+
+
+/**
+ * A note a suggestion links to (`SuggestedNote`).
+ */
+public struct InboxSuggestedNote: Equatable, Hashable {
+    public var id: String
+    public var title: String
+    public var snippet: String
+    public var emoji: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, title: String, snippet: String, emoji: String?) {
+        self.id = id
+        self.title = title
+        self.snippet = snippet
+        self.emoji = emoji
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestedNote: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestedNote: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestedNote {
+        return
+            try InboxSuggestedNote(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                snippet: FfiConverterString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestedNote, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.snippet, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestedNote_lift(_ buf: RustBuffer) throws -> InboxSuggestedNote {
+    return try FfiConverterTypeInboxSuggestedNote.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestedNote_lower(_ value: InboxSuggestedNote) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestedNote.lower(value)
+}
+
+
+/**
+ * One `FilingSuggestion`. `destination_type` is `folder`, `note`, or the
+ * action a filing-history pattern recorded; a folder carries `path`, a note
+ * `note_id` and `note_title`.
+ */
+public struct InboxSuggestion: Equatable, Hashable {
+    public var destinationType: String
+    public var path: String?
+    public var noteId: String?
+    public var noteTitle: String?
+    public var confidence: Double
+    public var reason: String
+    public var suggestedTags: [String]
+    public var suggestedNote: InboxSuggestedNote?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(destinationType: String, path: String?, noteId: String?, noteTitle: String?, confidence: Double, reason: String, suggestedTags: [String], suggestedNote: InboxSuggestedNote?) {
+        self.destinationType = destinationType
+        self.path = path
+        self.noteId = noteId
+        self.noteTitle = noteTitle
+        self.confidence = confidence
+        self.reason = reason
+        self.suggestedTags = suggestedTags
+        self.suggestedNote = suggestedNote
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestion: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestion: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestion {
+        return
+            try InboxSuggestion(
+                destinationType: FfiConverterString.read(from: &buf), 
+                path: FfiConverterOptionString.read(from: &buf), 
+                noteId: FfiConverterOptionString.read(from: &buf), 
+                noteTitle: FfiConverterOptionString.read(from: &buf), 
+                confidence: FfiConverterDouble.read(from: &buf), 
+                reason: FfiConverterString.read(from: &buf), 
+                suggestedTags: FfiConverterSequenceString.read(from: &buf), 
+                suggestedNote: FfiConverterOptionTypeInboxSuggestedNote.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestion, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.destinationType, into: &buf)
+        FfiConverterOptionString.write(value.path, into: &buf)
+        FfiConverterOptionString.write(value.noteId, into: &buf)
+        FfiConverterOptionString.write(value.noteTitle, into: &buf)
+        FfiConverterDouble.write(value.confidence, into: &buf)
+        FfiConverterString.write(value.reason, into: &buf)
+        FfiConverterSequenceString.write(value.suggestedTags, into: &buf)
+        FfiConverterOptionTypeInboxSuggestedNote.write(value.suggestedNote, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestion_lift(_ buf: RustBuffer) throws -> InboxSuggestion {
+    return try FfiConverterTypeInboxSuggestion.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestion_lower(_ value: InboxSuggestion) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestion.lower(value)
+}
+
+
+/**
+ * `getSuggestionStats`.
+ */
+public struct InboxSuggestionStats: Equatable, Hashable {
+    public var totalSuggestions: Int64
+    public var acceptedCount: Int64
+    public var rejectedCount: Int64
+    public var acceptanceRate: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(totalSuggestions: Int64, acceptedCount: Int64, rejectedCount: Int64, acceptanceRate: Double) {
+        self.totalSuggestions = totalSuggestions
+        self.acceptedCount = acceptedCount
+        self.rejectedCount = rejectedCount
+        self.acceptanceRate = acceptanceRate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxSuggestionStats: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxSuggestionStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxSuggestionStats {
+        return
+            try InboxSuggestionStats(
+                totalSuggestions: FfiConverterInt64.read(from: &buf), 
+                acceptedCount: FfiConverterInt64.read(from: &buf), 
+                rejectedCount: FfiConverterInt64.read(from: &buf), 
+                acceptanceRate: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxSuggestionStats, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.totalSuggestions, into: &buf)
+        FfiConverterInt64.write(value.acceptedCount, into: &buf)
+        FfiConverterInt64.write(value.rejectedCount, into: &buf)
+        FfiConverterDouble.write(value.acceptanceRate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestionStats_lift(_ buf: RustBuffer) throws -> InboxSuggestionStats {
+    return try FfiConverterTypeInboxSuggestionStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxSuggestionStats_lower(_ value: InboxSuggestionStats) -> RustBuffer {
+    return FfiConverterTypeInboxSuggestionStats.lower(value)
+}
+
+
+/**
+ * An index note carrying `tag`.
+ */
+public struct InboxTaggedNote: Equatable, Hashable {
+    public var path: String
+    public var tag: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(path: String, tag: String) {
+        self.path = path
+        self.tag = tag
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxTaggedNote: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxTaggedNote: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxTaggedNote {
+        return
+            try InboxTaggedNote(
+                path: FfiConverterString.read(from: &buf), 
+                tag: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxTaggedNote, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.tag, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTaggedNote_lift(_ buf: RustBuffer) throws -> InboxTaggedNote {
+    return try FfiConverterTypeInboxTaggedNote.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxTaggedNote_lower(_ value: InboxTaggedNote) -> RustBuffer {
+    return FfiConverterTypeInboxTaggedNote.lower(value)
 }
 
 
@@ -21937,6 +23550,85 @@ public func FfiConverterTypeNoteDetail_lower(_ value: NoteDetail) -> RustBuffer 
 
 
 /**
+ * What a shell needs to open a binary note.
+ */
+public struct NoteFile: Equatable, Hashable {
+    /**
+     * The payload's `fileType`, as stored: `pdf`, `image`, `audio` or `video`.
+     */
+    public var fileType: String
+    public var mimeType: String?
+    public var attachmentId: String
+    /**
+     * The cache row, `None` until a manifest or a download writes one. Its
+     * `local_path` is set once the bytes are on disk.
+     */
+    public var attachment: CachedAttachment?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The payload's `fileType`, as stored: `pdf`, `image`, `audio` or `video`.
+         */fileType: String, mimeType: String?, attachmentId: String, 
+        /**
+         * The cache row, `None` until a manifest or a download writes one. Its
+         * `local_path` is set once the bytes are on disk.
+         */attachment: CachedAttachment?) {
+        self.fileType = fileType
+        self.mimeType = mimeType
+        self.attachmentId = attachmentId
+        self.attachment = attachment
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteFile: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteFile: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteFile {
+        return
+            try NoteFile(
+                fileType: FfiConverterString.read(from: &buf), 
+                mimeType: FfiConverterOptionString.read(from: &buf), 
+                attachmentId: FfiConverterString.read(from: &buf), 
+                attachment: FfiConverterOptionTypeCachedAttachment.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteFile, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fileType, into: &buf)
+        FfiConverterOptionString.write(value.mimeType, into: &buf)
+        FfiConverterString.write(value.attachmentId, into: &buf)
+        FfiConverterOptionTypeCachedAttachment.write(value.attachment, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteFile_lift(_ buf: RustBuffer) throws -> NoteFile {
+    return try FfiConverterTypeNoteFile.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteFile_lower(_ value: NoteFile) -> RustBuffer {
+    return FfiConverterTypeNoteFile.lower(value)
+}
+
+
+/**
  * The note a `[[wiki link]]` opens, and the heading to scroll to.
  */
 public struct NoteLinkTarget: Equatable, Hashable {
@@ -23890,6 +25582,131 @@ public func FfiConverterTypeRepeatRule_lower(_ value: RepeatRule) -> RustBuffer 
 
 
 /**
+ * Wire statistics of one phase, over its requests so far.
+ *
+ * `requests` counts every attempt put on the wire, retries included, and the
+ * latencies are each attempt's own wire time. Waits slept between attempts
+ * are in `rate_limit_wait_ms`, not in the latencies.
+ */
+public struct RequestStats: Equatable, Hashable {
+    public var requests: UInt32
+    public var p50Ms: UInt32
+    public var p95Ms: UInt32
+    public var maxMs: UInt32
+    /**
+     * Attempts repeated after a retryable answer or a transport failure by
+     * the retry ladder, plus each 429 pause taken outside it (documents put
+     * back by the bodies pass, packs waiting in the pack download).
+     */
+    public var retries: UInt32
+    /**
+     * Attempts the server answered 429.
+     */
+    public var rateLimited: UInt32
+    /**
+     * Time slept waiting out a 429: in the retry ladder, and in the pauses
+     * taken outside it.
+     */
+    public var rateLimitWaitMs: UInt64
+    /**
+     * Attempts the server answered 5xx.
+     */
+    public var serverErrors: UInt32
+    /**
+     * Attempts that got no HTTP answer at all.
+     */
+    public var transportErrors: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(requests: UInt32, p50Ms: UInt32, p95Ms: UInt32, maxMs: UInt32, 
+        /**
+         * Attempts repeated after a retryable answer or a transport failure by
+         * the retry ladder, plus each 429 pause taken outside it (documents put
+         * back by the bodies pass, packs waiting in the pack download).
+         */retries: UInt32, 
+        /**
+         * Attempts the server answered 429.
+         */rateLimited: UInt32, 
+        /**
+         * Time slept waiting out a 429: in the retry ladder, and in the pauses
+         * taken outside it.
+         */rateLimitWaitMs: UInt64, 
+        /**
+         * Attempts the server answered 5xx.
+         */serverErrors: UInt32, 
+        /**
+         * Attempts that got no HTTP answer at all.
+         */transportErrors: UInt32) {
+        self.requests = requests
+        self.p50Ms = p50Ms
+        self.p95Ms = p95Ms
+        self.maxMs = maxMs
+        self.retries = retries
+        self.rateLimited = rateLimited
+        self.rateLimitWaitMs = rateLimitWaitMs
+        self.serverErrors = serverErrors
+        self.transportErrors = transportErrors
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension RequestStats: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRequestStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RequestStats {
+        return
+            try RequestStats(
+                requests: FfiConverterUInt32.read(from: &buf), 
+                p50Ms: FfiConverterUInt32.read(from: &buf), 
+                p95Ms: FfiConverterUInt32.read(from: &buf), 
+                maxMs: FfiConverterUInt32.read(from: &buf), 
+                retries: FfiConverterUInt32.read(from: &buf), 
+                rateLimited: FfiConverterUInt32.read(from: &buf), 
+                rateLimitWaitMs: FfiConverterUInt64.read(from: &buf), 
+                serverErrors: FfiConverterUInt32.read(from: &buf), 
+                transportErrors: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RequestStats, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.requests, into: &buf)
+        FfiConverterUInt32.write(value.p50Ms, into: &buf)
+        FfiConverterUInt32.write(value.p95Ms, into: &buf)
+        FfiConverterUInt32.write(value.maxMs, into: &buf)
+        FfiConverterUInt32.write(value.retries, into: &buf)
+        FfiConverterUInt32.write(value.rateLimited, into: &buf)
+        FfiConverterUInt64.write(value.rateLimitWaitMs, into: &buf)
+        FfiConverterUInt32.write(value.serverErrors, into: &buf)
+        FfiConverterUInt32.write(value.transportErrors, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRequestStats_lift(_ buf: RustBuffer) throws -> RequestStats {
+    return try FfiConverterTypeRequestStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRequestStats_lower(_ value: RequestStats) -> RustBuffer {
+    return FfiConverterTypeRequestStats.lower(value)
+}
+
+
+/**
  * One review mark.
  *
  * `start` and `end` are **byte offsets into the note's flattened text**, not
@@ -24236,17 +26053,29 @@ public struct SearchGroups: Equatable, Hashable {
      * Captures in every state: filed, archived and snoozed ones too (#4320).
      */
     public var inbox: [SearchResult]
+    /**
+     * The query wanted semantic hits and got FTS alone because the model
+     * was loading (#4615). Run it once more after
+     * [`super::Search::semantic_model_loaded`] returns.
+     */
+    public var semanticPending: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(notes: [SearchResult], journals: [SearchResult], tasks: [SearchResult], 
         /**
          * Captures in every state: filed, archived and snoozed ones too (#4320).
-         */inbox: [SearchResult]) {
+         */inbox: [SearchResult], 
+        /**
+         * The query wanted semantic hits and got FTS alone because the model
+         * was loading (#4615). Run it once more after
+         * [`super::Search::semantic_model_loaded`] returns.
+         */semanticPending: Bool = false) {
         self.notes = notes
         self.journals = journals
         self.tasks = tasks
         self.inbox = inbox
+        self.semanticPending = semanticPending
     }
 
     
@@ -24268,7 +26097,8 @@ public struct FfiConverterTypeSearchGroups: FfiConverterRustBuffer {
                 notes: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
                 journals: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
                 tasks: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
-                inbox: FfiConverterSequenceTypeSearchResult.read(from: &buf)
+                inbox: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
+                semanticPending: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -24277,6 +26107,7 @@ public struct FfiConverterTypeSearchGroups: FfiConverterRustBuffer {
         FfiConverterSequenceTypeSearchResult.write(value.journals, into: &buf)
         FfiConverterSequenceTypeSearchResult.write(value.tasks, into: &buf)
         FfiConverterSequenceTypeSearchResult.write(value.inbox, into: &buf)
+        FfiConverterBool.write(value.semanticPending, into: &buf)
     }
 }
 
@@ -24406,9 +26237,10 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var folderPath: String?
     /**
-     * The bm25 score: negative, and more negative is a better match. Carried
-     * so a shell can show relevance if it wants to, never re-sorted — the
-     * order returned is already the ranking.
+     * A per-kind diagnostic value, never re-sorted: the order returned is
+     * already the ranking. The bm25 score for a body hit (negative, more
+     * negative is better), zero for a fuzzy or alias hit, and the cosine for
+     * a semantic hit.
      */
     public var score: Double
     /**
@@ -24418,8 +26250,9 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var snippet: [SnippetSegment]
     /**
-     * Whether the index, the fuzzy title fallback or an alias found the hit
-     * (#4319). Only a body hit carries a snippet.
+     * Whether the index, the fuzzy title fallback, an alias (#4319) or the
+     * on-device embedding (#4505) found the hit. Only a body hit carries a
+     * snippet.
      */
     public var matchKind: MatchKind
     /**
@@ -24447,9 +26280,10 @@ public struct SearchResult: Equatable, Hashable {
          * for everything that is not a note.
          */folderPath: String?, 
         /**
-         * The bm25 score: negative, and more negative is a better match. Carried
-         * so a shell can show relevance if it wants to, never re-sorted — the
-         * order returned is already the ranking.
+         * A per-kind diagnostic value, never re-sorted: the order returned is
+         * already the ranking. The bm25 score for a body hit (negative, more
+         * negative is better), zero for a fuzzy or alias hit, and the cosine for
+         * a semantic hit.
          */score: Double, 
         /**
          * The body text around the match, highlighted runs marked (#4316). Plain
@@ -24457,8 +26291,9 @@ public struct SearchResult: Equatable, Hashable {
          * (a task's description) is.
          */snippet: [SnippetSegment], 
         /**
-         * Whether the index, the fuzzy title fallback or an alias found the hit
-         * (#4319). Only a body hit carries a snippet.
+         * Whether the index, the fuzzy title fallback, an alias (#4319) or the
+         * on-device embedding (#4505) found the hit. Only a body hit carries a
+         * snippet.
          */matchKind: MatchKind, 
         /**
          * The alias the query matched, for a note or journal whose title does
@@ -24532,6 +26367,68 @@ public func FfiConverterTypeSearchResult_lift(_ buf: RustBuffer) throws -> Searc
 #endif
 public func FfiConverterTypeSearchResult_lower(_ value: SearchResult) -> RustBuffer {
     return FfiConverterTypeSearchResult.lower(value)
+}
+
+
+public struct SemanticStatus: Equatable, Hashable {
+    public var model: ModelState
+    public var downloadBytes: UInt64
+    public var embeddedNotes: UInt32
+    public var totalNotes: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(model: ModelState, downloadBytes: UInt64, embeddedNotes: UInt32, totalNotes: UInt32) {
+        self.model = model
+        self.downloadBytes = downloadBytes
+        self.embeddedNotes = embeddedNotes
+        self.totalNotes = totalNotes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SemanticStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticStatus {
+        return
+            try SemanticStatus(
+                model: FfiConverterTypeModelState.read(from: &buf), 
+                downloadBytes: FfiConverterUInt64.read(from: &buf), 
+                embeddedNotes: FfiConverterUInt32.read(from: &buf), 
+                totalNotes: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SemanticStatus, into buf: inout [UInt8]) {
+        FfiConverterTypeModelState.write(value.model, into: &buf)
+        FfiConverterUInt64.write(value.downloadBytes, into: &buf)
+        FfiConverterUInt32.write(value.embeddedNotes, into: &buf)
+        FfiConverterUInt32.write(value.totalNotes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticStatus_lift(_ buf: RustBuffer) throws -> SemanticStatus {
+    return try FfiConverterTypeSemanticStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticStatus_lower(_ value: SemanticStatus) -> RustBuffer {
+    return FfiConverterTypeSemanticStatus.lower(value)
 }
 
 
@@ -24813,6 +26710,60 @@ public func FfiConverterTypeStatusItem_lower(_ value: StatusItem) -> RustBuffer 
 }
 
 
+public struct StepConditions: Equatable, Hashable {
+    public var thermal: Thermal
+    public var externalPower: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(thermal: Thermal, externalPower: Bool) {
+        self.thermal = thermal
+        self.externalPower = externalPower
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension StepConditions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStepConditions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StepConditions {
+        return
+            try StepConditions(
+                thermal: FfiConverterTypeThermal.read(from: &buf), 
+                externalPower: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StepConditions, into buf: inout [UInt8]) {
+        FfiConverterTypeThermal.write(value.thermal, into: &buf)
+        FfiConverterBool.write(value.externalPower, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepConditions_lift(_ buf: RustBuffer) throws -> StepConditions {
+    return try FfiConverterTypeStepConditions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepConditions_lower(_ value: StepConditions) -> RustBuffer {
+    return FfiConverterTypeStepConditions.lower(value)
+}
+
+
 public struct StorageUsage: Equatable, Hashable {
     public var used: Int64
     public var limit: Int64
@@ -24911,6 +26862,11 @@ public struct SyncPassSummary: Equatable, Hashable {
      * Rows still queued after the pass.
      */
     public var pending: UInt32
+    /**
+     * Attachment refusals the user was not told of yet, and landed uploads
+     * they were (#5532).
+     */
+    public var attachments: [QueuedAttachmentNews]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -24932,13 +26888,18 @@ public struct SyncPassSummary: Equatable, Hashable {
          */rejected: UInt32, 
         /**
          * Rows still queued after the pass.
-         */pending: UInt32) {
+         */pending: UInt32, 
+        /**
+         * Attachment refusals the user was not told of yet, and landed uploads
+         * they were (#5532).
+         */attachments: [QueuedAttachmentNews] = []) {
         self.pulled = pulled
         self.deleted = deleted
         self.bodies = bodies
         self.pushed = pushed
         self.rejected = rejected
         self.pending = pending
+        self.attachments = attachments
     }
 
     
@@ -24962,7 +26923,8 @@ public struct FfiConverterTypeSyncPassSummary: FfiConverterRustBuffer {
                 bodies: FfiConverterUInt32.read(from: &buf), 
                 pushed: FfiConverterUInt32.read(from: &buf), 
                 rejected: FfiConverterUInt32.read(from: &buf), 
-                pending: FfiConverterUInt32.read(from: &buf)
+                pending: FfiConverterUInt32.read(from: &buf), 
+                attachments: FfiConverterSequenceTypeQueuedAttachmentNews.read(from: &buf)
         )
     }
 
@@ -24973,6 +26935,7 @@ public struct FfiConverterTypeSyncPassSummary: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.pushed, into: &buf)
         FfiConverterUInt32.write(value.rejected, into: &buf)
         FfiConverterUInt32.write(value.pending, into: &buf)
+        FfiConverterSequenceTypeQueuedAttachmentNews.write(value.attachments, into: &buf)
     }
 }
 
@@ -24993,17 +26956,19 @@ public func FfiConverterTypeSyncPassSummary_lower(_ value: SyncPassSummary) -> R
 
 
 /**
- * FR-028's determinate progress. `completed` is never above `total`, so a
- * shell renders a fraction without guarding against one above 1.
+ * FR-028's determinate progress, in live notes and journals of the vault
+ * (#5233). `completed` is never above `total`, so a shell renders a fraction
+ * without guarding against one above 1. `total` is `None` while the vault's
+ * total is not known yet, early in the records phase.
  */
 public struct SyncProgress: Equatable, Hashable {
     public var phase: SyncPhase
     public var completed: UInt64
-    public var total: UInt64
+    public var total: UInt64?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(phase: SyncPhase, completed: UInt64, total: UInt64) {
+    public init(phase: SyncPhase, completed: UInt64, total: UInt64?) {
         self.phase = phase
         self.completed = completed
         self.total = total
@@ -25027,14 +26992,14 @@ public struct FfiConverterTypeSyncProgress: FfiConverterRustBuffer {
             try SyncProgress(
                 phase: FfiConverterTypeSyncPhase.read(from: &buf), 
                 completed: FfiConverterUInt64.read(from: &buf), 
-                total: FfiConverterUInt64.read(from: &buf)
+                total: FfiConverterOptionUInt64.read(from: &buf)
         )
     }
 
     public static func write(_ value: SyncProgress, into buf: inout [UInt8]) {
         FfiConverterTypeSyncPhase.write(value.phase, into: &buf)
         FfiConverterUInt64.write(value.completed, into: &buf)
-        FfiConverterUInt64.write(value.total, into: &buf)
+        FfiConverterOptionUInt64.write(value.total, into: &buf)
     }
 }
 
@@ -27657,12 +29622,13 @@ enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case InvalidClientIdentity(what: String
     )
     /**
-     * A 402 from an account route that needs a plan: `POST /sync/vaults`
+     * A 402 that needs a plan. Any route answers `SYNC_VAULT_LIMIT_EXCEEDED`
+     * with it when the plan's vault slots are full. `POST /sync/vaults`
      * answers it with no code when the account has no active sync plan, and
-     * with `SYNC_VAULT_LIMIT_EXCEEDED` when the plan's vault slots are full.
-     * The shell offers a plan; retrying changes nothing. Raised only by the
-     * routes that name it, so the sync engine's 402 handling
-     * (`sync::policy`, which reads `Status`) is unchanged.
+     * `POST /auth/linking/initiate` with `SYNC_PAYMENT_REQUIRED`. The shell
+     * offers a plan; retrying changes nothing. A `SYNC_PAYMENT_REQUIRED` from
+     * a sync route stays a `Status`, which is what `sync::policy` reads
+     * to demote the entitlement.
      */
     case PaymentRequired(code: String?, message: String
     )
@@ -28036,6 +30002,104 @@ public func FfiConverterTypeApproverStatus_lift(_ buf: RustBuffer) throws -> App
 #endif
 public func FfiConverterTypeApproverStatus_lower(_ value: ApproverStatus) -> RustBuffer {
     return FfiConverterTypeApproverStatus.lower(value)
+}
+
+
+
+/**
+ * Why the server refused an owed upload (#5532).
+ */
+
+public enum AttachmentRefusal: Equatable, Hashable {
+    
+    /**
+     * The `STORAGE_QUOTA_EXCEEDED` code: the plan's storage is full.
+     */
+    case storageFull
+    /**
+     * `STORAGE_FILE_TOO_LARGE` or `VALIDATION_BODY_TOO_LARGE`: the file is
+     * past the plan's or the server's per-file limit, which freeing space
+     * never changes.
+     */
+    case tooLarge
+    /**
+     * 403: the account may not upload it.
+     */
+    case notAllowed
+    /**
+     * Any other refusal: a 4xx such as a 400 or a 413 with another code, or
+     * bytes that would not frame.
+     */
+    case rejected
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AttachmentRefusal: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentRefusal: FfiConverterRustBuffer {
+    typealias SwiftType = AttachmentRefusal
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentRefusal {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .storageFull
+        
+        case 2: return .tooLarge
+        
+        case 3: return .notAllowed
+        
+        case 4: return .rejected
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AttachmentRefusal, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .storageFull:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .tooLarge:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .notAllowed:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .rejected:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRefusal_lift(_ buf: RustBuffer) throws -> AttachmentRefusal {
+    return try FfiConverterTypeAttachmentRefusal.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRefusal_lower(_ value: AttachmentRefusal) -> RustBuffer {
+    return FfiConverterTypeAttachmentRefusal.lower(value)
 }
 
 
@@ -28895,8 +30959,9 @@ public enum BlockEdit: Equatable, Hashable {
      * `text` is the whole block as the shell shows it, with every inline node
      * (a wiki link, a date, a tag, an inline image) spelled as one U+FFFC
      * OBJECT REPLACEMENT CHARACTER. The core diffs it against the block's own
-     * flattened text by common prefix and suffix and applies only the span
-     * between them, as deletes and inserts on the runs that hold it: a peer's
+     * flattened text with each node both keep as an anchor, and applies only
+     * the changed span between two anchors, as deletes and inserts on the
+     * runs that hold it, so no edit removes a node the text still has: a peer's
      * concurrent typing elsewhere in the block survives the merge, and bold,
      * colour and links outside the span are untouched. Inserted text takes the
      * formatting of the character before it, as typing does. A U+FFFC in the
@@ -29116,6 +31181,25 @@ public enum BlockEdit: Equatable, Hashable {
      */
     case mergeBlocks(blockId: String, intoBlockId: String
     )
+    /**
+     * Return inside a block's text (desktop's `splitBlockTr`): the inline
+     * content from `at` on, marks and inline nodes kept, moves to a new
+     * block `new_block_id` right after `block_id`. `MergeBlocks` of the new
+     * block into `block_id` undoes it.
+     *
+     * `at` counts characters of the block's text as `ReplaceText` spells
+     * it: Unicode scalar values, each inline node one U+FFFC. A byte offset
+     * could not tell the caret before a textless node (a date) from the
+     * caret after it.
+     *
+     * `kind` names the new block's type, with its default props. `None`
+     * gives it `block_id`'s type and props, as desktop's split at a block's
+     * start does. A block with nested blocks is refused: on desktop they go
+     * with the tail, and `MergeBlocks` refuses to bring them back. Last, to
+     * keep earlier FFI indices.
+     */
+    case splitBlock(blockId: String, at: UInt32, kind: String? = nil, newBlockId: String
+    )
 
 
 
@@ -29207,6 +31291,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 24: return .mergeBlocks(blockId: try FfiConverterString.read(from: &buf), intoBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 25: return .splitBlock(blockId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf), kind: try FfiConverterOptionString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -29379,6 +31466,14 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterString.write(intoBlockId, into: &buf)
             
+        
+        case let .splitBlock(blockId,at,kind,newBlockId):
+            writeInt(&buf, Int32(25))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            FfiConverterOptionString.write(kind, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
+            
         }
     }
 }
@@ -29396,6 +31491,123 @@ public func FfiConverterTypeBlockEdit_lift(_ buf: RustBuffer) throws -> BlockEdi
 #endif
 public func FfiConverterTypeBlockEdit_lower(_ value: BlockEdit) -> RustBuffer {
     return FfiConverterTypeBlockEdit.lower(value)
+}
+
+
+
+/**
+ * How `POST /sync/bootstrap` answered (chapter 10 §10.5), reduced to the
+ * cases a support reader acts on.
+ */
+
+public enum BootstrapOutcome: Equatable, Hashable {
+    
+    /**
+     * A session was granted: the run is elevated.
+     */
+    case granted
+    /**
+     * 409 `BOOTSTRAP_NOT_ELIGIBLE`: this device already pulled the vault and
+     * is past the resume window (§10.9).
+     */
+    case notEligible
+    /**
+     * 429 `BOOTSTRAP_SESSION_LIMIT`: the per-user concurrent cap.
+     */
+    case sessionLimit
+    /**
+     * 501: the deployment has no bootstrap key (§10.12).
+     */
+    case notImplemented
+    /**
+     * The server answered 2xx without a session token.
+     */
+    case noToken
+    /**
+     * Any other failure, with the status in [`CoreDiagnostic::BootstrapOpened`].
+     */
+    case failed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BootstrapOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBootstrapOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = BootstrapOutcome
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BootstrapOutcome {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .granted
+        
+        case 2: return .notEligible
+        
+        case 3: return .sessionLimit
+        
+        case 4: return .notImplemented
+        
+        case 5: return .noToken
+        
+        case 6: return .failed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BootstrapOutcome, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .granted:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .notEligible:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .sessionLimit:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .notImplemented:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .noToken:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .failed:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBootstrapOutcome_lift(_ buf: RustBuffer) throws -> BootstrapOutcome {
+    return try FfiConverterTypeBootstrapOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBootstrapOutcome_lower(_ value: BootstrapOutcome) -> RustBuffer {
+    return FfiConverterTypeBootstrapOutcome.lower(value)
 }
 
 
@@ -29475,6 +31687,88 @@ public func FfiConverterTypeCalendarTextChange_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeCalendarTextChange_lower(_ value: CalendarTextChange) -> RustBuffer {
     return FfiConverterTypeCalendarTextChange.lower(value)
+}
+
+
+
+/**
+ * What [`Canvases::set_scene_expecting`] did.
+ */
+
+public enum CanvasSceneWrite: Equatable, Hashable {
+    
+    /**
+     * The new scene is stored.
+     */
+    case written(canvas: CanvasRecord
+    )
+    /**
+     * The stored scene changed since `expected` was read (a pull landed), so
+     * nothing was written. Re-apply the edit to `current` and write again.
+     */
+    case stale(current: CanvasRecord
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CanvasSceneWrite: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCanvasSceneWrite: FfiConverterRustBuffer {
+    typealias SwiftType = CanvasSceneWrite
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CanvasSceneWrite {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .written(canvas: try FfiConverterTypeCanvasRecord.read(from: &buf)
+        )
+        
+        case 2: return .stale(current: try FfiConverterTypeCanvasRecord.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CanvasSceneWrite, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .written(canvas):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeCanvasRecord.write(canvas, into: &buf)
+            
+        
+        case let .stale(current):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeCanvasRecord.write(current, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasSceneWrite_lift(_ buf: RustBuffer) throws -> CanvasSceneWrite {
+    return try FfiConverterTypeCanvasSceneWrite.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasSceneWrite_lower(_ value: CanvasSceneWrite) -> RustBuffer {
+    return FfiConverterTypeCanvasSceneWrite.lower(value)
 }
 
 
@@ -29956,6 +32250,150 @@ public func FfiConverterTypeCompressError_lower(_ value: CompressError) -> RustB
 
 
 /**
+ * One fact about a sync run. See the module doc for what it may carry.
+ */
+
+public enum CoreDiagnostic: Equatable, Hashable {
+    
+    /**
+     * The bootstrap session open finished. `status` is the HTTP status, or 0
+     * when there was no HTTP answer or the failure names none.
+     */
+    case bootstrapOpened(outcome: BootstrapOutcome, status: UInt16
+    )
+    /**
+     * A bodies pass probed its documents and is about to pull the rest.
+     * `concurrency` is the streams it runs, `documents` the window, and
+     * `up_to_date` those the probe showed current, which are skipped. `None`
+     * when the pass never measures it: a drain round probes chunk by chunk.
+     */
+    case bodyPassStarted(elevated: Bool, concurrency: UInt32, documents: UInt32, upToDate: UInt32?
+    )
+    /**
+     * A phase's requests so far. `finished` is `true` once the phase ended,
+     * `false` for an interim snapshot of one still running.
+     */
+    case phaseStats(phase: DiagnosticPhase, finished: Bool, elapsedMs: UInt64, requests: RequestStats
+    )
+    /**
+     * The manifest reconcile kept `kept` stale rows live: their pull by id
+     * brought no verified delete or attested marker (§5.12.1). `remembered`
+     * of them hold an unattested marker for the push wave, and
+     * `non_envelope` pull answers were not envelopes. `cursor` is the record
+     * feed cursor, `None` when unset or not numeric. The ids stay out: this
+     * payload carries no strings.
+     */
+    case reconcileKept(kept: UInt32, remembered: UInt32, nonEnvelope: UInt32, cursor: Int64?
+    )
+    /**
+     * The refs pass pulled the `deleted` ids of the page at `cursor`:
+     * `unverified` of them got no verified delete, so they stay live, and
+     * `non_envelope` pulls got no envelope, so the feed re-read retries them.
+     */
+    case refsDeletes(unverified: UInt32, nonEnvelope: UInt32, cursor: Int64?
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CoreDiagnostic: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
+    typealias SwiftType = CoreDiagnostic
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CoreDiagnostic {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .bootstrapOpened(outcome: try FfiConverterTypeBootstrapOutcome.read(from: &buf), status: try FfiConverterUInt16.read(from: &buf)
+        )
+        
+        case 2: return .bodyPassStarted(elevated: try FfiConverterBool.read(from: &buf), concurrency: try FfiConverterUInt32.read(from: &buf), documents: try FfiConverterUInt32.read(from: &buf), upToDate: try FfiConverterOptionUInt32.read(from: &buf)
+        )
+        
+        case 3: return .phaseStats(phase: try FfiConverterTypeDiagnosticPhase.read(from: &buf), finished: try FfiConverterBool.read(from: &buf), elapsedMs: try FfiConverterUInt64.read(from: &buf), requests: try FfiConverterTypeRequestStats.read(from: &buf)
+        )
+        
+        case 4: return .reconcileKept(kept: try FfiConverterUInt32.read(from: &buf), remembered: try FfiConverterUInt32.read(from: &buf), nonEnvelope: try FfiConverterUInt32.read(from: &buf), cursor: try FfiConverterOptionInt64.read(from: &buf)
+        )
+        
+        case 5: return .refsDeletes(unverified: try FfiConverterUInt32.read(from: &buf), nonEnvelope: try FfiConverterUInt32.read(from: &buf), cursor: try FfiConverterOptionInt64.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CoreDiagnostic, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .bootstrapOpened(outcome,status):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeBootstrapOutcome.write(outcome, into: &buf)
+            FfiConverterUInt16.write(status, into: &buf)
+            
+        
+        case let .bodyPassStarted(elevated,concurrency,documents,upToDate):
+            writeInt(&buf, Int32(2))
+            FfiConverterBool.write(elevated, into: &buf)
+            FfiConverterUInt32.write(concurrency, into: &buf)
+            FfiConverterUInt32.write(documents, into: &buf)
+            FfiConverterOptionUInt32.write(upToDate, into: &buf)
+            
+        
+        case let .phaseStats(phase,finished,elapsedMs,requests):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeDiagnosticPhase.write(phase, into: &buf)
+            FfiConverterBool.write(finished, into: &buf)
+            FfiConverterUInt64.write(elapsedMs, into: &buf)
+            FfiConverterTypeRequestStats.write(requests, into: &buf)
+            
+        
+        case let .reconcileKept(kept,remembered,nonEnvelope,cursor):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(kept, into: &buf)
+            FfiConverterUInt32.write(remembered, into: &buf)
+            FfiConverterUInt32.write(nonEnvelope, into: &buf)
+            FfiConverterOptionInt64.write(cursor, into: &buf)
+            
+        
+        case let .refsDeletes(unverified,nonEnvelope,cursor):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(unverified, into: &buf)
+            FfiConverterUInt32.write(nonEnvelope, into: &buf)
+            FfiConverterOptionInt64.write(cursor, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreDiagnostic_lift(_ buf: RustBuffer) throws -> CoreDiagnostic {
+    return try FfiConverterTypeCoreDiagnostic.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreDiagnostic_lower(_ value: CoreDiagnostic) -> RustBuffer {
+    return FfiConverterTypeCoreDiagnostic.lower(value)
+}
+
+
+
+/**
  * Failures of the CRDT tier (chapter 07, chapter 12 §12.5).
  */
 public 
@@ -30412,6 +32850,224 @@ public func FfiConverterTypeDevicePlatform_lift(_ buf: RustBuffer) throws -> Dev
 #endif
 public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> RustBuffer {
     return FfiConverterTypeDevicePlatform.lower(value)
+}
+
+
+
+/**
+ * The parts of a sync run that report their own request statistics.
+ */
+
+public enum DiagnosticPhase: Equatable, Hashable {
+    
+    /**
+     * Record packs on a fresh device (chapter 08 §8.4.2).
+     */
+    case recordPacks
+    /**
+     * `GET /sync/changes` to the end of the feed.
+     */
+    case refs
+    /**
+     * The manifest reconcile after record packs (§8.10).
+     */
+    case reconcile
+    /**
+     * `POST /sync/pull` over the records still metadata-only.
+     */
+    case metadata
+    /**
+     * Body packs (§8.4.3).
+     */
+    case bodyPacks
+    /**
+     * The first sync's item-granular bodies pass.
+     */
+    case bodies
+    /**
+     * One round of the foreground body drain.
+     */
+    case drainBodies
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DiagnosticPhase: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDiagnosticPhase: FfiConverterRustBuffer {
+    typealias SwiftType = DiagnosticPhase
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DiagnosticPhase {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .recordPacks
+        
+        case 2: return .refs
+        
+        case 3: return .reconcile
+        
+        case 4: return .metadata
+        
+        case 5: return .bodyPacks
+        
+        case 6: return .bodies
+        
+        case 7: return .drainBodies
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DiagnosticPhase, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .recordPacks:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .refs:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .reconcile:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .metadata:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .bodyPacks:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .bodies:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .drainBodies:
+            writeInt(&buf, Int32(7))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticPhase_lift(_ buf: RustBuffer) throws -> DiagnosticPhase {
+    return try FfiConverterTypeDiagnosticPhase.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticPhase_lower(_ value: DiagnosticPhase) -> RustBuffer {
+    return FfiConverterTypeDiagnosticPhase.lower(value)
+}
+
+
+
+
+public enum DownloadFailure: Equatable, Hashable {
+    
+    /**
+     * A finished file's sha256 differed from the pin. The part is deleted, so
+     * the next attempt starts that file over.
+     */
+    case mismatch
+    /**
+     * The host answered with something other than the range asked for.
+     */
+    case http(status: UInt16
+    )
+    case network
+    /**
+     * Writing the model files failed, most often because the disk is full.
+     */
+    case storage
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadFailure: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadFailure
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadFailure {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .mismatch
+        
+        case 2: return .http(status: try FfiConverterUInt16.read(from: &buf)
+        )
+        
+        case 3: return .network
+        
+        case 4: return .storage
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadFailure, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .mismatch:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .http(status):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt16.write(status, into: &buf)
+            
+        
+        case .network:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .storage:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadFailure_lift(_ buf: RustBuffer) throws -> DownloadFailure {
+    return try FfiConverterTypeDownloadFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadFailure_lower(_ value: DownloadFailure) -> RustBuffer {
+    return FfiConverterTypeDownloadFailure.lower(value)
 }
 
 
@@ -31206,6 +33862,11 @@ public enum MatchKind: Equatable, Hashable {
      * One of the note's or journal day's aliases is or starts with the query.
      */
     case alias
+    /**
+     * Only the on-device embedding found it: the note means what the query
+     * means without holding its words ([`semantic`]).
+     */
+    case semantic
 
 
 
@@ -31233,6 +33894,8 @@ public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
         
         case 3: return .alias
         
+        case 4: return .semantic
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -31252,6 +33915,10 @@ public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
         case .alias:
             writeInt(&buf, Int32(3))
         
+        
+        case .semantic:
+            writeInt(&buf, Int32(4))
+        
         }
     }
 }
@@ -31269,6 +33936,109 @@ public func FfiConverterTypeMatchKind_lift(_ buf: RustBuffer) throws -> MatchKin
 #endif
 public func FfiConverterTypeMatchKind_lower(_ value: MatchKind) -> RustBuffer {
     return FfiConverterTypeMatchKind.lower(value)
+}
+
+
+
+
+public enum ModelState: Equatable, Hashable {
+    
+    case off
+    case downloading(received: UInt64, total: UInt64
+    )
+    /**
+     * Wi-Fi means unmetered: a hotspot or Low Data Mode counts as cellular.
+     */
+    case waitingForWifi(received: UInt64, total: UInt64
+    )
+    case failed(received: UInt64, total: UInt64, failure: DownloadFailure
+    )
+    case ready
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelState: FfiConverterRustBuffer {
+    typealias SwiftType = ModelState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .off
+        
+        case 2: return .downloading(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 3: return .waitingForWifi(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 4: return .failed(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf), failure: try FfiConverterTypeDownloadFailure.read(from: &buf)
+        )
+        
+        case 5: return .ready
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ModelState, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .off:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .downloading(received,total):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            
+        
+        case let .waitingForWifi(received,total):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            
+        
+        case let .failed(received,total,failure):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            FfiConverterTypeDownloadFailure.write(failure, into: &buf)
+            
+        
+        case .ready:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelState_lift(_ buf: RustBuffer) throws -> ModelState {
+    return try FfiConverterTypeModelState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelState_lower(_ value: ModelState) -> RustBuffer {
+    return FfiConverterTypeModelState.lower(value)
 }
 
 
@@ -31721,6 +34491,94 @@ public func FfiConverterTypeProtectionClass_lower(_ value: ProtectionClass) -> R
 
 
 
+/**
+ * What a walk over the owed uploads has to tell the user (#5532).
+ */
+
+public enum QueuedAttachmentNews: Equatable, Hashable {
+    
+    /**
+     * The server refused the upload, and the user was not told of this
+     * refusal yet. It stays owed. `status` is the HTTP status, 0 for bytes
+     * that would not frame. `note_title` is empty for an untitled note.
+     */
+    case refused(attachmentId: String, noteId: String, noteTitle: String, refusal: AttachmentRefusal, status: UInt16
+    )
+    /**
+     * An upload the user was told was refused has landed.
+     */
+    case uploaded(attachmentId: String, noteId: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension QueuedAttachmentNews: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeQueuedAttachmentNews: FfiConverterRustBuffer {
+    typealias SwiftType = QueuedAttachmentNews
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> QueuedAttachmentNews {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .refused(attachmentId: try FfiConverterString.read(from: &buf), noteId: try FfiConverterString.read(from: &buf), noteTitle: try FfiConverterString.read(from: &buf), refusal: try FfiConverterTypeAttachmentRefusal.read(from: &buf), status: try FfiConverterUInt16.read(from: &buf)
+        )
+        
+        case 2: return .uploaded(attachmentId: try FfiConverterString.read(from: &buf), noteId: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: QueuedAttachmentNews, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .refused(attachmentId,noteId,noteTitle,refusal,status):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(attachmentId, into: &buf)
+            FfiConverterString.write(noteId, into: &buf)
+            FfiConverterString.write(noteTitle, into: &buf)
+            FfiConverterTypeAttachmentRefusal.write(refusal, into: &buf)
+            FfiConverterUInt16.write(status, into: &buf)
+            
+        
+        case let .uploaded(attachmentId,noteId):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(attachmentId, into: &buf)
+            FfiConverterString.write(noteId, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueuedAttachmentNews_lift(_ buf: RustBuffer) throws -> QueuedAttachmentNews {
+    return try FfiConverterTypeQueuedAttachmentNews.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueuedAttachmentNews_lower(_ value: QueuedAttachmentNews) -> RustBuffer {
+    return FfiConverterTypeQueuedAttachmentNews.lower(value)
+}
+
+
+
 
 public enum Reachable: Equatable, Hashable {
     
@@ -31942,6 +34800,82 @@ public func FfiConverterTypeRecoveryError_lift(_ buf: RustBuffer) throws -> Reco
 public func FfiConverterTypeRecoveryError_lower(_ value: RecoveryError) -> RustBuffer {
     return FfiConverterTypeRecoveryError.lower(value)
 }
+
+
+/**
+ * Why the shell asks the host to let go of the model.
+ */
+
+public enum ReleaseReason: Equatable, Hashable {
+    
+    /**
+     * The app left the foreground. Ignored while the embedder runs.
+     */
+    case background
+    /**
+     * The OS is short of memory. Always unloads, and stops the embedder at
+     * its next step.
+     */
+    case memoryWarning
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ReleaseReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReleaseReason: FfiConverterRustBuffer {
+    typealias SwiftType = ReleaseReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReleaseReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .background
+        
+        case 2: return .memoryWarning
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ReleaseReason, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .background:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .memoryWarning:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseReason_lift(_ buf: RustBuffer) throws -> ReleaseReason {
+    return try FfiConverterTypeReleaseReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseReason_lower(_ value: ReleaseReason) -> RustBuffer {
+    return FfiConverterTypeReleaseReason.lower(value)
+}
+
 
 
 /**
@@ -32325,6 +35259,293 @@ public func FfiConverterTypeSeedOutcome_lower(_ value: SeedOutcome) -> RustBuffe
 
 
 
+public 
+enum SemanticError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Unavailable
+    case Inference(what: String
+    )
+    /**
+     * A panic during inference poisoned the session; only a reload clears it.
+     */
+    case Poisoned
+    case Storage(source: StorageError
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension SemanticError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticError: FfiConverterRustBuffer {
+    typealias SwiftType = SemanticError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Unavailable
+        case 2: return .Inference(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .Poisoned
+        case 4: return .Storage(
+            source: try FfiConverterTypeStorageError.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SemanticError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case .Unavailable:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .Inference(what):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case .Poisoned:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .Storage(source):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeStorageError.write(source, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticError_lift(_ buf: RustBuffer) throws -> SemanticError {
+    return try FfiConverterTypeSemanticError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticError_lower(_ value: SemanticError) -> RustBuffer {
+    return FfiConverterTypeSemanticError.lower(value)
+}
+
+
+
+public enum StepOutcome: Equatable, Hashable {
+    
+    /**
+     * Not done yet. Sleep `rest_ms`, then step again.
+     */
+    case embedded(embedded: UInt32, total: UInt32, restMs: UInt32
+    )
+    /**
+     * Nothing is due: every live note is current or skipped after a failure.
+     */
+    case finished(embedded: UInt32, total: UInt32
+    )
+    /**
+     * Stop stepping until the next scheduled run.
+     */
+    case stopped(reason: StepStop
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension StepOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStepOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = StepOutcome
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StepOutcome {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .embedded(embedded: try FfiConverterUInt32.read(from: &buf), total: try FfiConverterUInt32.read(from: &buf), restMs: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 2: return .finished(embedded: try FfiConverterUInt32.read(from: &buf), total: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 3: return .stopped(reason: try FfiConverterTypeStepStop.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: StepOutcome, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .embedded(embedded,total,restMs):
+            writeInt(&buf, Int32(1))
+            FfiConverterUInt32.write(embedded, into: &buf)
+            FfiConverterUInt32.write(total, into: &buf)
+            FfiConverterUInt32.write(restMs, into: &buf)
+            
+        
+        case let .finished(embedded,total):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt32.write(embedded, into: &buf)
+            FfiConverterUInt32.write(total, into: &buf)
+            
+        
+        case let .stopped(reason):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeStepStop.write(reason, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepOutcome_lift(_ buf: RustBuffer) throws -> StepOutcome {
+    return try FfiConverterTypeStepOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepOutcome_lower(_ value: StepOutcome) -> RustBuffer {
+    return FfiConverterTypeStepOutcome.lower(value)
+}
+
+
+
+
+public enum StepStop: Equatable, Hashable {
+    
+    case tooHot
+    case onBattery
+    case memoryPressure
+    /**
+     * Opted out, or the model is not fully downloaded.
+     */
+    case modelNotReady
+    /**
+     * This binary has no ONNX Runtime.
+     */
+    case unavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension StepStop: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStepStop: FfiConverterRustBuffer {
+    typealias SwiftType = StepStop
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StepStop {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .tooHot
+        
+        case 2: return .onBattery
+        
+        case 3: return .memoryPressure
+        
+        case 4: return .modelNotReady
+        
+        case 5: return .unavailable
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: StepStop, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .tooHot:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .onBattery:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .memoryPressure:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .modelNotReady:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .unavailable:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepStop_lift(_ buf: RustBuffer) throws -> StepStop {
+    return try FfiConverterTypeStepStop.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepStop_lower(_ value: StepStop) -> RustBuffer {
+    return FfiConverterTypeStepStop.lower(value)
+}
+
+
+
 /**
  * Failures of the storage layer and the `FileProtection` seam.
  */
@@ -32605,12 +35826,19 @@ enum SyncError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case AttachmentUnverified(deviceId: String
     )
     /**
-     * The bytes arrived and were not the bytes the manifest describes.
+     * The attachment's bytes or its manifest were not what chapter 14 requires.
      *
-     * A failed chunk hash, a failed whole-file checksum, or a chunk that
-     * would not decrypt. Separate from `AttachmentUnverified` because the
-     * manifest was trustworthy and the transfer was not, so a retry is
-     * reasonable here and is not there.
+     * On a download: a chunk that failed its hash or size check, would not
+     * decrypt, or never arrived; an assembled file that failed its whole-file
+     * checksum; a manifest that would not decode, decrypt or parse; or a
+     * manifest whose `id` names another attachment than the one asked for
+     * (§14.7). Separate from `AttachmentUnverified` because no signature
+     * failed: the server sent the wrong bytes or the wrong manifest, so a
+     * retry is reasonable here and is not there.
+     *
+     * On an upload: a file that needs more chunks than a session allows
+     * (§14.2), or a manifest that would not seal. The upload counts these as
+     * refused and does not retry them.
      */
     case AttachmentCorrupt(what: String
     )
@@ -32744,7 +35972,7 @@ public func FfiConverterTypeSyncError_lower(_ value: SyncError) -> RustBuffer {
 
 
 /**
- * Which pass a first sync is in, data-model §C.3 and FR-028.
+ * Which part of the vault is arriving, data-model §C.3 and FR-028.
  *
  * A mirror of [`FirstSyncPhase`] rather than a derive on it: the internal type
  * is free to gain a pass, and the day it does, this enum's absence of one is a
@@ -32754,15 +35982,11 @@ public func FfiConverterTypeSyncError_lower(_ value: SyncError) -> RustBuffer {
 public enum SyncPhase: Equatable, Hashable {
     
     /**
-     * `GET /sync/changes` to the end of the feed.
+     * Note records: what a shell shows as "Downloading notes".
      */
-    case refs
+    case records
     /**
-     * `POST /sync/pull`, newest first.
-     */
-    case metadata
-    /**
-     * `GET /sync/crdt/updates` for the recent window.
+     * Note bodies: what a shell shows as "Downloading note content".
      */
     case bodies
     case done
@@ -32787,13 +36011,11 @@ public struct FfiConverterTypeSyncPhase: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .refs
+        case 1: return .records
         
-        case 2: return .metadata
+        case 2: return .bodies
         
-        case 3: return .bodies
-        
-        case 4: return .done
+        case 3: return .done
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -32803,20 +36025,16 @@ public struct FfiConverterTypeSyncPhase: FfiConverterRustBuffer {
         switch value {
         
         
-        case .refs:
+        case .records:
             writeInt(&buf, Int32(1))
         
         
-        case .metadata:
+        case .bodies:
             writeInt(&buf, Int32(2))
         
         
-        case .bodies:
-            writeInt(&buf, Int32(3))
-        
-        
         case .done:
-            writeInt(&buf, Int32(4))
+            writeInt(&buf, Int32(3))
         
         }
     }
@@ -32922,6 +36140,89 @@ public func FfiConverterTypeTelemetryDelivery_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeTelemetryDelivery_lower(_ value: TelemetryDelivery) -> RustBuffer {
     return FfiConverterTypeTelemetryDelivery.lower(value)
+}
+
+
+
+/**
+ * The device's thermal state, as the shell reads it.
+ */
+
+public enum Thermal: Equatable, Hashable {
+    
+    case nominal
+    case fair
+    case serious
+    case critical
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Thermal: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeThermal: FfiConverterRustBuffer {
+    typealias SwiftType = Thermal
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Thermal {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .nominal
+        
+        case 2: return .fair
+        
+        case 3: return .serious
+        
+        case 4: return .critical
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Thermal, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .nominal:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .fair:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .serious:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .critical:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeThermal_lift(_ buf: RustBuffer) throws -> Thermal {
+    return try FfiConverterTypeThermal.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeThermal_lower(_ value: Thermal) -> RustBuffer {
+    return FfiConverterTypeThermal.lower(value)
 }
 
 
@@ -33287,6 +36588,30 @@ fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeSemanticSearch: FfiConverterRustBuffer {
+    typealias SwiftType = SemanticSearch?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSemanticSearch.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSemanticSearch.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustBuffer {
     typealias SwiftType = SyncProgressListener?
 
@@ -33303,6 +36628,30 @@ fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustB
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeSyncProgressListener.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCachedAttachment: FfiConverterRustBuffer {
+    typealias SwiftType = CachedAttachment?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCachedAttachment.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCachedAttachment.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -33503,6 +36852,30 @@ fileprivate struct FfiConverterOptionTypeInboxJob: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeInboxSuggestedNote: FfiConverterRustBuffer {
+    typealias SwiftType = InboxSuggestedNote?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeInboxSuggestedNote.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeInboxSuggestedNote.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeJournalDayRecord: FfiConverterRustBuffer {
     typealias SwiftType = JournalDayRecord?
 
@@ -33599,6 +36972,30 @@ fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNoteFile: FfiConverterRustBuffer {
+    typealias SwiftType = NoteFile?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteFile.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteFile.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeNoteLinkTarget: FfiConverterRustBuffer {
     typealias SwiftType = NoteLinkTarget?
 
@@ -33663,6 +37060,30 @@ fileprivate struct FfiConverterOptionTypeParsedDate: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeParsedDate.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeReindexSummary: FfiConverterRustBuffer {
+    typealias SwiftType = ReindexSummary?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeReindexSummary.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeReindexSummary.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -34308,6 +37729,31 @@ fileprivate struct FfiConverterSequenceTypeCalendarCaldavCalendar: FfiConverterR
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCalendarCaldavEtag: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarCaldavEtag]
+
+    public static func write(_ value: [CalendarCaldavEtag], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarCaldavEtag.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarCaldavEtag] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarCaldavEtag]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarCaldavEtag.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCalendarCaldavObject: FfiConverterRustBuffer {
     typealias SwiftType = [CalendarCaldavObject]
 
@@ -34558,6 +38004,31 @@ fileprivate struct FfiConverterSequenceTypeCalendarZoneTransition: FfiConverterR
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCanvasRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [CanvasRecord]
+
+    public static func write(_ value: [CanvasRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCanvasRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CanvasRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CanvasRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCanvasRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeDueReminderItem: FfiConverterRustBuffer {
     typealias SwiftType = [DueReminderItem]
 
@@ -34725,6 +38196,81 @@ fileprivate struct FfiConverterSequenceTypeInboxPanelEntry: FfiConverterRustBuff
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeInboxPanelEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxSuggestHit: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxSuggestHit]
+
+    public static func write(_ value: [InboxSuggestHit], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxSuggestHit.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxSuggestHit] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxSuggestHit]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxSuggestHit.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxSuggestion: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxSuggestion]
+
+    public static func write(_ value: [InboxSuggestion], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxSuggestion.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxSuggestion] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxSuggestion]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxSuggestion.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxTaggedNote: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxTaggedNote]
+
+    public static func write(_ value: [InboxTaggedNote], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxTaggedNote.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxTaggedNote] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxTaggedNote]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxTaggedNote.read(from: &buf))
         }
         return seq
     }
@@ -35933,6 +39479,31 @@ fileprivate struct FfiConverterSequenceTypeInboxJobStatus: FfiConverterRustBuffe
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeQueuedAttachmentNews: FfiConverterRustBuffer {
+    typealias SwiftType = [QueuedAttachmentNews]
+
+    public static func write(_ value: [QueuedAttachmentNews], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeQueuedAttachmentNews.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [QueuedAttachmentNews] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [QueuedAttachmentNews]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeQueuedAttachmentNews.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSearchType: FfiConverterRustBuffer {
     typealias SwiftType = [SearchType]
 
@@ -36518,6 +40089,30 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 })
 }
 /**
+ * Registers the shell's sink, replacing any earlier one. Call it once, at
+ * launch, before the first sync.
+ */
+public func setDiagnosticsSink(sink: DiagnosticsSink)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_set_diagnostics_sink(
+        FfiConverterTypeDiagnosticsSink_lower(sink),uniffiCallStatus
+    )
+}
+}
+/**
+ * Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
+ * actual: { document, chunks } }], queries: [{ name, actual }], tokens: [{
+ * name, actual }] }`.
+ */
+public func embeddingInputConformance(vectorJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_embedding_input_conformance(
+        FfiConverterString.lower(vectorJson),uniffiCallStatus
+    )
+})
+}
+/**
  * `inbox.json` evaluated by the core: `{apply: [{name, actual}], views}`,
  * each `actual` in the shape of the file's `expected`. A failure is reported
  * in the JSON (`error`), never a panic.
@@ -36789,6 +40384,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_func_set_diagnostics_sink() != 9088) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 24851) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -36918,6 +40519,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_submit_app_store_transaction() != 52828) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_authsession_send_feedback() != 47073) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_authsession_device_approver() != 31031) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -36966,6 +40570,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_apply_pull() != 4511) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_bound_objects() != 1815) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_connect() != 9130) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -36987,7 +40594,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_push_deleted() != 35928) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultcalendar_push_done() != 60085) {
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_done() != 57825) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_push_failed() != 26185) {
@@ -37005,7 +40612,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_error() != 19564) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 28465) {
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 25321) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_not_modified() != 41963) {
@@ -37032,7 +40639,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_canvases_create() != 12599) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_canvases_list() != 54789) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_canvases_set_scene() != 52976) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_canvases_set_scene_expecting() != 15694) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {
@@ -37107,10 +40720,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_resume_pending_jobs() != 7670) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_inbox_review_due() != 11816) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_inbox_review_settings() != 48359) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_set_review_settings() != 10488) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_suggestion_stats() != 46431) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_suggestions() != 21375) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_track_suggestion() != 54117) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_add_tag() != 59207) {
@@ -37144,6 +40769,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_check_file() != 43407) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_convert_to_event() != 35363) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_convert_to_note() != 24326) {
@@ -37242,6 +40870,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_journal_resolve_wiki_target() != 4674) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_journal_same_day_entries() != 57501) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_journal_seed_from_template() != 21646) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -37323,7 +40954,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_comments() != 52547) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_file() != 56267) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_full_width() != 59091) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_is_bookmarked() != 3350) {
@@ -37413,6 +41050,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 22061) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_full_width() != 14746) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_set_icon() != 32942) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -37476,7 +41116,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_search() != 49306) {
+    if (uniffi_memry_core_checksum_method_search_reindex_step() != 7775) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_search() != 61726) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_semantic_model_loaded() != 41947) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
@@ -37489,6 +41135,24 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_searchrecents_record() != 10547) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_disable() != 18804) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_enable() != 60176) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_resume() != 55843) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_status() != 37333) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_embed_step() != 55519) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_release() != 26489) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
@@ -37530,10 +41194,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 40537) {
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 65350) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_first_sync() != 1318) {
+    if (uniffi_memry_core_checksum_method_vaultsync_first_sync() != 27015) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
@@ -37545,6 +41209,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 34657) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_manifests() != 9013) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultsync_redrive_attachments() != 2191) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -37554,13 +41221,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 21882) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultsync_attach_inbox_file() != 44095) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_sync_inbox_attachments() != 64358) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 13576) {
+    if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 38818) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_realtime() != 27087) {
@@ -37893,7 +41563,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vault_notes_writer() != 9506) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
+    if (uniffi_memry_core_checksum_method_vault_search() != 55225) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_search_recents() != 24521) {
@@ -37942,6 +41612,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_codecapture_cancel() != 52096) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_diagnosticssink_record() != 4669) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notifications_permission() != 20630) {
@@ -38025,12 +41698,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_constructor_semanticsearch_new() != 38333) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_constructor_vault_open() != 12310) {
         return InitializationResult.apiChecksumMismatch
     }
 
     uniffiCallbackInitBackgroundExec()
     uniffiCallbackInitCodeCapture()
+    uniffiCallbackInitDiagnosticsSink()
     uniffiCallbackInitFileProtection()
     uniffiCallbackInitLifecycleObserver()
     uniffiCallbackInitNotifications()

@@ -393,6 +393,16 @@ describe('attachment operations', () => {
       expect(result.error).toContain('too large')
     })
 
+    // #5606: a Windows paste can hand over `image.png` with no bytes. Written,
+    // it embedded as a broken image and was offered for upload forever.
+    it('refuses an empty file with a reason the user can act on, and writes nothing', async () => {
+      const result = await saveAttachment('note123', Buffer.alloc(0), 'image.png')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('is empty')
+      expect(fs.existsSync(path.join(tempVault.path, 'attachments', 'note123'))).toBe(false)
+    })
+
     it('references the attachment relative to the note that owns it', async () => {
       // The whole point of #1488: an absolute URL carries this machine's vault
       // path, so the same note on a second device resolves it to nothing.

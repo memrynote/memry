@@ -17,6 +17,7 @@
       "filterAll": "All Files"
     },
     "exportCancelled": "Export cancelled",
+    "exportVaultChanged": "Another vault was opened while you chose where to save. Export the note again.",
     "dataDbRecovery": {
       "title": "Repair vault database",
       "message": "Memry's database for this vault is damaged.",
@@ -89,5 +90,53 @@
     },
     "logFolder": "Logs: {path}",
     "reloaded": "MemryNote reloaded after a crash. Recent edits may be lost."
+  },
+  "migration": {
+    "running": {
+      "title": "Moving your data",
+      "note": "This happens once. Keep MemryNote open until it's done."
+    },
+    "phase": {
+      "preparing": "Preparing…",
+      "secrets": "Moving your secrets…",
+      "vault": "Moving vault {current} of {total}…",
+      "checking": "Checking your data…"
+    },
+    "failed": {
+      "title": "Your data wasn't moved",
+      "note": "Nothing was lost. The previous MemryNote app and its data are unchanged.",
+      "check": "Failed check: {check}",
+      "electronRunning": "The previous MemryNote app is still open. Quit it, then try again.",
+      "diskSpace": "There isn't enough free disk space to move your data. Free some space, then try again.",
+      "electronSchema": "The previous MemryNote app hasn't finished updating a vault. Update that app, open the vault in it once, quit it, then try again.",
+      "sharedStore": "Some vaults share one sync history, so they can't be moved. Keep using the previous MemryNote app for them.",
+      "vaultUnreachable": "A vault can't be read right now. Check that its drive is connected, then try again.",
+      "secrets": "Some saved sign-in details couldn't be read. Try again. If it keeps happening, check that your keychain is unlocked.",
+      "verification": "A check of your moved data didn't pass, so MemryNote kept everything as it was.",
+      "notReady": "This version of MemryNote can't move this vault's data yet. Your data is still in the previous MemryNote app. Keep using it, and update MemryNote to try again.",
+      "io": "A file couldn't be read or written while your data was moving. Check that your disk has free space and that your vault folders can be written to, then try again.",
+      "sourceChanged": "The previous MemryNote app changed its data during the move. Quit it, then try again.",
+      "coreFileExists": "A vault already has data from this version of MemryNote, so it wasn't replaced. Keep using the previous app, and send the report under Show details to support.",
+      "malformedRow": "Some of the previous app's data is in a form that can't be moved. Keep using the previous app, and send the report under Show details to support.",
+      "deleteWithoutDevice": "A deletion in a vault hasn't synced yet. Open the previous MemryNote app, let it finish syncing, quit it, then try again.",
+      "deviceKeyMismatch": "The previous app's device key doesn't match this device's sync registration, so your sign-in wasn't moved. Keep using the previous app, and send the report under Show details to support.",
+      "keyVerifierMismatch": "The previous app's encryption key doesn't match your account, so your sign-in wasn't moved. Keep using the previous app, and send the report under Show details to support.",
+      "targetOccupied": "This version of MemryNote is already signed in, so the previous app's sign-in wasn't moved over it. Keep using the previous app, and send the report under Show details to support."
+    },
+    "done": {
+      "title": "Your data is ready",
+      "body": "Opening MemryNote…"
+    },
+    "retry": "Try again",
+    "showDetails": "Show details",
+    "reportMissing": "There's no report yet.",
+    "completed": {
+      "title": "Your data moved to this version",
+      "body": "Your notes, settings and sign-in now live in this version of MemryNote. The previous app's data stays untouched at {path}."
+    },
+    "notice": {
+      "title": "Changes made in the previous app",
+      "body": "A vault changed in the previous MemryNote app after it moved to this version. Those changes aren't here: they stay in the previous app's data at {path}. Changes that were synced arrive through sync."
+    }
   }
 }

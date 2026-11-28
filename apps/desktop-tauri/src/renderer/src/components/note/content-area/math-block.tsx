@@ -77,7 +77,9 @@ export function MathBlockRenderer({ block, editor }: { block: MathBlockNode; edi
   }
 
   return (
-    <div className="math-block my-2" contentEditable={false}>
+    // `w-full min-w-0`: BlockNote's block content is a flex row, which shrank
+    // this block to its formula and left it at the start edge (#3929).
+    <div className="math-block my-2 w-full min-w-0" contentEditable={false}>
       <Popover open={isEditing} onOpenChange={openEditor}>
         <PopoverTrigger asChild>
           <button
@@ -99,7 +101,12 @@ export function MathBlockRenderer({ block, editor }: { block: MathBlockNode; edi
               // KaTeX escapes every character of the source it echoes and
               // refuses link commands under the default `trust: false`, so the
               // markup below holds no author-supplied URL or attribute.
-              <span dangerouslySetInnerHTML={{ __html: preview.markup }} />
+              // A formula wider than the column scrolls inside it instead of
+              // spilling past both edges of the centered button.
+              <span
+                className="max-w-full overflow-x-auto overflow-y-hidden"
+                dangerouslySetInnerHTML={{ __html: preview.markup }}
+              />
             ) : (
               <span className="text-start font-mono text-xs text-destructive">{preview.error}</span>
             )}

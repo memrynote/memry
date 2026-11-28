@@ -1,0 +1,1888 @@
+{
+  "source": "google-keep",
+  "cases": [
+    {
+      "name": "takeout",
+      "sources": [
+        "Takeout.zip"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Groceries é店",
+            "params": {
+              "title": "Groceries é店"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Groceries é店",
+          "folder": "Google Keep",
+          "tags": [
+            "Keep/Color/YELLOW",
+            "Keep/Label/home",
+            "Keep/Label/errand 🛒",
+            "Keep/Archived"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2021-01-02T00:00:00.123Z",
+          "content": "- [ ] Milk\n- [x] Eggs\n- [ ] Butter"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Groceries é店",
+            "params": {
+              "title": "Groceries é店"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Groceries é店",
+            "params": {
+              "title": "Groceries é店"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "Trip_photo.png",
+          "size": 71,
+          "sha256": "27237c7d461213d648fac421b149cf25cc8ad012c4fc04c76ad447631d788cfd"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 1,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "tool.exe",
+          "refused": true
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 1,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "Trip",
+          "folder": "Google Keep",
+          "tags": [
+            "Keep/Color/BLUE",
+            "Keep/Pinned",
+            "Keep/Deleted",
+            "Keep/Attachment"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2023-11-14T22:13:20.999Z",
+          "content": "Line one\r\nLine two\n\n- [ ] pack bags\n\n![Trip_photo.png](attachments/note-2/Trip_photo.png)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 2,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 1,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 2,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 2,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 2,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 2,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-3",
+          "title": "Untitled",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "1970-01-01T00:00:00.000Z",
+          "content": "\n  hidden first line"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 3,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 2,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 3,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 3,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 3,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 3,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-4",
+          "title": "First line here",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2020-09-13T12:26:40.000Z",
+          "content": "  First line here  \nmore text"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 3,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 4,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 4,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 5,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 5,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 6,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 6,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-5",
+          "title": "Old",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "+010000-01-01T00:00:00.000Z",
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 6,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 7,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 7,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-6",
+          "title": "Buy milk",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "1969-12-31T23:59:59.998Z",
+          "content": "- [x]  Buy milk \n- [ ] Bread"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 7,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 8,
+          "total": 8,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 8,
+          "total": 8,
+          "done": true,
+          "summary": {
+            "imported": 6,
+            "attachments": 1,
+            "skipped": 4,
+            "failed": [
+              {
+                "item": "Takeout/Keep/Far future.json",
+                "error": "Invalid time value"
+              }
+            ],
+            "skippedReasons": [
+              {
+                "reason": "Invalid JSON",
+                "count": 1
+              },
+              {
+                "reason": "Attachment file not found",
+                "count": 1
+              },
+              {
+                "reason": "unsupported attachment type .exe",
+                "count": 1
+              },
+              {
+                "reason": "Not a Google Keep note",
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "imported": 6,
+        "attachments": 1,
+        "skipped": 4,
+        "failed": [
+          {
+            "item": "Takeout/Keep/Far future.json",
+            "error": "Invalid time value"
+          }
+        ],
+        "skippedReasons": [
+          {
+            "reason": "Invalid JSON",
+            "count": 1
+          },
+          {
+            "reason": "Attachment file not found",
+            "count": 1
+          },
+          {
+            "reason": "unsupported attachment type .exe",
+            "count": 1
+          },
+          {
+            "reason": "Not a Google Keep note",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "loose",
+      "sources": [
+        "loose/Loose note.json",
+        "loose/bad.json",
+        "loose/readme.txt",
+        "loose/array.json"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "pic.gif",
+          "size": 43,
+          "sha256": "693d949d8c3fdc7fd4ace7c340b5f177a9f0c5be7bafee8bc93a7d88b7523d75"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "pic.gif",
+          "size": 43,
+          "sha256": "693d949d8c3fdc7fd4ace7c340b5f177a9f0c5be7bafee8bc93a7d88b7523d75"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Loose note",
+          "folder": "Google Keep",
+          "tags": [
+            "Keep/Label/work",
+            "Keep/Attachment"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2021-01-01T00:00:00.000Z",
+          "content": "Has a picture\n\n![pic.gif](attachments/note-1/pic.gif)\n\n![pic.gif](attachments/note-1/pic.gif)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 1,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 2,
+          "failed": 1,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 2,
+          "failed": 1,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 2,
+          "failed": 1,
+          "completed": 2,
+          "total": 2,
+          "done": true,
+          "summary": {
+            "imported": 1,
+            "attachments": 2,
+            "skipped": 2,
+            "failed": [
+              {
+                "item": "<input>/loose/bad.json",
+                "error": "Invalid JSON"
+              }
+            ],
+            "skippedReasons": [
+              {
+                "reason": "Attachment file not found",
+                "count": 1
+              },
+              {
+                "reason": "Not a Google Keep note",
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "imported": 1,
+        "attachments": 2,
+        "skipped": 2,
+        "failed": [
+          {
+            "item": "<input>/loose/bad.json",
+            "error": "Invalid JSON"
+          }
+        ],
+        "skippedReasons": [
+          {
+            "reason": "Attachment file not found",
+            "count": 1
+          },
+          {
+            "reason": "Not a Google Keep note",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "mixed",
+      "sources": [
+        "loose/Loose note.json",
+        "Takeout.zip"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningExport",
+            "message": "Scanning export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "pic.gif",
+          "size": 43,
+          "sha256": "693d949d8c3fdc7fd4ace7c340b5f177a9f0c5be7bafee8bc93a7d88b7523d75"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "pic.gif",
+          "size": 43,
+          "sha256": "693d949d8c3fdc7fd4ace7c340b5f177a9f0c5be7bafee8bc93a7d88b7523d75"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "Trip_photo.png",
+          "size": 71,
+          "sha256": "27237c7d461213d648fac421b149cf25cc8ad012c4fc04c76ad447631d788cfd"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Loose note",
+          "folder": "Google Keep",
+          "tags": [
+            "Keep/Label/work",
+            "Keep/Attachment"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2021-01-01T00:00:00.000Z",
+          "content": "Has a picture\n\n![pic.gif](attachments/note-1/pic.gif)\n\n![pic.gif](attachments/note-1/pic.gif)\n\n![Trip_photo.png](attachments/note-1/Trip_photo.png)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Loose note",
+            "params": {
+              "title": "Loose note"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Groceries é店",
+            "params": {
+              "title": "Groceries é店"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "Groceries é店",
+          "folder": "Google Keep",
+          "tags": [
+            "Keep/Color/YELLOW",
+            "Keep/Label/home",
+            "Keep/Label/errand 🛒",
+            "Keep/Archived"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2021-01-02T00:00:00.123Z",
+          "content": "- [ ] Milk\n- [x] Eggs\n- [ ] Butter"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Groceries é店",
+            "params": {
+              "title": "Groceries é店"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Groceries é店",
+            "params": {
+              "title": "Groceries é店"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-3",
+          "name": "Trip_photo.png",
+          "size": 71,
+          "sha256": "27237c7d461213d648fac421b149cf25cc8ad012c4fc04c76ad447631d788cfd"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 2,
+          "attachments": 4,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 2,
+          "attachments": 4,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-3",
+          "name": "tool.exe",
+          "refused": true
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 2,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-3",
+          "title": "Trip",
+          "folder": "Google Keep",
+          "tags": [
+            "Keep/Color/BLUE",
+            "Keep/Pinned",
+            "Keep/Deleted",
+            "Keep/Attachment"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2023-11-14T22:13:20.999Z",
+          "content": "Line one\r\nLine two\n\n- [ ] pack bags\n\n![Trip_photo.png](attachments/note-3/Trip_photo.png)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 3,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trip",
+            "params": {
+              "title": "Trip"
+            }
+          },
+          "imported": 3,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 3,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 3,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 3,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-4",
+          "title": "Untitled",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "1970-01-01T00:00:00.000Z",
+          "content": "\n  hidden first line"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 4,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 3,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Untitled",
+            "params": {
+              "title": "Untitled"
+            }
+          },
+          "imported": 4,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 4,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 4,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 4,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-5",
+          "title": "First line here",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2020-09-13T12:26:40.000Z",
+          "content": "  First line here  \nmore text"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 5,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 4,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 5,
+          "attachments": 4,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 5,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 5,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 5,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 5,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 6,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 5,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 6,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing First line here",
+            "params": {
+              "title": "First line here"
+            }
+          },
+          "imported": 5,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 7,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 5,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 7,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-6",
+          "title": "Old",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "+010000-01-01T00:00:00.000Z",
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 6,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 7,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 6,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 8,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 6,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 8,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-7",
+          "title": "Buy milk",
+          "folder": "Google Keep",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "1969-12-31T23:59:59.998Z",
+          "content": "- [x]  Buy milk \n- [ ] Bread"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 7,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 8,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 7,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 9,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk",
+            "params": {
+              "title": "Buy milk"
+            }
+          },
+          "imported": 7,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 1,
+          "completed": 9,
+          "total": 9,
+          "done": true,
+          "summary": {
+            "imported": 7,
+            "attachments": 4,
+            "skipped": 4,
+            "failed": [
+              {
+                "item": "Takeout/Keep/Far future.json",
+                "error": "Invalid time value"
+              }
+            ],
+            "skippedReasons": [
+              {
+                "reason": "Invalid JSON",
+                "count": 1
+              },
+              {
+                "reason": "Attachment file not found",
+                "count": 1
+              },
+              {
+                "reason": "unsupported attachment type .exe",
+                "count": 1
+              },
+              {
+                "reason": "Not a Google Keep note",
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "imported": 7,
+        "attachments": 4,
+        "skipped": 4,
+        "failed": [
+          {
+            "item": "Takeout/Keep/Far future.json",
+            "error": "Invalid time value"
+          }
+        ],
+        "skippedReasons": [
+          {
+            "reason": "Invalid JSON",
+            "count": 1
+          },
+          {
+            "reason": "Attachment file not found",
+            "count": 1
+          },
+          {
+            "reason": "unsupported attachment type .exe",
+            "count": 1
+          },
+          {
+            "reason": "Not a Google Keep note",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

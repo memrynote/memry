@@ -128,7 +128,7 @@ fn format_tweet_text(cx: &mut Cx, text: &str) -> Result<String, ExtractError> {
         return Ok(String::new());
     }
     let temp = cx.doc.create_element("div");
-    let fragment = cx.doc.parse_fragment(text);
+    let fragment = cx.doc.parse_fragment(text)?;
     cx.doc.append_child(temp, fragment)?;
     for link in cx.doc.query_selector_all(temp, "a")? {
         let handle = trimmed(cx.doc, link);

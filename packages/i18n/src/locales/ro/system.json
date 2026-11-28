@@ -17,6 +17,7 @@
       "filterAll": "Toate fișierele"
     },
     "exportCancelled": "Export anulat",
+    "exportVaultChanged": "S-a deschis alt seif în timp ce alegeai unde să salvezi. Exportă din nou notița.",
     "dataDbRecovery": {
       "title": "Repară baza de date a seifului",
       "message": "Baza de date Memry a acestui seif este deteriorată.",
@@ -89,5 +90,53 @@
     },
     "logFolder": "Jurnale: {path}",
     "reloaded": "MemryNote s-a reîncărcat după o eroare gravă. Este posibil ca modificările recente să se fi pierdut."
+  },
+  "migration": {
+    "running": {
+      "title": "Se mută datele tale",
+      "note": "Se întâmplă o singură dată. Ține MemryNote deschis până termină."
+    },
+    "phase": {
+      "preparing": "Se pregătește…",
+      "secrets": "Se mută secretele tale…",
+      "vault": "Se mută seiful {current} din {total}…",
+      "checking": "Se verifică datele tale…"
+    },
+    "failed": {
+      "title": "Datele tale nu au fost mutate",
+      "note": "Nu s-a pierdut nimic. Aplicația MemryNote anterioară și datele ei sunt neschimbate.",
+      "check": "Verificare nereușită: {check}",
+      "electronRunning": "Aplicația MemryNote anterioară este încă deschisă. Închide-o, apoi încearcă din nou.",
+      "diskSpace": "Nu există suficient spațiu liber pe disc pentru a muta datele. Eliberează spațiu, apoi încearcă din nou.",
+      "electronSchema": "Aplicația MemryNote anterioară nu a terminat de actualizat un seif. Actualizează acea aplicație, deschide seiful în ea o dată, închide-o, apoi încearcă din nou.",
+      "sharedStore": "Unele seifuri au același istoric de sincronizare, așa că nu pot fi mutate. Folosește în continuare aplicația MemryNote anterioară pentru ele.",
+      "vaultUnreachable": "Un seif nu poate fi citit acum. Verifică dacă unitatea lui este conectată, apoi încearcă din nou.",
+      "secrets": "Unele date de conectare salvate nu au putut fi citite. Încearcă din nou. Dacă se repetă, verifică dacă brelocul de chei este deblocat.",
+      "verification": "O verificare a datelor mutate nu a trecut, așa că MemryNote a lăsat totul cum era.",
+      "notReady": "Această versiune MemryNote nu poate încă muta datele acestui seif. Datele tale sunt în continuare în aplicația MemryNote anterioară. Folosește-o în continuare și actualizează MemryNote pentru a încerca din nou.",
+      "io": "Un fișier nu a putut fi citit sau scris în timpul mutării datelor. Verifică dacă discul are spațiu liber și dacă se poate scrie în folderele seifurilor tale, apoi încearcă din nou.",
+      "sourceChanged": "Aplicația MemryNote anterioară și-a modificat datele în timpul mutării. Închide-o, apoi încearcă din nou.",
+      "coreFileExists": "Un seif conține deja date din această versiune MemryNote, așa că nu a fost înlocuit. Folosește în continuare aplicația anterioară și trimite asistenței raportul din Afișează detaliile.",
+      "malformedRow": "O parte din datele aplicației anterioare are o formă care nu poate fi mutată. Folosește în continuare aplicația anterioară și trimite asistenței raportul din Afișează detaliile.",
+      "deleteWithoutDevice": "O ștergere dintr-un seif nu a fost încă sincronizată. Deschide aplicația MemryNote anterioară, las-o să termine sincronizarea, închide-o, apoi încearcă din nou.",
+      "deviceKeyMismatch": "Cheia de dispozitiv a aplicației anterioare nu corespunde înregistrării de sincronizare a acestui dispozitiv, așa că autentificarea ta nu a fost mutată. Folosește în continuare aplicația anterioară și trimite asistenței raportul din Afișează detaliile.",
+      "keyVerifierMismatch": "Cheia de criptare a aplicației anterioare nu corespunde contului tău, așa că autentificarea ta nu a fost mutată. Folosește în continuare aplicația anterioară și trimite asistenței raportul din Afișează detaliile.",
+      "targetOccupied": "Această versiune MemryNote este deja autentificată, așa că autentificarea aplicației anterioare nu a fost mutată peste ea. Folosește în continuare aplicația anterioară și trimite asistenței raportul din Afișează detaliile."
+    },
+    "done": {
+      "title": "Datele tale sunt gata",
+      "body": "Se deschide MemryNote…"
+    },
+    "retry": "Încearcă din nou",
+    "showDetails": "Afișează detaliile",
+    "reportMissing": "Nu există încă un raport.",
+    "completed": {
+      "title": "Datele tale sunt în această versiune",
+      "body": "Notițele, setările și conectarea ta sunt acum în această versiune MemryNote. Datele aplicației anterioare rămân neatinse în {path}."
+    },
+    "notice": {
+      "title": "Modificări făcute în aplicația anterioară",
+      "body": "Un seif a fost modificat în aplicația MemryNote anterioară după ce a fost mutat în această versiune. Acele modificări nu sunt aici: rămân în datele aplicației anterioare, în {path}. Modificările sincronizate sosesc prin sincronizare."
+    }
   }
 }

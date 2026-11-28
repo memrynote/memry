@@ -22,6 +22,7 @@ use crate::domain::journal_rules::{
     JournalTemplateSource, apply_journal_template, resolve_journal_template_id,
 };
 use crate::domain::{body_write, notes, settings, templates};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox;
 
@@ -92,7 +93,7 @@ pub fn open_day_from_template(
         return Ok(SeedOutcome::AlreadyExists { id });
     }
 
-    let tx = conn.unchecked_transaction().map_err(notes::failed)?;
+    let tx = nested_tx::begin(conn).map_err(notes::failed)?;
     let source = template_source(&tx, template_id)?;
     let applied = apply_journal_template(&source, &date, formatted);
 

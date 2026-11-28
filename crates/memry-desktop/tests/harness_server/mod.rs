@@ -71,6 +71,15 @@ impl Server {
             .expect("a marker count")
     }
 
+    /// Deletes every server row of `item_id`, record and body, as a server that lost its create.
+    /// Returns how many record rows went.
+    #[allow(dead_code)] // One binary loses.
+    pub fn lose(&mut self, item_id: &str) -> u64 {
+        self.command(&format!("lose {item_id}"))["harnessLost"]
+            .as_u64()
+            .expect("a row count")
+    }
+
     /// Registers one more device for the same user, now, and returns it in the bootstrap's
     /// device shape.
     #[allow(dead_code)] // One binary registers.
@@ -90,6 +99,13 @@ impl Server {
     pub fn entitle(&mut self, email: &str) {
         let reply = self.command(&format!("entitle {email}"));
         assert_eq!(reply["harnessEntitled"], true, "{reply}");
+    }
+
+    /// The user's plan allows files up to `bytes`; the Worker refuses larger ones with a 413.
+    #[allow(dead_code)] // One binary limits.
+    pub fn file_limit(&mut self, bytes: u64) {
+        let reply = self.command(&format!("file-limit {bytes}"));
+        assert_eq!(reply["harnessFileLimit"], true, "{reply}");
     }
 
     /// Changes an account vault's id on the server, as a server that chose a hostile id would.

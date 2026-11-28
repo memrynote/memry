@@ -23,12 +23,18 @@ use super::{AccountError, AccountService};
 use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
-use crate::sync::backend::{SyncBackend, VaultSyncBackend};
-use crate::sync::gate::SyncStartGate;
+use crate::sync::attachments::AttachmentSync;
+use crate::sync::attachments::vault_files::DesktopVaultFiles;
+use crate::sync::backend::{SyncBackend, VaultSyncBackend, read_auth_facts};
+use crate::sync::disk::DiskObserver;
+use crate::sync::events::OnSyncEvent;
+use crate::sync::first_sync_running::FirstSyncRunning;
+use crate::sync::gate::{self, GateDecision, SyncNotStartedReason, SyncStartGate};
 use crate::sync::signals::AuthSignals;
 use crate::sync::status::SyncStatus;
 use crate::sync::supervisor::{SupervisorParts, SyncSupervisor};
 use crate::telemetry::Service;
+use crate::vault::consumer::VaultTier;
 
 /// `BINDING_RETRY_MS`: how long an `Unknown` binding waits before the next check.
 pub const BINDING_RETRY: Duration = Duration::from_secs(60);
@@ -124,11 +130,15 @@ pub struct SyncWiring {
     pub keychain_recovered: broadcast::Sender<()>,
     pub telemetry: Option<Arc<Service>>,
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    pub on_event: OnSyncEvent,
     pub bindings: Arc<OpenVaultBinding>,
     /// Each binding change of the open vault (`sync:vault-binding-changed`).
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
     /// A vault directory refresh changed a vault's icon (`vault:list-changed`).
     pub on_vault_list_changed: Arc<dyn Fn() + Send + Sync>,
+    /// The vault tier pulled bodies and locks reach the disk through (`sync::disk`); `None` in a
+    /// test that serves no vault files.
+    pub tier: Option<Arc<VaultTier>>,
     /// Each new gate, before its supervisor starts: billing tells it the plan
     /// (`BillingService::attach_gate`).
     pub on_gate: GateHook,
@@ -141,6 +151,7 @@ struct HeldOpen {
     name: String,
     vault: Weak<Vault>,
     search: Weak<Search>,
+    first_sync: FirstSyncRunning,
 }
 
 impl HeldOpen {
@@ -151,6 +162,7 @@ impl HeldOpen {
             name: open.name.clone(),
             vault: Arc::downgrade(&open.vault),
             search: Arc::downgrade(&open.search),
+            first_sync: open.first_sync.clone(),
         }
     }
 
@@ -161,11 +173,23 @@ impl HeldOpen {
             name: self.name.clone(),
             vault: self.vault.upgrade()?,
             search: self.search.upgrade()?,
+            first_sync: self.first_sync.clone(),
         })
     }
 }
 
 impl SyncWiring {
+    /// What the open vault's gate decides now, read off its binding and entitlement and the
+    /// account's facts; `Unavailable` with no supervisor (blocking: reads the master key).
+    pub fn start_decision(&self) -> GateDecision {
+        let Some(gate) = self.bindings.gate() else {
+            return GateDecision::NotStarted(SyncNotStartedReason::Unavailable);
+        };
+        let (signed_in, recovery_confirmed) = self.account.sync_facts();
+        let facts = read_auth_facts(signed_in, recovery_confirmed, self.store.as_ref());
+        gate::evaluate(&gate.inputs(facts))
+    }
+
     /// The factory `Session::attach_sync` takes.
     pub fn factory(self: Arc<Self>) -> SupervisorFactory {
         Arc::new(move |open: &OpenVault, signals: &AuthSignals| Some(self.start(open, signals)))
@@ -176,6 +200,7 @@ impl SyncWiring {
         self.bindings.track(&gate);
         (self.on_gate)(&gate);
         let account = Arc::clone(&self.account);
+        let attachments = self.attachments(open);
         let backend = VaultSyncBackend::new(
             Arc::clone(&open.vault),
             account.shared_session(),
@@ -183,7 +208,21 @@ impl SyncWiring {
             Arc::clone(&self.reachability),
             Vec::new(),
             Arc::new(move || account.sync_facts()),
-        );
+            self.account.at_rest_keys(),
+        )
+        .with_vault_root(open.path.clone())
+        .with_first_sync(open.first_sync.clone())
+        .with_attachments(attachments);
+        let backend = match &self.tier {
+            Some(tier) => backend
+                .with_own_writes(tier.own_files())
+                .with_observer(Arc::new(DiskObserver::new(
+                    Arc::clone(tier),
+                    open.path.clone(),
+                    Arc::clone(&open.vault),
+                ))),
+            None => backend,
+        };
         let supervisor = SyncSupervisor::start(
             &self.runtime,
             SupervisorParts {
@@ -196,11 +235,45 @@ impl SyncWiring {
                 telemetry: self.telemetry.clone(),
                 signals: signals.clone(),
                 on_status: Arc::clone(&self.on_status),
+                on_event: Arc::clone(&self.on_event),
             },
         );
         self.runtime
             .spawn(Arc::clone(self).bind(HeldOpen::new(open), Arc::downgrade(&gate)));
         supervisor
+    }
+
+    /// The vault's attachment drivers. Background downloads follow
+    /// `sync.attachmentAutoDownload`, read at each request; an unreadable setting keeps its
+    /// default, on.
+    fn attachments(&self, open: &OpenVault) -> AttachmentSync {
+        let (vault, store) = (Arc::clone(&open.vault), Arc::clone(&self.store));
+        let auto_download = Arc::new(move || {
+            let value = vault
+                .app_settings(Arc::clone(&store))
+                .map_err(|error| error.to_string())
+                .and_then(|settings| {
+                    settings
+                        .get_path("sync.attachmentAutoDownload")
+                        .map_err(|error| error.to_string())
+                });
+            match value {
+                Ok(Some(serde_json::Value::Bool(on))) => on,
+                Ok(_) => true,
+                Err(error) => {
+                    tracing::warn!(%error, "could not read sync.attachmentAutoDownload; downloading");
+                    true
+                }
+            }
+        });
+        AttachmentSync::new(
+            open.vault.db_handle(),
+            Arc::new(DesktopVaultFiles::new(open.path.clone())),
+            auto_download,
+            Arc::clone(&self.on_event),
+            self.reachability.as_ref(),
+            self.runtime.clone(),
+        )
     }
 
     /// Decides the vault's binding, tells its gate, and retries `Unknown` while the gate lives.

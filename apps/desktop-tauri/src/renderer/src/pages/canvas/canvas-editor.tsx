@@ -126,6 +126,11 @@ interface CanvasEditorProps {
   /** Serialized scene as stored (serializeAsJSON output), '' when never drawn on. */
   initialScene: string
   /**
+   * The sha256 of the document bytes `initialScene` was read from (`null`: none). Every save
+   * sends the bytes it drew over, so a change made since by anyone else is kept as a copy.
+   */
+  initialSha256: string | null
+  /**
    * Set when the canvas is drawn inside a note (a whiteboard block) rather than
    * in a canvas tab of its own.
    *
@@ -144,6 +149,7 @@ interface CanvasEditorProps {
 export const CanvasEditor = ({
   canvasId,
   initialScene,
+  initialSha256,
   embed,
   ref
 }: CanvasEditorProps): React.JSX.Element => {
@@ -381,6 +387,12 @@ export const CanvasEditor = ({
   useEffect(() => {
     announceSyncabilityRef.current = announceSyncability
   }, [announceSyncability])
+  // A failing save keeps the strokes pending and retries; the user is told once per canvas.
+  const announceSaveFailedRef = useRef(() => {})
+  useEffect(() => {
+    announceSaveFailedRef.current = () =>
+      toast.error(t('canvas.actionFailed'), { id: `canvas-save-failed-${canvasId}` })
+  }, [canvasId, t])
 
   useEffect(() => {
     return onCanvasTooLarge((event) => {
@@ -430,6 +442,8 @@ export const CanvasEditor = ({
       return current
     }
 
+    // The document bytes this editor last read or wrote, sent with each save.
+    let drawnOver = initialSha256
     const persister = createScenePersister({
       // Cheap gate in front of the serialize below: onChange fires for pan and
       // zoom too, and without this every 800 ms of idle panning paid a full
@@ -498,8 +512,10 @@ export const CanvasEditor = ({
         const saved = await canvasService.update({
           id: canvasId,
           scene: sceneToSave,
-          entityRefs: extractEntityRefs(elements)
+          entityRefs: extractEntityRefs(elements),
+          expectedSha256: drawnOver
         })
+        drawnOver = saved.sha256
         // The only signal that carries BOTH edges: the too-large event fires
         // for oversized saves only, so a save that syncs again is what re-arms
         // the announcement above.
@@ -517,6 +533,7 @@ export const CanvasEditor = ({
         // The persister keeps the change pending and retries, but a failing
         // save is silent data loss in the making — it must reach telemetry.
         trackRendererError('canvas_scene_save', err)
+        announceSaveFailedRef.current()
       }
     })
     // PR #747 lesson: the debounce window must survive quit. The registry's
@@ -535,7 +552,7 @@ export const CanvasEditor = ({
       void persister.flush()
       persisterRef.current = null
     }
-  }, [canvasId, initialScene, corrupt, embedded, embedInstanceId])
+  }, [canvasId, initialScene, initialSha256, corrupt, embedded, embedInstanceId])
 
   /**
    * Excalidraw's link bubble prints `element.link` verbatim, so a link to a note
@@ -636,11 +653,11 @@ export const CanvasEditor = ({
       }
     }
     registerLiveCanvas(canvasId, handle)
-    void window.api.canvas.liveOpened(canvasId)
+    void canvasService.liveOpened(canvasId)
 
     return () => {
       unregisterLiveCanvas(canvasId, handle)
-      void window.api.canvas.liveClosed(canvasId)
+      void canvasService.liveClosed(canvasId)
     }
   }, [api, canvasId, corrupt, viewMode])
 

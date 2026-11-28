@@ -23,16 +23,26 @@
 use crate::api::errors::{ApiError, StorageError};
 use crate::storage::Db;
 
-use super::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK};
-use super::crdt_wire::SnapshotMeta;
+use super::body_pull::{
+    BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed, RateLimitPauses,
+};
 use super::{body_debt, body_heal};
 
 /// Requests one pass's body step may send. The first document always runs,
 /// so a single large one cannot starve.
 pub const BODY_REQUEST_BUDGET: usize = 200;
 
+/// What one pass's body step did.
+#[derive(Debug, Default)]
+pub struct BodyStep {
+    pub pulled: BodyPullReport,
+    /// The budget ran out with documents still due, so the next pass has body work at once.
+    /// A `429` or a dead network is not this: those wait for their own retry.
+    pub more_due: bool,
+}
+
 /// Pulls the documents due this pass and settles or re-owes each one.
-pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, StorageError> {
+pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyStep, StorageError> {
     let due = db
         .call(|conn| {
             body_heal::owe_unread_documents(conn)?;
@@ -40,12 +50,14 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
         })
         .await?;
     let mut total = BodyPullReport::default();
+    let mut more_due = false;
     'step: for chunk in due.chunks(PROBE_CHUNK) {
         if total.requests >= BODY_REQUEST_BUDGET {
+            more_due = true;
             break;
         }
-        let probed = match body_pull
-            .probe_snapshot_meta(chunk, &mut total.requests)
+        let mut probed = match body_pull
+            .probe(chunk, &mut total.requests, &mut RateLimitPauses::new(0))
             .await
         {
             Ok(probed) => probed,
@@ -54,27 +66,47 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
         };
         for doc_id in chunk {
             if total.requests >= BODY_REQUEST_BUDGET {
+                more_due = true;
                 break 'step;
             }
-            if !pull_one(db, body_pull, doc_id, probed.get(doc_id), &mut total).await? {
+            if let Step::Ended { .. } =
+                pull_one(db, body_pull, doc_id, probed.remove(doc_id), &mut total).await?
+            {
                 break 'step;
             }
         }
     }
-    Ok(total)
+    Ok(BodyStep {
+        pulled: total,
+        more_due,
+    })
 }
 
-/// One owed document: settled, re-owed, or backed off. `false` ends the step.
-async fn pull_one(
+/// What one owed document's pull did to the step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Step {
+    /// The debt is settled: the pull reached the server's head.
+    Settled,
+    /// The document stays owed, backed off or as it was.
+    Owed,
+    /// A failure every later request would repeat: the step ends here.
+    /// `rate_limit_s` is the wait a `429` asked for, at least a second, and
+    /// `None` for any other ending.
+    Ended { rate_limit_s: Option<u64> },
+}
+
+/// One owed document: settled, re-owed, or backed off.
+pub(super) async fn pull_one(
     db: &Db,
     body_pull: &BodyPull,
     doc_id: &str,
-    probed: Option<&SnapshotMeta>,
+    probed: Option<Probed>,
     total: &mut BodyPullReport,
-) -> Result<bool, StorageError> {
+) -> Result<Step, StorageError> {
     let doc = doc_id.to_owned();
     match body_pull.pull_with(doc_id, probed).await {
         Ok(pulled) => {
+            let merged = pulled.merged();
             let outcome = pulled.clone();
             db.call(move |conn| body_debt::after_pull(conn, &doc, &outcome))
                 .await?;
@@ -83,22 +115,25 @@ async fn pull_one(
                 requests: 0,
                 ..pulled
             });
+            Ok(if merged { Step::Settled } else { Step::Owed })
         }
-        Err(BodyPullError::Storage { source }) => return Err(source),
-        Err(BodyPullError::Api { source }) if ends_the_step(&source) => return Ok(false),
+        Err(BodyPullError::Storage { source }) => Err(source),
+        Err(BodyPullError::Api { source }) if ends_the_step(&source) => Ok(Step::Ended {
+            rate_limit_s: source.rate_limit_wait_s(),
+        }),
         Err(BodyPullError::Api { .. }) => {
             db.call(move |conn| body_debt::owe_after_failure(conn, &doc))
                 .await?;
             total.requests += 1;
+            Ok(Step::Owed)
         }
     }
-    Ok(true)
 }
 
 /// A failure every later request of this pass would repeat: a `429`, no
 /// network, or a session the server no longer accepts. The documents keep
 /// their debts without a backoff; they did not fail.
-fn ends_the_step(error: &ApiError) -> bool {
+pub(super) fn ends_the_step(error: &ApiError) -> bool {
     matches!(
         error,
         ApiError::RateLimited { .. }

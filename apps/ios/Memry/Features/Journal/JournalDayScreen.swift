@@ -6,11 +6,12 @@ import SwiftUI
 // A paging `TabView` holds the shown day and its neighbours (desktop
 // `PREFETCH_DAYS` = 1: building a neighbour's page reads it, which is the
 // prefetch). A swipe, ‹ ›, the "Today" capsule, the rail's calendar or the
-// day keys (`JournalDayShortcuts`) replace the shown day in place through
+// day keys (`JournalDayShortcuts`, `MemryCommands`) replace the shown day in place through
 // `JournalRouter.showDay`, so Back still leads to the month; Esc drills up.
 // Each page owns its own models keyed by its date, so an edit pending on one
-// day never lands on another. At regular width the rail (`JournalDayRail`)
-// sits beside the pager in its own space (#4351).
+// day never lands on another. At regular width the Day Panel (`DayPanelRail`)
+// is the Journal rail: `JournalRootView` lays it beside the page and it follows the
+// shown day (#4351, #4380).
 
 struct JournalDayScreen: View {
     let store: JournalStore
@@ -19,13 +20,12 @@ struct JournalDayScreen: View {
     @Environment(JournalRouter.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(SideRails.self) private var rails: SideRails?
     @State private var selection: String
     @State private var pages = JournalDayPages()
     @State private var titleCollapsed = false
     @State private var fog: JournalFogPlacement?
+    @State private var local = LocalSettings.shared
 
     /// Days kept either side of the shown one (desktop `PREFETCH_DAYS`).
     static let prefetchDays = 1
@@ -50,23 +50,12 @@ struct JournalDayScreen: View {
 
     private var isToday: Bool { date == store.clock.today }
 
-    /// DESIGN.md › Tablet: regular width and height. A large iPhone in
-    /// landscape (regular width, compact height) keeps the phone page, and
-    /// so do accessibility text sizes, which break words in the rail's 320
-    /// points; the page then shows the day's tasks under the entry.
-    private var showsRail: Bool {
-        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular
-            && !typeSize.isAccessibilitySize
-    }
-
     var body: some View {
-        HStack(spacing: 0) {
-            pager
-                .environment(\.journalRailShown, showsRail)
-            if showsRail {
-                JournalDayRail(store: store, date: date, show: show)
-            }
-        }
+        pager
+        // Where the panel is closed or cannot fit, the page shows the day's
+        // tasks under the entry.
+        .environment(\.journalRailShown, rails?.dayPanelShown(on: .journal) ?? false)
+        .environment(\.fullWidthReading, local.journalIsFullWidth)
         .safeAreaInset(edge: .top) { JournalFailureBanner(store: store) }
         .background {
             ZStack(alignment: .topLeading) {
@@ -92,12 +81,14 @@ struct JournalDayScreen: View {
         .navigationBarBackButtonHidden(true)
         .toolbar { toolbar }
         .background {
-            JournalDayShortcuts(step: step, today: { show(store.clock.today) }, drillUp: { router.drillUp() })
+            JournalDayShortcuts(step: step, drillUp: { router.drillUp() })
         }
+        .focusedSceneValue(\.journalDayCommands, JournalDayCommands(step: step, today: { show(store.clock.today) }))
         .accessibilityAction(named: JournalCopy.previousDay) { step(-1) }
         .accessibilityAction(named: JournalCopy.nextDay) { step(1) }
         .accessibilityAction(named: JournalCopy.goToToday) { show(store.clock.today) }
         .accessibilityIdentifier("journal.day")
+        .handoff(.journalDay(date))
     }
 
     /// The shown day and its neighbours, paged by a swipe on touch.
@@ -147,6 +138,7 @@ struct JournalDayScreen: View {
                 open: open
             )
         }
+        DayPanelToolbarItem()
         GlobalSearchToolbarItem()
     }
 

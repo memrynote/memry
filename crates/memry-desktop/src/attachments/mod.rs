@@ -52,12 +52,13 @@ pub use actions::{AttachmentInfo, AttachmentLocation, existing, list, locate};
 #[cfg(feature = "test-hooks")]
 pub use delete::delete_checked;
 pub use delete::{DeletedAttachment, delete};
-pub use reconcile::{PlannedRename, plan_renames, reconcile_renames};
+pub use reconcile::{PlannedRename, plan_renames, reconcile_downloaded_name, reconcile_renames};
 pub use references::{
     Incomplete, ReferenceScan, filenames, find_references, names_file, scan_steps,
 };
 pub use remote::{
-    FetchedImage, MAX_REMOTE_BYTES, RemoteFailure, RemoteImages, image_file_name, save_fetched,
+    FetchedImage, MAX_REMOTE_BYTES, RemoteFailure, RemoteImages, image_file_name, save_exact,
+    save_fetched,
 };
 #[cfg(feature = "test-hooks")]
 pub use rename::rename_checked;
@@ -94,6 +95,9 @@ pub enum AttachmentError {
     /// The note id is not of the minted shape, or names a device on Windows.
     #[error("invalid note id for an attachment")]
     InvalidNote,
+    /// An exact file name that is not a plain one ([`save_exact`]).
+    #[error("an exact attachment filename must be a plain file name")]
+    NotPlainName,
     #[error("attachment type .{0} is not allowed")]
     UnsupportedType(String),
     #[error("attachment of {size} bytes is over the {limit} byte limit")]
@@ -303,7 +307,7 @@ pub fn format_size(bytes: usize) -> String {
 }
 
 /// Six characters of `0-9a-z`, the `customAlphabet` prefix of Electron.
-fn random_prefix() -> String {
+pub fn random_prefix() -> String {
     const ALPHABET: &[u8; 36] = b"0123456789abcdefghijklmnopqrstuvwxyz";
     uuid::Uuid::new_v4().as_bytes()[..6]
         .iter()
@@ -396,7 +400,14 @@ pub fn save(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, &mut |_| {})
+    save_with(
+        vault,
+        note_id,
+        note_path,
+        Name::Fresh(file_name),
+        bytes,
+        &mut |_| {},
+    )
 }
 
 /// Test hook: [`save`] with `before_recheck` run with the target right before the last check of
@@ -412,14 +423,29 @@ pub fn save_checked(
     bytes: &[u8],
     before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, before_recheck)
+    save_with(
+        vault,
+        note_id,
+        note_path,
+        Name::Fresh(file_name),
+        bytes,
+        before_recheck,
+    )
+}
+
+/// The name a stored file takes: the given one behind a fresh random prefix, or exactly the
+/// given one ([`save_exact`]), never replacing a file there.
+#[derive(Clone, Copy)]
+enum Name<'a> {
+    Fresh(&'a str),
+    Exact(&'a str),
 }
 
 fn save_with(
     vault: &Path,
     note_id: &str,
     note_path: Option<&str>,
-    file_name: &str,
+    name: Name<'_>,
     bytes: &[u8],
     before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
@@ -431,7 +457,7 @@ fn save_with(
         vault,
         note_id,
         note_path,
-        file_name,
+        name,
         bytes.len(),
         before_recheck,
         &mut write,
@@ -464,11 +490,12 @@ fn store(
     vault: &Path,
     note_id: &str,
     note_path: Option<&str>,
-    file_name: &str,
+    name: Name<'_>,
     size: usize,
     before_recheck: &mut dyn FnMut(&Path),
     place: &mut dyn FnMut(&Path, BeforeCommit<'_>) -> Result<(), WriteError>,
 ) -> Result<SavedAttachment, AttachmentError> {
+    let (Name::Fresh(file_name) | Name::Exact(file_name)) = name;
     check(note_id, file_name, size)?;
     // One level at a time, each checked before the next is made through it.
     create_dir(&vault.join(ATTACHMENTS_DIR))?;
@@ -479,7 +506,10 @@ fn store(
     inside_vault(vault, &folder_rel)?;
     let mut attempt = 0;
     let stored = loop {
-        let stored = stored_name(&random_prefix(), file_name);
+        let stored = match name {
+            Name::Exact(_) => file_name.to_owned(),
+            Name::Fresh(_) => stored_name(&random_prefix(), file_name),
+        };
         let target = folder.join(&stored);
         let mut recheck = || {
             before_recheck(&target);
@@ -490,7 +520,13 @@ fn store(
         };
         match place(&target, &mut recheck) {
             Ok(()) => break stored,
-            Err(error) if error.already_exists() && attempt + 1 < NAME_ATTEMPTS => attempt += 1,
+            Err(error)
+                if error.already_exists()
+                    && matches!(name, Name::Fresh(_))
+                    && attempt + 1 < NAME_ATTEMPTS =>
+            {
+                attempt += 1
+            }
             Err(error) => return Err(error.into()),
         }
     };

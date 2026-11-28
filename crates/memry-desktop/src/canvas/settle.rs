@@ -3,15 +3,20 @@
 //! Electron has one copy of the ink, the file, and pushes whatever it holds. Here the record's
 //! payload is what syncs, so an edit made on disk has to reach it, and a scene that reached the
 //! record without passing through this device's document (an apply, another build) has to reach
-//! the file. `canvas_files` tells the two apart: its sha256 is the document as the app last wrote
-//! or read it, when the document and the record held the same scene, and `written_at` is when.
+//! the file. The canvas's row ([`files::FileRow`]) tells the two apart: the sha256 of the
+//! document's bytes and of the record's scene when the two last agreed. Only a settle that leaves
+//! them agreeing, and a write that makes both sides the same scene, moves that point; a read or a
+//! title, icon or placement change never does. A move keeps the bytes, so the point holds for the
+//! document wherever it is found.
 //!
-//! - Same scene on both sides: nothing to do but record the document.
-//! - The document is as the app left it: the record changed since, and the file takes its scene.
-//! - The document changed on disk and the record did not: the record takes the document's scene.
-//! - Both changed: the on-disk drawing is filed as `"<title> (conflict copy)"`, then the file
-//!   takes the record's scene.
-//! - A document that is not a drawing is left alone on both sides.
+//! - Same scene on both sides: nothing to do but record the agreement.
+//! - The document is as it was at the agreement: the record changed since, and the file takes
+//!   its scene.
+//! - The document changed and the record did not: the record takes the document's scene.
+//! - Both changed, or the record's side is unknown (no row, or a row from an earlier build): the
+//!   on-disk drawing is filed as `"<title> (conflict copy)"`, then the file takes the record's
+//!   scene.
+//! - A document that is not a drawing is left alone on both sides, and records nothing.
 //!
 //! Wherever the document is, the record's folder follows it: the path is the truth for
 //! placement, as in Electron's reconcile.
@@ -64,50 +69,46 @@ impl CanvasService {
         found: Found,
         now_ms: i64,
     ) -> Result<Settled, CanvasError> {
-        let (path, document, seen) = match found {
-            Found::File {
-                path,
-                document,
-                seen,
-            } => (path, document, seen),
+        let (path, document) = match found {
+            Found::File { path, document } => (path, document),
             Found::Outside => return Ok(Settled::Outside),
             Found::None => return Ok(Settled::Missing),
         };
         let id = canvas.id.as_str();
+        // Wherever the document is found: a move outside the app keeps its bytes.
+        let agreed = files::get(conn, id)?;
+        let record_sha256 = files::scene_sha256(&canvas.scene);
+        let file_changed = agreed
+            .as_ref()
+            .is_none_or(|row| row.sha256 != document.sha256);
+        let record_changed = agreed.as_ref().and_then(|row| row.record_sha256.as_deref())
+            != Some(record_sha256.as_str());
         let on_disk = canonical_scene(&strip_file_meta(&document.text)).ok();
-        let unchanged = seen.as_deref() == Some(document.sha256.as_str());
         let folder = folder_of_canvas_path(&path);
         let moved =
             folder.as_deref().map(canvas_path_key) != canvas.folder.as_deref().map(canvas_path_key);
         let refile = moved.then_some(folder.as_deref());
-        let record = |conn: &Connection, sha256: String| {
-            files::put(
-                conn,
-                id,
-                &FileRow {
-                    path: path.clone(),
-                    sha256,
-                },
-                now_ms,
-            )
+        let agree = |sha256: String, record_sha256: String| FileRow {
+            path: path.clone(),
+            sha256,
+            record_sha256: Some(record_sha256),
         };
 
         let settled = if on_disk.as_deref() == Some(canvas.scene.as_str()) {
-            if !unchanged {
-                record(conn, document.sha256.clone())?;
+            let row = agree(document.sha256.clone(), record_sha256);
+            if agreed.as_ref() != Some(&row) {
+                files::put(conn, id, &row, now_ms)?;
             }
             Settled::InSync
-        } else if unchanged {
+        } else if !file_changed {
             let sha256 = self.write_record_scene(canvas, &path, &document.sha256)?;
-            record(conn, sha256)?;
+            files::put(conn, id, &agree(sha256, record_sha256), now_ms)?;
             Settled::FileWritten
         } else if let Some(scene) = on_disk {
-            let record_changed = seen.is_some()
-                && files::written_at(conn, id)?.is_some_and(|at| canvas.updated_at > at);
             if record_changed {
                 let copy = self.conflict_copy(conn, canvas, &document, now_ms)?;
                 let sha256 = self.write_record_scene(canvas, &path, &document.sha256)?;
-                record(conn, sha256)?;
+                files::put(conn, id, &agree(sha256, record_sha256), now_ms)?;
                 Settled::ConflictCopy(Box::new(copy))
             } else {
                 let edit = CanvasEdit {
@@ -116,7 +117,8 @@ impl CanvasService {
                     ..CanvasEdit::default()
                 };
                 canvas::update(conn, id, &edit, self.canvases.device_id(), now_ms)?;
-                record(conn, document.sha256.clone())?;
+                let row = agree(document.sha256.clone(), files::scene_sha256(&scene));
+                files::put(conn, id, &row, now_ms)?;
                 return Ok(Settled::Absorbed);
             }
         } else {
@@ -134,6 +136,16 @@ impl CanvasService {
             canvas::update(conn, id, &edit, self.canvases.device_id(), now_ms)?;
         }
         Ok(settled)
+    }
+
+    /// Indexes the edges of the conflict copy a settle made, if it made one.
+    pub(super) fn index_settled_copy(&self, settled: &Settled) -> Result<(), CanvasError> {
+        match settled {
+            Settled::ConflictCopy(copy) => {
+                self.rewrite_edges(&copy.canvas.summary.id, &copy.canvas.scene)
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Writes the record's scene over the document as read (`sha256`), returning the new sha.
