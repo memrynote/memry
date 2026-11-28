@@ -304,36 +304,67 @@ takes the tilde fence as it takes any other.
   (`figure figcaption video audio source h1` to `h6`, `hr blockquote pre ul ol li`, and a table
   with `thead tbody tfoot tr td th caption colgroup col`, each family whole, because a table
   with its cells hidden reads as empty), a `<span>` with `style` and the `</span>`
-  that closes it, `<details data-memry-toggle>` and `<input type=checkbox>`; a `</span>` that
-  closes a plain span or nothing is hidden. A captioned image is written
-  `<figure><img><figcaption>`, so `figure` and `figcaption` are handled for that reason. A
-  handled tag opened while 100 handled tags are open is text as well, and so is the closing
-  tag of that one, because the HTML parse that reads the handled tags recurses once per open
-  one (4000 unclosed `<b>` took 5 s there, 4000 `<ul><li>` 50 s, and 8000 overflowed the
-  stack): a closing tag belongs to the innermost open tag of its name, one that closes nothing
-  is read as it was, a closing tag frees its slot, and `br img hr source col input` hold
-  nothing, so they count for none. A self-closing `<b/>` counts, as the HTML parse opens it,
-  and so does a handled tag that closes on a later line, which hides only its `<` past the cap.
-  The count runs across the lines of the text, 100 being the core's `MAX_NESTING`, so no
-  input reaches that parse deeper than that. A tag that closes on its own line within 1024
-  UTF-16 units is one piece, so the characters in it pair with no mark outside it and
-  `<x a="*">` gains no backslash on a round trip; every other `<` that opens a candidate, a tag
-  that closes on a later line, one with no `>`, one past the bound and one with a `|` in it (a
-  table row splits at the pipe first), hides only its `<` and leaves the rest to the markdown
-  rules. Code spans, fences and the `<` that opens a link address (after `](`) hold no tag, a
-  backslash before a `<` hides nothing, so `\<kq>` keeps its backslash and its tag as text, and a
-  `<!--` comment keeps its own machinery above. The scan is one pass
-  over the text, with no pattern that backtracks. The core builds a line holding a handled tag
-  as literal text, as before, and a line with a `<` it cannot place (a `<` before a letter, `/`,
-  `!` or `?` outside code that the scan does not cover) the same way
-  (`packages/editor-schema/src/inline/raw-html.ts:56`, `:293`, `:317`, `:421`, `:448`, `:466`,
-  `packages/editor-schema/src/parse-markdown.ts:403`, `:431`,
-  `packages/editor-schema/src/inline/markdown-escapes.ts:117`, `:286`;
-  `crates/memry-core/src/crdt/markdown_seed/handled.rs:64`, `:78`, `:127`,
+  that closes it, `<details data-memry-toggle>` and `<input type=checkbox>`. A captioned image is written
+  `<figure><img><figcaption>`, so `figure` and `figcaption` are handled for that reason.
+  A `<!-- c -->` comment on one line inside a hidden tag (`<kq a="<!-- c -->">`) is part of the
+  tag's characters, not a comment node; a comment over more than one line, or a `%%` comment,
+  stays a node. A `</span>` closes the innermost `<span>` open in the text: it ends a colour or
+  underline span when that is one, and is the text `</span>` when it closes a plain `<span>` or
+  none, so neither is lost for a coloured span elsewhere in the note.
+  Which handled tags count against the nesting cap is what the HTML parse that reads them holds
+  open, not how many the text spells, because that parse recurses once per open element (4000
+  unclosed `<b>` took 5 s there, 4000 `<ul><li>` 50 s, and 8000 overflowed the stack). A tag
+  opened while 100 are held open is text, and so is the closing tag of that one, 100 being the
+  core's `MAX_NESTING`, so no input reaches the parse deeper than that. The count follows the
+  parse: an `<li>`, `<td>`, `<th>`, `<tr>`, `<caption>`, a heading or a table section closes the
+  one of its kind that is open; a blank line, or the end of a paragraph, heading or cell, ends
+  the marks (`b i u s a code` and their kin) opened in it, but the parse keeps them in its list
+  of active formatting elements and opens them again in the next paragraph, three of any
+  identical ones at most; a tag that closes the paragraph it is in (`<ul>`, `<table>`, `<pre>`,
+  `<blockquote>`, a heading) and a tag in an HTML block (a line starting with a block tag, up to
+  the next blank line) stay open past a blank line; a second `<a>` closes the first. A closing tag
+  pairs with the innermost open tag of its name that its scope can see, and one that closes
+  nothing is read as it was. `br img hr source col input` hold nothing, a self-closing `<b/>`
+  counts as the parse opens it, and so does a handled tag that closes on a later line, which hides
+  only its `<` past the cap. Desktop and the core count it the same way.
+  A tag that closes on its own line within 1024 UTF-16 units is one piece, so the characters
+  in it pair with no mark outside it and `<x a="*">` gains no backslash on a round trip; every
+  other `<` that opens a candidate, a tag that closes on a later line, one with no `>`, one
+  past the bound and one with a `|` in it (a table row splits at the pipe first), hides only its
+  `<` and leaves the rest to the markdown rules. Code spans, fences and the `<` that opens a link
+  address (after `](`) hold no tag, and a `<!--` comment keeps its own machinery above.
+  A backslash before a `<` that opens a hidden tag hides nothing, so `\<kq>` keeps its
+  backslash and its tag as text. A backslash before the `<` of a whole handled tag
+  (`b strong i em u s del strike code a img br`, the tags the parser turns into a node and
+  `<input type=checkbox>`, but not a `<span>`, which `inline-colors.ts` reads, or a
+  `<details data-memry-toggle>`, which pairs with its closing tag across lines) is the escaped
+  `<`: the tag is text and the backslash is not, and `\\<b>` is a backslash and a tag. The writer
+  spells the text `<b>` as `\<b>` and the text `</b>` as `\</b>`, so a note that says `<b>` in
+  words stays one. Before this rule the text was written bare and the next read took it for a
+  mark, and a note that held `\<b>x</b>` read as a backslash and a bold `x`. Such a note now reads
+  as the text `<b>x` (the `</b>` after it closes nothing, and the HTML parse drops it as it drops
+  any stray closing tag, where `\</b>` is kept) and writes `\<b>x`, which reads back as the same
+  text. A note that holds a bare `<b>` is read as a mark, as before. An escaped
+  tag counts for nothing against the nesting cap. A tag whose characters a mark boundary cuts
+  through (`<kq a="` in plain text, `*` in bold, `">` in plain text) is written whole, with no
+  mark on the characters inside it, since the reader keeps what is in a tag as text and the
+  delimiters would become characters of the tag; the marks outside it stay. The core builds no
+  mark inside a tag, so it needs no such rule. The scan is one pass over the text, with no pattern
+  that backtracks. The core builds a line holding a handled tag as literal text, as before, and a
+  line with a `<` it cannot place (a `<` before a letter, `/`, `!` or `?` outside code that the
+  scan does not cover), or a hidden tag that holds a `<!--`, the same way
+  (`packages/editor-schema/src/inline/raw-html.ts:85`, `:320`, `:354`, `:400`, `:425`, `:562`,
+  `:580`,
+  `packages/editor-schema/src/inline/html-nesting.ts:133`, `:183`, `:205`,
+  `packages/editor-schema/src/parse-markdown.ts:407`, `:209`,
+  `packages/editor-schema/src/inline/markdown-escapes.ts:123`, `:297`, `:322`, `:362`,
+  `packages/shared/src/inline-colors.ts:315`;
+  `crates/memry-core/src/crdt/markdown_seed/handled.rs:14`, `:179`, `:193`, `:218`,
+  `crates/memry-core/src/crdt/markdown_seed/html_nesting.rs:113`, `:165`, `:199`,
   `crates/memry-core/src/crdt/markdown_seed/nesting.rs:9`,
-  `crates/memry-core/src/crdt/markdown_seed/raw_html.rs:150`, `:173`, `:206`, `:270`,
-  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:52`, `:185`,
-  `crates/memry-core/src/crdt/markdown_seed/escapes.rs:84`, `:111`).
+  `crates/memry-core/src/crdt/markdown_seed/raw_html.rs:21`, `:115`, `:247`, `:281`,
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:53`, `:191`,
+  `crates/memry-core/src/crdt/markdown_seed/escapes.rs:111`, `:174`).
 - **`<details>` markup behind quote markers or a heading's `#`s is text.** A lossless parse hides
   the `<` of a `<details>`, `<summary>…</summary>` or `</details>` line that follows any
   `>` markers or `#` to `######` and a space (fenced lines excepted), so `> <details>` seeds a
