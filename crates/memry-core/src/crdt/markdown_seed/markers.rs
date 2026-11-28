@@ -10,7 +10,7 @@ use crate::domain::journal_rules::js_trim;
 use super::block_starts::{Above, opens_block};
 use super::blocks::parse_chunk;
 use super::claims::{Claim, callout_at, math_at, quote_at};
-use super::comment_nodes::{has_token, source_lines};
+use super::comment_nodes::source_lines;
 use super::comments::encode;
 use super::media::{marker_line, unreadable_file_marker, with_marker_images};
 use super::prepare::fence_line;
@@ -151,10 +151,6 @@ fn claim_at(
         return Ok(Some(claim));
     }
     match marker_line(lines[index]) {
-        // The marker's props would hold desktop's masked word.
-        Ok(Some(_)) if has_token(lines[index]) => {
-            Err((Unsupported("comment in a marker line"), index + 1))
-        }
         Ok(found) => Ok(found.map(|block| (block, index + 1))),
         Err(unsupported) => Err((unsupported, index + 1)),
     }

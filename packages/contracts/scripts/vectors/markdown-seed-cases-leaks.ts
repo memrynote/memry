@@ -24,6 +24,12 @@ export const MARKDOWN_SEED_LEAK_CASES: ReadonlyArray<{
     pins: 'the link address, the image name and the math source hold the comment as written'
   },
   {
+    name: 'mask in a prop: a comment in a bookmark and a video address',
+    markdown:
+      '![bookmark](https://e.com/a%% c %%b)\n\n![v](https://youtu.be/dQw4w9WgXcQ?t=%% c %%)',
+    pins: 'a marker line holding a comment is the block its bytes make, the comment as written in its address'
+  },
+  {
     name: 'mask in a prop: an address across a hard break',
     markdown: '[a](u  \nv)\n\n> [b](w\\\nx)',
     pins: 'the address is what the parser reads up to its first whitespace: the hard break is no part of it'

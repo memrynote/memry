@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, normalizeLinkMentions then normalizeDateMentions, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 215
+    "caseCount": 216
   },
   "cases": [
     {
@@ -1289,6 +1289,12 @@
       "pins": "the link address, the image name and the math source hold the comment as written",
       "markdown": "[a](https://e.com/%% b %%)\n\n![a %% b %% c](https://e.com/i.png)\n\n$$\nx %% y %% z\n$$",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" link={\"href\":\"https://e.com/%% b %%\"}\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"a %% b %% c\" showPreview=true textAlignment=\"left\" url=\"https://e.com/i.png\"\n1 element blockContainer\n2 element mathBlock latex=\"x %% y %% z\""
+    },
+    {
+      "name": "mask in a prop: a comment in a bookmark and a video address",
+      "pins": "a marker line holding a comment is the block its bytes make, the comment as written in its address",
+      "markdown": "![bookmark](https://e.com/a%% c %%b)\n\n![v](https://youtu.be/dQw4w9WgXcQ?t=%% c %%)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bookmark description=\"\" domain=\"e.com\" favicon=\"\" image=\"\" siteName=\"\" title=\"\" url=\"https://e.com/a%% c %%b\"\n1 element blockContainer\n2 element youtubeEmbed alt=\"v\" title=\"\" videoId=\"dQw4w9WgXcQ\" videoUrl=\"https://youtu.be/dQw4w9WgXcQ?t=%% c %%\""
     },
     {
       "name": "mask in a prop: an address across a hard break",
