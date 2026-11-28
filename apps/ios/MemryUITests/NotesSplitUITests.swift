@@ -264,6 +264,36 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([source, target])
     }
 
+    /// The line the caret lands on stays above the keyboard and its toolbar.
+    /// On an iPad mini in landscape the on-screen keys and the toolbar take
+    /// the window's lower two thirds, a new note's first line included.
+    func testTheCaretLineStaysAboveTheKeyboardToolbar() throws {
+        try openNotes()
+        let title = "[agent] \(run) caret"
+        let block = makeNote(title)
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), block), "Return in the title did not move to the body")
+        let toolbar = app.buttons["Insert a block"].firstMatch
+        XCTAssertTrue(toolbar.waitForExistence(timeout: 10), "the body has no keyboard toolbar")
+        attach("caret-line")
+        XCTAssertLessThanOrEqual(block.frame.maxY, toolbar.frame.minY, "the line with the caret is under the keyboard toolbar")
+
+        // Lines typed past the keys scroll up with the caret.
+        for line in 1...12 {
+            app.typeText("Line \(line)\n")
+            let typed = app.textViews.matching(NSPredicate(
+                format: "identifier BEGINSWITH 'note.block.' AND value == %@", "Line \(line)"
+            )).firstMatch
+            XCTAssertTrue(typed.waitForExistence(timeout: 10), "line \(line) did not get its own block")
+        }
+        let caret = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND hasKeyboardFocus == true"
+        )).firstMatch
+        XCTAssertTrue(caret.waitForExistence(timeout: 10), "no block holds the caret")
+        attach("caret-line-typed")
+        XCTAssertLessThanOrEqual(caret.frame.maxY, toolbar.frame.minY, "the line typed last is under the keyboard toolbar")
+        deleteNotes([title])
+    }
+
     /// #4377: a wiki link's menu opens its note beside the linking one, each
     /// pane takes typing, and ⌘⌥W closes the focused pane with both notes'
     /// typing kept.
