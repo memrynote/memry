@@ -121,9 +121,12 @@ struct TelemetryFailure: Codable, Sendable, Equatable {
     var retryable: Bool?
 }
 
-/// `TelemetryErrorDetailSchema`. Only ever a `StaticString` message here.
+/// `TelemetryErrorDetailSchema`. The message is a `StaticString` or, for a
+/// MetricKit diagnostic, tokens and frames built by `CrashReporter`.
 struct TelemetryErrorDetail: Codable, Sendable, Equatable {
     var message: String
+    /// `at binary+0xoffset (binary)` lines, innermost first.
+    var stack: String?
 }
 
 struct TelemetryEvent: Codable, Sendable, Equatable {
