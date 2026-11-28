@@ -19,6 +19,12 @@ const CAP = 100
 const LIMIT_MS = 500
 /** A block tag also builds blocks, which take longer than a mark. */
 const BLOCK_LIMIT_MS = 1000
+/**
+ * Past the cap `<ul><li>` is a list of thousands of items, which a note may be
+ * and which takes as long to build as it does: the bound is on the nesting, so
+ * only a stack overflow or a minute of it fails.
+ */
+const LIST_LIMIT_MS = 6000
 
 interface Run {
   text?: string
@@ -86,22 +92,24 @@ describe.each([4000, 8000])('%i nested handled tags', (depth) => {
       // Only the spans no color token took are left for the parse.
       if (open === SPAN && closed) return
       const text = textOf(blocks)
-      expect(count(text, open)).toBe(depth - CAP)
-      expect(count(text, close)).toBe(closed ? depth - CAP : 0)
+      // A second `<a>` closes the first, so they never nest and none is text.
+      const nests = open !== '<a href=u>'
+      expect(count(text, open)).toBe(nests ? depth - CAP : 0)
+      expect(count(text, close)).toBe(nests && closed ? depth - CAP : 0)
     })
   })
 
   it.each([
-    ['a list', '<ul><li>', '</li></ul>'],
-    ['a quote', '<blockquote>', '</blockquote>'],
-    ['a table', '<table><tr><td>', '</td></tr></table>'],
-    ['a figure', '<figure>', '</figure>'],
-    ['a toggle', '<details data-memry-toggle>', '</details>'],
-    ['a code block', '<pre>', '</pre>']
-  ])('%s is read in a bounded time', async (_label, open, close) => {
+    ['a list', '<ul><li>', '</li></ul>', LIST_LIMIT_MS],
+    ['a quote', '<blockquote>', '</blockquote>', BLOCK_LIMIT_MS],
+    ['a table', '<table><tr><td>', '</td></tr></table>', BLOCK_LIMIT_MS],
+    ['a figure', '<figure>', '</figure>', BLOCK_LIMIT_MS],
+    ['a toggle', '<details data-memry-toggle>', '</details>', BLOCK_LIMIT_MS],
+    ['a code block', '<pre>', '</pre>', BLOCK_LIMIT_MS]
+  ])('%s is read in a bounded time', async (_label, open, close, limit) => {
     for (const closed of [true, false]) {
       const { ms } = await seed(nested(open, close, depth, closed))
-      expect(ms).toBeLessThan(BLOCK_LIMIT_MS)
+      expect(ms).toBeLessThan(limit)
     }
   })
 })

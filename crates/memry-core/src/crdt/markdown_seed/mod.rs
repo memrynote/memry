@@ -73,6 +73,7 @@ mod empty_blocks;
 mod escapes;
 mod handled;
 mod hard_breaks;
+mod html_nesting;
 mod html_tag;
 mod inline;
 mod items;

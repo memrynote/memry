@@ -1,5 +1,8 @@
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { MASK_WORD } from '@memry/shared/mask-word'
+import { HtmlNesting, RAW_HTML_MAX_NESTING } from './html-nesting'
+
+export { RAW_HTML_MAX_NESTING }
 
 /**
  * Raw HTML the editor has no node for, kept as the text the author wrote.
@@ -36,10 +39,11 @@ import { MASK_WORD } from '@memry/shared/mask-word'
  * between tags is read as it was with the angle brackets there. The writer spells
  * the tags back as they are (`escapeMarkdownText`), so seed and write settle.
  *
- * A handled tag opened while `MAX_NESTING` handled tags are open is text too, and
- * so is its closing tag. The HTML parse that reads the handled tags recurses
- * once per open one: 4000 unclosed `<b>` took 5 s, 4000 `<ul><li>` 50 s, and
- * 8000 overflowed the stack. No text reaches it deeper than the cap.
+ * A handled tag opened while `RAW_HTML_MAX_NESTING` handled tags are open is text
+ * too, and so is its closing tag. The HTML parse that reads the handled tags
+ * recurses once per open one: 4000 unclosed `<b>` took 5 s, 4000 `<ul><li>` 50 s,
+ * and 8000 overflowed the stack. No text reaches it deeper than the cap.
+ * `html-nesting.ts` counts the tags the parse holds open.
  *
  * The core's seed hides the same `<` the same way
  * (`crates/memry-core/src/crdt/markdown_seed/raw_html.rs`); chapter 12 states
@@ -48,12 +52,6 @@ import { MASK_WORD } from '@memry/shared/mask-word'
 
 /** The longest tag, in UTF-16 units from its `<`, read as one token. */
 export const RAW_HTML_BOUND = 1024
-
-/**
- * How many handled tags may be open at once. The core's seed stops building
- * at the same depth (`MAX_NESTING` in `markdown_seed/nesting.rs`).
- */
-export const RAW_HTML_MAX_NESTING = 100
 
 /** The characters `tryBackslashEscape` takes after a backslash. */
 const ESCAPABLE = '\\`*_{}[]()#+-.!~|>'
@@ -105,6 +103,39 @@ const HANDLED_TAGS: ReadonlySet<string> = new Set([
   'caption',
   'colgroup',
   'col'
+])
+
+/**
+ * The handled tags `isHtmlBlockStart` (`markdownToHtml.ts`) takes a line for an
+ * HTML block of: the ones in its block-tag list.
+ */
+const HTML_BLOCK_TAGS: ReadonlySet<string> = new Set([
+  'audio',
+  'blockquote',
+  'caption',
+  'col',
+  'colgroup',
+  'details',
+  'figcaption',
+  'figure',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'hr',
+  'li',
+  'ol',
+  'source',
+  'table',
+  'tbody',
+  'td',
+  'tfoot',
+  'th',
+  'thead',
+  'tr',
+  'ul'
 ])
 
 /** The handled tags that hold nothing, so they never nest. */
@@ -275,68 +306,72 @@ function namesHandledTag(line: string, at: number): { name: string; closing: boo
     : null
 }
 
-/** The handled tags a scan has left open. */
-interface Nesting {
-  /** For each `<span>` still open, whether it has a `style`. */
+/** What a scan has met so far. */
+interface Scan {
+  /** The tags a note holds open. Null in text mode, which counts none. */
+  model: HtmlNesting | null
+  /** In text mode, for each `<span>` still open, whether it has a `style`. */
   spans: boolean[]
-  /** For each handled tag still open, by name, whether the cap made it text. */
-  open: Map<string, boolean[]>
-  /** The open handled tags the cap did not make text. */
-  depth: number
 }
+
+/** The attributes of `tag` spelled as one string, to tell a repeat from another tag. */
+const attributesOf = (tag: Tag): string =>
+  `${tag.name}\0${tag.attrs
+    .map(([name, value]) => `${name}=${value}`)
+    .toSorted()
+    .join('\0')}`
 
 /**
- * Counts a handled tag toward the nesting and says whether it is still within
- * the cap. A closing tag belongs to the innermost open tag of its name, and is
- * text when that tag is; one that closes nothing is read as it was.
+ * Whether the editor handles `tag`, within the nesting cap. A `</span>` belongs
+ * to the innermost `<span>` that is open, and one closing a plain span, or
+ * nothing, is text.
  */
-function withinNesting(name: string, closing: boolean, nesting: Nesting): boolean {
-  if (VOID_TAGS.has(name)) return true
-  let stack = nesting.open.get(name)
-  if (stack === undefined) {
-    stack = []
-    nesting.open.set(name, stack)
-  }
-  if (closing) {
-    const capped = stack.pop()
-    if (capped === false) nesting.depth--
-    return capped !== true
-  }
-  const capped = nesting.depth >= RAW_HTML_MAX_NESTING
-  stack.push(capped)
-  if (!capped) nesting.depth++
-  return !capped
-}
-
-/**
- * Whether the editor handles `tag`, within the nesting cap. `nesting.spans`
- * holds, for each `<span>` still open, whether it has a `style`: a `</span>`
- * belongs to the innermost one, and one closing a plain span, or nothing, is
- * text.
- */
-function isHandled(tag: Tag, nesting: Nesting): boolean {
-  return readsAsHandled(tag, nesting.spans) && withinNesting(tag.name, tag.closing, nesting)
-}
-
-function readsAsHandled(tag: Tag, open: boolean[]): boolean {
-  const has = (name: string): boolean => tag.attrs.some(([attr]) => attr === name)
-  switch (tag.name) {
-    case 'span': {
-      if (tag.closing) return open.pop() === true
-      const styled = has('style')
-      if (!tag.selfClosing) open.push(styled)
-      return styled
-    }
+function isHandled(tag: Tag, scan: Scan): boolean {
+  const { name, closing, attrs } = tag
+  const has = (attr: string): boolean => attrs.some(([found]) => found === attr)
+  switch (name) {
+    case 'span':
+      return handlesSpan(tag, scan, has('style'))
     case 'details':
-      return !tag.closing && has('data-memry-toggle')
+      if (closing) scan.model?.close('details')
+      return !closing && has('data-memry-toggle') && (scan.model?.open(name, null) ?? true)
     case 'input':
       return (
-        !tag.closing &&
-        tag.attrs.some(([attr, value]) => attr === 'type' && value.toLowerCase() === 'checkbox')
+        !closing &&
+        attrs.some(([attr, value]) => attr === 'type' && value.toLowerCase() === 'checkbox')
       )
     default:
-      return HANDLED_TAGS.has(tag.name)
+      if (!HANDLED_TAGS.has(name)) return false
+      if (VOID_TAGS.has(name)) {
+        scan.model?.passes(name)
+        return true
+      }
+      if (scan.model === null) return true
+      return closing
+        ? scan.model.close(name) !== 'literal'
+        : scan.model.open(name, attributesOf(tag))
   }
+}
+
+function handlesSpan(tag: Tag, scan: Scan, styled: boolean): boolean {
+  const { model } = scan
+  if (model === null) {
+    if (tag.closing) return scan.spans.pop() === true
+    if (!tag.selfClosing) scan.spans.push(styled)
+    return styled
+  }
+  if (tag.closing) return model.close('span') === 'closed'
+  if (styled) return model.open('span', attributesOf(tag))
+  if (!tag.selfClosing) model.pushLiteral('span')
+  return false
+}
+
+/** Whether a tag that closes on a later line is within the cap. */
+function opensWithinCap(named: { name: string; closing: boolean }, scan: Scan): boolean {
+  const { model } = scan
+  if (model === null) return true
+  if (named.closing) return model.close(named.name) !== 'literal'
+  return VOID_TAGS.has(named.name) || model.open(named.name, null)
 }
 
 /** Where the first non-blank character after a link's `](` is, or -1. */
@@ -351,7 +386,7 @@ function scanLine(
   line: string,
   base: number,
   markdown: boolean,
-  nesting: Nesting,
+  scan: Scan,
   spans: RawHtmlSpan[]
 ): void {
   // The `[` this line has left open, and where the address of the last link
@@ -370,12 +405,12 @@ function scanLine(
       const found = readConstruct(line, at, closers)
       if (found === null) {
         const named = namesHandledTag(line, at)
-        if (named === null || !withinNesting(named.name, named.closing, nesting)) {
+        if (named === null || !opensWithinCap(named, scan)) {
           spans.push({ start: base + at, end: base + at + 1 })
         }
         continue
       }
-      if (found.tag !== null && isHandled(found.tag, nesting)) {
+      if (found.tag !== null && isHandled(found.tag, scan)) {
         at = found.end - 1
         continue
       }
@@ -421,16 +456,36 @@ function scanLine(
 export function scanRawHtml(text: string, markdown: boolean): RawHtmlSpan[] {
   const spans: RawHtmlSpan[] = []
   if (!text.includes('<')) return spans
-  const nesting: Nesting = { spans: [], open: new Map(), depth: 0 }
+  const scan: Scan = { model: markdown ? new HtmlNesting() : null, spans: [] }
   const fence = markdown ? createFenceTracker() : null
   let base = 0
   for (const line of text.split('\n')) {
-    if (!(fence?.consume(line) ?? false) && line.includes('<')) {
-      scanLine(line, base, markdown, nesting, spans)
+    const inFence = fence?.consume(line) ?? false
+    if (scan.model !== null && !inFence) {
+      if (line.trim() === '') scan.model.blankLine()
+      else if (startsHtmlBlock(line)) scan.model.htmlBlockLine()
     }
+    if (!inFence && line.includes('<')) scanLine(line, base, markdown, scan, spans)
     base += line.length + 1
   }
   return spans
+}
+
+/**
+ * `isHtmlBlockStart`: a line of up to three spaces, then a tag of the block-tag
+ * list. A tag the editor does not handle is hidden by now, so it starts nothing.
+ */
+function startsHtmlBlock(line: string): boolean {
+  let at = 0
+  while (at < 3 && line[at] === ' ') at++
+  if (line[at] !== '<') return false
+  at++
+  if (line[at] === '/') at++
+  const start = at
+  while (isNameChar(line[at])) at++
+  const after = line[at]
+  const ends = after === undefined || after === '>' || /\s/.test(after) || line.startsWith('/>', at)
+  return isLetter(line[start]) && ends && HTML_BLOCK_TAGS.has(line.slice(start, at).toLowerCase())
 }
 
 /** The tags `text` spells whole, which the writer must leave as they are. */

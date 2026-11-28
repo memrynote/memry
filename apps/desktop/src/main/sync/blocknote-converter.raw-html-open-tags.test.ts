@@ -29,6 +29,19 @@ async function roundTrip(markdown: string): Promise<{ once: string; twice: strin
   return { once, twice: await write(once) }
 }
 
+/** How long the faster of two seeds of `markdown` took, in ms. */
+async function seedTime(markdown: string, runs = 2): Promise<number> {
+  let ms = Infinity
+  for (let run = 0; run < runs; run++) {
+    const doc = new Y.Doc()
+    const start = performance.now()
+    const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    ms = Math.min(ms, performance.now() - start)
+    expect(ok, 'the markdown reached the document').toBe(true)
+  }
+  return ms
+}
+
 const numbered = (size: number, make: (index: number) => string, join = '\n'): string =>
   Array.from({ length: size }, (_, index) => make(index)).join(join)
 
@@ -61,5 +74,29 @@ describe('a note that leaves handled tags open without nesting', () => {
     const { once } = await roundTrip(`<ul>\n\n${items}`)
     expect(count(once, '<li>')).toBe(0)
     expect(count(once, 'item')).toBe(150)
+  })
+})
+
+describe('a note that nests handled tags past the cap', () => {
+  // Wide of what a read costs, which is a second or two here: the bound is on a
+  // stack overflow and on the minutes the parse takes when the tags pile up.
+  const LIMIT_MS = 15_000
+
+  it.each([
+    ['<ul><li>x', 'a list'],
+    ['<table><tr><td>x', 'a table'],
+    ['<ul><li><b>x', 'a list of marks'],
+    ['<figure>x', 'a figure'],
+    ['<pre>x', 'a code block'],
+    ['a <ul><li>x', 'a list that closes its paragraph']
+  ])('reads %s opened 1000 times, a blank line between them (%s)', async (open) => {
+    expect(await seedTime(numbered(1000, () => open, '\n\n'))).toBeLessThan(LIMIT_MS)
+  })
+
+  it('reads 1000 paragraphs of a <b> that each carry other attributes', async () => {
+    // The parse keeps three of any identical `<b>` and every different one, and
+    // makes them again, nested, under each paragraph's text.
+    const markdown = numbered(1000, (i) => `<b data-n="${i}">x`, '\n\n')
+    expect(await seedTime(markdown, 1)).toBeLessThan(LIMIT_MS)
   })
 })

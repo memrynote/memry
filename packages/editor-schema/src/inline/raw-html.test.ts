@@ -204,8 +204,8 @@ describe('the nesting cap', () => {
     expect(hidden(`${'</b>'.repeat(5 * CAP)}<b>`)).toEqual([])
   })
 
-  it('caps text read as a run too', () => {
-    expect(scanRawHtml('<b>'.repeat(CAP + 1), false)).toHaveLength(1)
+  it('counts nothing in text read as a run, which the writer spells', () => {
+    expect(scanRawHtml('<b>'.repeat(5 * CAP), false)).toEqual([])
   })
 })
 

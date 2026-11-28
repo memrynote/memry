@@ -19,7 +19,7 @@ use std::borrow::Cow;
 use std::sync::LazyLock;
 
 use super::SeedBlock;
-use super::handled::{Nesting, is_handled, names_handled_tag};
+use super::handled::{Scan, is_handled, names_handled_tag, opens_within_cap};
 use super::html_tag::{Closers, Line, is_blank, opens_construct, read_construct};
 use super::markers::FenceTracker;
 use super::mask_word::mask_word;
@@ -76,13 +76,7 @@ fn code_span_end(chars: &[char], at: usize) -> usize {
     run
 }
 
-fn scan_line(
-    chars: &[char],
-    base: usize,
-    markdown: bool,
-    nesting: &mut Nesting,
-    spans: &mut Vec<Span>,
-) {
+fn scan_line(chars: &[char], base: usize, markdown: bool, scan: &mut Scan, spans: &mut Vec<Span>) {
     let line = Line::new(chars);
     let n = chars.len();
     // The `[` this line has left open, and where the address of the last link
@@ -98,14 +92,14 @@ fn scan_line(
                 match read_construct(&line, at, &mut closers) {
                     None => {
                         let within = names_handled_tag(&line, at)
-                            .is_some_and(|(name, closing)| nesting.within(&name, closing));
+                            .is_some_and(|(name, closing)| opens_within_cap(&name, closing, scan));
                         if !within {
                             spans.push((base + at, base + at + 1));
                         }
                     }
                     Some(found) => {
                         if let Some(tag) = &found.tag
-                            && is_handled(tag, nesting)
+                            && is_handled(tag, scan)
                         {
                             at = found.end;
                             continue;
@@ -152,14 +146,17 @@ pub(super) fn scan(text: &str, markdown: bool) -> Vec<Span> {
     if !text.contains('<') {
         return spans;
     }
-    let mut nesting = Nesting::default();
+    let mut scan = Scan::new(markdown);
     let mut fence = FenceTracker::default();
     let mut base = 0;
     for line in text.split('\n') {
         let chars: Vec<char> = line.chars().collect();
         let in_fence = markdown && fence.consume(line);
+        if !in_fence {
+            scan.line(line);
+        }
         if !in_fence && line.contains('<') {
-            scan_line(&chars, base, markdown, &mut nesting, &mut spans);
+            scan_line(&chars, base, markdown, &mut scan, &mut spans);
         }
         base += chars.len() + 1;
     }
