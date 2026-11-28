@@ -36,10 +36,10 @@ for four writes and no others:
 
 | Write                                | Entry point                                                                                                                                                                                                                                          | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:415`), called through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`) by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:112`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`crates/memry-core/src/crdt/markdown_seed/mod.rs:412-414`, `:421-423`)                                                                                                                                                                                                                                                                                                                                                     |
+| a journal day opened from a template | `seed_document` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:416`), called through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`) by `open_day_from_template` (`crates/memry-core/src/domain/journal_ops/seed.rs:112`) | seeds an **empty** body only. A body that holds anything is refused, because a second tree beside the first is the whole-fragment replace §12.5.0.1 forbids (`crates/memry-core/src/crdt/markdown_seed/mod.rs:413-415`, `:422-424`)                                                                                                                                                                                                                                                                                                                                                     |
 | a note created from a template       | `seed_document`, through `seed_empty_body_in` (`crates/memry-core/src/domain/body_write.rs:250`), called by `create_note` in the note's create transaction (`crates/memry-core/src/domain/templates.rs:155`)                                         | seeds the new, empty body with the `{{title}}`-substituted content, the same bytes as the payload `content` and `seed_markdown`. The same empty-body rule as the journal row                                                                                                                                                                                                                                                                                                                                                                                                            |
-| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:435`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)                                                                                           | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| text pasted into a block on iOS      | `plan` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:301`), through `BlockEdit::PasteMarkdown` (`crates/memry-core/src/crdt/body_edit/paste.rs:25`)                                                                                              | reads the text as desktop's converter reads a vault file, not as BlockNote's own paste of `text/plain` (`apps/desktop/src/renderer/src/components/note/content-area/table-cell-paste.ts:69-88`), which builds no callout, math block, toggle or embed (`crates/memry-core/src/crdt/markdown_seed/mod.rs:18-22`); each `\r\n` and `\r` reads as `\n` (`:301-302`). The blocks go in at the caret: below the text before it, above the text after it, which moves to a block of the target's type, and in place of an empty block (`crates/memry-core/src/crdt/body_edit/paste.rs:50-60`) |
+| a filed inbox article                | `append_markdown_in` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:436`), through `append_markdown` (`crates/memry-core/src/domain/body_write.rs:116`)                                                                                           | appends after whatever the body holds, under the article's link mention, as desktop's `generateNoteContent` does (`apps/desktop/src/main/inbox/filing.ts:427-431`)                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| text pasted into a block on iOS      | `plan` (`crates/memry-core/src/crdt/markdown_seed/mod.rs:302`), through `BlockEdit::PasteMarkdown` (`crates/memry-core/src/crdt/body_edit/paste.rs:25`)                                                                                              | reads the text as desktop's converter reads a vault file, not as BlockNote's own paste of `text/plain` (`apps/desktop/src/renderer/src/components/note/content-area/table-cell-paste.ts:69-88`), which builds no callout, math block, toggle or embed (`crates/memry-core/src/crdt/markdown_seed/mod.rs:18-22`); each `\r\n` and `\r` reads as `\n` (`:302-303`). The blocks go in at the caret: below the text before it, above the text after it, which moves to a block of the target's type, and in place of an empty block (`crates/memry-core/src/crdt/body_edit/paste.rs:50-60`) |
 
 **The seeded document MUST be the one desktop builds from the same bytes.** Each stage of
 desktop's conversion is ported with its quirks, and
@@ -233,11 +233,11 @@ takes the tilde fence as it takes any other.
   `crates/memry-core/src/crdt/markdown_seed/runs.rs:352`). Once the blocks exist, each token in
   a run with no mark, of any block but a code block or a diagram, table cells and children
   included, becomes the node `inline_tokens` decides
-  (`crates/memry-core/src/crdt/markdown_seed/mod.rs:336`,
+  (`crates/memry-core/src/crdt/markdown_seed/mod.rs:337`,
   `crates/memry-core/src/crdt/markdown_seed/mentions.rs:185-198`,
   `crates/memry-core/src/crdt/inline_tokens/mod.rs:161`). That includes the literal paragraphs
   a block's fallback keeps. A fallback of the whole text returns before the promotion, so its
-  tokens stay text (`crates/memry-core/src/crdt/markdown_seed/mod.rs:324-334`). A token the core
+  tokens stay text (`crates/memry-core/src/crdt/markdown_seed/mod.rs:325-335`). A token the core
   cannot decide keeps its block's lines as literal text, reported as "mention or date token this
   port cannot decide" (`crates/memry-core/src/crdt/markdown_seed/prepare.rs:181-182`,
   `crates/memry-core/src/crdt/markdown_seed/mentions.rs:177`): a link whose host the core's URL
@@ -459,7 +459,7 @@ takes the tilde fence as it takes any other.
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
   (`packages/shared/src/hard-breaks.ts:91`, `:167-169`, `:235`;
-  `crates/memry-core/src/crdt/markdown_seed/hard_breaks.rs:76`, `:119`).
+  `crates/memry-core/src/crdt/markdown_seed/hard_breaks.rs:77`, `:122`).
 - **Text that spells a placeholder stays text.** The read path hides hard breaks, code span
   whitespace, table probes, `<details>` markup, colour spans, inline tokens, link cards, empty
   blocks and comments behind placeholders, and each carries a word drawn once per process
@@ -493,7 +493,7 @@ from the same bytes in the same transaction
 Desktop writes that `content` as the new note's file (§12.2 carve-out A).
 
 **The race is the journal row's.** Desktop builds a document from the file only when the note's
-fragment is empty (`apps/desktop/src/main/sync/crdt-provider.ts:2265-2266`). If desktop opens the
+fragment is empty (`apps/desktop/src/main/sync/crdt-provider.ts:2441-2442`). If desktop opens the
 note after the record arrives and before the seeded updates do, both devices have seeded a tree,
 and the merge holds the body twice. The window and the outcome are the same as for a journal day
 opened from a template on the phone, and neither write closes it.
@@ -784,7 +784,7 @@ TypeScript as `CRDT_FRAGMENT_NAME` (`packages/contracts/src/ipc-crdt.ts:85`, pin
 BlockNote document.
 
 **Document ids are bare.** Desktop keys every Y.Doc by the bare note id, with no
-namespace prefix (`apps/desktop/src/main/sync/crdt-provider.ts:1233`).
+namespace prefix (`apps/desktop/src/main/sync/crdt-provider.ts:1391`).
 Journal documents are keyed by the journal record's id (chapter 07 §7.1).
 
 **The two-namespace local update log**, `<docId>` for server sequence numbers and
@@ -998,14 +998,14 @@ never stripped; a Y.Doc root is such a field.
 
 **A note document has seven roots, not eight.** `probe` is **not** one: it is set
 on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
-(`apps/desktop/src/main/sync/crdt-persistence.ts:455-457`) and cleared
-(`:482-485`).
+(`apps/desktop/src/main/sync/crdt-persistence.ts:499-501`) and cleared
+(`:508-511`).
 
 | Root                       | Type                                                                   | Writer                                                                                                                                                                                                                                                                                             | Reader                                                                                                    | Consequence of dropping it                                                                                                                                        |
 | -------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prosemirror`              | XmlFragment                                                            | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1946-1952`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                | **the body is lost**                                                                                                                                              |
-| `meta`                     | Map (`title`, `date`)                                                  | `apps/desktop/src/main/sync/crdt-provider.ts:2009-2011`, `:2030-2032`                                                                                                                                                                                                                              | `apps/desktop/src/main/sync/crdt-writeback.ts:693-696`, `:715`                                            | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                     |
-| `tags`                     | Array\<string\>                                                        | `apps/desktop/src/main/sync/crdt-provider.ts:2013-2017`, `apps/desktop/src/main/sync/crdt-feed.ts:127-133`                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:1071` (a note file the write-back creates)                  | a new file has no `tags:` until the record push brings them; an existing file's `tags:` is owned by the file and the note record, never by this array             |
+| `prosemirror`              | XmlFragment                                                            | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:2122-2128`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                | **the body is lost**                                                                                                                                              |
+| `meta`                     | Map (`title`, `date`)                                                  | `apps/desktop/src/main/sync/crdt-provider.ts:2185-2187`, `:2206-2208`                                                                                                                                                                                                                              | `apps/desktop/src/main/sync/crdt-writeback.ts:693-696`, `:715`                                            | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                     |
+| `tags`                     | Array\<string\>                                                        | `apps/desktop/src/main/sync/crdt-provider.ts:2189-2193`, `apps/desktop/src/main/sync/crdt-feed.ts:127-133`                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:1071` (a note file the write-back creates)                  | a new file has no `tags:` until the record push brings them; an existing file's `tags:` is owned by the file and the note record, never by this array             |
 | `markdownSource`           | Map (`record: {source, htmlComments?, losslessBlocks?, literalHtml?}`) | `packages/shared/src/markdown-source.ts:194-210` via `apps/desktop/src/main/sync/blocknote-converter.ts:535-542`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:201`, `:221`                                           | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
 | `linkReferenceDefinitions` | Array                                                                  | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:648`                                                                                                                                                                                           | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:396-397` | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
 | `linkReferenceUsages`      | Array                                                                  | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                                | same (`:191`)                                                                                             | same                                                                                                                                                              |
@@ -1063,15 +1063,15 @@ Rust binding) and never assemble a document by copying named roots.**
 
 The core and desktop already do this
 (`crates/memry-core/src/crdt/registry.rs:200`, `crates/memry-core/src/crdt/snapshots.rs:10`;
-`apps/desktop/src/main/sync/crdt-provider.ts:2244-2261`, `:2401`, `:2406`,
-`:2422`).
+`apps/desktop/src/main/sync/crdt-provider.ts:2420-2437`, `:2577`, `:2582`,
+`:2598`).
 
 **A non-desktop client** reads `prosemirror` for `extract_text` and its block operations,
 and **MUST NOT delete or normalise other roots as a side effect**. It **MUST NOT** write
 `criticMarkupMarks`, `linkReference*` or `markdownSource` — byte-offset marks and
 source records are desktop-derived and a client that touches them corrupts them.
 It **MAY** write `meta` and `tags` with
-`apps/desktop/src/main/sync/crdt-provider.ts:2400-2411` semantics: set-if-absent
+`apps/desktop/src/main/sync/crdt-provider.ts:2576-2587` semantics: set-if-absent
 on create, whole-array replace on a tag edit
 (`apps/desktop/src/main/sync/crdt-feed.ts:96-99`).
 
@@ -1100,7 +1100,7 @@ instead (`start bold`), which the file cannot place; desktop still draws it
 ### 12.5.2 The `meta` key set
 
 **Normative: two keys are defined, `title` and `date`
-(`apps/desktop/src/main/sync/crdt-provider.ts:2402-2403`, `:2423-2424`). Every
+(`apps/desktop/src/main/sync/crdt-provider.ts:2578-2579`, `:2599-2600`). Every
 other key is reserved and MUST be preserved.** Nothing forbids one, and §12.5's
 rule applies to map keys as it does to roots.
 
@@ -1117,14 +1117,14 @@ tiebreak**. A client MUST NOT construct a case that depends on which wins.
 `Y.Array` and `Y.Text`; anything else is logged and **skipped**
 (`packages/sync-client/src/crdt-compact-utils.ts:21-38`). `initDocStructure`
 types only `prosemirror`, `meta`, `tags` and `criticMarkupMarks`
-(`apps/desktop/src/main/sync/crdt-provider.ts:2244-2248`), so `markdownSource`
+(`apps/desktop/src/main/sync/crdt-provider.ts:2420-2424`), so `markdownSource`
 and the two `linkReference*` roots are typed only once a seed or a
 `yDocToMarkdown` touches them.
 
 Compaction fires via `setImmediate` when the encoded document passes 1 MiB with
-no editor open (`apps/desktop/src/main/sync/crdt-provider.ts:2804-2827`,
-threshold at `:93`) and its output replaces both the pushed snapshot and local
-persistence (`:2368`, `:2959-2960`), while write-back is debounced 500 ms
+no editor open (`apps/desktop/src/main/sync/crdt-provider.ts:2983-3006`,
+threshold at `:97`) and its output replaces both the pushed snapshot and local
+persistence (`:2544`, `:3138-3139`), while write-back is debounced 500 ms
 (`apps/desktop/src/main/sync/crdt-writeback.ts:73`).
 
 **A document opened editor-less from persistence and compacted before its first

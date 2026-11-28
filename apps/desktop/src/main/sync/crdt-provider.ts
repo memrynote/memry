@@ -32,8 +32,10 @@ import {
   openCrdtPersistence,
   readOnlyStore,
   type CrdtPersistence,
-  type CrdtStoreReader
+  type CrdtStoreReader,
+  type LateCrdtStore
 } from './crdt-persistence'
+import { forksFrom, writeNote } from './crdt-late-store'
 import {
   readSnapshotWatermark,
   writeSnapshotWatermark,
@@ -82,6 +84,8 @@ interface IpcOrigin {
 
 const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
+/** The store's state of a note, applied to its live doc by a late store's switch (`adoptLateStore`). */
+const ORIGIN_LATE_STORE = 'late-store'
 /** Store meta key of the seed-duplicate repair's per-note marker (#5289). */
 const SEED_REPAIR_META_KEY = 'seedDuplicateRepairedAt'
 /**
@@ -293,6 +297,17 @@ interface ActiveDoc {
   storedWaiters: Array<() => void>
 }
 
+/** The store the open's probe timed out on, while the session waits for it (`adoptLateStore`). */
+interface LateStoreWait {
+  store: LateCrdtStore
+  /** Resolves once the wait has switched the session, given up or been cancelled, and closed what it did not adopt. */
+  settled: Promise<void>
+  /** The last state of each doc closed meanwhile, for the switch to store. */
+  closed: Map<string, Uint8Array>
+  /** Notes purged meanwhile, for the switch to clear from the store. */
+  purged: Set<string>
+}
+
 export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
   /** See `holdDoc`. Keyed by note, so a hold taken before `open` covers the doc it opens. */
@@ -308,6 +323,10 @@ export class CrdtProvider {
   /** Docs whose close landed a store of their whole state before destroying them. */
   private storedAtClose = new WeakSet<Y.Doc>()
   private persistence: CrdtPersistence | null = null
+  /** See `LateStoreWait`. Null once the session switched to it, gave up on it, or was destroyed. */
+  private lateStore: LateStoreWait | null = null
+  /** Counts `destroy()` calls, so an open that outlived one cancels its late store. */
+  private destroys = 0
   /** See `storeId`. Minted on every successful open, dropped on `destroy()`. */
   private storeIdentity: string | null = null
   private persistenceReady = false
@@ -686,7 +705,8 @@ export class CrdtProvider {
    */
   async initPersistence(vaultPath?: string): Promise<void> {
     // Never retry a settled init: a failed probe means the native binding is
-    // broken for this process — re-probing would just re-pay the timeout.
+    // broken for this process — re-probing would just re-pay the timeout. A
+    // probe that only timed out keeps waiting in the background (`adoptLateStore`).
     if (this.persistenceReady) {
       return
     }
@@ -734,8 +754,13 @@ export class CrdtProvider {
     }
 
     // Preflight, quarantine and probe live in crdt-persistence.ts; null means
-    // the store could not be trusted and this provider runs in-memory.
-    this.persistence = await openCrdtPersistence(target.storagePath)
+    // the store could not be trusted and this provider runs in-memory. Taken at
+    // once, so a destroy during the wait cancels it.
+    const destroys = this.destroys
+    this.persistence = await openCrdtPersistence(target.storagePath, (store) => {
+      if (this.destroys !== destroys) return store.cancel()
+      this.lateStore = { store, settled: Promise.resolve(), closed: new Map(), purged: new Set() }
+    })
     if (!this.persistence && stalledStoreAtClose !== null) {
       log.warn('A store call stalled at the last vault close; this session runs in memory', {
         stalledFlushNoteId: stalledStoreAtClose
@@ -775,6 +800,136 @@ export class CrdtProvider {
     // resolve, so a renderer's IPC round-trip can never beat it.
     broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY, { vaultPath: readyVaultPath })
     log.info('CRDT provider ready, asked stranded editors to rebind')
+    // After the in-memory init settled: the switch replaces what it set.
+    const late = this.lateStore
+    if (late) late.settled = this.settleLateStore(late)
+  }
+
+  /**
+   * Switches the session to the store once it answers (`adoptLateStore`). A
+   * store that answers after a destroy, or that the switch could not take, is
+   * closed: a second handle on its directory would fight it for the lock.
+   */
+  private async settleLateStore(late: LateStoreWait): Promise<void> {
+    const persistence = await late.store.ready
+    try {
+      if (!persistence) return
+      if (this.lateStore === late && (await this.adoptLateStore(late, persistence))) return
+      const closed = Promise.resolve()
+        .then(() => persistence.destroy())
+        .catch((err: unknown) => log.warn('Failed to close a late CRDT store', { error: err }))
+      await completeWithin(closed, STORE_CALL_CLOSE_WAIT_MS)
+    } finally {
+      if (this.lateStore === late) this.lateStore = null
+    }
+  }
+
+  /**
+   * Switches this in-memory session to a store that opened late, without a
+   * restart. Every note the session holds a doc of, open or closed since the
+   * open, takes these steps:
+   *  1. Its whole state is written into the store (`writeNote`). A stored copy
+   *     that shares no history with it is cleared first: the session seeded
+   *     the doc from the file, and merging the two would show the body twice.
+   *  2. The store's state is applied to the live doc, which then holds what an
+   *     open with the store would have loaded beside what this session wrote.
+   *  3. Once every doc took 1 and 2, the store is attached in one synchronous
+   *     step, which also stores what each doc took after its write.
+   * Until 3 the session runs in memory as before and nothing else reaches the
+   * store, so no doc is attached without its write. Opens and closes in flight
+   * finish before 3, and a doc opened or closed meanwhile takes 1 and 2 too.
+   * Resolves false, with nothing attached, after a destroy or a store failure.
+   */
+  private async adoptLateStore(
+    late: LateStoreWait,
+    persistence: CrdtPersistence
+  ): Promise<boolean> {
+    let unreconciled = false
+    const written = new Map<string, { doc: Y.Doc; sv: Uint8Array }>()
+    const replaced: string[] = []
+    try {
+      // Before anything can push from this store (#2299), as at open.
+      try {
+        await reconcileCrdtStoreEpoch(persistence, getDatabase())
+      } catch (err) {
+        unreconciled = true
+        log.warn('Could not reconcile the CRDT store epoch; claims withheld until the next open', {
+          error: err
+        })
+      }
+      for (;;) {
+        if (this.lateStore !== late) return false
+        const busy = [...this.openLocks.values(), ...this.closeLocks.values()]
+        if (busy.length > 0) {
+          await Promise.allSettled(busy)
+          continue
+        }
+        const [purged] = late.purged
+        if (purged !== undefined) {
+          late.purged.delete(purged)
+          await persistence.clearDocument(purged)
+          continue
+        }
+        const open = [...this.docs].find(
+          ([noteId, entry]) => written.get(noteId)?.doc !== entry.doc
+        )
+        if (open) {
+          const [noteId, { doc }] = open
+          const note = await writeNote(persistence, noteId, doc)
+          // A seed that landed after the write forks from the stored copy: the
+          // next turn writes the doc again.
+          if (this.docs.get(noteId)?.doc === doc && !forksFrom(note.stored, doc)) {
+            Y.applyUpdate(doc, Y.encodeStateAsUpdate(note.stored), ORIGIN_LATE_STORE)
+            holdOpenRoots(doc)
+            written.set(noteId, { doc, sv: note.written })
+            if (note.replaced) replaced.push(noteId)
+          }
+          note.stored.destroy()
+          continue
+        }
+        const closed = [...late.closed].find(([noteId]) => !this.docs.has(noteId))
+        if (closed) {
+          const [noteId, state] = closed
+          const doc = new Y.Doc()
+          Y.applyUpdate(doc, state)
+          const note = await writeNote(persistence, noteId, doc).finally(() => doc.destroy())
+          note.stored.destroy()
+          if (late.closed.get(noteId) === state) late.closed.delete(noteId)
+          if (note.replaced) replaced.push(noteId)
+          continue
+        }
+        break
+      }
+    } catch (err) {
+      log.error(
+        'A CRDT store opened late, but the switch to it failed; the session stays in memory',
+        {
+          error: err
+        }
+      )
+      return false
+    }
+
+    // 3. No await since the loop's last check: every open doc is in `written`.
+    this.persistence = persistence
+    this.storeIdentity = crypto.randomUUID()
+    this.storeUnreconciled = unreconciled
+    for (const [noteId, { doc, sv }] of written) {
+      const entry = this.docs.get(noteId)
+      if (entry?.doc !== doc) continue
+      // What the doc took after its write, while nothing stored its updates.
+      this.persistUpdate(noteId, Y.encodeStateAsUpdate(doc, sv))
+      // The store held its body: an open with the store would not have waited.
+      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) this.endAwaitingMerge(noteId, entry)
+    }
+    recordSessionPersistenceOutcome(true, true)
+    if (this.oweRemoteMerge) void this.oweStoredCompactions(this.oweRemoteMerge)
+    log.info('CRDT store opened late; the session now persists', {
+      elapsedMs: Date.now() - late.store.openedAt,
+      docs: written.size,
+      replacedNoteIds: replaced
+    })
+    return true
   }
 
   isInitialized(): boolean {
@@ -949,7 +1104,10 @@ export class CrdtProvider {
     if (existing && !existing.closing) {
       if (windowId) existing.windowIds.add(windowId)
       this.touchDoc(existing)
-      if (!options?.skipSeed) {
+      // With a store, only a late store's switch leaves a doc waiting for its
+      // server body (`adoptLateStore`), and the wait is what keeps a seed from
+      // landing beside that body. It ends as it does with no store.
+      if (!options?.skipSeed && !(this.persistence && existing.awaitingMerge)) {
         await this.seedFromMarkdown(noteId, existing.doc)
       }
       await this.evictInactiveDocsIfNeeded()
@@ -963,7 +1121,7 @@ export class CrdtProvider {
         if (windowId) entry.windowIds.add(windowId)
         this.touchDoc(entry)
       }
-      if (!options?.skipSeed) {
+      if (!options?.skipSeed && !(this.persistence && entry?.awaitingMerge)) {
         await this.seedFromMarkdown(noteId, doc)
       }
       await this.evictInactiveDocsIfNeeded()
@@ -1071,10 +1229,10 @@ export class CrdtProvider {
    * for the sync runtime once it wires its merge and once the network is back
    * (#5290). A note the server never saw seeds here, since no pull would ever
    * name it. With no merge wired, a doc seeds only once the runtime's start
-   * settled that this install does not sync (`waitsForRemoteBody`).
+   * settled that this install does not sync (`waitsForRemoteBody`). With a
+   * store, only a late store's switch leaves a doc waiting (`adoptLateStore`).
    */
   async resumeWaitingEditorDocs(): Promise<void> {
-    if (this.persistence) return
     const merge = this.mergeRemote
     const waiting = [...this.docs].filter(
       ([, entry]) => entry.awaitingMerge && !entry.closing && entry.windowIds.size > 0
@@ -1475,6 +1633,10 @@ export class CrdtProvider {
     // A pass that ran meanwhile may have fed the doc; it is stored only once
     // nothing of it is storing.
     if (stored && this.holdsDoc(noteId, entry.doc)) this.storedAtClose.add(entry.doc)
+    // Its file holds what it held, and a late store's switch stores that too.
+    if (this.lateStore && !this.persistence && !entry.purging) {
+      this.lateStore.closed.set(noteId, Y.encodeStateAsUpdate(entry.doc))
+    }
 
     entry.doc.destroy()
     // An open inside the note's write-back turn replaced the entry meanwhile,
@@ -1603,6 +1765,10 @@ export class CrdtProvider {
     }
 
     await this.close(noteId)
+    if (this.lateStore && !this.persistence) {
+      this.lateStore.closed.delete(noteId)
+      this.lateStore.purged.add(noteId)
+    }
     await this.persistence?.clearDocument(noteId).catch((err: unknown) => {
       log.warn('Failed to clear persisted CRDT doc during purge', { noteId, error: err })
     })
@@ -1798,6 +1964,16 @@ export class CrdtProvider {
     // Read before the map is cleared below: after that the count is gone, and
     // the reset that follows destroy() is where it has to be reported.
     this.attachedDocsAtDestroy = this.strandedEditorDocCount
+    this.destroys++
+    const late = this.lateStore
+    this.lateStore = null
+    if (late) {
+      late.store.cancel()
+      // Its handle closes first, so the next open finds the directory unlocked.
+      if (!(await completeWithin(late.settled, STORE_CALL_CLOSE_WAIT_MS))) {
+        log.warn('A late CRDT store did not close before the vault closed')
+      }
+    }
     this.beginClose()
     // The note whose store call stalled. y-leveldb runs every store call
     // through one queue, so each later call waits behind it: the close stops
@@ -2497,7 +2673,10 @@ export class CrdtProvider {
     // is exactly true here. Suppressing the debt would make the guards below
     // read as redundant when they are the only thing holding the body back.
     entry.accumulatedBytes += update.byteLength
-    if (origin !== ORIGIN_NETWORK) {
+    // Neither a remote update nor the state a late store's switch applies is
+    // a local edit the server is owed.
+    const local = origin !== ORIGIN_NETWORK && origin !== ORIGIN_LATE_STORE
+    if (local) {
       entry.pendingSnapshotBytes += update.byteLength
     }
 
@@ -2519,7 +2698,7 @@ export class CrdtProvider {
     // refuses for the same notes (`seedUnclockedNotes`, `offline-clock`).
     // Recording a full-state row is skipped for the same reason the push is:
     // that row exists to get a body to the server.
-    if (origin !== ORIGIN_NETWORK && this.sendsBody(entry)) {
+    if (local && this.sendsBody(entry)) {
       if (this.updateQueue) {
         this.updateQueue.enqueue(noteId, update)
       } else {
@@ -3219,9 +3398,12 @@ let sessionOutcomeRecorded = false
  * path. The one transient-shaped cause — a utility process that cannot boot —
  * already gets its retry inside a single `openCrdtPersistence` call, on the
  * Chromium-free transport.
+ *
+ * `lateStore` records a store that opened after this launch was counted in
+ * memory (`adoptLateStore`): the launch has a store after all.
  */
-function recordSessionPersistenceOutcome(healthy: boolean): void {
-  if (sessionOutcomeRecorded) return
+function recordSessionPersistenceOutcome(healthy: boolean, lateStore = false): void {
+  if (sessionOutcomeRecorded && !lateStore) return
   sessionOutcomeRecorded = true
   try {
     const sessions = recordCrdtPersistenceOutcome(healthy)

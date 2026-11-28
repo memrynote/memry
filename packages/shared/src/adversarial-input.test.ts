@@ -36,11 +36,6 @@ const cases: Array<[string, () => unknown]> = [
     'quote and list markers before no comment',
     () => stripMarkdownComments(`<!-- c -->\n>${' -  >'.repeat(24)}\0`)
   ],
-  // Each marker reads every marker line below it before it finds no link.
-  [
-    'a run of link-card markers before no link',
-    () => maskHtmlComments(`${'<!-- link-card:{} -->\n'.repeat(4000)}\0`)
-  ],
   // Each `*` could be one `**` token or two `*` tokens.
   [
     'a link-card marker before a run of stars',
@@ -89,17 +84,17 @@ const elapsed = (run: () => unknown): number => {
   return performance.now() - start
 }
 
-const growth = (short: string, long: string): number => {
+const growth = (read: (text: string) => unknown, short: string, long: string): number => {
   let shortMs = Infinity
   let longMs = Infinity
   for (let run = 0; run < 7; run++) {
     shortMs = Math.min(
       shortMs,
-      elapsed(() => maskHardBreaks(short))
+      elapsed(() => read(short))
     )
     longMs = Math.min(
       longMs,
-      elapsed(() => maskHardBreaks(long))
+      elapsed(() => read(long))
     )
   }
   return longMs / shortMs
@@ -111,6 +106,13 @@ describe('adversarial markdown input', () => {
   })
 
   it.each(longListItems)('a list item of %s is masked in linear time', (_name, item, count) => {
-    expect(growth(item(count), item(count * 16))).toBeLessThan(64)
+    expect(growth(maskHardBreaks, item(count), item(count * 16))).toBeLessThan(64)
+  })
+
+  // Each marker read every marker line below it before it found no link. At 4000 markers a loaded
+  // runner took 437 to 642 ms of wall clock for 7 to 17 ms of work, so this times growth as above.
+  it('a run of link-card markers before no link is read in linear time', () => {
+    const markers = (count: number): string => `${'<!-- link-card:{} -->\n'.repeat(count)}\0`
+    expect(growth(maskHtmlComments, markers(250), markers(4000))).toBeLessThan(64)
   })
 })
