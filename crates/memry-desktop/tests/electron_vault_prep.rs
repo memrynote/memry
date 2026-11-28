@@ -10,7 +10,7 @@ use memry_desktop::electron_import::profile::{locate_profile, vault_dir_name};
 use memry_desktop::electron_import::vault_prep::{
     CANVAS_LIBRARY, Disposition, VaultId, VaultPlan, plan_vaults, prepare_vault,
 };
-use memry_desktop::electron_import::ystore_import::LegacyStore;
+use memry_desktop::electron_import::ystore_import::{ImportClaim, LegacyStore};
 use memry_desktop::electron_import::{ElectronConfig, ElectronProfile, Scratch};
 use rusqlite::Connection;
 
@@ -46,6 +46,7 @@ impl Run {
             ids,
             None,
             &self.scratch,
+            ImportClaim::Unrecorded,
         )
         .unwrap()
         .fold
@@ -88,6 +89,7 @@ fn the_fixture_vault_is_planned_and_prepared_and_electron_is_untouched() {
         &ids,
         Some(&journal),
         &r.scratch,
+        ImportClaim::Unrecorded,
     )
     .unwrap();
     assert!(!vault.replay.written.is_empty());
@@ -197,7 +199,16 @@ fn the_store_read_is_the_one_the_singleton_names_over_the_config_uuid() {
     let ids = import_ids(&r.plan(), &f.vault);
     assert_eq!(ids.vault_id, f.expected.vault_uuid);
     let path = f.vault.to_string_lossy();
-    let vault = prepare_vault(&r.profile, Some(&r.config), &path, &ids, None, &r.scratch).unwrap();
+    let vault = prepare_vault(
+        &r.profile,
+        Some(&r.config),
+        &path,
+        &ids,
+        None,
+        &r.scratch,
+        ImportClaim::Unrecorded,
+    )
+    .unwrap();
     assert!(
         vault
             .fold
