@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { marked } from 'marked'
+import { maskRawHtmlForExport } from '@memry/editor-schema/html-export'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import { getNoteMetadataByPath } from '@memry/storage-data'
 import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
@@ -364,8 +365,10 @@ function renderNoteHtml(
   options: ExportHtmlOptions
 ): string {
   const includeMetadata = options.includeMetadata ?? true
+  // Desktop's `markdownToHtml` does the same: raw HTML the editor shows as text stays text.
+  const { markdown, finish } = maskRawHtmlForExport(exportedBody(note.content, options))
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
-  const contentHtml = marked.parse(wikiLinksToText(exportedBody(note.content, options))) as string
+  const contentHtml = finish(marked.parse(wikiLinksToText(markdown)) as string)
   const tags = note.tags.map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')
   const metadata = includeMetadata
     ? `

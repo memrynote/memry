@@ -620,11 +620,11 @@ export const TOGGLE_OPEN_LINE_EXPANDED = '<details data-memry-toggle open>'
 export const TOGGLE_CLOSE_LINE = '</details>'
 
 /** Only a `<details>` carrying our attribute, alone on its line, is a toggle. */
-const TOGGLE_OPEN_LINE_REGEX = /^<details\s+data-memry-toggle(\s+open)?>$/
+export const TOGGLE_OPEN_LINE_REGEX = /^<details\s+data-memry-toggle(\s+open)?>$/
 /** Any `<details>` open tag — used for depth only, so a foreign one nested in a
  * toggle body cannot close the toggle early. */
-const DETAILS_OPEN_LINE_REGEX = /^<details(?:\s[^>]*)?>$/
-const TOGGLE_SUMMARY_LINE_REGEX = /^<summary>(.*)<\/summary>$/
+export const DETAILS_OPEN_LINE_REGEX = /^<details(?:\s[^>]*)?>$/
+export const TOGGLE_SUMMARY_LINE_REGEX = /^<summary>(.*)<\/summary>$/
 
 export interface ToggleBlockSegment {
   kind: 'toggle'

@@ -82,7 +82,7 @@ const ESCAPABLE = '\\`*_{}[]()#+-.!~|>'
  * rule, a quote, a code block (`<pre><code>`), a list and a table with its
  * rows and cells. A family reads as one, so it is handled whole.
  */
-const HANDLED_TAGS: ReadonlySet<string> = new Set([
+export const HANDLED_TAGS: ReadonlySet<string> = new Set([
   'b',
   'strong',
   'i',
@@ -186,7 +186,7 @@ const isAttrChar = (c: string | undefined): boolean =>
   isNameChar(c) || c === '_' || c === ':' || c === '.'
 const isUnquoted = (c: string): boolean => !isBlank(c) && !'"\'=<>`'.includes(c)
 
-interface Tag {
+export interface Tag {
   name: string
   closing: boolean
   selfClosing: boolean
@@ -197,6 +197,16 @@ interface Tag {
 interface Construct {
   end: number
   tag: Tag | null
+}
+
+/**
+ * The tag that starts at the `<` at `at`, read as the editor reads one, and
+ * where it ends, or null. The 1024-unit bound the scan puts on a tag is off:
+ * HTML export has to read a long attribute whole.
+ */
+export function readHtmlTag(text: string, at: number): { end: number; tag: Tag } | null {
+  const read = readTag(text, at, text.length)
+  return read?.tag ? { end: read.end, tag: read.tag } : null
 }
 
 /**
@@ -578,7 +588,11 @@ export interface MaskedRawHtml {
 
 /** `markdown` with every `<` that opens raw HTML the editor does not handle hidden. */
 export function maskRawHtml(markdown: string): MaskedRawHtml {
-  const spans = scanRawHtml(markdown, true)
+  return maskRawHtmlSpans(markdown, scanRawHtml(markdown, true))
+}
+
+/** `markdown` with `spans`, in order, each hidden behind a token. */
+export function maskRawHtmlSpans(markdown: string, spans: RawHtmlSpan[]): MaskedRawHtml {
   if (spans.length === 0) return { markdown, sources: [] }
   const sources: string[] = []
   let out = ''
