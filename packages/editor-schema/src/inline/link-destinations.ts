@@ -26,18 +26,33 @@ const ALLOWED_URI =
 // oxlint-disable-next-line eslint/no-control-regex -- mirrors BlockNote's isAllowedUri whitespace class, which includes C0 control characters
 const UNICODE_WHITESPACE = /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g
 
-/** BlockNote's `findClosingBracket` / `findClosingParen`. */
-function closing(text: string, openAt: number, open: string, close: string): number {
-  let depth = 0
-  for (let at = openAt; at < text.length; at++) {
-    if (text[at] === '\\' && at + 1 < text.length) {
-      at++
-      continue
+const UNPAIRED_YET = -2
+const NO_PARTNER = -1
+
+/**
+ * BlockNote's `findClosingBracket` / `findClosingParen` for one text, as a lookup
+ * of the `close` that balances the `open` at a position (-1 when none does).
+ * One pass from the first opener asked about pairs every opener after it with a
+ * stack, so a scan from each of them, which reads the same characters, is not
+ * repeated. An opener that pass stepped over, behind a backslash, gets a pass
+ * of its own. `openAt` is always an `open`.
+ */
+function createCloser(text: string, open: string, close: string): (openAt: number) => number {
+  let partners: Int32Array | null = null
+  return (openAt) => {
+    partners ??= new Int32Array(text.length).fill(UNPAIRED_YET)
+    if (partners[openAt] === UNPAIRED_YET) {
+      const stack: number[] = []
+      for (let at = openAt; at < text.length; at++) {
+        if (text[at] === '\\' && at + 1 < text.length) at++
+        else if (text[at] === open) {
+          partners[at] = NO_PARTNER
+          stack.push(at)
+        } else if (text[at] === close && stack.length > 0) partners[stack.pop()!] = at
+      }
     }
-    if (text[at] === open) depth++
-    if (text[at] === close && --depth === 0) return at
+    return partners[openAt]
   }
-  return -1
 }
 
 /** The address half of BlockNote's `parseDestinationAndTitle`. */
@@ -82,15 +97,17 @@ function keptWhole(raw: string): boolean {
 function maskSegment(text: string, destinations: string[]): string {
   let out = ''
   let last = 0
+  const closeBracket = createCloser(text, '[', ']')
+  const closeParen = createCloser(text, '(', ')')
   for (let at = 0; at < text.length; at++) {
     if (text[at] === '\\') {
       at++
       continue
     }
     if (text[at] !== '[') continue
-    const textEnd = closing(text, at, '[', ']')
+    const textEnd = closeBracket(at)
     if (textEnd < 0 || text[textEnd + 1] !== '(') continue
-    const parenEnd = closing(text, textEnd + 1, '(', ')')
+    const parenEnd = closeParen(textEnd + 1)
     if (parenEnd < 0) continue
     const raw = text.slice(textEnd + 2, parenEnd)
     if (text[at - 1] !== '!' && keptWhole(raw)) {

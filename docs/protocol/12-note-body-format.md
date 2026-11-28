@@ -122,7 +122,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
 
 - **`%% … %%` comments are `htmlComment` nodes (§12.7).** Desktop masks every comment outside
   code before any line is split (`apps/desktop/src/main/sync/blocknote-converter.ts:473-475`,
-  `packages/shared/src/html-comments.ts:131`, boundaries from `walkMarkdown`,
+  `packages/shared/src/html-comments.ts:173`, boundaries from `walkMarkdown`,
   `packages/shared/src/markdown-code.ts:150`, including a comment that crosses a table cell end
   as text and a code span's pipe as part of the cell, `:320`), and again on each chunk it parses.
   The core walks the text the same way and masks each `%%` comment to one word, then turns the
@@ -296,7 +296,7 @@ fence's info string,`""`for an untagged fence or an indented run, never BlockNot
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
-  (`packages/shared/src/hard-breaks.ts:83`, `:139-141`, `:184`;
+  (`packages/shared/src/hard-breaks.ts:90`, `:146-148`, `:191`;
   `crates/memry-core/src/crdt/markdown_seed/hard_breaks.rs:76`, `:119`).
 - **Text that spells a placeholder stays text.** The read path hides hard breaks, code span
   whitespace, table probes, `<details>` markup, colour spans, inline tokens, link cards, empty
@@ -1310,7 +1310,7 @@ The core's markdown seed builds the `%%` form as a node, and keeps a `<!--` comm
 A `<!--` that opens an HTML block and never closes would hide the rest of the
 note, so it is a node whose `source` is `<!--` alone, and the text after it
 stays document content, written back as its own bytes (BBF-101,
-`packages/shared/src/html-comments.ts:127-142`,
+`packages/shared/src/html-comments.ts:168-186`,
 `packages/shared/src/markdown-code.ts:76-79`). Builds before BBF-101 parse such
 a note to an empty body and keep the file through the source record. A `<!--`
 that never closes inside a paragraph is text.
@@ -1407,13 +1407,13 @@ written, title and angle brackets included (BBF-109). `[a](u "t")` parses to
 field for a title. The destination counts only when it has no leading or
 trailing whitespace, no newline and no backtick, and the link mark accepts both
 it and its address half; anything else keeps BlockNote's address half
-(`packages/editor-schema/src/inline/link-destinations.ts:71`, `:112`,
+(`packages/editor-schema/src/inline/link-destinations.ts:86`, `:129`,
 `packages/editor-schema/src/parse-markdown.ts:376`;
 `crates/memry-core/src/crdt/markdown_seed/links.rs:26`). House style writes an
 `href` with whitespace back unescaped, so the bytes survive every save
 (`packages/editor-schema/src/inline/emphasis-runs.ts:224`). A reader that opens
 the link uses the address half (`linkDestination`,
-`packages/editor-schema/src/inline/link-destinations.ts:44`). Builds before
+`packages/editor-schema/src/inline/link-destinations.ts:59`). Builds before
 BBF-109 kept only the address half.
 
 ### 12.7.1 `inlineImage` and `inlineCheckbox` outside a table — Q12.6
