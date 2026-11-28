@@ -310,7 +310,10 @@ takes the tilde fence as it takes any other.
   tag's characters, not a comment node; a comment over more than one line, or a `%%` comment,
   stays a node. A `</span>` closes the innermost `<span>` open in the text: it ends a colour or
   underline span when that is one, and is the text `</span>` when it closes a plain `<span>` or
-  none, so neither is lost for a coloured span elsewhere in the note.
+  none, so neither is lost for a coloured span elsewhere in the note. The writer spells the text
+  `<span>` or `</span>` inside a coloured or underlined run as it is, and the next read pairs it
+  with the run's own tags: a `</span>` ends the colour early, and a `<span>` with no `</span>` of
+  its own takes the run's closing tag, so the run's text gains a `</span>` once and then settles.
   Which handled tags count against the nesting cap is what the HTML parse that reads them holds
   open, not how many the text spells, because that parse recurses once per open element (4000
   unclosed `<b>` took 5 s there, 4000 `<ul><li>` 50 s, and 8000 overflowed the stack). A tag
