@@ -83,6 +83,12 @@ const HANDLED_SPELLINGS = [
   '<span style="text-decoration:underline">x</span>'
 ]
 
+/**
+ * `text` as the writer spells it: a backslash doubled, then each `<` escaped.
+ * The spellings hold no backslash, so only the second step changes them.
+ */
+const escapeTags = (text: string): string => text.replaceAll('\\', '\\\\').replaceAll('<', '\\<')
+
 describe('a backslash before a tag the editor handles', () => {
   it('reads as an escaped angle bracket: the tag is text', async () => {
     const blocks = await read('\\<b>x\\</b>')
@@ -91,7 +97,7 @@ describe('a backslash before a tag the editor handles', () => {
   })
 
   it.each(HANDLED_SPELLINGS)('keeps %s as the text it spells', async (spelling) => {
-    const escaped = spelling.replace(/</g, '\\<')
+    const escaped = escapeTags(spelling)
     const blocks = await read(`a ${escaped} b`)
     expect(blocks).toHaveLength(1)
     expect(textOf(blocks)).toBe(`a ${spelling} b`)
@@ -130,7 +136,7 @@ describe('a backslash before a tag the editor handles', () => {
 describe('text that spells a tag the editor handles', () => {
   it.each(HANDLED_SPELLINGS)('writes %s with its angle brackets escaped', async (spelling) => {
     const written = await write([typed(`a ${spelling} b`)])
-    expect(written).toBe(`a ${spelling.replace(/</g, '\\<')} b`)
+    expect(written).toBe(`a ${escapeTags(spelling)} b`)
     expect(textOf(await read(written))).toBe(`a ${spelling} b`)
   })
 
