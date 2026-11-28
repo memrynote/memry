@@ -27,7 +27,7 @@ vi.mock('../sync/crdt-provider', () => ({
   getCrdtProvider: () => ({
     getDoc: (id: string) => (live.has(id) ? docs.get(id) : undefined),
     holdDoc: () => released,
-    open: async (id: string) => docs.get(id)
+    openWithBody: async (id: string) => docs.get(id)
   })
 }))
 

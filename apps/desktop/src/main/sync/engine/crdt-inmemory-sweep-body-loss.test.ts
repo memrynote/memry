@@ -6,7 +6,7 @@ import { ready as sodiumReady } from 'libsodium-wrappers-sumo'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { CRDT_CHANNELS, CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { SyncContext } from './sync-context'
 import type { CrdtSnapshotMeta } from '../http-client'
 import type * as RetryModule from '@memry/sync-client/retry'
@@ -31,7 +31,8 @@ const h = vi.hoisted(() => ({
   canonical: null as null | Record<string, unknown>,
   /** Signer devices whose key does not resolve. */
   unresolvable: new Set<string>(),
-  broadcasts: [] as Array<{ channel: string; payload: unknown }>
+  broadcasts: [] as Array<{ channel: string; payload: unknown }>,
+  errors: [] as Array<{ message: string; meta: unknown }>
 }))
 
 // A real, empty folder: the outside-vault check resolves every read against it.
@@ -42,9 +43,12 @@ vi.mock('electron', () => ({
   BrowserWindow: {
     fromId: (id: number) =>
       id === EDITOR_WINDOW ? { isDestroyed: () => false, webContents: { send: () => {} } } : null,
+    fromWebContents: () => ({ id: EDITOR_WINDOW, once: () => {} }),
     getAllWindows: () => []
-  }
+  },
+  ipcMain: mockIpcMain
 }))
+vi.mock('../runtime', () => ({ getSyncEngine: () => null }))
 
 vi.mock('../../lib/window-broadcast', () => ({
   broadcastToAllWindows: (channel: string, payload: unknown) => {
@@ -53,7 +57,14 @@ vi.mock('../../lib/window-broadcast', () => ({
 }))
 
 vi.mock('../../lib/logger', () => ({
-  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: (message: string, meta?: unknown) => {
+      h.errors.push({ message, meta })
+    }
+  })
 }))
 
 vi.mock('../http-client', () => ({
@@ -189,6 +200,8 @@ vi.mock('../local-mutations', () => ({
   enqueueLocalSyncUpdate: vi.fn()
 }))
 
+import { invokeHandler, mockIpcMain } from '@tests/utils/mock-ipc'
+import { _resetCrdtIpcHandlersForTests, registerCrdtIpcHandlers } from '../../ipc/crdt-handlers'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { getCrdtProvider, resetCrdtProvider, type SnapshotPushFn } from '../crdt-provider'
 import { NoteBodyOutbox } from '../note-body-outbox'
@@ -206,6 +219,11 @@ import { generateContentHash, parseNote } from '../../vault/frontmatter'
 import { isNeverSyncedLocalNote } from '../note-sync-state'
 import { recordNoteBodyPush } from '../note-body-push-record'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import {
+  markSyncEligible,
+  markSyncIneligible,
+  resetSyncDecision
+} from '@memry/sync-client/sync-eligibility'
 import { notesCreatedHere } from '@memry/db-schema/schema/notes-created-here'
 import type { DataDb } from '../../database/client'
 
@@ -267,6 +285,7 @@ beforeEach(() => {
   h.canonical = null
   h.unresolvable.clear()
   h.broadcasts = []
+  h.errors = []
 })
 
 describe('CRDT sweep in in-memory mode (#2511)', () => {
@@ -1833,5 +1852,300 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect(provider.isAwaitingMerge(NOTE)).toBe(true)
       expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
     })
+  })
+
+  describe('an editor tab restored before the sync runtime wires its merge', () => {
+    afterEach(() => {
+      markSyncIneligible()
+      resetSyncDecision()
+    })
+
+    /** The editor open a launch's restored tab makes while the runtime still starts. */
+    async function openRestoredTab(): Promise<Y.Doc> {
+      const provider = getCrdtProvider()
+      await provider.initPersistence()
+      expect(provider.storeId).toBeNull()
+      return provider.openForEditor(NOTE, EDITOR_WINDOW, null)
+    }
+
+    it('waits unseeded, and shows the server body once after the runtime wires its merge', async () => {
+      // #given a note with a server body, and a runtime start past its policy gates
+      await serveNoteWithPeerEdit()
+      markSyncEligible()
+
+      // #when the tab opens before the start wires its merge
+      const doc = await openRestoredTab()
+
+      // #then it waits for the runtime instead of seeding from the file
+      expect.soft(getCrdtProvider().remoteBodyWait(NOTE)).toBe('merging')
+
+      // #when the start wires its merge, resumes the waiting docs and runs its first sync
+      const { provider, coordinator } = await startRuntime()
+      await provider.resumeWaitingEditorDocs()
+      await coordinator.pullCrdtForNotes([NOTE])
+
+      // #then the editor binds the server body, once
+      const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+      expect(countTexts(fragment, 'Pack for the')).toBe(1)
+      expect(fragment.length).toBe(1)
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        EXPECTED_BODY
+      )
+      expect(h.broadcasts).toContainEqual({
+        channel: CRDT_EVENTS.DOC_LOADED,
+        payload: { noteId: NOTE }
+      })
+    })
+
+    it('seeds from the file once the start settles that this install does not sync', async () => {
+      // #given a tab restored while the start still decides
+      putNoteInVault(ORIGINAL)
+      const doc = await openRestoredTab()
+      expect.soft(getCrdtProvider().remoteBodyWait(NOTE)).toBe('merging')
+
+      // #when the start settles that this install does not sync
+      markSyncIneligible()
+      await getCrdtProvider().settleUnwiredEditorDocs()
+
+      // #then the editor binds the file body
+      expect(getCrdtProvider().remoteBodyWait(NOTE)).toBeNull()
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(ORIGINAL)
+      expect(h.broadcasts).toContainEqual({
+        channel: CRDT_EVENTS.DOC_LOADED,
+        payload: { noteId: NOTE }
+      })
+    })
+
+    it('seeds at once when the start already settled that this install does not sync', async () => {
+      putNoteInVault(ORIGINAL)
+      markSyncIneligible()
+
+      const doc = await openRestoredTab()
+
+      expect(getCrdtProvider().remoteBodyWait(NOTE)).toBeNull()
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(ORIGINAL)
+    })
+
+    it('leaves the seed to the editor open when a handshake creates the doc', async () => {
+      // #given a note with a server body, and a launch with no store
+      await serveNoteWithPeerEdit()
+      markSyncEligible()
+      await getCrdtProvider().initPersistence()
+      _resetCrdtIpcHandlersForTests()
+      registerCrdtIpcHandlers()
+
+      // #when the editor's handshake creates the doc (a reset dropped the one it opened)
+      await invokeHandler(CRDT_CHANNELS.SYNC_STEP_1, {
+        noteId: NOTE,
+        stateVector: Y.encodeStateVector(new Y.Doc())
+      })
+
+      // #then nothing is seeded beside the server body
+      expect(getCrdtProvider().getDoc(NOTE)?.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+
+      // #when the editor opens it once the runtime runs
+      const { provider, coordinator } = await startRuntime()
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+        coordinator.pullCrdtForNote(id)
+      )
+
+      // #then it shows the server body, once
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(1)
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        EXPECTED_BODY
+      )
+    })
+
+    it('keeps waiting read-only when the start fails before it wires the merge', async () => {
+      // #given a note with a server body, and a tab restored while the start runs
+      await serveNoteWithPeerEdit()
+      markSyncEligible()
+      const doc = await openRestoredTab()
+
+      // #when the start ends without wiring its merge (a vault key it cannot read)
+      await getCrdtProvider().settleUnwiredEditorDocs()
+
+      // #then the doc stays unseeded, and the editor shows the file read-only
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+      expect(getCrdtProvider().remoteBodyWait(NOTE)).toBe('stuck')
+      expect(h.broadcasts).toContainEqual({
+        channel: CRDT_EVENTS.DOC_WAIT,
+        payload: { noteId: NOTE, wait: 'stuck' }
+      })
+
+      // #when the next start begins, before it wires the merge
+      getCrdtProvider().clearSyncStartFailure()
+
+      // #then the editor waits for that start, not on the earlier failure
+      expect(getCrdtProvider().remoteBodyWait(NOTE)).toBe('merging')
+
+      // #when that start wires the merge
+      const { provider } = await startRuntime()
+      await provider.resumeWaitingEditorDocs()
+
+      // #then the editor binds the server body, once
+      expect(provider.remoteBodyWait(NOTE)).toBeNull()
+      expect(countTexts(doc.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')).toBe(1)
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        EXPECTED_BODY
+      )
+    })
+  })
+
+  describe('a forked or replaced root the write-back keeps out of the file', () => {
+    const KEPT = 'Write-back kept the file'
+    const KINDS = [
+      { kind: 'note', id: NOTE, relative: NOTE_PATH },
+      { kind: 'journal', id: 'j2026-01-01', relative: 'journal/2026-01-01.md' }
+    ]
+
+    function putInVault(id: string, relative: string, body: string): string {
+      const file = `---\nid: ${id}\ntitle: Trip\n---\n${body}`
+      h.files.set(`/vault/${relative}`, file)
+      h.row = {
+        id,
+        path: relative,
+        title: 'Trip',
+        fileType: 'markdown',
+        localOnly: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-01T00:00:00.000Z',
+        contentHash: generateContentHash(file)
+      }
+      return file
+    }
+
+    async function settledFile(id: string, relative: string): Promise<string | undefined> {
+      await vi.waitFor(() => expect(hasPendingWriteback(id)).toBe(false), { timeout: 5000 })
+      return h.files.get(`/vault/${relative}`)
+    }
+
+    /** `edit` made on a copy of `doc`, as the update that carries it. */
+    function editOf(doc: Y.Doc, edit: (copy: Y.Doc) => void): Uint8Array {
+      const copy = new Y.Doc()
+      Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc))
+      const before = Y.encodeStateVector(copy)
+      edit(copy)
+      return Y.encodeStateAsUpdate(copy, before)
+    }
+
+    /** The one empty block BlockNote keeps in a body with no text. */
+    function emptyBlock(id: string): Y.XmlElement {
+      const block = new Y.XmlElement('blockContainer')
+      block.setAttribute('id', id)
+      block.insert(0, [new Y.XmlElement('paragraph')])
+      return block
+    }
+
+    /** A store that holds the body the file holds, as a launch with a store loads it. */
+    async function openStoredDoc(id: string, relative: string): Promise<Y.Doc> {
+      const store = fakeStore() as { storeUpdate: (id: string, u: Uint8Array) => Promise<void> }
+      h.persistence = store
+      h.server = { snapshot: null, updates: [] }
+      const persisted = new Y.Doc()
+      await markdownToYFragment(ORIGINAL, persisted.getXmlFragment(CRDT_FRAGMENT_NAME), relative)
+      await store.storeUpdate(id, Y.encodeStateAsUpdate(persisted))
+      const { provider } = await startRuntime({ store: true })
+      return provider.open(id, EDITOR_WINDOW)
+    }
+
+    it('keeps the file while the body holds two roots, and logs it once', async () => {
+      // #given an editor showing the server body, written to the file
+      await serveNoteWithPeerEdit()
+      const { provider, coordinator } = await startRuntime()
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+        coordinator.pullCrdtForNote(id)
+      )
+      const file = await settledFile(NOTE, NOTE_PATH)
+      expect(file).toContain('Tent packed.')
+
+      // #when a body seeded elsewhere from the file merges beside it, and a peer edit follows
+      const fork = new Y.Doc()
+      fork.clientID = 1
+      await markdownToYFragment('Forked copy.', fork.getXmlFragment(CRDT_FRAGMENT_NAME), NOTE_PATH)
+      provider.applyRemoteUpdate(NOTE, Y.encodeStateAsUpdate(fork))
+      expect(await settledFile(NOTE, NOTE_PATH)).toBe(file)
+      provider.applyRemoteUpdate(
+        NOTE,
+        editOf(doc, (copy) => {
+          const text = findText(copy.getXmlFragment(CRDT_FRAGMENT_NAME), 'Tent packed.')
+          text.insert(text.length, ' Map printed.')
+        })
+      )
+
+      // #then the file keeps the body it held, and one error names the note
+      expect(await settledFile(NOTE, NOTE_PATH)).toBe(file)
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(2)
+      expect(h.errors.filter((e) => e.message.startsWith(KEPT))).toEqual([
+        {
+          message: expect.stringContaining('more than one root'),
+          meta: {
+            noteId: NOTE,
+            liveRoots: 2,
+            bodyWords: expect.any(Number),
+            fileWords: expect.any(Number)
+          }
+        }
+      ])
+    })
+
+    it.each(KINDS)(
+      'keeps a $kind file that a fresh, empty root would empty',
+      async ({ id, relative }) => {
+        // #given a launch with a store that holds the body the file holds
+        const file = putInVault(id, relative, ORIGINAL)
+        const doc = await openStoredDoc(id, relative)
+        const provider = getCrdtProvider()
+
+        // #when a peer deletes the root, and the editor makes a fresh, empty one
+        provider.applyRemoteUpdate(
+          id,
+          editOf(doc, (copy) => copy.getXmlFragment(CRDT_FRAGMENT_NAME).delete(0, 1))
+        )
+        provider.applyIpcUpdate(
+          id,
+          editOf(doc, (copy) => {
+            const root = new Y.XmlElement('blockGroup')
+            root.insert(0, [emptyBlock('fresh')])
+            copy.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [root])
+          }),
+          EDITOR_WINDOW
+        )
+
+        // #then the file keeps its body, and the error names the note
+        expect(await settledFile(id, relative)).toBe(file)
+        expect(h.errors.filter((e) => e.message.startsWith(KEPT))).toEqual([
+          {
+            message: expect.stringContaining('empty body'),
+            meta: { noteId: id, liveRoots: 1, bodyWords: 0, fileWords: expect.any(Number) }
+          }
+        ])
+      }
+    )
+
+    it.each(KINDS)(
+      'writes the empty body of a $kind the user cleared',
+      async ({ id, relative }) => {
+        // #given a launch with a store that holds the body the file holds
+        putInVault(id, relative, ORIGINAL)
+        const doc = await openStoredDoc(id, relative)
+
+        // #when the user deletes every block, keeping the note's root
+        getCrdtProvider().applyIpcUpdate(
+          id,
+          editOf(doc, (copy) => {
+            const root = copy.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlElement
+            root.delete(0, root.length)
+            root.insert(0, [emptyBlock('cleared')])
+          }),
+          EDITOR_WINDOW
+        )
+
+        // #then the file holds the empty body
+        const written = await settledFile(id, relative)
+        expect(parseNote(written ?? '', relative).content.trim()).toBe('')
+        expect(h.errors.filter((e) => e.message.startsWith(KEPT))).toEqual([])
+      }
+    )
   })
 })

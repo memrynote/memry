@@ -405,10 +405,17 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
   if (activeRuntime) return activeRuntime.engine
   if (startPromise) return startPromise
 
-  startPromise = (async () => {
+  // Captured now: a start that fails destroys the provider it started with.
+  const startProvider = getCrdtProvider()
+  const started = (async () => {
     let pendingRuntime: SyncRuntimeState | null = null
 
     try {
+      // A verdict an earlier start reached is stale until this one decides:
+      // with no CRDT store, an editor open seeds only after an ineligible one,
+      // and reports a failed start only once this one fails.
+      resetSyncDecision()
+      startProvider.clearSyncStartFailure()
       // The three branches below are policy, not failure: the services stay
       // null for the whole session on purpose, so a local mutation raised on
       // such an install is not a lost edit and must not report itself as one.
@@ -928,6 +935,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
       setActiveRuntime(pendingRuntime)
 
+      // With no store, editor docs opened before the merge was wired wait
+      // unseeded for it.
+      void crdtProvider.resumeWaitingEditorDocs().catch((err: unknown) => {
+        log.warn('Merging the editor docs that waited for the sync runtime failed', err)
+      })
       await engine.start()
       log.info('Sync runtime started')
       // A revoked device is refused on every upload, so the re-drive stays idle (#3414).
@@ -1063,8 +1075,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       startPromise = null
     }
   })()
+  startPromise = started
+  // An editor doc opened with no store waits for this start (`openForEditor`).
+  void started
+    .then((engine) => (engine ? undefined : startProvider.settleUnwiredEditorDocs()))
+    .catch((err: unknown) => {
+      log.warn('Settling the editor docs that waited for the sync runtime failed', err)
+    })
 
-  return startPromise
+  return started
 }
 
 export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise<void> {

@@ -189,6 +189,8 @@ const runtimeMocks = vi.hoisted(() => {
       setOweRemoteMerge: vi.fn(),
       setRemoteMerge: vi.fn(),
       setRemoteBodyQuery: vi.fn(),
+      resumeWaitingEditorDocs: vi.fn(async () => {}),
+      clearSyncStartFailure: vi.fn(),
       setSyncPaused: vi.fn(),
       setNetworkOnline: vi.fn(),
       seedExistingDocs: vi.fn(),

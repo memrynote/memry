@@ -944,6 +944,11 @@ async function openVault(vaultPath: string): Promise<void> {
   // would put that content into the user's account.
   if (isSandboxPath(vaultPath)) {
     markSyncIneligible()
+    // With no CRDT store, an editor that opened before this verdict waits
+    // unseeded for it.
+    void getCrdtProvider()
+      .settleUnwiredEditorDocs()
+      .catch((error: unknown) => logger.warn('Seeding the waiting editor docs failed:', error))
     return
   }
   void startSyncRuntime().catch((error: unknown) => {
