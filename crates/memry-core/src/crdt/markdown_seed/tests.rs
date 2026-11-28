@@ -226,18 +226,19 @@ fn a_refused_token_stays_text_and_an_undecided_one_keeps_its_line() {
 }
 
 #[test]
-fn a_token_in_a_link_address_or_an_image_keeps_its_line() {
-    for markdown in [
-        format!("[a]({LINK})"),
-        format!("![{DATE}](https://a.com/i.png)"),
-    ] {
-        let plan = plan(&markdown);
-        assert_eq!(plan.fallbacks.len(), 1, "{markdown}");
-        assert_eq!(plan.fallbacks[0].lines, [markdown.as_str()]);
-        // The literal line's token is still promoted: a fallback never shows
-        // a payload.
-        assert_eq!(tokens_in(&plan.blocks[0].content).len(), 1, "{markdown}");
-    }
+fn a_token_in_a_link_address_or_an_image_is_its_bytes() {
+    let link = plan(&format!("[a]({LINK})"));
+    assert!(link.fallbacks.is_empty(), "{:?}", link.fallbacks);
+    assert!(matches!(
+        &link.blocks[0].content[0],
+        SeedInline::Text { marks, .. } if marks.link.as_deref() == Some(LINK)
+    ));
+    let image = plan(&format!("![{DATE}](https://a.com/i.png)"));
+    assert!(image.fallbacks.is_empty(), "{:?}", image.fallbacks);
+    assert!(matches!(
+        &image.blocks[0].kind,
+        SeedKind::Image { name, .. } if name == DATE
+    ));
 }
 
 #[test]
