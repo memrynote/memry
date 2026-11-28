@@ -120,6 +120,29 @@ struct NotePageDrop: ViewModifier {
     }
 }
 
+/// The page's drop on the keyboard toolbar, which floats over the page in
+/// the keyboard's window: on an iPad mini it covers the lines nearest the
+/// keys, and a note held there reached no drop at all.
+final class ToolbarNoteDrop: NSObject, UIDropInteractionDelegate {
+    private weak var session: EditorSession?
+
+    init(session: EditorSession) {
+        self.session = session
+    }
+
+    func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool {
+        session.hasItemsConforming(toTypeIdentifiers: [UTType.memryNote.identifier])
+    }
+
+    func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal {
+        UIDropProposal(operation: .copy)
+    }
+
+    func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
+        _ = self.session?.dropNotesOnPage(session.items.map(\.itemProvider))
+    }
+}
+
 extension BlockField: UITextDropDelegate, UIDropInteractionDelegate {
     /// The text view's own drop, which notes and Safari's pictures reach,
     /// and a second one for files it refuses.

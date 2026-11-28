@@ -335,6 +335,8 @@ final class EditorSession {
     // MARK: Input views
 
     @ObservationIgnored lazy var accessory: AccessoryStrip = floatingAccessory(EditorKeyboardToolbar(session: self))
+    /// Held here: an interaction holds its delegate weakly.
+    @ObservationIgnored private lazy var toolbarDrop = ToolbarNoteDrop(session: self)
     @ObservationIgnored private lazy var panelView: UIInputView = host(EditorPanelView(session: self), height: keyboardHeight)
 
     private func host<Content: View>(_ content: Content, height: CGFloat?) -> UIInputView {
@@ -386,6 +388,7 @@ final class EditorSession {
         view.backgroundColor = .clear
         view.translatesAutoresizingMaskIntoConstraints = false
         let accessory = AccessoryStrip(toolbar: view)
+        accessory.addInteraction(UIDropInteraction(delegate: toolbarDrop))
         strip = accessory
         return accessory
     }
