@@ -261,6 +261,32 @@ final class NotesSplitUITests: XCTestCase {
             matches(NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}"), block),
             "the drop left no link: \(block.value as? String ?? "")"
         )
+        assertUndoTakesBackTheLink(block)
+        deleteNotes([source, target])
+    }
+
+    /// The whole page takes a dropped note, not only the line under the
+    /// finger: a drop beside the lines links at the caret.
+    func testANoteDroppedBesideTheLinesLinksAtTheCaret() throws {
+        try openNotes()
+        let target = "[agent] \(run) beside"
+        let source = "[agent] \(run) page"
+        makeNote(target)
+        let block = makeNote(source)
+        // The page's margin, level with the line and clear of its text view.
+        let margin = block.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: -10, dy: 0))
+        row(target).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+            forDuration: 1,
+            thenDragTo: margin,
+            withVelocity: .slow,
+            thenHoldForDuration: 1
+        )
+        attach("dropped-beside-the-lines")
+        XCTAssertTrue(
+            matches(NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}"), block),
+            "a drop beside the lines left no link: \(block.value as? String ?? "")"
+        )
+        assertUndoTakesBackTheLink(block)
         deleteNotes([source, target])
     }
 
@@ -819,6 +845,17 @@ final class NotesSplitUITests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// ⌘Z takes a dropped link back out of `block`.
+    private func assertUndoTakesBackTheLink(_ block: XCUIElement, line: UInt = #line) {
+        app.primeCommandKeys()
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(
+            matches(NSPredicate(format: "NOT (value CONTAINS %@)", "\u{FFFC}"), block),
+            "⌘Z left the dropped link: \(block.value as? String ?? "")",
+            line: line
+        )
+    }
 
     private var inspectorToggle: XCUIElement { app.buttons["note.inspector.toggle"].firstMatch }
 
