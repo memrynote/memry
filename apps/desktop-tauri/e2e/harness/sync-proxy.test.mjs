@@ -73,6 +73,28 @@ describe('sync proxy', () => {
     assert.equal(proxy.countStatus(429, '/limited'), 2)
   })
 
+  it('answers a matching request with the overriding status and JSON body', async () => {
+    proxy.injectFault({
+      match: (method, path) => method === 'POST' && path === '/billing',
+      status: 409,
+      body: { error: { code: 'VALIDATION_ERROR', message: 'no customer' } },
+      maxHits: 1
+    })
+    const hitsBefore = upstreamHits.length
+
+    const response = await fetch(`${proxy.url}/billing`, { method: 'POST', body: '{}' })
+
+    assert.equal(response.status, 409)
+    assert.equal(response.headers.get('content-type'), 'application/json')
+    assert.deepEqual(await response.json(), {
+      error: { code: 'VALIDATION_ERROR', message: 'no customer' }
+    })
+    assert.equal(upstreamHits.length, hitsBefore)
+    const [record] = proxy.requests({ pathPrefix: '/billing' })
+    assert.equal(record.overridden, true)
+    assert.equal(record.status, 409)
+  })
+
   it('drops the connection mid-body and records the severed response', async () => {
     proxy.injectFault({ match: (_m, path) => path === '/cut', afterBytes: 10, maxHits: 1 })
 
