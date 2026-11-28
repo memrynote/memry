@@ -251,7 +251,8 @@ vi.mock('../sync/crdt-provider', () => ({
     initPersistence: mocks.initCrdtPersistence,
     awaitPendingInit: async () => {},
     hasPersistence: () => false,
-    readOnlyStore: () => null
+    readOnlyStore: () => null,
+    settleUnwiredEditorDocs: async () => {}
   })
 }))
 

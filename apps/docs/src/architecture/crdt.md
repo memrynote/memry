@@ -401,6 +401,31 @@ server holds nothing, ends the wait, and the editor binds. A reconnect retries
 the merge of every waiting editor document (`resumeWaitingEditorDocs`), which
 is how any other note the server never saw seeds after an offline open.
 
+A launch restores its tabs while the sync runtime still starts, so an editor
+open can arrive before the runtime wires its merge (`setRemoteMerge`). In
+in-memory mode that open waits as well, with `merging` (#2536). Nothing is known
+yet of the server body, and a seed from the vault file at that point lands
+beside the server body that the first pull merges later. The editor then
+deletes one of the two roots, and which one survives depends on Yjs client-id
+order: typing was lost, or the next launch with a store wrote an empty file and
+orphaned the note's comments. The runtime ends the wait when its start ends.
+A start that wires the merge merges every waiting document before its first
+full sync (`resumeWaitingEditorDocs`), and the rules above decide the seed. A
+start that settles that this install does not sync seeds them from the file
+(`settleUnwiredEditorDocs`). That covers no session, an unconfirmed recovery
+phrase, no paid plan, a vault held for another account, and the sandbox vault.
+A start that fails, for example on a vault key it cannot read or an account it
+cannot reach, leaves them waiting with `stuck`. The editor then shows the file
+read-only until a later start wires the merge. Each start first clears the
+previous start's verdict (`resetSyncDecision`) and failure
+(`clearSyncStartFailure`). A stale verdict never seeds, and an editor that
+opens during a retry start waits for it instead of reporting the earlier
+failure.
+With no store, only `crdt:open-doc` seeds an editor's document. The handshake
+opens it without a seed, and a main-process open of a closed note (a seeded
+push, a search portal) goes through `openWithBody`, which merges first. With a
+store none of this applies: the store holds the body.
+
 The CRDT pull (`applyCrdtIncrementals` and `applyCrdtBatch`) seeds a note from its
 vault file only when the server answered with no snapshot and no updates for
 it, the pass merged cleanly, and the document is still open and empty. When
@@ -759,7 +784,9 @@ that can open a doc attributes it to the sender window — `crdt:open-doc` and t
 creates the doc: `crdt:open-doc` may have been skipped or failed, or a provider reset
 during a vault switch may have dropped the entry in between. A doc opened without a window
 would count as inactive while an editor was typing into it, and an update that arrives
-after its entry is gone is dropped rather than applied.
+after its entry is gone is dropped rather than applied. With no store the handshake opens
+the doc without a seed. The rebind's `crdt:open-doc` merges the server body first, and the
+renderer's own doc reaches main through the handshake's second step.
 
 The same rule governs the provider's own short-lived opens. The batched snapshot push, the
 full-state read and vault seeding each open a doc for themselves and close it when done,
@@ -1231,6 +1258,18 @@ document to its vault `.md` file and re-indexes it for search.
   final-newline handling saves none. The record is dropped when the note is purged or the
   vault closes. A failed save never blocks the write. Versions are pruned to the newest 50
   per note.
+- **A pass never writes a forked body** (`crdt-root-guard.ts`, #2536). A BlockNote body is
+  one root `blockGroup`. A pass keeps the file and logs an error in two cases: the doc holds
+  more than one live root, or the pass would write an empty body over a file with text and
+  the doc's root is new. The serializer writes only the first root, so a forked doc would
+  drop the other root's text. A new root is one the doc held neither when it was opened and
+  ready (loaded, seeded, or merged after a wait) nor at this module's last write. An editor
+  given a fresh, empty root after the note's root was deleted would otherwise empty the
+  file. A user who clears a note keeps its root, and the body replace keeps it too
+  (`replaceKeepingUnchangedBlocks`), so those writes go ahead. The error names the note,
+  its live root count and both word counts. It is logged once per note and root state.
+  Nothing is repaired: the file stays as it is until a doc with one root writes it.
+  Journals follow the same rule.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
