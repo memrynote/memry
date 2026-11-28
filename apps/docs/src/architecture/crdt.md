@@ -275,7 +275,9 @@ fail cleanly — it throws outside the promise chain or hangs its callbacks — 
 the probe captures both. If the probe fails, the provider degrades to
 **in-memory mode**: notes still load from vault markdown and write back to
 disk, and the editor keeps working; only CRDT history persistence across
-restarts is lost for that session. A mid-session load failure for a single doc
+restarts is lost for that session. A probe that only timed out keeps waiting,
+and the session switches to the store if it answers
+([A store that answers late](#a-store-that-answers-late)). A mid-session load failure for a single doc
 falls back to seeding from the vault file instead of blocking the note from
 opening.
 
@@ -625,12 +627,86 @@ before loading it), whether the store path is plain ASCII, and on a
 directory, which shows how far its open got. The local log line also carries
 the tail of LevelDB's own `LOG` from that directory, paths stripped.
 
-There is deliberately no bounded retry of a failed store open within a session.
+There is deliberately no bounded retry of a failed preflight within a session.
 The failure it guards against is a native abort in the binding, which in the
 field is deterministic per machine rather than transient, and every retry costs
 a multi-second child process on the launch path. The one transient-shaped cause
 — a utility process that cannot boot — already gets its retry on the
 Chromium-free transport inside a single open.
+
+### A store that answers late
+
+A probe that times out is different. The preflight passed, so the binding
+loads and the store opens; the disk was only slow. A Windows user's probe timed
+out twice at 15 seconds on launches where the vault watcher alone took 22
+seconds, and each of those sessions then ran in memory to its end.
+
+So a probe that times out keeps running in the background
+(`LateCrdtStore` in `crdt-persistence.ts`), on the same LevelDB handle, while
+the session starts in memory. No second handle opens on the directory while the
+first one holds its lock. When the round trip fails in-band after the timeout,
+for example on a lock another handle holds, the handle is closed and a new one
+retries after 15 seconds, then 1 minute, then 4 minutes. A round trip that
+never settles ends the wait ten minutes after the open, and a vault close, a
+vault switch, a sign-out and a quit cancel it and close its handle before the
+provider is gone. A give-up logs `CRDT store did not answer; the session stays
+in memory`. A failed preflight, and a probe that fails before its timeout, are
+never retried.
+
+When the store answers, the provider switches the live session to it without a
+restart (`CrdtProvider.adoptLateStore`). Every note the session holds a doc of,
+open or closed since the open, takes these steps in order:
+
+1. Its whole state is written into the store and read back. A write the read
+   lacks fails the switch, since y-leveldb resolves a store call that failed.
+2. The store's state is applied to the live doc. The doc then holds what an
+   open with the store would have loaded, beside what the session wrote. The
+   editors get the change like any update. The server is not owed it again, and
+   it adds no snapshot debt, because a load from the store owes neither.
+3. Once every doc took 1 and 2, the store is attached in one synchronous step.
+   That step also stores what each doc took after its write, while nothing
+   stored its updates.
+
+Until step 3 the session runs in memory exactly as before, and nothing else
+writes to the store. Opens and closes in flight finish before step 3, and a doc
+opened or closed meanwhile takes steps 1 and 2 too, so no doc is ever attached
+without its write. The log then says `CRDT store opened late; the session now
+persists`, with the time since the open.
+
+A doc this session seeded from the vault file shares no Yjs items with the
+store's copy of the same body. Merging the two would show the body twice
+(#2536). So when the live body is not empty, the store holds state, and no Yjs
+client wrote to both, step 1 clears the store's copy first, and the session's
+doc becomes the note's history. The session showed that doc and wrote it to
+the file. What the cleared copy held beyond the file it was seeded from (an
+edit stored right before a crash that the file never got) is lost. The note ids
+are listed in the switch's log line. A doc that merged the server's body shares
+that body's clients with the store, and merges.
+
+What the in-memory session left behind takes its store-mode meaning:
+
+- A doc closed before the switch is the last state its file was written from.
+  The provider keeps it until the switch stores it, so the file's baseline
+  names bytes the store holds, and the next open reads the doc from the store.
+- A note purged before the switch is cleared from the store at the switch.
+- A doc that still waits for its server body (`awaitingMerge`) ends its wait
+  when the store held a body for it, and its editors bind (`crdt:doc-loaded`).
+  A doc the store held nothing for keeps waiting. An open never seeds it,
+  and the wait ends as it does with no store (`resumeWaitingEditorDocs`).
+- The store's identity (`storeId`) changes from none to a new id, which drops
+  the sweep's in-memory watermarks. The store epoch is reconciled before the
+  switch. The compactions a detached provider owed are read at the switch when
+  the sync runtime is wired, or once it is.
+- The consecutive-in-memory-launch streak resets, because this launch has a
+  store. `crdt:get-health` reads the live provider and reports it persistent.
+- Snapshot claims (`unvouchedNotes`) keep their meaning: a doc seeded or
+  created in memory still claims nothing until a whole-body pull merges.
+  Owed file bodies stay in their durable table, and the store-mode pull takes
+  them. Change-feed bodies the session owed as pulls stay owed.
+
+The test hook `MEMRY_TEST_CRDT_PROBE_DELAY_MS`, honoured only under
+`NODE_ENV=test`, holds every probe round trip for that long. The end-to-end
+test `crdt-store-late-open.e2e.ts` uses it to reproduce the slow store.
 
 ## Why the Main Process Owns Y.Docs
 
