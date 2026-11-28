@@ -447,11 +447,14 @@ class TickRuns {
   private readonly ends: number[] = []
   /** The runs of each width, as indexes into `starts`. */
   private readonly byWidth = new Map<number, number[]>()
+  // Assigned in the body, not as parameter properties: Node's type stripping
+  // (the CLI, and scripts that import this file) rejects those.
+  private readonly line: string
+  private readonly legacy: boolean
 
-  constructor(
-    private readonly line: string,
-    private readonly legacy = false
-  ) {
+  constructor(line: string, legacy = false) {
+    this.line = line
+    this.legacy = legacy
     for (
       let at = line.indexOf('`');
       at !== -1;
