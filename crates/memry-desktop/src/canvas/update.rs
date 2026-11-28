@@ -9,6 +9,7 @@ use memry_core::domain::canvas::{
 };
 use rusqlite::Connection;
 
+use super::assets;
 use super::files::{self, FileRow};
 use super::scene_file::{
     CanvasDocument, Expect, ReadError, allocate_canvas_path, folder_of_canvas_path,
@@ -30,6 +31,13 @@ impl CanvasService {
         let outcome = self.write::<_, CanvasError>(|conn| {
             let Some(canvas) = canvas::get(conn, id)? else {
                 return Ok(Update::NotFound);
+            };
+            // `injectSceneAssetSidecar` (`canvas-handlers.ts:139`); an empty save stays empty.
+            let scene = match (&scene, input.scene.as_deref()) {
+                (Some(scene), Some(sent)) if !sent.is_empty() => {
+                    Some(assets::with_sidecar(conn, id, scene)?)
+                }
+                _ => scene.clone(),
             };
             if input
                 .expected_updated_at

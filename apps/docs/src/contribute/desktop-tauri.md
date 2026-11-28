@@ -49,7 +49,7 @@ Each line reads `YYYY-MM-DD HH:MM:SS.mmm [level] [scope] text` in local time. `m
 A command is a Rust function that the renderer calls with a generated, typed function.
 
 1. Write the function in `apps/desktop-tauri/src-tauri/src/commands/<domain>.rs` with `#[tauri::command]` and `#[specta::specta]`. Name it `<domain>_<verb>` and return `Result<T, CommandError>`.
-2. Add its path to `src-tauri/src/registry.rs` under the domain's comment.
+2. Add its path to its area's `src-tauri/src/registry/<area>.rs`.
 3. Run `pnpm ipc:generate`. It rewrites `src/generated/bindings.ts`. `pnpm ipc:check` fails in CI when you forget.
 4. Call `commands.<domainVerb>()` from the renderer. A failure throws the `CommandError`, and `extractErrorMessage` shows its message.
 

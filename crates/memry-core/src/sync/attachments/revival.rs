@@ -23,7 +23,7 @@ use rusqlite::{Connection, params};
 
 use super::holds::{AttachmentChunks, HoldOutcome};
 use super::plan::{ChangePlan, FileRecord, NoteAttachments};
-use super::queue::{VaultFiles, absolute};
+use super::queue::VaultFiles;
 use super::server::AttachmentServer;
 use super::store::{files, upload_queue};
 use super::transfer::now_ms;
@@ -188,7 +188,7 @@ fn reupload(
 
     let queue = nested_tx::begin(conn).map_err(failed)?;
     for file in &plan.reupload {
-        upload_queue::enqueue(&queue, &note.id, &absolute(vault, file), now)?;
+        upload_queue::enqueue(&queue, &note.id, file, now)?;
     }
     queue.commit().map_err(failed)?;
     // Each drop commits with its note outbox row; a crash before the last one

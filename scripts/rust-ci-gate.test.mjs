@@ -276,12 +276,13 @@ describe('Rust CI gate', () => {
       assert.equal(partitionsFilter[2], 'all')
       assert.equal(archivesFilter[2], 'partitions')
       const legsJq = join(repo, '.github/actions/ci-tier/rust-legs.jq')
-      for (const [full, postMerge, event, win, mac] of [
-        ['false', 'false', 'pull_request', 'none', 'none'],
-        ['false', 'false', 'pull_request', 'tests', 'tests'],
-        ['true', 'false', 'merge_group', 'none', 'none'],
-        ['true', 'false', 'pull_request', 'none', 'none'],
-        ['false', 'true', 'schedule', 'none', 'none']
+      for (const [full, postMerge, event, win, mac, base] of [
+        ['false', 'false', 'pull_request', 'none', 'none', 'feat/tauri-v2'],
+        ['false', 'false', 'pull_request', 'tests', 'tests', 'feat/tauri-v2'],
+        ['true', 'false', 'merge_group', 'none', 'none', ''],
+        ['true', 'false', 'pull_request', 'none', 'none', 'main'],
+        ['true', 'false', 'pull_request', 'none', 'none', 'feat/tauri-v2'],
+        ['false', 'true', 'schedule', 'none', 'none', '']
       ]) {
         const all = JSON.parse(
           spawnSync(
@@ -309,6 +310,9 @@ describe('Rust CI gate', () => {
               '--arg',
               'event',
               event,
+              '--arg',
+              'base',
+              base,
               '-f',
               legsJq
             ],
@@ -318,7 +322,7 @@ describe('Rust CI gate', () => {
         const legs = jq(legsFilter[1], all)
         const parts = jq(partitionsFilter[1], all)
         const archives = jq(archivesFilter[1], parts)
-        const where = `${event} full=${full}`
+        const where = `${event} full=${full} base=${base}`
         assert.equal(legs.length + parts.length, all.length, where)
         assert.ok(parts.length > 0, where)
         assert.ok(
@@ -327,19 +331,25 @@ describe('Rust CI gate', () => {
         )
         for (const p of parts)
           assert.deepEqual(Object.keys(p).toSorted(), ['os', 'part', 'partition', 'tests'], where)
-        // Every OS with partitions has all six of them and one archive; macOS runs its suite whole.
-        // jq's `unique` orders by code point.
+        // Every OS with partitions has all of them (six; four for macos-15) and one archive. macos-15
+        // splits its suite only on a PR into a base other than main; every other macOS leg runs it
+        // whole. jq's `unique` orders by code point.
         const oses = [...new Set(parts.map((p) => p.os))].toSorted((a, b) => (a < b ? -1 : 1))
         assert.deepEqual(
           archives,
           oses.map((os) => ({ os })),
           where
         )
+        const splitMac =
+          event === 'pull_request' && base !== 'main' && (full === 'true' || mac === 'tests')
+        assert.equal(oses.includes('macos-15'), splitMac, where)
+        assert.ok(!legs.some((l) => l.os === 'macos-15' && l.tests) || !splitMac, where)
         for (const os of oses) {
-          assert.ok(!os.startsWith('macos'), where)
+          assert.ok(!os.startsWith('macos') || os === 'macos-15', where)
+          const n = os === 'macos-15' ? 4 : 6
           assert.deepEqual(
             parts.filter((p) => p.os === os).map((p) => p.partition),
-            ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6'],
+            Array.from({ length: n }, (_, i) => `${i + 1}/${n}`),
             `${where} ${os}`
           )
         }
@@ -355,7 +365,7 @@ describe('Rust CI gate', () => {
       jobs.indexOf('\n  test-archive:\n')
     )
     const legs = readFileSync(join(repo, '.github/actions/ci-tier/rust-legs.jq'), 'utf8')
-    const groups = ['lint', 'seams', 'tests', 'perf', 'models']
+    const groups = ['lint', 'seams', 'budget', 'tests', 'perf', 'models']
     for (const group of groups) assert.match(legs, new RegExp(`\\b${group}: true\\b`), group)
     for (const [, cond] of lintAndTest.matchAll(/^ {8}if: (.*)$/gm)) {
       for (const [, field] of cond.matchAll(/matrix\.([a-z]+)/g))

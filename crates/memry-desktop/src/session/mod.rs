@@ -42,7 +42,7 @@ use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 
 pub use headless::{HeadlessOpen, open_headless};
-pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
+pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage, VaultMigrator};
 use hooks::{Hooks, run_with_deadline};
 pub(crate) use open::prepare_core_dir;
 use projection::{ProjectionRuntime, Projector};
@@ -319,6 +319,15 @@ impl Session {
     /// The `Vault` is dropped only after all of them returned or overran.
     pub fn on_close(&self, name: &str, hook: CloseHook) {
         lock(&self.inner.hooks).close.push((name.to_owned(), hook));
+    }
+
+    /// Runs before every open creates `.memry/core` ([`VaultMigrator`]).
+    pub fn set_vault_migrator(&self, migrate: VaultMigrator) {
+        lock(&self.inner.hooks).migrate = Some(migrate);
+    }
+
+    fn vault_migrator(&self) -> Option<VaultMigrator> {
+        lock(&self.inner.hooks).migrate.clone()
     }
 
     /// [`Self::on_open`] and [`Self::on_close`] for a service that starts after the vault may

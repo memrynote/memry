@@ -64,7 +64,7 @@ pub fn open_headless(path: &Path) -> Result<HeadlessOpen, SessionError> {
             Beside::OverElectron => return Ok(HeadlessOpen::OverElectron),
         }
     }
-    let core = prepare_core_dir(path)?;
+    let core = prepare_core_dir(path, None)?;
     let vault = match Vault::open_with(
         core.to_string_lossy().into_owned(),
         OpenOptions {
@@ -74,7 +74,9 @@ pub fn open_headless(path: &Path) -> Result<HeadlessOpen, SessionError> {
         Err(StorageError::Corrupt { .. }) => return Ok(HeadlessOpen::Damaged),
         opened => opened?,
     };
-    record_origin(path, &vault);
+    if let Err(error) = record_origin(path, &vault) {
+        tracing::error!(%error, "the vault's origin was not recorded; the next open tries again");
+    }
     Ok(HeadlessOpen::Opened(vault))
 }
 

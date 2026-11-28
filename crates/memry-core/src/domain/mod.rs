@@ -62,6 +62,7 @@ pub mod note_meta;
 pub mod note_positions;
 #[cfg(feature = "markdown")]
 pub mod note_properties;
+pub mod note_pulled_marks;
 pub mod note_snapshots;
 #[cfg(feature = "markdown")]
 pub mod note_stats;

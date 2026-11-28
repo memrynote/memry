@@ -53,7 +53,7 @@ fn pull_note(f: &Fixture, id: &str, deleted_at: Option<i64>) {
             Ok(())
         })
         .unwrap();
-    f.pass.mark_pulled(id, None);
+    f.vault.note_files().mark_pulled(id, None).unwrap();
 }
 
 /// Red before #5766: the write-back placed the `notes` row's record and moved the day's file to
