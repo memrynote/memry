@@ -38,6 +38,19 @@ const cases: Array<[string, () => unknown]> = [
     'the escaper reads a delimiter row',
     () => escapeMarkdownText([{ type: 'text', text: delimiter(50_000), styles: {} }], 'paragraph')
   ],
+  // Each tag a mark boundary cuts is found once, and each run is split once.
+  [
+    'many runs, each cutting a tag',
+    () =>
+      escapeMarkdownText(
+        Array.from({ length: 20_000 }, (_, index) => ({
+          type: 'text',
+          text: index % 2 === 0 ? '<x a="' : '">',
+          styles: index % 4 === 0 ? { bold: true } : {}
+        })),
+        'paragraph'
+      )
+  ],
   ['table widening reads a delimiter row', () => widenTables(`| a |\n${delimiter(50_000)}\n| b |`)],
   [
     'a bold run edged by a long run of tabs',

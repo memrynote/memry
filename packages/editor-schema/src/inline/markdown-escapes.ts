@@ -303,10 +303,87 @@ function escapeSegment(
   return out
 }
 
+const sameStyles = (a: Item, b: Item): boolean => {
+  const left = Object.entries(a.styles ?? {})
+  const right = b.styles ?? {}
+  return (
+    left.length === Object.keys(right).length && left.every(([key, value]) => right[key] === value)
+  )
+}
+
+/**
+ * The runs of `group`, side by side, with the marks taken off the characters of
+ * each tag that a boundary between two of them cuts through. The reader hides a
+ * whole tag and keeps what is inside it as text, so the delimiters the writer
+ * would put inside one (`<x a="**\***">`) became characters of the tag. What
+ * is outside the tag keeps its marks, and the pieces left side by side with the
+ * same marks are one run again, so each tag is whole in a run.
+ */
+function unmarkGroup<T extends Item>(group: T[]): T[] {
+  const starts: number[] = []
+  let plain = ''
+  for (const item of group) {
+    starts.push(plain.length)
+    plain += item.text ?? ''
+  }
+  if (!plain.includes('<')) return group
+  // The run each character of `plain` is in.
+  const owner = new Uint32Array(plain.length)
+  starts.forEach((start, index) => owner.fill(index, start, starts[index + 1] ?? plain.length))
+  const cut = spelledTags(plain).filter(
+    ({ start, end }) => end - start > 1 && owner[start] !== owner[end - 1]
+  )
+  if (cut.length === 0) return group
+  const stripped = new Uint8Array(plain.length)
+  for (const { start, end } of cut) stripped.fill(1, start, end)
+  const out: T[] = []
+  group.forEach((item, index) => {
+    const text = item.text ?? ''
+    for (let from = 0; from < text.length;) {
+      const unmarked = stripped[starts[index] + from] === 1
+      let to = from + 1
+      while (to < text.length && (stripped[starts[index] + to] === 1) === unmarked) to++
+      const piece = { ...item, text: text.slice(from, to), ...(unmarked ? { styles: {} } : {}) }
+      const last = out.at(-1)
+      if (last && sameStyles(last, piece))
+        out[out.length - 1] = { ...last, text: (last.text ?? '') + piece.text }
+      else out.push(piece)
+      from = to
+    }
+  })
+  return out
+}
+
+/**
+ * `items` with the marks off the characters of each tag a mark boundary cuts
+ * through, in runs of text side by side (`unmarkGroup`). A link, a node or an
+ * empty run ends a group.
+ */
+function unmarkCutTags<T extends Item>(items: T[]): T[] {
+  const out: T[] = []
+  let group: T[] = []
+  const flush = (): void => {
+    out.push(...unmarkGroup(group))
+    group = []
+  }
+  for (const item of items) {
+    if (item.type === 'text' && typeof item.text === 'string' && item.text !== '') {
+      group.push(item)
+      continue
+    }
+    flush()
+    // SAFETY: only `content` is replaced, with items of the same shape.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SAFETY above
+    out.push(isLink(item) ? ({ ...item, content: unmarkCutTags(item.content) } as T) : item)
+  }
+  flush()
+  return out
+}
+
 /** `items` of a block of type `blockType` (none for a table cell), escaped for the markdown writer. */
 export function escapeMarkdownText<T extends Item>(list: T[], blockType?: string): T[] {
   if (blockType !== undefined && LITERAL_BLOCKS.has(blockType)) return list
-  const items = codeBreaksApart(list)
+  const items = unmarkCutTags(codeBreaksApart(list))
   const cell = blockType === undefined
   const place: Place = {
     lineBlock: !cell && LINE_BLOCKS.has(blockType),
