@@ -11,11 +11,9 @@
 
 use std::sync::{Arc, Mutex};
 
-use memry_core::sync::attachments::queue::absolute;
 use memry_core::sync::attachments::store::upload_queue;
 use memry_core::sync::attachments::upload::MAX_ATTACHMENT_SIZE;
 use memry_desktop::sync::attachments::AttachmentSync;
-use memry_desktop::sync::attachments::vault_files::DesktopVaultFiles;
 use memry_desktop::sync::error_category::SyncErrorCategory;
 use memry_desktop::sync::events::{OnSyncEvent, SyncEvent};
 
@@ -104,7 +102,7 @@ async fn a_failed_download_tells_its_note_and_where_it_was_going() {
 /// Queues `REL` for upload on `a` and starts its drivers, telling `told`.
 async fn queue_and_start(a: &Device) -> (AttachmentSync, Told, String) {
     create_note(a, "note-1").await;
-    let queued = absolute(&DesktopVaultFiles::new(a.vault.clone()), REL);
+    let queued = REL.to_owned();
     let row = queued.clone();
     a.db.call(move |conn| upload_queue::enqueue(conn, "note-1", &row, 2))
         .await

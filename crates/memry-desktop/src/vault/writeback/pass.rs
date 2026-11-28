@@ -21,8 +21,7 @@ use super::journal::{Dated, dated_block, set_date};
 use super::place::{Found, Patch, header_tags_of, moves, owed_aliases, patch};
 use crate::attachments;
 use crate::locks::Locks;
-use crate::sync::attachments::place_linked_downloads;
-use crate::sync::attachments::vault_files::DesktopVaultFiles;
+use crate::sync::attachments::place_after_write;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
@@ -365,21 +364,7 @@ impl Pass {
         // An attachment rename the body carries moves the file on this device too (#1714).
         attachments::reconcile_renames(&self.root, &self.vault, note_id, &file.raw, &output);
         // A download that landed before this body moves where the body links it.
-        let (files, owner) = (
-            DesktopVaultFiles::new(self.root.clone()),
-            note_id.to_owned(),
-        );
-        let placed = self
-            .vault
-            .db_handle()
-            .call_blocking(move |conn| place_linked_downloads(conn, &files, &owner, now_ms()));
-        if let Err(error) = placed {
-            tracing::warn!(
-                scope = "vault_writeback",
-                note_id,
-                "placing linked downloads failed: {error}"
-            );
-        }
+        place_after_write(&self.root, &self.vault.db_handle(), note_id);
         // A body grown past the class (typed, merged) makes the note a large file: the editor
         // stops taking edits, as Electron's write-back degrades the note. Recorded before the
         // row, so a row write that fails leaves no large file the editor still takes edits of.

@@ -17,12 +17,15 @@ use std::io::{self, Read};
 use std::path::Path;
 
 use memry_core::api::errors::StorageError;
+use memry_core::storage::Db;
 use memry_core::sync::attachments::backfill::embedded_files;
 use memry_core::sync::attachments::queue::VaultFiles;
 use memry_core::sync::attachments::store::{files, upload_queue};
 use rusqlite::{Connection, OptionalExtension, params};
 
+use super::vault_files::DesktopVaultFiles;
 use crate::attachments::reconcile_downloaded_name;
+use crate::vault::consumer::rows::now_ms;
 use crate::vault::file_types::file_type_of_extension;
 use crate::vault::fs_atomic::rename_no_replace;
 
@@ -79,6 +82,24 @@ pub(crate) fn place_linked_downloads(
         }
     }
     Ok(())
+}
+
+/// [`place_linked_downloads`] for the write-back pass that just wrote `note_id`'s body under
+/// `root`. A failure is logged and leaves the files where they landed.
+pub(crate) fn place_after_write(root: &Path, db: &Db, note_id: &str) {
+    let (files, owner) = (
+        DesktopVaultFiles::new(root.to_path_buf()),
+        note_id.to_owned(),
+    );
+    let placed =
+        db.call_blocking(move |conn| place_linked_downloads(conn, &files, &owner, now_ms()));
+    if let Err(error) = placed {
+        tracing::warn!(
+            scope = "vault_writeback",
+            note_id,
+            "placing linked downloads failed: {error}"
+        );
+    }
 }
 
 /// Moves the file `rel` to its [`linked_path`], answering where it went. A failed move is logged
