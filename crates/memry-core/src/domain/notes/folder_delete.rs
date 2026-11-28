@@ -23,6 +23,7 @@ use crate::api::errors::StorageError;
 use crate::domain::{folders, note_files, note_positions};
 use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
+use crate::sync::attachments::release::record_deleted_note;
 use crate::sync::outbox;
 
 const PREFIX: &str = "notes.folder_delete.v1:";
@@ -145,6 +146,7 @@ pub fn deleted_by_app(
     for note_id in note_ids {
         // Before the row goes: the outbox reads off it whether the note is local-only.
         outbox::enqueue(&tx, &outbox::Change::delete(ITEM_TYPE, note_id), now_ms)?;
+        record_deleted_note(&tx, note_id, now_ms)?;
         tombstone_local(&tx, ITEM_TYPE, note_id, device_id, now_ms)?;
         note_files::remove_in(&tx, note_id)?;
     }

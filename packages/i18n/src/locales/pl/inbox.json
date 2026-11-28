@@ -579,7 +579,10 @@
       "journalOff": "Dziennik jest wyłączony w Ustawieniach.",
       "sendFailed": "Nie udało się wysłać karteczki.",
       "undoExpired": "Na cofnięcie jest już za późno.",
-      "undoFailed": "Nie udało się cofnąć wysyłki."
+      "undoFailed": "Nie udało się cofnąć wysyłki.",
+      "journalBusy": "Dzisiejszy wpis w dzienniku wciąż się zapisuje. Spróbuj ponownie za chwilę.",
+      "folderExcluded": "Folder Sticky jest wykluczony. Usuń go z wykluczonych folderów w Ustawieniach, aby wysyłać notatki.",
+      "projectMissing": "Projekt tego zadania nie istnieje. Wybierz domyślny projekt w Ustawieniach albo wyślij to jako notatkę."
     },
     "inputLabel": "Tekst karteczki",
     "dismissError": "Zamknij"

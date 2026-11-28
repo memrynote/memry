@@ -12,7 +12,13 @@ const commands = vi.hoisted(() => ({
   canvasRevealInFinder: vi.fn(),
   canvasOpenExternal: vi.fn(),
   canvasLibraryList: vi.fn(),
-  canvasLibrarySave: vi.fn()
+  canvasLibrarySave: vi.fn(),
+  canvasUploadAsset: vi.fn(),
+  canvasCanUploadAsset: vi.fn(),
+  canvasGetAsset: vi.fn(),
+  canvasListAssets: vi.fn(),
+  canvasLiveOpened: vi.fn(),
+  canvasLiveClosed: vi.fn()
 }))
 const listen = vi.hoisted(() => ({
   created: vi.fn(),
@@ -140,12 +146,41 @@ describe('canvas-service', () => {
     expect(commands.canvasLibrarySave).toHaveBeenCalledWith({ libraryItems: [{ id: 'l1' }] })
   })
 
-  it('leaves the live and asset calls on window.api.canvas', async () => {
-    const liveOpened = vi.fn().mockResolvedValue({ ok: true })
-    win.api = { ...originalApi, canvas: { liveOpened } }
+  it('reaches every asset and live call through its command, never window.api', async () => {
+    win.api = { ...originalApi, canvas: {} }
+    commands.canvasCanUploadAsset.mockResolvedValue({ canUpload: false })
+    commands.canvasGetAsset.mockResolvedValue({ ref: null })
+    commands.canvasListAssets.mockResolvedValue({ assets: [] })
+    commands.canvasLiveOpened.mockResolvedValue({ ok: true })
+    commands.canvasLiveClosed.mockResolvedValue({ ok: true })
+    const uploaded = { ref: 'memry-file://local/a.png', descriptor: {}, deduped: true }
+    commands.canvasUploadAsset.mockResolvedValue(uploaded)
 
+    await expect(canvasService.canUploadAsset()).resolves.toEqual({ canUpload: false })
+    await expect(canvasService.getAsset('c1', 'f1')).resolves.toEqual({ ref: null })
+    await expect(canvasService.listAssets('c1')).resolves.toEqual({ assets: [] })
     await expect(canvasService.liveOpened('c1')).resolves.toEqual({ ok: true })
-    expect(liveOpened).toHaveBeenCalledWith('c1')
+    await expect(canvasService.liveClosed('c1')).resolves.toEqual({ ok: true })
+    await expect(
+      canvasService.uploadAsset({
+        canvasId: 'c1',
+        fileId: 'f1',
+        mimeType: 'image/png',
+        data: new Uint8Array([1, 2, 3]).buffer
+      })
+    ).resolves.toEqual(uploaded)
+
+    expect(commands.canvasGetAsset).toHaveBeenCalledWith('c1', 'f1')
+    expect(commands.canvasListAssets).toHaveBeenCalledWith('c1')
+    expect(commands.canvasLiveOpened).toHaveBeenCalledWith('c1')
+    expect(commands.canvasLiveClosed).toHaveBeenCalledWith('c1')
+    // Electron's invoke shape: the bytes as a number array.
+    expect(commands.canvasUploadAsset).toHaveBeenCalledWith({
+      canvasId: 'c1',
+      fileId: 'f1',
+      mimeType: 'image/png',
+      data: [1, 2, 3]
+    })
   })
 
   it('delivers the canvas events of main and stops on unsubscribe', async () => {

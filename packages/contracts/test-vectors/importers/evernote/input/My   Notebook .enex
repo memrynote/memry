@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">
+<en-export export-date="20231015T143022Z" application="Evernote" version="10.0">
+  <note>
+    <title>Sample &amp; Evernote &#233; Note</title>
+    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note style="x">
+  <div>Hello from <b>Evernote</b>!</div>
+  <div><en-todo checked="true"/>Finished <b>task</b></div>
+  <div><en-todo checked="false"/>Pending task<br/>after break</div>
+  <en-todo checked="TRUE"/>Upper case is unchecked</p>
+  <en-media hash="f829b914fc47cfc9c0747c119c27cf1b" type="image/png"/>
+  <en-media type="application/pdf" hash="4f0836835329a50292f613450623a93d" />
+  <en-media hash="00000000000000000000000000000000" type="image/jpeg"/>
+  <en-media type="image/png"/>
+  <a href="https://evernote.com">site</a>
+</en-note>
+]]></content>
+    <created>20231015T143022Z</created>
+    <updated> 20231016T080000Z </updated>
+    <tag>work</tag>
+    <tag> two words </tag>
+    <tag x="1">attr tag</tag>
+    <resource><data encoding="base64">
+   iVBORw0KGgoAAAANSUhE
+   UgAAAAEAAAABCAYAAAAf
+   FcSJAAAADUlEQVR42mNk
+   +M9QDwADhgGAWjR9awAA
+   AABJRU5ErkJggg==
+</data><mime>image/png</mime><resource-attributes><file-name>photo.png</file-name></resource-attributes></resource>
+    <resource><data encoding="base64">
+   JVBERi0xLjQgZXZlcm5v
+   dGUK
+</data><mime>application/pdf</mime></resource>
+    <resource><data encoding="base64">
+   dW51c2Vk
+</data><mime>text/plain</mime><resource-attributes><file-name>unused.txt</file-name></resource-attributes></resource>
+  </note>
+  <note>
+    <title a="1">Attr title</title>
+    <content>&lt;en-note&gt;&lt;p&gt;Escaped &amp;amp; ENML&lt;/p&gt;&lt;/en-note&gt;</content>
+    <created>2023-10-15</created>
+  </note>
+  <note><title/><content><![CDATA[<en-note><ul><li>a<ul><li>b</li></ul></li></ul><table><tr><td>c</td></tr></table></en-note>]]></content><!-- c --></note>
+  <note><title>Dup resource</title><content><![CDATA[<en-note><en-media hash="f829b914fc47cfc9c0747c119c27cf1b" type="image/svg+xml"/></en-note>]]></content><resource><data encoding="base64">
+   iVBORw0KGgoAAAANSUhE
+   UgAAAAEAAAABCAYAAAAf
+   FcSJAAAADUlEQVR42mNk
+   +M9QDwADhgGAWjR9awAA
+   AABJRU5ErkJggg==
+</data><mime>image/png</mime><resource-attributes><file-name>first.png</file-name></resource-attributes></resource><resource><data encoding="base64">
+   iVBORw0KGgoAAAANSUhE
+   UgAAAAEAAAABCAYAAAAf
+   FcSJAAAADUlEQVR42mNk
+   +M9QDwADhgGAWjR9awAA
+   AABJRU5ErkJggg==
+</data><mime>image/png;x=1</mime></resource></note>
+</en-export>

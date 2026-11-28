@@ -37,6 +37,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use super::files::{self, FileRow};
+use super::reconcile::now_ms;
 use super::scene_file::{
     CanvasDocument, Expect, ReadError, WriteError, allocate_canvas_path, folder_of_canvas_path,
     list_canvas_files, portable_canvas_folder, read_canvas_file, resolve_canvas_file,
@@ -229,11 +230,20 @@ impl CanvasService {
     }
 
     /// One live canvas with the scene of its document and the sha256 of the bytes read
-    /// (`getCanvas`). Writes nothing: the reader sends that sha256 back with its save.
+    /// (`getCanvas`), settled with its record first. The read itself stamps nothing: the reader
+    /// sends that sha256 back with its save.
     pub fn get(&self, id: &str) -> Result<Option<CanvasView>, CanvasError> {
-        self.write::<_, CanvasError>(|conn| {
+        let now_ms = now_ms();
+        let view = self.write::<_, CanvasError>(|conn| {
             let Some(canvas) = canvas::get(conn, id)? else {
                 return Ok(None);
+            };
+            // An edit made on disk reaches the record before the document is served as read.
+            let found = self.locate(conn, id)?;
+            let settled = self.settle_in(conn, &canvas, found, now_ms)?;
+            let canvas = match settled.scene_changed() {
+                true => canvas::get(conn, id)?.unwrap_or(canvas),
+                false => canvas,
             };
             let (scene, sha256, unreadable) = match self.locate(conn, id)? {
                 Found::File { document, .. } => {
@@ -248,13 +258,22 @@ impl CanvasService {
                 }
                 Found::None => (canvas.scene.clone(), None, None),
             };
-            Ok(Some(CanvasView {
+            let view = CanvasView {
                 summary: summary(canvas),
                 scene,
                 sha256,
                 unreadable,
-            }))
-        })
+            };
+            Ok(Some((view, settled)))
+        })?;
+        let Some((view, settled)) = view else {
+            return Ok(None);
+        };
+        if settled.scene_changed() {
+            self.rewrite_edges(id, &view.scene)?;
+        }
+        self.index_settled_copy(&settled)?;
+        Ok(Some(view))
     }
 
     /// `createCanvas`: the document at a path named for the title, then the record.
@@ -312,15 +331,12 @@ impl CanvasService {
             now_ms,
         )
         .inspect_err(|_| self.discard(&path, &sha256))?;
-        files::put(
-            conn,
-            &id,
-            &FileRow {
-                path,
-                sha256: sha256.clone(),
-            },
-            now_ms,
-        )?;
+        let row = FileRow {
+            path,
+            sha256: sha256.clone(),
+            record_sha256: Some(files::scene_sha256(&saved.canvas.scene)),
+        };
+        files::put(conn, &id, &row, now_ms)?;
         Ok(written(
             saved.canvas,
             strip_file_meta(&text),
@@ -388,15 +404,12 @@ impl CanvasService {
                 self.discard(&path, &sha256);
                 return Ok(None);
             };
-            files::put(
-                conn,
-                &copy_id,
-                &FileRow {
-                    path,
-                    sha256: sha256.clone(),
-                },
-                now_ms,
-            )?;
+            let row = FileRow {
+                path,
+                sha256: sha256.clone(),
+                record_sha256: Some(files::scene_sha256(&saved.canvas.scene)),
+            };
+            files::put(conn, &copy_id, &row, now_ms)?;
             Ok(Some(written(
                 saved.canvas,
                 strip_file_meta(&text),

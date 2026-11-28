@@ -26,7 +26,7 @@ pub enum InboxJobType {
 }
 
 impl InboxJobType {
-    const ALL: [Self; 3] = [
+    pub(crate) const ALL: [Self; 3] = [
         Self::MetadataScrape,
         Self::ArticleExtract,
         Self::Transcription,
@@ -185,10 +185,16 @@ pub fn enqueue(
     })
 }
 
-/// The earliest pending job due at `now_ms`, marked `running` with one more
-/// attempt and a new `run_id` (`processInboxJob`); `None` when nothing is due.
-pub fn claim_next(conn: &Connection, now_ms: i64) -> Result<Option<InboxJob>, StorageError> {
-    let known = known_types();
+/// The earliest pending job of `job_types` due at `now_ms`, marked `running`
+/// with one more attempt and a new `run_id` (`processInboxJob`); `None` when
+/// nothing is due. A runner names only the types it processes, so a job of
+/// another type waits for its own owner.
+pub fn claim_next(
+    conn: &Connection,
+    now_ms: i64,
+    job_types: &[InboxJobType],
+) -> Result<Option<InboxJob>, StorageError> {
+    let known = type_list(job_types);
     let id: Option<String> = conn
         .query_row(
             &format!(
@@ -364,10 +370,13 @@ pub fn resume(conn: &Connection, now_ms: i64) -> Result<InboxJobsResumed, Storag
     })
 }
 
-/// When the next pending job is due, for the runner's sleep; `None` when
-/// nothing is pending.
-pub fn next_due(conn: &Connection) -> Result<Option<i64>, StorageError> {
-    let known = known_types();
+/// When the next pending job of `job_types` is due, for the runner's sleep;
+/// `None` when none is pending.
+pub fn next_due(
+    conn: &Connection,
+    job_types: &[InboxJobType],
+) -> Result<Option<i64>, StorageError> {
+    let known = type_list(job_types);
     conn.query_row(
         &format!(
             "SELECT min(next_run_at) FROM inbox_jobs
@@ -379,8 +388,12 @@ pub fn next_due(conn: &Connection) -> Result<Option<i64>, StorageError> {
     .map_err(failed)
 }
 
-fn known_types() -> String {
-    InboxJobType::ALL
+/// `job_types` as an SQL list; `NULL` for none, which matches no row.
+fn type_list(job_types: &[InboxJobType]) -> String {
+    if job_types.is_empty() {
+        return "NULL".to_owned();
+    }
+    job_types
         .iter()
         .map(|kind| format!("'{}'", kind.as_str()))
         .collect::<Vec<_>>()

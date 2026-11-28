@@ -1,5 +1,9 @@
 //! MemryNote desktop shell. `run()` owns the boot sequence; domain steps register startup work
-//! with `startup::register` and commands in `registry.rs`.
+//! with `startup::register` in their own `register_stages`, chained here, and commands in
+//! `registry/<area>.rs`.
+
+// `registry::areas!` expands two macro levels per area (`registry.rs`), past the default 128.
+#![recursion_limit = "256"]
 
 pub mod autostart;
 pub mod badge;
@@ -14,12 +18,14 @@ pub mod fonts;
 pub mod guards;
 pub mod instance;
 pub mod menu;
+pub mod migration;
 pub mod ml_worker;
 pub mod notifications;
 pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
+pub mod reminders;
 pub mod shell;
 pub mod shortcuts;
 pub mod shutdown;
@@ -70,28 +76,23 @@ pub fn set_app_user_model_id() {
 }
 
 /// Registers the boot work of the shell: paths, logging, events, the vault session and the
-/// window.
-fn register_stages() {
+/// window. Public for the boot-order test in `tests/startup.rs`: it links every stage, so it
+/// cannot run as a lib unit test on Windows (`build.rs`, Common Controls v6).
+pub fn register_stages() {
     startup::register(Stage::Paths, "resolve app paths", resolve_paths);
     startup::register(Stage::Logging, "init logging", init_logging);
     guards::register_stages();
     shell::services::register_stages();
-    startup::register(
-        Stage::Protocols,
-        "loopback server",
-        shell::loopback::start_server,
-    );
+    shell::loopback::register_stages();
+    migration::register_stages();
     commands::unsplash::register_stages();
     commands::attachment_sources::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
-    startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
-    startup::register(
-        Stage::Handlers,
-        "import grants",
-        commands::notes_import::init,
-    );
+    shell::drop_stage::register_stages();
+    commands::notes_import::register_stages();
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
+    shell::inbox_review::register_stages();
     shell::readwise::register_stages();
     // After account sync: the agent's close hook must run before the at-rest key's.
     shell::agent::register_stages();
@@ -108,6 +109,7 @@ fn register_stages() {
     spell::register_stages();
     updater::register_stages();
     commands::ocr_languages::register_stages();
+    windows::pdf_print::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
     // After the window exists: Windows subclasses its handle.
     power::register_stages();

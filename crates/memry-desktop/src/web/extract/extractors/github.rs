@@ -346,7 +346,7 @@ impl Extractor for GitHubExtractor {
             String::new()
         } else {
             let temp = cx.doc.create_element("div");
-            let fragment = cx.doc.parse_fragment(&content_html);
+            let fragment = cx.doc.parse_fragment(&content_html)?;
             cx.doc.append_child(temp, fragment)?;
             description_cut(trim(&text_of(cx.doc, temp)))
         };

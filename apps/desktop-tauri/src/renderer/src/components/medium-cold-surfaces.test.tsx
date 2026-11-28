@@ -175,12 +175,14 @@ vi.mock('@/components/note/note-title/HugeIconGrid', () => ({
 const linking = vi.hoisted(() => ({}) as Record<string, ReturnType<typeof vi.fn>>)
 vi.mock('@/services/linking-service', () => ({ linkingService: linking }))
 
+const reminderEvents = vi.hoisted(() => ({ onReminderDue: vi.fn(), onReminderClicked: vi.fn() }))
+vi.mock('@/services/reminder-service', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  ...reminderEvents
+}))
+
 function installWindowApi(overrides: Partial<typeof window.api> = {}) {
-  ;(window as Window & { api: unknown }).api = {
-    onReminderDue: vi.fn(),
-    onReminderClicked: vi.fn(),
-    ...overrides
-  }
+  ;(window as Window & { api: unknown }).api = { ...overrides }
 }
 
 describe('medium cold renderer surfaces', () => {
@@ -344,11 +346,11 @@ describe('medium cold renderer surfaces', () => {
     const unsubClicked = vi.fn()
     const dueCallbacks: Array<(event: unknown) => void> = []
     const clickCallbacks: Array<(event: unknown) => void> = []
-    window.api.onReminderDue = vi.fn((callback) => {
+    reminderEvents.onReminderDue.mockImplementation((callback: (event: unknown) => void) => {
       dueCallbacks.push(callback)
       return unsubDue
     })
-    window.api.onReminderClicked = vi.fn((callback) => {
+    reminderEvents.onReminderClicked.mockImplementation((callback: (event: unknown) => void) => {
       clickCallbacks.push(callback)
       return unsubClicked
     })

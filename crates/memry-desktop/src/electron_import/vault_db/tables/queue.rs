@@ -38,7 +38,7 @@ const QUEUE: &str = "sync_queue";
 const TOMBSTONES: &str = "sync_tombstone_clocks";
 
 /// Notes and journals share `note_metadata`, so a queued note may be a journal day now.
-const NOTE_TYPES: [&str; 2] = ["note", "journal"];
+pub(super) const NOTE_TYPES: [&str; 2] = ["note", "journal"];
 
 /// `sync_tombstone_clocks`: copied, merged per id. Electron files notes and journals under one
 /// `note` family; the core reads each type's own row, so a `note` row is written for both.
@@ -156,6 +156,14 @@ pub fn sync_queue(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
             stats.written += item.rows;
         } else {
             *dropped.entry("localOnlyQueueRows").or_default() += item.rows;
+        }
+    }
+    // Body pushes (36c4): one outbox row per `note_body` row, never collapsed.
+    let pushes = crate::electron_import::vault_db::docs::queued_body_pushes(ctx.source, ctx.docs)?;
+    for was_queued in ctx.writer.put_body_pushes(&pushes)? {
+        match was_queued {
+            true => stats.written += 1,
+            false => *dropped.entry("localOnlyBodyRows").or_default() += 1,
         }
     }
     stats.dropped = dropped.into_iter().collect();
@@ -307,6 +315,7 @@ fn dispose(
             item_id: item.item_id.clone(),
             op,
             tombstone,
+            minted: None,
             enqueued_at: item.enqueued_at,
         })
     };
@@ -321,7 +330,7 @@ fn dispose(
         }
         // A staged row of another type becomes the tombstone.
         (Folded::Delete { rowid, payload, at }, _) => {
-            let (payload, clock) = delete_body(&item.item_id, payload, *rowid, device_id)?;
+            let (payload, clock) = delete_body(&item.item_id, payload, QUEUE, *rowid, device_id)?;
             queued(
                 item.item_type.clone(),
                 RecordOp::Delete,
@@ -343,26 +352,23 @@ fn dispose(
 /// The body and clock a frozen delete is pushed with, as Electron's `ensureRequiredClock`
 /// (`sync/engine/push-coordinator.ts`) sends it: a body that is no JSON object is rebuilt as
 /// `{id, clock}`, and one without a clock the core push could send is stamped `{deviceId: 1}`.
-fn delete_body(
+pub(super) fn delete_body(
     item_id: &str,
     payload: &str,
+    table: &'static str,
     rowid: i64,
     device_id: Option<&str>,
 ) -> Result<(String, VectorClock), ImportError> {
     if payload.len() > MAX_DELETE_PAYLOAD_BYTES {
-        return Err(malformed(QUEUE, rowid, "a delete payload is over 8 MiB"));
+        return Err(malformed(table, rowid, "a delete payload is over 8 MiB"));
     }
     let mut body = match serde_json::from_str::<Value>(payload) {
         Ok(Value::Object(body)) => body,
         _ => Map::from_iter([("id".to_owned(), Value::from(item_id))]),
     };
     if let Some(clock @ Value::Object(_)) = body.get("clock") {
-        let clock = vector_clock(clock.clone(), QUEUE, rowid)?;
-        // The core push drops `_offline: 0` and sends no clock for an empty one (§6.6).
-        if clock
-            .iter()
-            .any(|(device, ticks)| device != OFFLINE_CLOCK_DEVICE_ID || *ticks > 0)
-        {
+        let clock = vector_clock(clock.clone(), table, rowid)?;
+        if usable(&clock) {
             return Ok((payload.to_owned(), clock));
         }
     }
@@ -372,13 +378,25 @@ fn delete_body(
     Ok((Value::Object(body).to_string(), clock))
 }
 
-fn vector_clock(clock: Value, table: &'static str, rowid: i64) -> Result<VectorClock, ImportError> {
+/// Whether the core push sends `clock`: it drops `_offline: 0` and sends no clock for an empty
+/// one (§6.6), and it retires a record or delete without one.
+pub fn usable(clock: &VectorClock) -> bool {
+    clock
+        .iter()
+        .any(|(device, ticks)| device != OFFLINE_CLOCK_DEVICE_ID || *ticks > 0)
+}
+
+pub(super) fn vector_clock(
+    clock: Value,
+    table: &'static str,
+    rowid: i64,
+) -> Result<VectorClock, ImportError> {
     serde_json::from_value(clock)
         .map_err(|_| malformed(table, rowid, "clock is not a vector clock"))
 }
 
 /// A drizzle `mode: 'timestamp'` column: epoch seconds, as ms.
-fn seconds_ms(
+pub(crate) fn seconds_ms(
     row: &rusqlite::Row<'_>,
     column: &str,
     table: &'static str,

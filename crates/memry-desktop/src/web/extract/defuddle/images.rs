@@ -48,7 +48,7 @@ pub(super) fn resolve_noscript_images(
             if !html.contains("<img") {
                 continue;
             }
-            let fragment = doc.parse_fragment(&html);
+            let fragment = doc.parse_fragment(&html)?;
             noscript_img = doc.query_selector(fragment, "img")?;
         }
         let Some(noscript_img) = noscript_img else {

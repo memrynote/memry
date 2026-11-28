@@ -104,7 +104,7 @@ pub fn run_defuddle(
     fetcher: &dyn Fetcher,
 ) -> Result<DefuddleResponse, ExtractError> {
     let page_url = if url.is_empty() { "about:blank" } else { url };
-    Defuddle::new(dom::Document::parse_html(html), page_url).parse_async(fetcher)
+    Defuddle::new(dom::Document::parse_html(html)?, page_url).parse_async(fetcher)
 }
 
 /// `extractFromHtml(html, url, { now })` of `packages/article-extract/src/node.ts`, with the
@@ -116,7 +116,7 @@ pub fn try_extract_article(
     fetcher: &dyn Fetcher,
 ) -> Result<ArticleCapture, ExtractError> {
     let mut response = run_defuddle(html, url, fetcher)?;
-    response.content = markdown::create_markdown_content(&response.content);
+    response.content = markdown::create_markdown_content(&response.content)?;
     Ok(to_article_capture(&response.to_map_input(), url, now))
 }
 

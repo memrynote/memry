@@ -232,7 +232,7 @@ impl Conversation for ChatGptExtractor {
             }
             let mut content = parts.join("\n").replace('\u{200B}', "");
             let temp = cx.doc.create_element("div");
-            let fragment = cx.doc.parse_fragment(&content);
+            let fragment = cx.doc.parse_fragment(&content)?;
             cx.doc.append_child(temp, fragment)?;
             for el in cx.doc.query_selector_all(temp, SR_HEADINGS)? {
                 cx.doc.remove(el);
@@ -250,7 +250,7 @@ impl Conversation for ChatGptExtractor {
             replaced.push_str(&content[last..]);
 
             let cleanup = cx.doc.create_element("div");
-            let fragment = cx.doc.parse_fragment(&replaced);
+            let fragment = cx.doc.parse_fragment(&replaced)?;
             cx.doc.append_child(cleanup, fragment)?;
             for el in cx
                 .doc

@@ -51,10 +51,13 @@ mod file_text;
 mod fold;
 #[cfg(feature = "markdown")]
 mod folder_view;
+mod graph;
 #[cfg(feature = "vec")]
 mod grouped;
 #[cfg(feature = "vec")]
 mod image_embeddings;
+// The command line's index open and reindex beside a running app, kept apart for the line ceiling.
+mod keeping;
 #[cfg(feature = "markdown")]
 mod objects;
 mod reindex;

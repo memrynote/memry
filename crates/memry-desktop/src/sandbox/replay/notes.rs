@@ -33,7 +33,7 @@ pub(super) fn create(
     notes: &[NewNote],
 ) -> Result<(), SandboxError> {
     let core_error = |error: &dyn std::fmt::Display| SandboxError::Core(error.to_string());
-    let core = prepare_core_dir(root).map_err(|error| core_error(&error))?;
+    let core = prepare_core_dir(root, None).map_err(|error| core_error(&error))?;
     let vault = Vault::open_with(
         core.to_string_lossy().into_owned(),
         OpenOptions {

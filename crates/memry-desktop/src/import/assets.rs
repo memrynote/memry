@@ -239,6 +239,8 @@ pub fn resolve_co_located_assets(
     let source_dir = note.note_path.parent().unwrap_or(Path::new(""));
     let real_root = roots.get(note.root);
     let mut saved: HashMap<String, (usize, String)> = HashMap::new();
+    // One save per file: `a.png`, `./a.png` and `x/../a.png` reuse the first save's markdown.
+    let mut by_real: HashMap<PathBuf, String> = HashMap::new();
 
     for (order, reference) in extract_asset_refs(note.body).into_iter().enumerate() {
         let decoded = percent_decode_ref(&reference);
@@ -250,6 +252,10 @@ pub fn resolve_co_located_assets(
         };
         if !real.starts_with(&real_root) {
             ctx.report_skipped(&reference, Some(ImportText::from(OUTSIDE_ROOT)));
+            continue;
+        }
+        if let Some(markdown) = by_real.get(&real) {
+            saved.insert(reference, (order, markdown.clone()));
             continue;
         }
         let name = file_name(&decoded);
@@ -278,7 +284,9 @@ pub fn resolve_co_located_assets(
         }
         match sink.save_attachment(note.note_id, &name, &bytes) {
             Ok(result) => {
-                saved.insert(reference, (order, attachment_markdown(&result)));
+                let markdown = attachment_markdown(&result);
+                by_real.insert(real, markdown.clone());
+                saved.insert(reference, (order, markdown));
                 ctx.report_attachment();
             }
             Err(error) => ctx.report_skipped(&name, Some(ImportText::Text(error.0))),
@@ -324,7 +332,7 @@ pub fn rewrite_asset_refs(body: &str, saved: &HashMap<String, (usize, String)>) 
 
 /// `path.resolve(dir, reference)` without touching the disk: `..` leaves the folder before any
 /// link is followed, as in Node.
-fn lexical_join(dir: &Path, reference: &str) -> PathBuf {
+pub(crate) fn lexical_join(dir: &Path, reference: &str) -> PathBuf {
     let mut out = PathBuf::new();
     for component in dir.join(reference).components() {
         match component {
@@ -339,7 +347,7 @@ fn lexical_join(dir: &Path, reference: &str) -> PathBuf {
 }
 
 /// `path.basename` of a decoded ref.
-fn file_name(reference: &str) -> String {
+pub(crate) fn file_name(reference: &str) -> String {
     let separators: &[char] = if cfg!(windows) { &['/', '\\'] } else { &['/'] };
     let trimmed = reference.trim_end_matches(separators);
     trimmed
