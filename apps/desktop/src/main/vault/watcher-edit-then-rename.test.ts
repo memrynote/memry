@@ -546,34 +546,40 @@ describe('an outside edit followed by a rename inside the change debounce', () =
   )
 
   // macOS can deliver one write's FSEvents in two batches, which chokidar
-  // reports as the file's add and then a change.
+  // reports as the file's add and then a change. Linux gives a file created
+  // this second no identity (`buildAddedFileIdentityKey`), so its change runs.
+  it.runIf(process.platform === 'darwin')(
+    'a change of a file unchanged since its add pushes nothing',
+    async () => {
+      fs.mkdirSync(path.join(vault.path, 'Pictures'))
+      await watch()
+      const [same, edited] = ['Pictures/p.png', 'Pictures/q.png'].map((relativePath) =>
+        path.join(vault.path, relativePath)
+      )
+      for (const file of [same, edited]) {
+        lostAdds.add(file)
+        lostChanges.add(file)
+        fs.writeFileSync(file, 'png-bytes')
+        changeHeard.watcher?.emit('add', file)
+      }
+      const idOf = (file: string) =>
+        index.db
+          .select()
+          .from(noteCache)
+          .all()
+          .find((row) => row.path === path.relative(vault.path, file))?.id
+      await settleOn(() => expect([same, edited].map(idOf)).not.toContain(undefined))
 
-  it('a change of a file unchanged since its add pushes nothing', async () => {
-    fs.mkdirSync(path.join(vault.path, 'Pictures'))
-    await watch()
-    const [same, edited] = ['Pictures/p.png', 'Pictures/q.png'].map((relativePath) =>
-      path.join(vault.path, relativePath)
-    )
-    for (const file of [same, edited]) {
-      lostAdds.add(file)
-      lostChanges.add(file)
-      fs.writeFileSync(file, 'png-bytes')
-      changeHeard.watcher?.emit('add', file)
-    }
-    const idOf = (file: string) =>
-      index.db
-        .select()
-        .from(noteCache)
-        .all()
-        .find((row) => row.path === path.relative(vault.path, file))?.id
-    await settleOn(() => expect([same, edited].map(idOf)).not.toContain(undefined))
+      fs.writeFileSync(edited, 'png-bytes, edited')
+      for (const file of [same, edited]) changeHeard.watcher?.emit('change', file)
+      await settleOn(() =>
+        expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith('note', idOf(edited))
+      )
 
-    fs.writeFileSync(edited, 'png-bytes, edited')
-    for (const file of [same, edited]) changeHeard.watcher?.emit('change', file)
-    await settleOn(() => expect(enqueueLocalSyncUpdate).toHaveBeenCalledWith('note', idOf(edited)))
-
-    expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', idOf(same))
-  }, 80_000)
+      expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', idOf(same))
+    },
+    80_000
+  )
 
   it.runIf(process.platform === 'darwin')(
     'an outside write while the app adds a renamed file reaches the note',
