@@ -9,7 +9,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { existsSync, statSync, type Stats } from 'fs'
+import { existsSync, lstatSync, statSync, type Stats } from 'fs'
 import { watch as chokidarWatch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -51,6 +51,7 @@ import {
   settleDeferredDeletes,
   discardDeferredDeletes,
   createDeferredDeletes,
+  forgetRenameTarget,
   type DeferredDeletes,
   buildStatRenameKey,
   buildAddedFileIdentityKey,
@@ -58,6 +59,8 @@ import {
   type RenameMatch
 } from './rename-tracker'
 import { RecentFileIdentities } from './recent-file-identities'
+import { RenameTargets } from './rename-targets'
+import { AddedFileKeys } from './added-file-keys'
 import { probeBirthtime } from './birthtime-probe'
 import {
   folderExistsExactCase,
@@ -101,6 +104,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
+import { foldNotePath } from '@memry/storage-data'
 import { holdsBinaryChange } from './case-twin-hold'
 
 const logger = createLogger('Watcher')
@@ -123,6 +127,13 @@ const MASS_REMOVAL_MIN_SHARE = 0.25
  * them. The app's own rename and delete are skipped by isAppFolderChange.
  */
 const DIR_UNLINK_SETTLE_MS = 1000
+
+/** An add that read no bytes of the file. */
+const NOTHING_READ = { readHash: null }
+
+async function contentHashOf(filePath: string): Promise<string | null> {
+  return (await scanMarkdownFile(filePath, 0))?.contentHash ?? null
+}
 
 // ============================================================================
 // Types
@@ -247,6 +258,9 @@ export class VaultWatcher {
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
   private recentIdentities = new RecentFileIdentities()
+  private renameTargets = new RenameTargets()
+  private addsInFlight = new Map<string, Promise<void>>()
+  private addedFileKeys = new AddedFileKeys()
   private rawWrites = new Set<string>()
   private rawWritesFlush: NodeJS.Immediate | null = null
 
@@ -282,49 +296,11 @@ export class VaultWatcher {
       }
     }, 100)
 
-    // Capture exclude patterns for use in ignored function
-    const userExcludePatterns = this.excludePatterns
-
     // Create watcher with chokidar
     this.watcher = chokidarWatch(watchPaths, {
       persistent: true,
 
-      // Ignore hidden files, excluded patterns, unsupported file types
-      ignored: (filePath: string, stats) => {
-        const basename = path.basename(filePath)
-
-        // Always ignore hidden files and directories
-        if (basename.startsWith('.')) return true
-
-        // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
-        const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
-        if (isInAttachmentStore(relativePath)) return true
-
-        // Check user-defined exclude patterns
-        for (const pattern of userExcludePatterns) {
-          // Exact match (e.g., 'node_modules', '.git')
-          if (basename === pattern) return true
-          // Check if file is inside an excluded directory
-          if (filePath.includes(`/${pattern}/`) || filePath.includes(`\\${pattern}\\`)) return true
-        }
-
-        // For files, only watch supported file types (md, pdf, images, audio, video)
-        if (stats?.isFile()) {
-          // Canvas documents are watched only so a removal outside the app
-          // becomes a canvas delete (#2938); the note index never takes them.
-          const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
-          // Before `ready` this is the initial walk over files that were
-          // already there; the open-time scan reports those. After it, an
-          // unsupported file is one the user just put in the vault, and
-          // ignoring it silently is what #2359 was about.
-          if (!supported && this.isReady && this.vaultPath) {
-            recordSkippedFile(path.relative(this.vaultPath, filePath), 'watcher')
-          }
-          return !supported
-        }
-
-        return false
-      },
+      ignored: (filePath: string, stats) => this.isIgnored(vaultPath, filePath, stats),
 
       // Wait for file writes to complete (100ms stability)
       awaitWriteFinish: {
@@ -351,11 +327,8 @@ export class VaultWatcher {
     // Set up event handlers
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
-      .on('change', (filePath, stats?: Stats) => {
-        this.recentIdentities.recordChange(filePath, stats)
-        this.debouncedChange?.(filePath)
-      })
-      .on('raw', (_event, eventPath, details) => this.recordRawWrite(eventPath, details))
+      .on('change', (filePath, stats?: Stats) => void this.handleRawChange(filePath, stats))
+      .on('raw', (_event, eventPath, details) => this.recordRawEvent(eventPath, details))
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
@@ -376,6 +349,43 @@ export class VaultWatcher {
         this.watcher?.once('ready', () => resolve())
       }
     })
+  }
+
+  /** Hidden files, excluded patterns, unsupported file types. */
+  private isIgnored(vaultPath: string, filePath: string, stats?: Stats): boolean {
+    const basename = path.basename(filePath)
+
+    // Always ignore hidden files and directories
+    if (basename.startsWith('.')) return true
+
+    // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+    if (isInAttachmentStore(relativePath)) return true
+
+    // Check user-defined exclude patterns
+    for (const pattern of this.excludePatterns) {
+      // Exact match (e.g., 'node_modules', '.git')
+      if (basename === pattern) return true
+      // Check if file is inside an excluded directory
+      if (filePath.includes(`/${pattern}/`) || filePath.includes(`\\${pattern}\\`)) return true
+    }
+
+    // For files, only watch supported file types (md, pdf, images, audio, video)
+    if (stats?.isFile()) {
+      // Canvas documents are watched only so a removal outside the app
+      // becomes a canvas delete (#2938); the note index never takes them.
+      const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
+      // Before `ready` this is the initial walk over files that were
+      // already there; the open-time scan reports those. After it, an
+      // unsupported file is one the user just put in the vault, and
+      // ignoring it silently is what #2359 was about.
+      if (!supported && this.isReady && this.vaultPath) {
+        recordSkippedFile(path.relative(this.vaultPath, filePath), 'watcher')
+      }
+      return !supported
+    }
+
+    return false
   }
 
   /**
@@ -404,6 +414,8 @@ export class VaultWatcher {
     this.rawWritesFlush = null
     this.rawWrites.clear()
     this.recentIdentities.clear()
+    this.renameTargets.clear()
+    this.addedFileKeys.clear()
     this.isReady = false
   }
 
@@ -413,12 +425,38 @@ export class VaultWatcher {
    * rename inside that wait gets no `change`, and its unlink needs the key
    * (#5549). One write reports several raw events, so each file is stat'ed
    * once per event-loop turn, right after the turn's fs events; a rename that
-   * beats the stat keeps the hash-only match.
+   * beats the stat keeps the hash-only match. A file's own event that names
+   * another file names the file it was renamed to (`RenameTargets`).
+   *
+   * A case-only rename on a disk that ignores case leaves the old spelling
+   * openable, so chokidar hears no unlink, and only the folder's FSEvents
+   * stream reports the new spelling, seconds late or never. When the disk now
+   * spells the file as its own event names it, the event is the unlink,
+   * which adds the file in its new spelling. chokidar's own unlink of the old
+   * spelling, if it comes, finds no row.
    */
-  private recordRawWrite(eventPath: string, details: unknown): void {
+  private recordRawEvent(eventPath: string, details: unknown): void {
     if (!this.isReady || typeof details !== 'object' || details === null) return
     const watchedPath = 'watchedPath' in details ? details.watchedPath : null
     if (typeof watchedPath !== 'string') return
+    // On a loaded machine kqueue can fold a write and the rename after it into
+    // one `change`, which names the new file all the same.
+    if (eventPath && path.basename(watchedPath) !== eventPath) {
+      const target = path.join(path.dirname(watchedPath), eventPath)
+      // The event can also fold in a write made just before the rename, which
+      // the row's hash trails: the unlink matches the file by its identity
+      // (#5549), read at its new name.
+      if (isSupportedPath(target) && this.isCaseOnlyRename(watchedPath, target)) {
+        // One directory entry holds both spellings: the file is the renamed one.
+        this.recordIdentity(target, watchedPath)
+        this.handleFileDelete(watchedPath, { renamedTo: target })
+      } else if (isSupportedPath(target) && this.renameTargets.record(watchedPath, target)) {
+        // A move to another folder names its new name here too, where an
+        // unrelated file can sit: only the file the watcher knew takes the key.
+        const stats = this.statOf(target)
+        if (stats?.isFile()) this.recentIdentities.recordRenamed(watchedPath, stats)
+      }
+    }
     // A file's own fs.watch names the file; a folder's names the child.
     const filePath =
       !eventPath || path.basename(watchedPath) === eventPath
@@ -433,10 +471,22 @@ export class VaultWatcher {
     })
   }
 
-  private recordIdentity(filePath: string): void {
+  /** Whether the disk spells `filePath` as `target`, which differs only in case. */
+  private isCaseOnlyRename(filePath: string, target: string): boolean {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return false
+    // A folder's events name its files: checked by name first, without a disk read.
+    if (foldNotePath(path.basename(filePath)) !== foldNotePath(path.basename(target))) return false
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+    const targetPath = normalizeRelativePath(path.relative(vaultPath, target))
+    return diskCaseOf(vaultPath, relativePath) === targetPath
+  }
+
+  /** Records the identity of the file at `statPath` as `filePath`'s. */
+  private recordIdentity(statPath: string, filePath = statPath): void {
     let stats: Stats | undefined
     try {
-      stats = statSync(filePath, { throwIfNoEntry: false })
+      stats = statSync(statPath, { throwIfNoEntry: false })
     } catch (error) {
       logger.debug(`No identity for ${filePath}: ${String(error)}`)
       return
@@ -670,9 +720,79 @@ export class VaultWatcher {
    * Handle new file creation.
    * Also checks if this might be a rename (matching UUID with pending delete).
    * Supports all file types: markdown, pdf, images, audio, video.
+   *
+   * A renamed file's add comes from the unlink (`addRenamedFile`) and can come
+   * from chokidar too, at once or seconds later. The second add of a path
+   * waits for the first: run together, both missed the row, and the one that
+   * lost the rename match listed the file again under a new id. An add of a
+   * file unchanged since an add read it is dropped (`AddedFileKeys`).
    */
-  private async handleFileAdd(eventPath: string): Promise<void> {
-    if (!this.vaultPath) return
+  private handleFileAdd(eventPath: string, renamedFile = false): Promise<void> {
+    const prior = this.addsInFlight.get(eventPath)
+    const add = async (): Promise<void> => {
+      const stats = this.statOf(eventPath)
+      if (!renamedFile && (await this.repeatsAdd(eventPath, stats))) return
+      // A failed add leaves no key, so chokidar's add of the file retries it.
+      this.addedFileKeys.forget(eventPath)
+      const added = await this.addFile(eventPath)
+      if (added && stats) this.addedFileKeys.record(eventPath, stats, added.readHash)
+    }
+    const run = prior ? prior.then(add, add) : add()
+    this.addsInFlight.set(eventPath, run)
+    const settled = (): void => {
+      if (this.addsInFlight.get(eventPath) === run) this.addsInFlight.delete(eventPath)
+    }
+    void run.then(settled, settled)
+    return run
+  }
+
+  /**
+   * Whether the event is an add's own, of a file unchanged since the add read
+   * it. The index lost an add whose row is gone, and a re-add restores it.
+   */
+  private async repeatsAdd(filePath: string, stats: Stats | null): Promise<boolean> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return false
+    try {
+      if (!(await this.addedFileKeys.unchanged(filePath, stats, contentHashOf))) return false
+    } catch (error) {
+      // A file another process holds (EBUSY, EPERM) cannot be hashed: the
+      // event runs, and its own read reports what it finds.
+      logger.warn('Could not tell an event from its add; running it', { path: filePath, error })
+      return false
+    }
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+    try {
+      return !!getNoteCacheByPath(getIndexDatabase(), relativePath)
+    } catch (error) {
+      // The event runs, and the add or change reports the index's failure.
+      logger.debug(`No index row check for ${filePath}: ${String(error)}`)
+      return false
+    }
+  }
+
+  private async handleRawChange(filePath: string, stats: Stats | undefined): Promise<void> {
+    if (await this.repeatsAdd(filePath, this.statOf(filePath))) return
+    this.addedFileKeys.forget(filePath)
+    this.recentIdentities.recordChange(filePath, stats)
+    this.debouncedChange?.(filePath)
+  }
+
+  private statOf(filePath: string): Stats | null {
+    try {
+      return lstatSync(filePath, { throwIfNoEntry: false }) ?? null
+    } catch (error) {
+      logger.debug(`No identity for ${filePath}: ${String(error)}`)
+      return null
+    }
+  }
+
+  /**
+   * The add's outcome, null if it threw and is chokidar's to retry. `readHash`
+   * is the content hash of the bytes the add read, if it read the file.
+   */
+  private async addFile(eventPath: string): Promise<{ readHash: string | null } | null> {
+    if (!this.vaultPath) return null
     const absolutePath = this.inDiskCase(eventPath)
     let echo = false
 
@@ -680,7 +800,7 @@ export class VaultWatcher {
       // The echo of the app's own write. Other bytes are an edit, however soon
       // after an app write they land (#5605).
       echo = await this.isOwnWrite(absolutePath)
-      if (echo) return
+      if (echo) return NOTHING_READ
 
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
@@ -693,7 +813,7 @@ export class VaultWatcher {
         isInAttachmentStore(relativePath) ||
         isAppMoveEcho(this.vaultPath, relativePath)
       ) {
-        return
+        return NOTHING_READ
       }
 
       const db = getIndexDatabase()
@@ -704,7 +824,7 @@ export class VaultWatcher {
         if (fileType === 'markdown') {
           await this.handleMarkdownFileChange(relativePath, existing, db)
         }
-        return
+        return NOTHING_READ
       }
 
       // The index cache is derived: it is rebuilt, and the projector that fills
@@ -715,7 +835,7 @@ export class VaultWatcher {
       if (claimed !== null && claimed.path !== relativePath) {
         if (isRemoteApplySpelling(claimed, relativePath)) {
           await this.adoptCaseVariantRow(absolutePath, relativePath, fileType, claimed, db)
-          return
+          return NOTHING_READ
         }
         // A file renamed by case outside the app, or a folder renamed by case
         // whose unlink is already pending: a rename, which the add path below
@@ -724,16 +844,18 @@ export class VaultWatcher {
       }
 
       if (fileType === 'markdown') {
-        await this.handleMarkdownFileAdd(absolutePath, relativePath, db, claimed)
-      } else {
-        await this.handleNonMarkdownFileAdd(
-          absolutePath,
-          relativePath,
-          fileType,
-          db,
-          claimed?.id ?? null
-        )
+        return {
+          readHash: await this.handleMarkdownFileAdd(absolutePath, relativePath, db, claimed)
+        }
       }
+      await this.handleNonMarkdownFileAdd(
+        absolutePath,
+        relativePath,
+        fileType,
+        db,
+        claimed?.id ?? null
+      )
+      return NOTHING_READ
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       // A thrown add costs the user a sidebar row and says nothing on screen,
@@ -748,11 +870,12 @@ export class VaultWatcher {
         message: error.message
       })
       this.onError?.(error)
+      return null
     } finally {
       // A file moved into a locked folder, a locked note renamed or a locked
       // file recreated from outside comes in writable. The app's own write is
       // left alone: `protectLockedFile` would take it as replaced from outside.
-      if (!echo) await protectLockedFile(absolutePath)
+      if (!echo) protectLockedFile(absolutePath)
     }
   }
 
@@ -913,19 +1036,19 @@ export class VaultWatcher {
     relativePath: string,
     db: ReturnType<typeof getIndexDatabase>,
     claimed: { id: string; createdAt: string } | null
-  ): Promise<void> {
+  ): Promise<string | null> {
     const vaultPath = this.vaultPath
-    if (!vaultPath) return
+    if (!vaultPath) return null
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) {
-      return
+      return null
     }
 
     const renameMatch = await this.matchPendingRename(absolutePath, relativePath, stats)
     if (renameMatch !== null) {
       if (this.renameKeepsJournalDate(db, relativePath, renameMatch)) {
         await this.applyMarkdownRename(db, relativePath, stats, renameMatch)
-        return
+        return renameMatch.contentHash
       }
       // The move changes what the file is: a journal leaving the journal folder
       // (or its date), or a date-named note joining it. Notes and journals are
@@ -998,6 +1121,7 @@ export class VaultWatcher {
     })
 
     if (claimed === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
+    return null
   }
 
   /**
@@ -1231,7 +1355,7 @@ export class VaultWatcher {
       this.onError?.(error)
     } finally {
       // `atomic` reports a quick delete and recreate as a change.
-      if (!echo) await protectLockedFile(absolutePath)
+      if (!echo) protectLockedFile(absolutePath)
     }
   }
 
@@ -1451,10 +1575,18 @@ export class VaultWatcher {
     absolutePath: string,
     {
       keepUnpaired = false,
-      deferred = null
-    }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
+      deferred = null,
+      renamedTo: caseRenamedTo = null
+    }: {
+      keepUnpaired?: boolean
+      deferred?: DeferredDeletes | null
+      /** The new spelling of a case-only rename (`recordRawEvent`). */
+      renamedTo?: string | null
+    } = {}
   ): void {
     const lastChangeKey = this.recentIdentities.take(absolutePath)
+    const renamedTo = this.renameTargets.take(absolutePath) ?? caseRenamedTo
+    this.addedFileKeys.forget(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {
@@ -1505,6 +1637,9 @@ export class VaultWatcher {
         (cached.contentHash
           ? null
           : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt)))
+      const renamedFile = this.renamedFileToAdd(vaultPath, renamedTo, db)
+      const renamedPath =
+        renamedFile && normalizeRelativePath(path.relative(vaultPath, renamedFile))
 
       trackPendingDelete(
         cached.id,
@@ -1558,10 +1693,57 @@ export class VaultWatcher {
           await Promise.resolve()
         },
         statKey,
-        deferred
+        deferred,
+        renamedPath
       )
+      if (renamedFile !== null && renamedPath !== null) {
+        void this.addRenamedFile(cached.id, renamedFile, renamedPath)
+      }
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
+    }
+  }
+
+  /**
+   * The file the unlinked file was renamed to, when the watcher would add it.
+   * A file the index already lists is another note's: a move to another folder
+   * names its new name in the old folder, and the add of that note's file fed
+   * a body the index had not read to its doc.
+   */
+  private renamedFileToAdd(
+    vaultPath: string,
+    renamedTo: string | null,
+    db: ReturnType<typeof getIndexDatabase>
+  ): string | null {
+    if (renamedTo === null) return null
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, renamedTo))
+    if (getNoteCacheByPath(db, relativePath)) return null
+    try {
+      const stats = lstatSync(renamedTo, { throwIfNoEntry: false })
+      return stats?.isFile() && !this.isIgnored(vaultPath, renamedTo, stats) ? renamedTo : null
+    } catch (error) {
+      logger.debug(`Not adding renamed file ${renamedTo}: ${String(error)}`)
+      return null
+    }
+  }
+
+  /**
+   * The add of the file an unlinked file was renamed to, from the unlink and
+   * not the folder's event (`RenameTargets`): on macOS that event can come
+   * seconds after the rename window closed, or never. chokidar's own add of
+   * the file, if it comes, waits for this one and finds its row. Only this add
+   * may take the delete. One that does not take it shows the name was not
+   * this file's, and the delete pairs with any add for the rest of its window.
+   */
+  private async addRenamedFile(
+    id: string,
+    renamedFile: string,
+    renamedPath: string
+  ): Promise<void> {
+    try {
+      await this.handleFileAdd(renamedFile, true)
+    } finally {
+      forgetRenameTarget(id, renamedPath)
     }
   }
 

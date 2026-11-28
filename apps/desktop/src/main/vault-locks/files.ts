@@ -168,11 +168,15 @@ export async function protectFileAsFound(absolutePath: string): Promise<void> {
 }
 
 export function setFileReadOnlySync(absolutePath: string, readOnly: boolean): void {
+  changeModeSync(absolutePath, readOnly, false)
+}
+
+function changeModeSync(absolutePath: string, readOnly: boolean, asFound: boolean): void {
   try {
     const fd = openVaultFileSync(...vaultPlace(absolutePath))
     if (fd === null) return
     try {
-      const next = nextMode(absolutePath, fs.fstatSync(fd), readOnly, false)
+      const next = nextMode(absolutePath, fs.fstatSync(fd), readOnly, asFound)
       if (next === null) return
       if (chmodByName) fs.chmodSync(absolutePath, next)
       else fs.fchmodSync(fd, next)
@@ -208,11 +212,15 @@ function forgetRecordedMode(absolutePath: string): void {
 
 /**
  * After the watcher saw a file added, moved in, renamed or replaced from
- * outside: read-only again when a lock covers it. Never throws.
+ * outside: read-only again when a lock covers it. The lock check and the
+ * chmod run in one synchronous step, so an unlock or a write through the lock
+ * (`writeThroughLockSync`) never lands between them: an awaited chmod left a
+ * file just unlocked read-only, and could land inside a sync write and fail
+ * it. Never throws.
  */
-export async function protectLockedFile(absolutePath: string): Promise<void> {
+export function protectLockedFile(absolutePath: string): void {
   try {
-    if (isLockedFile(absolutePath) !== null) await protectFileAsFound(absolutePath)
+    if (isLockedFile(absolutePath) !== null) changeModeSync(absolutePath, true, true)
   } catch (err) {
     log.warn('Could not protect a locked file changed outside the app', { error: err })
   }

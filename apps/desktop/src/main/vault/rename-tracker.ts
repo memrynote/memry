@@ -56,6 +56,11 @@ interface PendingDelete {
   timeout: NodeJS.Timeout | null
   /** Callback to execute if this is a real delete (not a rename) */
   onRealDelete: () => Promise<void>
+  /**
+   * The path the file's own rename event named, until its add ran. Only the
+   * add at that path takes this delete meanwhile.
+   */
+  renamedTo: string | null
 }
 
 /**
@@ -170,15 +175,6 @@ function armRenameWindow(entry: PendingDelete): void {
   }, RENAME_WINDOW_MS)
 }
 
-function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDelete | null {
-  const bucket = index.get(key)
-  if (!bucket || bucket.length === 0) return null
-  // FIFO: oldest pending delete wins.
-  const pending = bucket[0]
-  removePending(pending)
-  return pending
-}
-
 /**
  * Track a pending delete. Called when a file is deleted externally.
  * Waits for RENAME_WINDOW_MS to see if a matching 'add' event arrives.
@@ -193,6 +189,8 @@ function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDel
  *   caller that knows every add up front (a rescan) adds them all, then
  *   settles the batch's unmatched deletes with `settleDeferredDeletes`, so a
  *   slow batch of adds cannot outlast a clock.
+ * @param renamedTo - The relative path the file's own rename event named. Only
+ *   the add at that path takes the delete until `forgetRenameTarget`.
  */
 export function trackPendingDelete(
   id: string,
@@ -200,7 +198,8 @@ export function trackPendingDelete(
   relativePath: string,
   onRealDelete: () => Promise<void>,
   statKey?: string | null,
-  deferred: DeferredDeletes | null = null
+  deferred: DeferredDeletes | null = null,
+  renamedTo: string | null = null
 ): void {
   // Clear any existing pending for this id (shouldn't happen, but be safe)
   clearPendingDelete(id)
@@ -214,7 +213,8 @@ export function trackPendingDelete(
     path: relativePath,
     timestamp: Date.now(),
     timeout: null,
-    onRealDelete
+    onRealDelete,
+    renamedTo
   }
 
   if (!deferred) armRenameWindow(entry)
@@ -224,10 +224,22 @@ export function trackPendingDelete(
 }
 
 /**
+ * The add at the path a delete's rename named ran without taking the delete:
+ * that path was not the file's, so any add may take it from now on. A newer
+ * delete of the same note, as in a chained rename, keeps the path it named.
+ */
+export function forgetRenameTarget(id: string, renamedTo: string): void {
+  const entry = getPendingDelete(id)
+  if (entry?.renamedTo === renamedTo) entry.renamedTo = null
+}
+
+/**
  * Check if a newly added file matches a pending delete (indicating a rename).
- * Identical-hash collisions match FIFO (oldest pending delete first). If a
- * match is found, the pending delete is cleared and the caller is responsible
- * for replaying the rename through projection-safe write paths.
+ * A delete whose rename named this path wins; otherwise identical-hash
+ * collisions match FIFO (oldest pending delete first), among deletes no rename
+ * named another path for. If a match is found, the pending delete is cleared
+ * and the caller is responsible for replaying the rename through
+ * projection-safe write paths.
  *
  * @param contentHash - Content hash of the newly added file, or null when it
  *   was not worth computing (no delete was in flight, so no rename is possible)
@@ -244,10 +256,13 @@ export function checkForRename(
   newPath: string,
   statKeys: readonly (string | null)[] = []
 ): RenameMatch | null {
-  let pending = contentHash !== null ? takeMatch(pendingDeletes, contentHash) : null
-  for (const statKey of statKeys) {
-    pending ??= statKey ? takeMatch(pendingDeletesByStat, statKey) : null
-  }
+  const candidates = [
+    ...(contentHash !== null ? (pendingDeletes.get(contentHash) ?? []) : []),
+    ...statKeys.flatMap((statKey) => (statKey ? (pendingDeletesByStat.get(statKey) ?? []) : []))
+  ]
+  const pending =
+    candidates.find((entry) => entry.renamedTo === newPath) ??
+    candidates.find((entry) => entry.renamedTo === null)
 
   if (!pending) {
     // No pending delete with this content - it's a new file
@@ -255,6 +270,7 @@ export function checkForRename(
   }
 
   logger.info(`Rename detected: ${pending.path} -> ${newPath}`)
+  removePending(pending)
   if (pending.timeout) clearTimeout(pending.timeout)
 
   return { id: pending.id, oldPath: pending.path, onRealDelete: pending.onRealDelete }
