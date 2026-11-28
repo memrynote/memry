@@ -1560,6 +1560,8 @@ export class VaultWatcher {
           ? null
           : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt)))
       const renamedFile = this.renamedFileToAdd(vaultPath, renamedTo)
+      const renamedPath =
+        renamedFile && normalizeRelativePath(path.relative(vaultPath, renamedFile))
 
       trackPendingDelete(
         cached.id,
@@ -1614,9 +1616,11 @@ export class VaultWatcher {
         },
         statKey,
         deferred,
-        renamedFile && normalizeRelativePath(path.relative(vaultPath, renamedFile))
+        renamedPath
       )
-      if (renamedFile !== null) void this.addRenamedFile(cached.id, renamedFile)
+      if (renamedFile !== null && renamedPath !== null) {
+        void this.addRenamedFile(cached.id, renamedFile, renamedPath)
+      }
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
     }
@@ -1642,11 +1646,15 @@ export class VaultWatcher {
    * may take the delete. One that does not take it shows the name was not
    * this file's, and the delete pairs with any add for the rest of its window.
    */
-  private async addRenamedFile(id: string, renamedFile: string): Promise<void> {
+  private async addRenamedFile(
+    id: string,
+    renamedFile: string,
+    renamedPath: string
+  ): Promise<void> {
     try {
       await this.handleFileAdd(renamedFile, true)
     } finally {
-      forgetRenameTarget(id)
+      forgetRenameTarget(id, renamedPath)
     }
   }
 

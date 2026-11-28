@@ -225,11 +225,12 @@ export function trackPendingDelete(
 
 /**
  * The add at the path a delete's rename named ran without taking the delete:
- * that path was not the file's, so any add may take it from now on.
+ * that path was not the file's, so any add may take it from now on. A newer
+ * delete of the same note, as in a chained rename, keeps the path it named.
  */
-export function forgetRenameTarget(id: string): void {
+export function forgetRenameTarget(id: string, renamedTo: string): void {
   const entry = getPendingDelete(id)
-  if (entry) entry.renamedTo = null
+  if (entry?.renamedTo === renamedTo) entry.renamedTo = null
 }
 
 /**
