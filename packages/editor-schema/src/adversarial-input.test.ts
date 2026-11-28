@@ -5,6 +5,7 @@ import { escapePrefixedDetailsMarkup } from './blocks/markdown'
 import { spellsRunsWithUnderscores, trimEmphasisEdges } from './inline/emphasis-runs'
 import { maskCellCodeSpans } from './inline/cell-code-spans'
 import { maskEmptyLinks } from './inline/empty-links'
+import { maskLinkDestinations } from './inline/link-destinations'
 import { escapeMarkdownText } from './inline/markdown-escapes'
 import { liftImagesOutOfTextBlocks } from './lift-images'
 import { widenTables } from './table-width'
@@ -116,6 +117,8 @@ const cases: Array<[string, () => unknown]> = [
   ['BlockNote reads a run of unclosed link texts', () => markdownToHTML('[a'.repeat(8000))],
   ['BlockNote reads a run of unclosed image texts', () => markdownToHTML('![a'.repeat(5000))],
   ['BlockNote reads a run of unclosed link addresses', () => markdownToHTML('[a](b'.repeat(5000))],
+  // Each `[` reads to the end for a `(` that never closes.
+  ['a line of links no paren closes', () => maskLinkDestinations('[a](b'.repeat(8000))],
   // Each break trims the spaces off everything written so far.
   ['BlockNote reads many hard breaks', () => markdownToHTML(`${'a  \n'.repeat(8000)}b`)]
 ]
