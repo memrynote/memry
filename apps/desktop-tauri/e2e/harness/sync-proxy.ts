@@ -71,8 +71,13 @@ export interface FaultRule {
   afterBytes?: number
   /** Hold the request this long before forwarding it. */
   delayMs?: number
-  /** Answer with this status and an empty body; the upstream is not called. */
+  /** Answer with this status instead of the upstream; the upstream is not called. */
   status?: number
+  /**
+   * JSON body sent with `status`; omitted, the body is empty. Stands in for a route the local
+   * Worker cannot answer itself, such as the billing routes that call Paddle.
+   */
+  body?: unknown
   /** Stop injecting after this many matching requests have been hit. */
   maxHits: number
 }
@@ -126,8 +131,13 @@ export async function startSyncProxy(
       record.status = rule.status
       record.overridden = true
       req.resume()
-      res.writeHead(rule.status)
-      res.end()
+      if (rule.body === undefined) {
+        res.writeHead(rule.status)
+        res.end()
+      } else {
+        res.writeHead(rule.status, { 'content-type': 'application/json' })
+        res.end(JSON.stringify(rule.body))
+      }
       return
     }
 
