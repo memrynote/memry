@@ -46,11 +46,13 @@ interface Entry {
 export class RenameTargets {
   private entries = new Map<string, Entry>()
 
-  record(filePath: string, target: string): void {
+  /** Keeps `target` for the unlink of `filePath` if the file was renamed to it. */
+  record(filePath: string, target: string): boolean {
     this.take(filePath)
-    if (!wasRenamedTo(filePath, target)) return
+    if (!wasRenamedTo(filePath, target)) return false
     const expiry = setTimeout(() => this.entries.delete(filePath), RENAME_TARGET_TTL_MS)
     this.entries.set(filePath, { target, expiry })
+    return true
   }
 
   /** The unlink takes the file's new path. */

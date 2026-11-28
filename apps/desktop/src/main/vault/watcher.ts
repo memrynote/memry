@@ -441,11 +441,14 @@ export class VaultWatcher {
     // one `change`, which names the new file all the same.
     if (eventPath && path.basename(watchedPath) !== eventPath) {
       const target = path.join(path.dirname(watchedPath), eventPath)
-      if (isSupportedPath(target) && this.isCaseOnlyRename(watchedPath, target)) {
-        this.handleFileDelete(watchedPath, { renamedTo: target })
-      } else if (isSupportedPath(target)) {
-        this.renameTargets.record(watchedPath, target)
+      const caseOnly = isSupportedPath(target) && this.isCaseOnlyRename(watchedPath, target)
+      // The event can also fold in a write made just before the rename, which
+      // the row's hash trails: the unlink matches the file by its identity
+      // (#5549), read at its new name.
+      if (caseOnly || (isSupportedPath(target) && this.renameTargets.record(watchedPath, target))) {
+        this.recordIdentity(target, watchedPath)
       }
+      if (caseOnly) this.handleFileDelete(watchedPath, { renamedTo: target })
     }
     // A file's own fs.watch names the file; a folder's names the child.
     const filePath =
@@ -472,10 +475,11 @@ export class VaultWatcher {
     return diskCaseOf(vaultPath, relativePath) === targetPath
   }
 
-  private recordIdentity(filePath: string): void {
+  /** Records the identity of the file at `statPath` as `filePath`'s. */
+  private recordIdentity(statPath: string, filePath = statPath): void {
     let stats: Stats | undefined
     try {
-      stats = statSync(filePath, { throwIfNoEntry: false })
+      stats = statSync(statPath, { throwIfNoEntry: false })
     } catch (error) {
       logger.debug(`No identity for ${filePath}: ${String(error)}`)
       return
