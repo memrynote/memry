@@ -15,6 +15,7 @@ use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::settings::SettingsService;
+use memry_desktop::tags::schema::rename::register_resume;
 use rusqlite::Connection;
 use rusqlite::types::Value;
 use serde_json::json;
@@ -28,6 +29,8 @@ struct Opened {
     e: Env,
     notes: Arc<NotesService>,
     store: Arc<dyn SecureStore>,
+    /// One message for each field rename the open resumed (`register_resume`'s `finished`).
+    resumed: mpsc::Receiver<()>,
 }
 
 fn text(s: &str) -> Value {
@@ -54,7 +57,8 @@ fn note(conn: &Connection, id: &str, path: &str) {
 
 /// Electron's vault over `files`, seeded by `seed_data` (given the vault folder, its files
 /// written), imported and installed, then opened
-/// with the lock guard and the note index, its first walk done.
+/// with the lock guard, the note index and the field rename's resume at open, as the shell
+/// registers them, its first walk done.
 fn import_and_open(files: &[(&str, &str)], seed_data: impl FnOnce(&Connection, &Path)) -> Opened {
     let kept: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
     let mut e = env(|s| {
@@ -63,8 +67,19 @@ fn import_and_open(files: &[(&str, &str)], seed_data: impl FnOnce(&Connection, &
     });
     let store = kept.into_inner().unwrap().unwrap();
     locks::register(&e.session);
-    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
+    index.register(&e.session);
     let notes = NotesService::new(e.tier.clone(), store.clone());
+    let (resume, resumed) = mpsc::channel();
+    let resume = Mutex::new(resume);
+    register_resume(
+        &notes,
+        &index,
+        &e.session,
+        Arc::new(move || {
+            let _ = resume.lock().unwrap().send(());
+        }),
+    );
 
     let pair = electron_db::create_pair(&e.vault.join(".memry"));
     for (path, body) in files {
@@ -92,7 +107,12 @@ fn import_and_open(files: &[(&str, &str)], seed_data: impl FnOnce(&Connection, &
     drop(lock);
     e.open();
     e.facts_until(indexed);
-    Opened { e, notes, store }
+    Opened {
+        e,
+        notes,
+        store,
+        resumed,
+    }
 }
 
 /// The onboarding, clock, date, zoom and editor layout of this device live only in Electron's
@@ -268,6 +288,70 @@ fn a_field_rename_a_locked_note_held_finishes_after_the_import() {
         assert!(Instant::now() < deadline, "the index never read Phone");
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
+    let (renamed, done) = mpsc::channel();
+    let unlocked = locks::set(
+        &open,
+        &o.notes,
+        TargetKind::Note,
+        "n-elif",
+        false,
+        move || {
+            let _ = renamed.send(());
+        },
+    )
+    .unwrap();
+    assert!(unlocked.changed);
+    done.recv_timeout(WAIT)
+        .expect("the unlock resumes the rename");
+    assert!(
+        o.e.read("Elif.md").contains("Mobile: '222'"),
+        "{}",
+        o.e.read("Elif.md")
+    );
+    assert!(o.e.core().field_rename_recorded().unwrap().is_none());
+}
+
+/// The first open after the import resumes the imported field rename on a fresh index. The
+/// locked note holds it: the resume must find the note (the index read it) and keep the job,
+/// across a restart too, until the unlock finishes it.
+#[test]
+fn the_first_open_keeps_an_imported_field_rename_a_locked_note_holds() {
+    let mut o = import_and_open(&[("Elif.md", ELIF)], |conn, _| {
+        note(conn, "n-elif", "Elif.md");
+        seed_lock(
+            conn,
+            "note:n-elif",
+            "note",
+            "n-elif",
+            text(r#"{"dev-A":1}"#),
+        );
+        seed(
+            conn,
+            "tags.fieldRenameJob",
+            r#"{"from":"Phone","to":"Mobile","runId":"r1"}"#,
+        );
+    });
+    o.resumed
+        .recv_timeout(WAIT)
+        .expect("the first open resumes the imported rename");
+    assert!(
+        o.e.core().field_rename_recorded().unwrap().is_some(),
+        "the first open dropped the rename Elif.md holds"
+    );
+    assert!(o.e.read("Elif.md").contains("Phone: '222'"));
+
+    o.e.close();
+    o.e.open();
+    o.e.facts_until(indexed);
+    o.resumed
+        .recv_timeout(WAIT)
+        .expect("the next open resumes the rename again");
+    assert!(
+        o.e.core().field_rename_recorded().unwrap().is_some(),
+        "the restart dropped the rename Elif.md holds"
+    );
+
+    let open = o.e.session.current().unwrap();
     let (renamed, done) = mpsc::channel();
     let unlocked = locks::set(
         &open,

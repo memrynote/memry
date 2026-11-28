@@ -295,13 +295,13 @@ importers:
         version: 3.2.2(react@19.3.0)
       '@electron-toolkit/preload':
         specifier: ^3.0.2
-        version: 3.0.2(electron@43.1.1(supports-color@8.1.1))
+        version: 3.0.2(electron@43.8.13)
       '@electron-toolkit/tsconfig':
         specifier: ^2.0.0
         version: 2.0.0(@types/node@25.9.5)
       '@electron-toolkit/utils':
         specifier: ^4.0.0
-        version: 4.0.0(electron@43.1.1(supports-color@8.1.1))
+        version: 4.0.0(electron@43.8.13)
       '@electron/rebuild':
         specifier: ^4.2.0
         version: 4.2.0
@@ -630,8 +630,8 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@op-engineering/op-sqlite@18.1.4(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.13)(react@19.3.0))(react@19.3.0))(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)(expo-sqlite@57.0.1(expo@57.0.15)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.13)(react@19.3.0))(react@19.3.0))
       electron:
-        specifier: ^43.1.1
-        version: 43.1.1(supports-color@8.1.1)
+        specifier: ^43.8.1
+        version: 43.8.13
       electron-builder:
         specifier: ^26.15.6
         version: 26.15.6(electron-builder-squirrel-windows@26.15.6)
@@ -9700,8 +9700,8 @@ packages:
     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
     engines: {node: '>=8.0.0'}
 
-  electron@43.1.1:
-    resolution: {integrity: sha512-I5c5vfuVvaXpWx3IZdwvXgxQW44+e7OP1wXGVQkogLeSFSkUZ6sLCcWV05AdEcs65AO5tAIJJwbp7ixw+LdarA==}
+  electron@43.8.13:
+    resolution: {integrity: sha512-IvtRDVsbEAOJtXw0TtGqVoHQ/2DVpEmgtQL0iJvERdm4TcwbaXVbuhpXifvaPDO+9ZdJO3NMS2OsZ7bzP5d+kQ==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -17527,17 +17527,17 @@ snapshots:
 
   '@electron-internal/extract-zip@1.0.4': {}
 
-  '@electron-toolkit/preload@3.0.2(electron@43.1.1(supports-color@8.1.1))':
+  '@electron-toolkit/preload@3.0.2(electron@43.8.13)':
     dependencies:
-      electron: 43.1.1(supports-color@8.1.1)
+      electron: 43.8.13
 
   '@electron-toolkit/tsconfig@2.0.0(@types/node@25.9.5)':
     dependencies:
       '@types/node': 25.9.5
 
-  '@electron-toolkit/utils@4.0.0(electron@43.1.1(supports-color@8.1.1))':
+  '@electron-toolkit/utils@4.0.0(electron@43.8.13)':
     dependencies:
-      electron: 43.1.1(supports-color@8.1.1)
+      electron: 43.8.13
 
   '@electron/asar@3.4.1':
     dependencies:
@@ -17565,7 +17565,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@electron/get@5.0.0(supports-color@8.1.1)':
+  '@electron/get@5.0.0':
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
       env-paths: 3.0.0
@@ -24786,10 +24786,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@43.1.1(supports-color@8.1.1):
+  electron@43.8.13:
     dependencies:
       '@electron-internal/extract-zip': 1.0.4
-      '@electron/get': 5.0.0(supports-color@8.1.1)
+      '@electron/get': 5.0.0
       '@types/node': 24.12.2
     transitivePeerDependencies:
       - supports-color

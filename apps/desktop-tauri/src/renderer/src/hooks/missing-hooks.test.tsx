@@ -168,7 +168,8 @@ vi.mock('@/services/tasks-service', () => {
   return {
     onTaskCreated: subscribe('created'),
     onTaskUpdated: subscribe('updated'),
-    onTaskDeleted: subscribe('deleted')
+    onTaskDeleted: subscribe('deleted'),
+    onTaskCompleted: subscribe('completed')
   }
 })
 
@@ -281,22 +282,6 @@ beforeEach(() => {
       overdueCount: 2
     })
   }
-  api.onTaskUpdated = vi.fn((callback) => {
-    mocks.taskListeners.apiUpdated = callback as never
-    return mocks.unsubscribe
-  })
-  api.onTaskCreated = vi.fn((callback) => {
-    mocks.taskListeners.apiCreated = callback as never
-    return mocks.unsubscribe
-  })
-  api.onTaskDeleted = vi.fn((callback) => {
-    mocks.taskListeners.apiDeleted = callback as never
-    return mocks.unsubscribe
-  })
-  api.onTaskCompleted = vi.fn((callback) => {
-    mocks.taskListeners.apiCompleted = callback as never
-    return mocks.unsubscribe
-  })
   window.api.onSettingsChanged = vi.fn(() => mocks.unsubscribe)
   mocks.flushAllPendingSaves.mockResolvedValue(undefined)
   mocks.hasPendingSaves.mockReturnValue(false)
@@ -612,7 +597,7 @@ describe('state and settings hooks', () => {
     const dayContext = renderHook(() => useDayContext('2026-05-10'), { wrapper })
     await waitFor(() => expect(dayContext.result.current.tasks).toHaveLength(1))
     act(() =>
-      mocks.taskListeners.apiUpdated({
+      mocks.taskListeners.updated({
         task: { dueDate: '2026-05-10' },
         changes: {}
       })
