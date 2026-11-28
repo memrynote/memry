@@ -839,8 +839,8 @@ struct NoteTagEditor: View {
     }
 }
 
-/// A coloured chip: the hue as the label, the hue at the contract's alpha as
-/// the fill (`TAG_CHIP_FILL_ALPHA`).
+/// A coloured chip: the hue's readable label (`Tokens.Palette.label(on:)`),
+/// the hue at the contract's alpha as the fill (`TAG_CHIP_FILL_ALPHA`).
 struct Chip: View {
     let text: String
     let color: Color
@@ -854,7 +854,7 @@ struct Chip: View {
             Text(text)
         }
         .font(Tokens.Typography.caption.font.weight(.medium))
-        .foregroundStyle(color)
+        .foregroundStyle(Tokens.Palette.label(on: color))
         .padding(.horizontal, Tokens.Space.small)
         .padding(.vertical, 2)
         .background(color.opacity(Tokens.Palette.chipFillAlpha), in: .rect(cornerRadius: Tokens.Radius.control))

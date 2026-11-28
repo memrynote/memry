@@ -144,7 +144,7 @@ enum NoteInline {
             for match in HashTagText.matches(in: String(style.piece.characters)) {
                 guard let range = Range(match.range, in: style.piece) else { continue }
                 let ink = Tokens.Palette.color(nil, tag: match.tag)
-                style.piece[range].foregroundColor = ink
+                style.piece[range].foregroundColor = Tokens.Palette.label(on: ink)
                 style.piece[range].backgroundColor = ink.opacity(Tokens.Palette.chipFillAlpha)
                 style.piece[range].link = tagURL(for: match.tag)
             }
@@ -224,7 +224,7 @@ private struct RunStyle {
             piece.link = run.target.flatMap(URL.init(string:))
         case "hashTag":
             let ink = NoteInline.tagColor(of: run)
-            piece.foregroundColor = ink
+            piece.foregroundColor = Tokens.Palette.label(on: ink)
             piece.backgroundColor = ink.opacity(Tokens.Palette.chipFillAlpha)
             piece.link = NoteInline.tagURL(for: NoteInline.tagName(of: run))
         case "dateMention":
