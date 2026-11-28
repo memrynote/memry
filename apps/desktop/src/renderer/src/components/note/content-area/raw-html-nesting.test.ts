@@ -81,7 +81,8 @@ describe.each([4000, 8000])('a paste of %i nested handled tags', (depth) => {
       expect(ms).toBeLessThan(LIMIT_MS)
       // Only the spans no color token took are left for the parse.
       if (open.includes('color:red') && closed) return
-      expect(count(textOf(blocks), open)).toBe(depth - CAP)
+      // A second `<a>` closes the first, so they never nest and none is text.
+      expect(count(textOf(blocks), open)).toBe(open === '<a href=u>' ? 0 : depth - CAP)
     })
   })
 })
