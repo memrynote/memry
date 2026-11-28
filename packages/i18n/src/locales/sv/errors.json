@@ -44,6 +44,9 @@
     "moveFailed": "Det gick inte att flytta anteckningen",
     "applyTemplateFailed": "Det gick inte att använda mallen",
     "appendBlocksFailed": "Det gick inte att flytta blocket till den anteckningen",
+    "appendIntoCaseTwin": "Den anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener. Byt namn på en av dem och flytta sedan blocket igen.",
+    "appendIntoBinary": "Ett block kan bara flyttas till en anteckning, inte till en bild, en PDF eller en ljud- eller videofil.",
+    "caseTwinMoveRefused": "Den här anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener, så den kan inte flyttas på det här sättet. Byt namn på eller flytta den andra anteckningen, eller ta bort kopian du inte behöver.",
     "exportPdfFailed": "Det gick inte att exportera till PDF",
     "exportHtmlFailed": "Det gick inte att exportera till HTML",
     "restoreVersionFailed": "Det gick inte att återställa versionen",
@@ -75,10 +78,15 @@
     "uploadFailed": "Uppladdningen av bilagan misslyckades",
     "uploadProgressFailed": "Det gick inte att hämta uppladdningsförloppet",
     "downloadFailed": "Nedladdningen av bilagan misslyckades",
+    "downloadGone": "Den här filen finns inte längre på synkservern. Om en annan enhet fortfarande har den, lägg till den igen från den enheten.",
+    "downloadMissing": "Den här filen finns inte på synkservern än. Öppna den igen i morgon för att kontrollera.",
+    "downloadNeedsSync": "Synkroniseringen körs inte, så den här filen kan inte laddas ned. Den laddas ned automatiskt när synkroniseringen körs.",
     "downloadProgressFailed": "Det gick inte att hämta nedladdningsförloppet",
     "exceedsMaxSize": "Filen är för stor: {size} överskrider gränsen på {limit}",
     "exceedsPlanLimit": "Filen är större än din plan tillåter: {size} överskrider {limit}",
-    "emptyFile": "Det går inte att ladda upp en tom fil"
+    "emptyFile": "Det går inte att ladda upp en tom fil",
+    "emptyNotAttached": "Den här filen är tom, så den bifogades inte. Om du klistrade in en bild kopierar du den igen och klistrar in den.",
+    "textInMediaFile": "Den här filen innehåller text i stället för det medium som namnet anger"
   },
   "crdt": {
     "persistenceDegradedTitle": "Redigeringshistoriken sparas inte på den här enheten",
@@ -233,10 +241,13 @@
   "folder": {
     "createFailed": "Det gick inte att skapa mappen",
     "renameFailed": "Det gick inte att byta namn på mappen",
+    "renameCaseTwins": "Den här mappen innehåller anteckningar som delar fil med en anteckning vars mappnamn bara skiljer sig i versaler och gemener. Byt namn på eller flytta de anteckningarna först, och byt sedan namn på mappen.",
     "deleteFailed": "Det gick inte att radera mappen",
     "keptNotPulled": "Den här mappen innehåller en anteckning vars fil raderades utanför memrynote, och dess text har ännu inte synkats till den här enheten, så den kan inte flyttas till papperskorgen. Inget raderades. Vänta tills den har synkats, eller radera den anteckningen separat först.",
     "keptUnwritable": "Den här mappen innehåller en anteckning vars fil raderades utanför memrynote, och dess text kan inte sparas i en fil för papperskorgen. Inget raderades. Radera den anteckningen separat först.",
     "trashUnavailable": "Mappen kunde inte flyttas till papperskorgen. Det som fortfarande finns i den raderades inte.",
+    "deleteCaseTwins": "Den här mappen och en mapp med samma namn stavat annorlunda, till exempel med andra versaler och gemener, är samma mapp på disken, så om du tar bort den tas anteckningarna i båda bort. Ta i stället bort de anteckningar du inte behöver en i taget.",
+    "deleteWindowsName": "Den här mappens namn slutar med en punkt eller ett blanksteg, som Windows ignorerar, så om du tar bort den kan även en annan mapp tas bort. Ta i stället bort anteckningarna i den en i taget.",
     "setConfigFailed": "Det gick inte att spara mappinställningarna"
   },
   "folderView": {

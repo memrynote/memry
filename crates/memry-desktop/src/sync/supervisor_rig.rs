@@ -8,6 +8,7 @@ use std::time::Duration;
 use memry_core::api::errors::{ApiError, SyncError, TransportError};
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncProgress, InitialSyncSink};
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::policy::ServerClock;
 use memry_core::sync::pull::PullReport;
@@ -19,6 +20,7 @@ use tokio::time::{Instant, sleep};
 
 use super::super::backend::{SyncBackend, SyncPasses};
 use super::super::events::SyncEvent;
+use super::super::first_sync_running::FirstSyncRunning;
 use super::super::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
 use super::super::realtime::{RealtimeSocket, SocketEnd};
 use super::super::signals::AuthSignals;
@@ -48,6 +50,8 @@ pub(crate) struct FakeDriver {
     pub(crate) refuse: AtomicBool,
     /// The next pass panics.
     pub(crate) panic_next: AtomicBool,
+    /// Passes stop at the page cap with more on the server.
+    pub(crate) has_more: AtomicBool,
     /// Sockets end at once with this; `None` holds them quietly until stopped.
     pub(crate) socket_end: Mutex<Option<SocketEnd>>,
     /// Sockets opened.
@@ -67,6 +71,18 @@ pub(crate) struct FakeDriver {
     /// Rounds of due snapshots pushed, and final rounds.
     pub(crate) snapshot_rounds: AtomicUsize,
     pub(crate) final_rounds: AtomicUsize,
+    /// The vault has not finished a first sync: the next pass is one.
+    pub(crate) fresh: AtomicBool,
+    pub(crate) first_syncs: AtomicUsize,
+    /// The next first sync fails with this after its first progress.
+    pub(crate) first_sync_error: Mutex<Option<SyncError>>,
+    /// Every first sync fails with `first_sync_error`, as one body the server keeps refusing.
+    pub(crate) first_sync_keeps_failing: AtomicBool,
+    /// The next this many passes end with bodies their budget left due.
+    pub(crate) bodies_left: AtomicUsize,
+    /// What the backend hands the loop for its first syncs, and whether each saw it held.
+    pub(crate) first_sync_running: FirstSyncRunning,
+    pub(crate) held_in_first_sync: Mutex<Vec<bool>>,
 }
 
 impl FakeDriver {
@@ -96,6 +112,7 @@ fn cut_report(trigger: PassTrigger) -> PassReport {
             source: TransportError::Cancelled,
         })),
         push_error: None,
+        bodies_left: false,
     }
 }
 
@@ -148,14 +165,59 @@ impl SyncPasses for FakeDriver {
             } else {
                 SyncState::Idle
             },
-            pull: PullReport::default(),
+            pull: PullReport {
+                has_more: self.has_more.load(Ordering::SeqCst),
+                ..PullReport::default()
+            },
             parked: false,
             pushed: self.pushed_items.load(Ordering::SeqCst) > 0,
             pushed_items: self.pushed_items.load(Ordering::SeqCst),
             push_ms: PASS_PUSH.as_millis() as u64,
             pull_error: error,
             push_error: None,
+            bodies_left: self
+                .bodies_left
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| {
+                    left.checked_sub(1)
+                })
+                .is_ok(),
         })
+    }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        Ok(self.fresh.load(Ordering::SeqCst))
+    }
+    /// One page of notes, then a pass to the head, then `complete`; as the driver, `None`
+    /// while paused.
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        if self.paused.load(Ordering::SeqCst) {
+            return Ok(None);
+        }
+        self.first_syncs.fetch_add(1, Ordering::SeqCst);
+        lock(&self.held_in_first_sync).push(self.first_sync_running.is_running());
+        progress.progress(InitialSyncProgress {
+            phase: InitialSyncPhase::Notes,
+            processed_items: 1,
+            total_items: 2,
+        });
+        let error = if self.first_sync_keeps_failing.load(Ordering::SeqCst) {
+            lock(&self.first_sync_error).clone()
+        } else {
+            lock(&self.first_sync_error).take()
+        };
+        if let Some(error) = error {
+            return Err(error);
+        }
+        self.fresh.store(false, Ordering::SeqCst);
+        let report = self.run_pass(PassTrigger::Explicit).await;
+        progress.progress(InitialSyncProgress {
+            phase: InitialSyncPhase::Complete,
+            processed_items: 0,
+            total_items: 0,
+        });
+        Ok(report)
     }
     fn snapshots_due(&self, _now_ms: i64) -> bool {
         self.snapshot_due.load(Ordering::SeqCst)
@@ -283,6 +345,9 @@ impl SyncBackend for FakeBackend {
     }
     fn close(&self) {
         self.closes.fetch_add(1, Ordering::SeqCst);
+    }
+    fn first_sync_running(&self) -> Option<FirstSyncRunning> {
+        Some(self.driver.first_sync_running.clone())
     }
 }
 

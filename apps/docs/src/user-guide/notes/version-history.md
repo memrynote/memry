@@ -21,6 +21,8 @@ Memry keeps a version of a note's text before something replaces it:
   about to write over, however small the change,
 - when another program changes a [locked note](./read-only-locks) and Memry puts the locked text
   back,
+- when a change made to the note's file outside Memry, for example while the app was closed,
+  replaces text the note held, before Memry takes it in,
 - when you quit Memry with the note open.
 
 Memry does not keep the same text twice. If a version already holds it, that version moves to the
@@ -59,6 +61,10 @@ Each note keeps up to 50 versions. When a new version would make 51, the oldest 
 
 Versions are stored in the vault's `.memry` folder on this device. They don't sync: another device
 has its own version history for the same note.
+
+## Privacy
+
+Version content lives in the data DB as plain text, like the notes themselves. The local databases are not encrypted, so use full-disk encryption (FileVault, BitLocker, or LUKS) to protect them.
 
 ## In the Tauri Desktop App
 

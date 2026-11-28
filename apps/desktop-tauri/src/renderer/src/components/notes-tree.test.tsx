@@ -136,6 +136,19 @@ const mockGeneralSettings = {
   onboardingCompleted: false
 }
 
+const bookmarks = vi.hoisted(() => ({
+  bulkCreate: vi.fn(),
+  isBookmarked: vi.fn(async () => false),
+  toggle: vi.fn()
+}))
+
+vi.mock('@/services/bookmarks-service', () => ({
+  bookmarksService: bookmarks,
+  onBookmarkCreated: () => () => {},
+  onBookmarkDeleted: () => () => {},
+  onBookmarksReordered: () => () => {}
+}))
+
 vi.mock('@/services/templates-service', () => ({
   templatesService: { list: vi.fn().mockResolvedValue({ templates: [] }) }
 }))
@@ -883,10 +896,7 @@ describe('NotesTree - multi-selection context menu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupMocks()
-    bulkCreate = vi.fn().mockResolvedValue({ success: true, createdCount: 2 })
-    // SAFETY: the DOM test setup installs `window.api` as a plain mock object.
-    const w = window as unknown as { api: { bookmarks: Record<string, unknown> } }
-    w.api.bookmarks.bulkCreate = bulkCreate
+    bulkCreate = bookmarks.bulkCreate.mockResolvedValue({ success: true, createdCount: 2 })
   })
 
   // Folder "Projects" plus root note "Meeting Notes", then the menu of the folder row.

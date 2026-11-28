@@ -14,17 +14,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
-import type { InboxItemListItem, InboxSnoozeDueEvent } from '@memry/rpc/inbox'
+import type { InboxSnoozeDueEvent, SnoozeDueItem } from '../../../generated/bindings'
 import { useInboxNotifications } from './use-inbox-notifications'
 
-const { toastInfo, notificationShow, notificationPermission } = vi.hoisted(() => ({
+const { toastInfo, notificationShow, notificationPermission, listen } = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   notificationShow: vi.fn(),
-  notificationPermission: vi.fn()
+  notificationPermission: vi.fn(),
+  listen: vi.fn()
 }))
 
+// The Rust snooze pass's event, as the generated bindings deliver it.
 vi.mock('../../../generated/bindings', () => ({
-  commands: { notificationShow, notificationPermission }
+  commands: { notificationShow, notificationPermission },
+  events: { inboxSnoozeDueEvent: { listen } }
 }))
 
 vi.mock('sonner', () => ({
@@ -62,8 +65,12 @@ let i18nDe: I18nInstance
 let snoozeDue: ((event: InboxSnoozeDueEvent) => void) | null = null
 const unsubscribe = vi.fn()
 
-function item(id: string, title: string): InboxItemListItem {
-  return { id, title } as InboxItemListItem
+function item(id: string, title: string): SnoozeDueItem {
+  return { id, title } as SnoozeDueItem
+}
+
+function due(items: SnoozeDueItem[]): InboxSnoozeDueEvent {
+  return { count: items.length, items }
 }
 
 function mountWith(i18n: I18nInstance): void {
@@ -93,10 +100,13 @@ beforeEach(() => {
   notificationPermission.mockReset()
   notificationPermission.mockResolvedValue('granted')
   unsubscribe.mockClear()
-  window.api.onInboxSnoozeDue = vi.fn((callback: (event: InboxSnoozeDueEvent) => void) => {
-    snoozeDue = callback
-    return unsubscribe
-  }) as never
+  listen.mockReset()
+  listen.mockImplementation(
+    async (handler: (received: { payload: InboxSnoozeDueEvent }) => void) => {
+      snoozeDue = (event) => handler({ payload: event })
+      return unsubscribe
+    }
+  )
 })
 
 /** The banner request the hook sent, once the permission answer has come back. */
@@ -109,7 +119,7 @@ async function shown(): Promise<{ key: string; title: string; body: string; rout
 describe('useInboxNotifications', () => {
   it('names the single resurfaced item and pluralizes its body from the catalogue', async () => {
     mountWith(i18nEn)
-    snoozeDue?.({ items: [item('a', 'Quarterly review')] })
+    snoozeDue?.(due([item('a', 'Quarterly review')]))
 
     const request = await shown()
     expect(notificationShow).toHaveBeenCalledTimes(1)
@@ -121,7 +131,7 @@ describe('useInboxNotifications', () => {
 
   it('summarizes several resurfaced items through the ICU plural forms', async () => {
     mountWith(i18nEn)
-    snoozeDue?.({ items: [item('a', 'One'), item('b', 'Two'), item('c', 'Three')] })
+    snoozeDue?.(due([item('a', 'One'), item('b', 'Two'), item('c', 'Three')]))
 
     const request = await shown()
     expect(request.title).toBe('3 snoozed items')
@@ -131,7 +141,7 @@ describe('useInboxNotifications', () => {
 
   it('renders the active locale, not English, when the catalogue has a translation', async () => {
     mountWith(i18nDe)
-    snoozeDue?.({ items: [item('a', 'Quartalsbericht')] })
+    snoozeDue?.(due([item('a', 'Quartalsbericht')]))
 
     let request = await shown()
     expect(request.title).toBe('Quartalsbericht')
@@ -140,7 +150,7 @@ describe('useInboxNotifications', () => {
 
     toastInfo.mockClear()
     notificationShow.mockClear()
-    snoozeDue?.({ items: [item('a', 'Eins'), item('b', 'Zwei')] })
+    snoozeDue?.(due([item('a', 'Eins'), item('b', 'Zwei')]))
 
     request = await shown()
     expect(request.title).toBe('2 zurückgestellte Einträge')
@@ -150,7 +160,7 @@ describe('useInboxNotifications', () => {
 
   it('still collapses duplicate banners by resurfaced-id key', async () => {
     mountWith(i18nEn)
-    snoozeDue?.({ items: [item('b', 'Two'), item('a', 'One')] })
+    snoozeDue?.(due([item('b', 'Two'), item('a', 'One')]))
 
     expect((await shown()).key).toBe('inbox-snooze-due:a,b')
   })
@@ -158,7 +168,7 @@ describe('useInboxNotifications', () => {
   it('raises no banner when the platform denies notifications, but still toasts', async () => {
     notificationPermission.mockResolvedValue('denied')
     mountWith(i18nEn)
-    snoozeDue?.({ items: [item('a', 'Quarterly review')] })
+    snoozeDue?.(due([item('a', 'Quarterly review')]))
 
     await vi.waitFor(() => expect(notificationPermission).toHaveBeenCalled())
     await Promise.resolve()
@@ -169,7 +179,7 @@ describe('useInboxNotifications', () => {
   it('shows the banner while macOS has not asked yet, since the show asks', async () => {
     notificationPermission.mockResolvedValue('prompt')
     mountWith(i18nEn)
-    snoozeDue?.({ items: [item('a', 'Quarterly review')] })
+    snoozeDue?.(due([item('a', 'Quarterly review')]))
 
     expect((await shown()).title).toBe('Quarterly review')
   })
@@ -178,14 +188,14 @@ describe('useInboxNotifications', () => {
     const i18n = await createRendererI18n({ locale: 'en' })
     mountWith(i18n)
 
-    expect(window.api.onInboxSnoozeDue).toHaveBeenCalledTimes(1)
+    expect(listen).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       await i18n.changeLanguage('de')
     })
 
     // The listener re-registers so the copy follows the new language.
-    expect(window.api.onInboxSnoozeDue).toHaveBeenCalledTimes(2)
-    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    expect(listen).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1))
   })
 })

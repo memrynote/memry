@@ -27,7 +27,7 @@ use crate::sync::outbox::Durable;
 
 use super::super::notes::{self, failed, iso};
 use super::super::tasks::valid_item_id;
-use super::propagate::{project_names, renamed, without_name};
+use super::propagate::{project_names, renamed, with_name, without_name};
 use super::write::{edit_project, mint_id};
 use super::{ITEM_TYPE, require_live};
 
@@ -378,16 +378,6 @@ fn rewrite_note_names(
     Ok(())
 }
 
-fn with_name(mut names: Vec<String>, name: &str) -> Vec<String> {
-    if !names
-        .iter()
-        .any(|seen| seen.to_lowercase() == name.to_lowercase())
-    {
-        names.push(name.to_owned());
-    }
-    names
-}
-
 /// Whether an entry is the link to this item. A markdown note's entry is
 /// matched by item id alone, because desktop may hold it under `file` (a
 /// legacy import) as well as `note`.
@@ -397,7 +387,10 @@ fn names_item(entry: &Value, markdown: bool, item_type: LinkItemType, item_id: &
 }
 
 /// The stored `links` array; absent, `null` and a non-array all read empty.
-fn stored_links(conn: &Connection, project_id: &str) -> Result<Vec<Value>, StorageError> {
+pub(super) fn stored_links(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Vec<Value>, StorageError> {
     let Some(raw) = sync_items::load(conn, ITEM_TYPE, project_id)?.and_then(|row| row.payload)
     else {
         return Ok(Vec::new());
@@ -435,7 +428,7 @@ fn read_link(entry: &Value, project_id: &str) -> Option<ProjectLink> {
 
 /// A live note whose `file_type` is markdown — desktop's `isMarkdownNote`,
 /// keyed off the row and never the caller's `item_type`.
-fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+pub(crate) fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let file_type: Option<String> = conn
         .query_row(
             "SELECT file_type FROM notes WHERE id = ?1 AND deleted_at IS NULL",

@@ -74,36 +74,61 @@ export const issueTokens = async (
   return tokens
 }
 
-// Grace window for legitimate retry scenarios (e.g., client lost response mid-rotation).
-// Kept short to narrow the replay window for an intercepted refresh token.
-const ROTATION_GRACE_SECONDS = 10
+// How long a client may retry with a refresh token the server already rotated.
+// The client lost the response (its main thread stalled past the request
+// timeout) and still holds the old token. The retry is honored only while the
+// token that rotation issued is unused, so a reuse after the successor was
+// spent is still theft. Counted from the first rotation; retries do not extend
+// it. Minutes, not seconds: the stalls that lose these responses last minutes.
+const ROTATION_GRACE_SECONDS = 15 * 60
 const MAX_ROTATION_ATTEMPTS = 3
 
+/**
+ * Retires `revokeId` and inserts its successor in one atomic batch. A grace
+ * re-issue also passes the token the client presented as `presentedId`, so it
+ * now names the new successor and a further retry with it is still honored.
+ *
+ * The retire is conditional on `revokeId` still being live, and the other
+ * writes only land when it did, so of two requests racing on one token exactly
+ * one rotates it. The other gets 'lost' and re-reads.
+ */
 const tryRotateBatch = async (
   db: D1Database,
   revokeId: string,
+  presentedId: string | null,
   userId: string,
   deviceId: string,
   newHash: string,
   expiresAt: number,
   nowEpoch: number
-): Promise<boolean> => {
+): Promise<'rotated' | 'lost' | 'collision'> => {
+  const successorId = crypto.randomUUID()
+  const wonRetire = 'EXISTS (SELECT 1 FROM refresh_tokens WHERE id = ? AND replaced_by = ?)'
   try {
-    await db.batch([
-      db
-        .prepare('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')
-        .bind(nowEpoch, revokeId),
+    const results = await db.batch([
       db
         .prepare(
-          'INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+          'UPDATE refresh_tokens SET revoked = 1, rotated_at = ?, replaced_by = ? WHERE id = ? AND revoked = 0'
         )
-        .bind(crypto.randomUUID(), userId, deviceId, newHash, expiresAt, nowEpoch)
+        .bind(nowEpoch, successorId, revokeId),
+      ...(presentedId
+        ? [
+            db
+              .prepare(`UPDATE refresh_tokens SET replaced_by = ? WHERE id = ? AND ${wonRetire}`)
+              .bind(successorId, presentedId, revokeId, successorId)
+          ]
+        : []),
+      db
+        .prepare(
+          `INSERT INTO refresh_tokens (id, user_id, device_id, token_hash, expires_at, created_at) SELECT ?, ?, ?, ?, ?, ? WHERE ${wonRetire}`
+        )
+        .bind(successorId, userId, deviceId, newHash, expiresAt, nowEpoch, revokeId, successorId)
     ])
-    return true
+    return results.at(-1)?.meta.changes === 1 ? 'rotated' : 'lost'
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     if (message.includes('UNIQUE constraint failed') || message.includes('SQLITE_CONSTRAINT')) {
-      return false
+      return 'collision'
     }
     throw err
   }
@@ -125,30 +150,34 @@ const getLatestActiveTokenId = async (
   return current?.id ?? null
 }
 
+/** The new pair, or null when a concurrent request rotated `initialRevokeId` first. */
 const rotateWithRetry = async (
   db: D1Database,
   initialRevokeId: string,
+  presentedId: string | null,
   userId: string,
   deviceId: string,
   privateKeyPem: string,
   nowEpoch: number
-): Promise<{ accessToken: string; refreshToken: string }> => {
+): Promise<{ accessToken: string; refreshToken: string } | null> => {
   const expiresAt = nowEpoch + 7 * 24 * 60 * 60
   let revokeId = initialRevokeId
 
   for (let attempt = 0; attempt < MAX_ROTATION_ATTEMPTS; attempt++) {
     const tokens = await generateTokens(userId, deviceId, privateKeyPem)
     const newHash = await hashToken(tokens.refreshToken)
-    const inserted = await tryRotateBatch(
+    const outcome = await tryRotateBatch(
       db,
       revokeId,
+      presentedId,
       userId,
       deviceId,
       newHash,
       expiresAt,
       nowEpoch
     )
-    if (inserted) return tokens
+    if (outcome === 'rotated') return tokens
+    if (outcome === 'lost') return null
 
     const currentTokenId = await getLatestActiveTokenId(db, userId, deviceId, nowEpoch)
     if (currentTokenId) {
@@ -163,6 +192,44 @@ const rotateWithRetry = async (
   )
 }
 
+/**
+ * Which row a refresh with this token retires: the token itself while it is
+ * live, or the unused successor of a rotation whose answer was lost. Null for
+ * any other reuse.
+ */
+const findRotationTarget = async (
+  db: D1Database,
+  tokenHash: string,
+  userId: string,
+  deviceId: string,
+  nowEpoch: number
+): Promise<{ revokeId: string; presentedId: string | null } | null> => {
+  const existing = await db
+    .prepare(
+      'SELECT id FROM refresh_tokens WHERE token_hash = ? AND user_id = ? AND device_id = ? AND revoked = 0 AND expires_at > ?'
+    )
+    .bind(tokenHash, userId, deviceId, nowEpoch)
+    .first<{ id: string }>()
+  if (existing) return { revokeId: existing.id, presentedId: null }
+
+  // A rotated token whose successor nobody has used yet: the client that
+  // rotated it never received the answer. Re-issue in place of that successor.
+  const lostRotation = await db
+    .prepare(
+      `SELECT presented.id AS presentedId, successor.id AS successorId
+       FROM refresh_tokens presented
+       JOIN refresh_tokens successor ON successor.id = presented.replaced_by
+       WHERE presented.token_hash = ? AND presented.user_id = ? AND presented.device_id = ?
+         AND presented.revoked = 1 AND presented.rotated_at > ?
+         AND successor.revoked = 0 AND successor.expires_at > ?`
+    )
+    .bind(tokenHash, userId, deviceId, nowEpoch - ROTATION_GRACE_SECONDS, nowEpoch)
+    .first<{ presentedId: string; successorId: string }>()
+  return lostRotation
+    ? { revokeId: lostRotation.successorId, presentedId: lostRotation.presentedId }
+    : null
+}
+
 export const rotateRefreshToken = async (
   db: D1Database,
   oldToken: string,
@@ -173,38 +240,36 @@ export const rotateRefreshToken = async (
   const oldTokenHash = await hashToken(oldToken)
   const nowEpoch = Math.floor(Date.now() / 1000)
 
-  const existing = await db
-    .prepare(
-      'SELECT id FROM refresh_tokens WHERE token_hash = ? AND user_id = ? AND device_id = ? AND revoked = 0 AND expires_at > ?'
-    )
-    .bind(oldTokenHash, userId, deviceId, nowEpoch)
-    .first<{ id: string }>()
-
-  if (!existing) {
-    const recentlyRotated = await db
-      .prepare(
-        'SELECT id FROM refresh_tokens WHERE token_hash = ? AND user_id = ? AND device_id = ? AND revoked = 1 AND rotated_at IS NOT NULL AND rotated_at > ?'
-      )
-      .bind(oldTokenHash, userId, deviceId, nowEpoch - ROTATION_GRACE_SECONDS)
-      .first<{ id: string }>()
-
-    if (recentlyRotated) {
-      const currentTokenId = await getLatestActiveTokenId(db, userId, deviceId, nowEpoch)
-
-      if (currentTokenId) {
-        return rotateWithRetry(db, currentTokenId, userId, deviceId, privateKeyPem, nowEpoch)
-      }
+  // A request that loses the race for its target re-reads: the winner's
+  // rotation now makes it a lost-response retry, or theft.
+  for (let attempt = 0; attempt < MAX_ROTATION_ATTEMPTS; attempt++) {
+    const target = await findRotationTarget(db, oldTokenHash, userId, deviceId, nowEpoch)
+    if (!target) {
+      // Any other reuse is theft and ends the device's session.
+      await db
+        .prepare('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND device_id = ?')
+        .bind(userId, deviceId)
+        .run()
+      throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid refresh token', 401)
     }
 
-    await db
-      .prepare('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND device_id = ?')
-      .bind(userId, deviceId)
-      .run()
-
-    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid refresh token', 401)
+    const tokens = await rotateWithRetry(
+      db,
+      target.revokeId,
+      target.presentedId,
+      userId,
+      deviceId,
+      privateKeyPem,
+      nowEpoch
+    )
+    if (tokens) return tokens
   }
 
-  return rotateWithRetry(db, existing.id, userId, deviceId, privateKeyPem, nowEpoch)
+  throw new AppError(
+    ErrorCodes.AUTH_TOKEN_ROTATION_FAILED,
+    'Token rotation failed after retries',
+    500
+  )
 }
 
 export const revokeDeviceTokens = async (db: D1Database, deviceId: string): Promise<void> => {

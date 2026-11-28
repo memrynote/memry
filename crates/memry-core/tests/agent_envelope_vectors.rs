@@ -13,7 +13,11 @@ use crate::support;
 
 use memry_core::api::vault::Vault;
 use memry_core::crypto::agent_envelope::{Purpose, SealError, open};
-use serde_json::Value as Json;
+use memry_core::domain::agent_conversation::{self, NewConversation};
+use memry_core::domain::agent_message::{self, NewMessage};
+use memry_core::domain::agent_queue::Queue;
+use rusqlite::params;
+use serde_json::{Value as Json, json};
 use support::{hex_field, str_field, vector_file};
 use zeroize::Zeroizing;
 
@@ -103,4 +107,90 @@ fn agent_envelope_key_installed_on_the_vault_reaches_its_writers() {
         writer.open(Purpose::ConversationTitle, &sealed),
         Err(SealError::KeyUnavailable)
     ));
+}
+
+/// The case of `seals` named `name`.
+fn seal_case<'a>(file: &'a Json, name: &str) -> &'a Json {
+    file["seals"]
+        .as_array()
+        .expect("seals")
+        .iter()
+        .find(|case| str_field(case, "name") == name)
+        .expect(name)
+}
+
+/// A conversation and a message whose stored columns are Electron's read back through the record
+/// reads the Tauri agent store uses (Step 28, #3545): Step 36 copies these columns unchanged.
+#[test]
+fn agent_envelope_electron_rows_open_through_the_record_reads() {
+    let dir = tempfile::Builder::new()
+        .prefix("memry-agent-envelope-rows-")
+        .tempdir()
+        .expect("the scratch directory");
+    let vault = Vault::open("vault-1".to_owned(), dir.path().display().to_string()).expect("open");
+    let file = vector_file("agent-envelope");
+    vault
+        .set_at_rest_key(Some(Zeroizing::new(key(hex_field(&file, "keyHex")))))
+        .expect("install");
+    let title = seal_case(&file, "title, Turkish and emoji");
+    let content = seal_case(&file, "message content, text parts");
+    let attachments = seal_case(&file, "attachments, one file");
+    let key = vault.at_rest_key();
+    let (conversation, message) = vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            let new = NewConversation {
+                vault_id: "vault-1",
+                title: "replaced",
+                backend: "claude_cli",
+                backend_model: None,
+            };
+            let conversation =
+                agent_conversation::create(conn, &key, &new, Queue::LocalOnly, "device-a", 1)
+                    .expect("create");
+            let placeholder = json!({"text": "replaced"});
+            let new = NewMessage {
+                id: Some("m1"),
+                conversation_id: &conversation.id,
+                role: "user",
+                content: &placeholder,
+                attachments: &json!([]),
+                tool_call_id: None,
+                status: "completed",
+            };
+            agent_message::append(conn, &key, &new, Queue::LocalOnly, "device-a", 1)
+                .expect("append");
+            for (item_type, id, field, column) in [
+                (
+                    "agent_conversation",
+                    conversation.id.as_str(),
+                    "$.title",
+                    title,
+                ),
+                ("agent_message", "m1", "$.content", content),
+                ("agent_message", "m1", "$.attachments", attachments),
+            ] {
+                conn.execute(
+                    "UPDATE sync_items SET payload = json_set(payload, ?1, ?2)
+                     WHERE item_type = ?3 AND item_id = ?4",
+                    params![field, str_field(column, "column"), item_type, id],
+                )
+                .expect("store Electron's column");
+            }
+            let read = agent_conversation::get(conn, &key, &conversation.id).expect("read");
+            let messages =
+                agent_message::get_by_conversation(conn, &key, &conversation.id).expect("read");
+            Ok((read, messages))
+        })
+        .expect("the database");
+    let plain = |case: &Json| -> Json {
+        serde_json::from_str(str_field(case, "plaintext")).expect("JSON plaintext")
+    };
+    assert_eq!(
+        conversation.expect("live").title,
+        str_field(title, "plaintext")
+    );
+    assert_eq!(message.len(), 1);
+    assert_eq!(message[0].content, plain(content));
+    assert_eq!(message[0].attachments, plain(attachments));
 }

@@ -119,6 +119,11 @@ impl ImportContext {
         self.cancel.is_cancelled()
     }
 
+    /// The run's token, for a reader that checks it while it holds the context.
+    pub fn cancel_token(&self) -> CancellationToken {
+        self.cancel.clone()
+    }
+
     pub fn status(&mut self, status: impl Into<ImportText>) {
         self.status = status.into();
         self.emit();

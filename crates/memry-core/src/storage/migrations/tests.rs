@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 44);
+    assert_eq!(version, 46);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -115,7 +115,7 @@ fn a_fresh_index_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 11);
+    assert_eq!(version, 12);
 
     let names = table_names(&db);
     for expected in [
@@ -205,14 +205,115 @@ fn an_older_database_steps_forward_without_losing_rows() {
 }
 
 #[test]
+fn a_database_at_0041_gains_reminder_fires_at_0042() {
+    let db = Db::open_in_memory().expect("open");
+    let at_41 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..41]))
+        .expect("migrate to 41");
+    assert_eq!(at_41, 41);
+    assert!(!table_names(&db).iter().any(|n| n == "reminder_fires"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..42]))
+        .expect("step forward");
+
+    assert_eq!(version, 42);
+    assert!(table_names(&db).iter().any(|n| n == "reminder_fires"));
+}
+
+#[test]
+fn a_database_at_0042_gains_inbox_suggestion_feedback_at_0043() {
+    let db = Db::open_in_memory().expect("open");
+    let at_42 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..42]))
+        .expect("migrate to 42");
+    assert_eq!(at_42, 42);
+    assert!(
+        !table_names(&db)
+            .iter()
+            .any(|n| n == "inbox_suggestion_feedback")
+    );
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..43]))
+        .expect("step forward");
+
+    assert_eq!(version, 43);
+    assert!(
+        table_names(&db)
+            .iter()
+            .any(|n| n == "inbox_suggestion_feedback")
+    );
+}
+
+#[test]
+fn a_database_at_0043_gains_graph_layouts_at_0044() {
+    let db = Db::open_in_memory().expect("open");
+    let at_43 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..43]))
+        .expect("migrate to 43");
+    assert_eq!(at_43, 43);
+    assert!(!table_names(&db).iter().any(|n| n == "graph_layouts"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..44]))
+        .expect("step forward");
+
+    assert_eq!(version, 44);
+    assert!(table_names(&db).iter().any(|n| n == "graph_layouts"));
+}
+
+#[test]
+fn a_database_at_0044_gains_attachment_revivals_at_0045() {
+    let db = Db::open_in_memory().expect("open");
+    let at_44 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..44]))
+        .expect("migrate to 44");
+    assert_eq!(at_44, 44);
+    assert!(
+        !table_names(&db)
+            .iter()
+            .any(|n| n == "attachment_revived_notes")
+    );
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..45]))
+        .expect("step forward");
+
+    assert_eq!(version, 45);
+    assert!(
+        table_names(&db)
+            .iter()
+            .any(|n| n == "attachment_revived_notes")
+    );
+}
+
+#[test]
+fn a_database_at_0045_gains_note_pulled_marks_at_0046() {
+    let db = Db::open_in_memory().expect("open");
+    let at_45 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..45]))
+        .expect("migrate to 45");
+    assert_eq!(at_45, 45);
+    assert!(!table_names(&db).iter().any(|n| n == "note_pulled_marks"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..46]))
+        .expect("step forward");
+
+    assert_eq!(version, 46);
+    assert!(table_names(&db).iter().any(|n| n == "note_pulled_marks"));
+}
+
+#[test]
 fn a_migration_interrupted_between_commit_and_pragma_recovers() {
     let db = Db::open_in_memory().expect("open");
 
     db.call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("migrate");
-    // The crash window §A.0's ordering leaves open: the statements committed
-    // but the counter never moved.
-    db.call_blocking(|conn| set_user_version(conn, 0))
+    // Earlier builds' crash window: the statements committed, the counter did not.
+    db.call_blocking(|conn| Ok(conn.execute_batch("PRAGMA user_version = 0")))
+        .expect("call")
         .expect("rewind");
 
     let version = db

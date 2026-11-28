@@ -85,6 +85,7 @@ use crate::domain::note_positions;
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::restore::SerializeOptions;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::{body_debt, outbox};
 
@@ -160,8 +161,13 @@ pub enum Removed {
 }
 
 /// Records what the core database was created over, once: every open calls this,
-/// so one that failed is retried, and a value already there is kept.
+/// so one that failed is retried, and a value already there is kept. A read-only
+/// database records nothing and still opens (read-only, as the editor reports it):
+/// the next writable open records it.
 pub fn record_origin(conn: &Connection, origin: Origin) -> Result<(), StorageError> {
+    if conn.is_readonly(rusqlite::MAIN_DB).map_err(failed)? {
+        return Ok(());
+    }
     let value = match origin {
         Origin::Native => "native",
         Origin::OverElectron => "electron",
@@ -200,7 +206,7 @@ pub fn adopt(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Adopted, CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let candidates = unfiled_notes(&tx, file.title, file.folder_path)?;
     if !candidates.is_empty() {
         let text = (file.path, file.body);
@@ -264,7 +270,7 @@ pub(super) fn unfiled_notes(
     ids.collect::<Result<_, _>>().map_err(failed)
 }
 
-/// Asked once per file no row names: `idx_notes_live_title` (data migration 23)
+/// Asked once per file no row names: `idx_notes_live_title` (data migration 24)
 /// answers it.
 pub(crate) const UNFILED_NOTES: &str = "SELECT n.id FROM notes n
   WHERE n.deleted_at IS NULL AND n.title = ?1 AND n.folder_path IS ?2
@@ -303,7 +309,10 @@ pub(super) fn body_says(
     let body = if body_is_empty(&document)? {
         // No document yet: the note's text is the `content` it was created with
         // (chapter 12 §12.2 carve-out A), until something seeds a document from it.
-        created_content(conn, item_type, note_id)?
+        match created_content(conn, item_type, note_id)? {
+            Some(content) => content,
+            None => return Ok(Evidence::Unknown),
+        }
     } else {
         let options = SerializeOptions {
             note_path: Some(path),
@@ -323,17 +332,25 @@ pub(super) fn body_says(
     })
 }
 
-/// The `content` of the record's stored payload: the text it was created with.
+/// The `content` of the record's stored payload: the text it was created with, empty when the
+/// payload has none. `None` when there is no payload to read or it does not parse: what the
+/// note was created with is then not known, so it is never taken for empty (#4326).
 pub(super) fn created_content(
     conn: &Connection,
     item_type: &str,
     note_id: &str,
-) -> Result<String, StorageError> {
-    let payload = sync_items::push_payload(conn, item_type, note_id)?;
-    let content = payload
-        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-        .and_then(|payload| payload.get("content")?.as_str().map(str::to_owned));
-    Ok(content.unwrap_or_default())
+) -> Result<Option<String>, StorageError> {
+    let Some(raw) = sync_items::push_payload(conn, item_type, note_id)? else {
+        return Ok(None);
+    };
+    let Ok(Value::Object(payload)) = serde_json::from_str::<Value>(&raw) else {
+        return Ok(None);
+    };
+    Ok(match payload.get("content") {
+        None | Some(Value::Null) => Some(String::new()),
+        Some(Value::String(content)) => Some(content.clone()),
+        Some(_) => None,
+    })
 }
 
 /// Whether a new note id may be minted beside Electron's database: the import
@@ -374,7 +391,7 @@ pub fn renamed(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     follow(
         &tx,
         note_id,
@@ -432,7 +449,7 @@ pub fn owe_place(
     from_path: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     owe_in(&tx, note_id, from_path, now_ms)?;
     tx.commit().map_err(failed)
 }
@@ -461,7 +478,7 @@ pub fn hold_place(
     from_path: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     owe_in(&tx, note_id, from_path, now_ms)?;
     place_held::hold(&tx, note_id)?;
     tx.commit().map_err(failed)

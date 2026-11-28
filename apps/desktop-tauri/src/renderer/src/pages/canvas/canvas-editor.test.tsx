@@ -44,7 +44,6 @@ interface FakeApi {
  */
 function installWindowApi(): void {
   ;(window as unknown as { api: unknown }).api = {
-    canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
     notes: { getFolders: () => Promise.resolve([]) },
     // The editor unblocks previously-failed asset uploads on a sync state
     // change; the subscription only has to exist for these suites.
@@ -179,7 +178,9 @@ vi.mock('@/services/canvas-service', () => ({
   canvasService: {
     update: (...args: unknown[]) => mocks.update(...args),
     uploadAsset: vi.fn(),
-    canUploadAsset: vi.fn(async () => ({ canUpload: true }))
+    canUploadAsset: vi.fn(async () => ({ canUpload: true })),
+    liveOpened: (...args: unknown[]) => mocks.liveOpened(...args),
+    liveClosed: (...args: unknown[]) => mocks.liveClosed(...args)
   },
   onCanvasTooLarge: (callback: (event: { id: string }) => void) => {
     mocks.tooLargeListeners.add(callback)
@@ -291,7 +292,7 @@ describe('CanvasEditor persistence safety', () => {
     // fake scene is still in its pre-init state ([] + isLoading).
     render(
       <React.StrictMode>
-        <CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />
+        <CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />
       </React.StrictMode>
     )
     await act(async () => {
@@ -301,7 +302,7 @@ describe('CanvasEditor persistence safety', () => {
   })
 
   it('persists a changed scene after init completes', async () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     finishInit()
     act(() => mocks.onChange?.())
     await act(async () => {
@@ -322,7 +323,9 @@ describe('CanvasEditor persistence safety', () => {
     // serializeAsJSON output against the sidecar-carrying, compactly re-emitted
     // stored string, "found" a change, and rewrote + re-synced the scene on
     // every canvas tab visit.
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE_WITH_SIDECAR} />)
+    render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE_WITH_SIDECAR} />
+    )
     finishInit()
     act(() => mocks.onChange?.())
     await act(async () => {
@@ -333,7 +336,9 @@ describe('CanvasEditor persistence safety', () => {
   })
 
   it('Cmd+S flushes to the vault and never reaches Excalidraw', async () => {
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
     finishInit()
     act(() => mocks.onChange?.())
 
@@ -359,7 +364,7 @@ describe('CanvasEditor persistence safety', () => {
   })
 
   it('does not re-serialize the scene when only the viewport moved (pan/zoom)', async () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     finishInit()
 
     // A real edit: serialized once and written.
@@ -391,8 +396,48 @@ describe('CanvasEditor persistence safety', () => {
     expect(mocks.update).toHaveBeenCalledTimes(1)
   })
 
+  it('saves over the bytes it read, then over the bytes it wrote', async () => {
+    mocks.update.mockReset().mockResolvedValue({ id: 'c1', tooLarge: false, sha256: 'sha-b' })
+    render(<CanvasEditor canvasId="c1" initialScene="" initialSha256="sha-a" />)
+    finishInit()
+    act(() => mocks.onChange?.())
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    mocks.api.elements = [...mocks.api.elements, { id: 'stroke-2', type: 'freedraw' }]
+    act(() => mocks.onChange?.())
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(mocks.update).toHaveBeenCalledTimes(2)
+    expect(mocks.update).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ expectedSha256: 'sha-a' })
+    )
+    expect(mocks.update).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ expectedSha256: 'sha-b' })
+    )
+  })
+
+  it('tells the user when a save fails', async () => {
+    mocks.update.mockReset().mockRejectedValue({ kind: 'invalid', code: 'x', message: 'x' })
+    mocks.toastError.mockReset()
+    render(<CanvasEditor canvasId="c1" initialScene="" initialSha256={null} />)
+    finishInit()
+    act(() => mocks.onChange?.())
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.actionFailed', {
+      id: 'canvas-save-failed-c1'
+    })
+  })
+
   it('persists an edit made right after the previous save (flush is never gated)', async () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     finishInit()
     act(() => mocks.onChange?.())
     await act(async () => {
@@ -420,7 +465,7 @@ describe('CanvasEditor persistence safety', () => {
   })
 
   it('parses the stored scene lazily and keeps no copy of it', () => {
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />)
 
     // initialData is a function so the parsed scene lives only for the length
     // of Excalidraw's componentDidMount, instead of being retained for the
@@ -436,14 +481,16 @@ describe('CanvasEditor persistence safety', () => {
   })
 
   it('refuses to mount the editor on an unparseable stored scene', () => {
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="{not json" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="{not json" />
+    )
 
     expect(container.querySelector('[data-canvas-editor="c1"]')).toBeNull()
     expect(container.textContent).toContain('canvas.corruptScene')
   })
 
   it('disables Excalidraw file actions (open / save to disk) via UIOptions', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     expect(mocks.excalidrawProps.UIOptions).toEqual({
       canvasActions: { export: false, loadScene: false, saveToActiveFile: false }
     })
@@ -504,7 +551,7 @@ describe('CanvasEditor too-large-to-sync notice', () => {
   }
 
   it('announces an oversized scene once across repeated autosaves', async () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     await saveOnce([{ id: 'a' }])
     await saveOnce([{ id: 'a' }, { id: 'b' }])
@@ -518,7 +565,7 @@ describe('CanvasEditor too-large-to-sync notice', () => {
   })
 
   it('collapses repeated too-large events into the one notice', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     emitTooLarge('c1')
     emitTooLarge('c1')
@@ -528,7 +575,7 @@ describe('CanvasEditor too-large-to-sync notice', () => {
   })
 
   it('ignores a too-large event for a different canvas', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     emitTooLarge('other')
 
@@ -536,7 +583,7 @@ describe('CanvasEditor too-large-to-sync notice', () => {
   })
 
   it('re-announces after a save syncs again', async () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     emitTooLarge('c1')
     mocks.update.mockResolvedValue({ id: 'c1', tooLarge: false })
@@ -552,13 +599,13 @@ describe('CanvasEditor too-large-to-sync notice', () => {
    * with it — the user meets the same warning again on every tab switch.
    */
   it('stays quiet when the canvas is left and reopened in the same session', async () => {
-    const first = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const first = render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     await saveOnce([{ id: 'a' }])
     expect(mocks.toastError).toHaveBeenCalledTimes(1)
 
     first.unmount()
 
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     await saveOnce([{ id: 'a' }, { id: 'b' }])
 
     expect(mocks.update).toHaveBeenCalled()
@@ -582,7 +629,9 @@ describe('CanvasEditor too-large-to-sync notice', () => {
     // that was stored, and the save happens because the sidecar cannot be
     // serialized back.
     const openCanvas = async (): Promise<{ unmount: () => void }> => {
-      const view = render(<CanvasEditor canvasId="c1" initialScene={storedScene} />)
+      const view = render(
+        <CanvasEditor canvasId="c1" initialSha256={null} initialScene={storedScene} />
+      )
       await saveOnce([{ id: 'img-1' }])
       return view
     }
@@ -600,12 +649,12 @@ describe('CanvasEditor too-large-to-sync notice', () => {
   })
 
   it('still warns for a different canvas opened in the same session', async () => {
-    const first = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const first = render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     await saveOnce([{ id: 'a' }])
     first.unmount()
 
     mocks.update.mockResolvedValue({ id: 'c2', tooLarge: true })
-    render(<CanvasEditor canvasId="c2" initialScene="" />)
+    render(<CanvasEditor canvasId="c2" initialSha256={null} initialScene="" />)
     await saveOnce([{ id: 'a' }, { id: 'b' }])
 
     expect(mocks.toastError).toHaveBeenCalledTimes(2)
@@ -615,14 +664,14 @@ describe('CanvasEditor too-large-to-sync notice', () => {
   })
 
   it('warns again after the canvas shrinks under the ceiling and grows past it', async () => {
-    const first = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const first = render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     await saveOnce([{ id: 'a' }])
     mocks.update.mockResolvedValue({ id: 'c1', tooLarge: false })
     await saveOnce([{ id: 'a' }, { id: 'b' }])
     first.unmount()
 
     mocks.update.mockResolvedValue({ id: 'c1', tooLarge: true })
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     await saveOnce([{ id: 'a' }, { id: 'b' }, { id: 'c' }])
 
     expect(mocks.toastError).toHaveBeenCalledTimes(2)
@@ -672,7 +721,7 @@ describe('CanvasEditor link opening', () => {
   })
 
   it('opens a linked note in a tab instead of letting Excalidraw navigate', async () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     const event = clickLink('memry://note/n1')
     await act(async () => {})
@@ -748,7 +797,7 @@ describe('CanvasEditor link opening', () => {
     expect(listBox.customData?.memryHref).toBe('memry://note/n1#Risks')
     mocks.api.elements = elements
 
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     hover(listBox)
     fireEvent.click(screen.getByTestId('canvas-node-link-card'))
     await act(async () => {})
@@ -785,7 +834,7 @@ describe('CanvasEditor link opening', () => {
     )!
     mocks.api.elements = elements
 
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     hover(headingBox)
 
     // The name the save froze into the href, read back out of it — never
@@ -796,14 +845,14 @@ describe('CanvasEditor link opening', () => {
   it('shows nothing over a shape that carries no map link', () => {
     mocks.api.elements = [{ id: 'plain', type: 'rectangle', x: 0, y: 0, width: 50, height: 50 }]
 
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     fireEvent.pointerMove(screen.getByTestId('excalidraw'), { clientX: 10, clientY: 10 })
 
     expect(screen.queryByTestId('canvas-node-link-card')).toBeNull()
   })
 
   it('opens at the top when the link names a block, which this device never minted', async () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     clickLink('memry://note/n1#^b-h')
     await act(async () => {})
@@ -814,7 +863,7 @@ describe('CanvasEditor link opening', () => {
 
   it('reports a deleted target rather than opening a blank tab', async () => {
     mocks.noteGet.mockResolvedValue(null)
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     clickLink('memry://note/gone')
     await act(async () => {})
@@ -824,7 +873,7 @@ describe('CanvasEditor link opening', () => {
   })
 
   it('moves the viewport to an element link instead of reloading the app', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     const event = clickLink(`${PROD_DOC}?element=shape-1`)
 
@@ -840,7 +889,7 @@ describe('CanvasEditor link opening', () => {
   })
 
   it('reports an element link whose target has since been deleted', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     clickLink(`${PROD_DOC}?element=deleted-shape`)
 
@@ -849,7 +898,7 @@ describe('CanvasEditor link opening', () => {
   })
 
   it('hands a web link to the shell, whose allowlist decides what leaves the app', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     const event = clickLink('https://example.com/docs')
 
@@ -858,7 +907,7 @@ describe('CanvasEditor link opening', () => {
   })
 
   it('still blocks Excalidraw entirely when there is nothing to act on', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     const event = clickLink('   ')
 
@@ -896,7 +945,9 @@ describe('CanvasEditor link picker', () => {
   it('opens the picker for a single selected shape', () => {
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.selectedElementIds = { 'shape-1': true }
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     pressShortcut(container)
 
@@ -910,7 +961,9 @@ describe('CanvasEditor link picker', () => {
       { id: 'shape-2', type: 'ellipse' }
     ]
     mocks.api.selectedElementIds = { 'shape-1': true, 'shape-2': true }
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     pressShortcut(container)
 
@@ -921,7 +974,9 @@ describe('CanvasEditor link picker', () => {
   it('says so when nothing is selected', () => {
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.selectedElementIds = {}
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     pressShortcut(container)
 
@@ -933,7 +988,9 @@ describe('CanvasEditor link picker', () => {
       { id: 'card-1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } }
     ]
     mocks.api.selectedElementIds = { 'card-1': true }
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     pressShortcut(container)
 
@@ -947,7 +1004,9 @@ describe('CanvasEditor link picker', () => {
       { id: 'shape-2', type: 'ellipse' }
     ]
     mocks.api.selectedElementIds = { 'shape-1': true }
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
     pressShortcut(container)
 
     act(() => {
@@ -965,7 +1024,9 @@ describe('CanvasEditor link picker', () => {
   it('reports a shape deleted while the picker was open instead of writing nowhere', () => {
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.selectedElementIds = { 'shape-1': true }
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
     pressShortcut(container)
 
     mocks.api.elements = []
@@ -997,7 +1058,7 @@ describe('CanvasEditor native link action', () => {
   })
 
   it('answers the built-in link button with the item picker, and closes its URL box', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     mocks.api.showHyperlinkPopup = 'editor'
     act(() => mocks.onChange?.())
@@ -1009,7 +1070,7 @@ describe('CanvasEditor native link action', () => {
   })
 
   it('acts once per opening, not on every change while the popup is up', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     mocks.api.showHyperlinkPopup = 'editor'
     act(() => mocks.onChange?.())
@@ -1020,7 +1081,7 @@ describe('CanvasEditor native link action', () => {
   })
 
   it('re-arms after the popup closes, so the next click opens the picker again', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     mocks.api.showHyperlinkPopup = 'editor'
     act(() => mocks.onChange?.())
@@ -1033,7 +1094,7 @@ describe('CanvasEditor native link action', () => {
   })
 
   it("leaves the 'info' popup alone, where the remove-link button lives", () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     mocks.api.showHyperlinkPopup = 'info'
     act(() => mocks.onChange?.())
@@ -1069,7 +1130,9 @@ describe('CanvasEditor link bubble label', () => {
   })
 
   it("shows the linked item's name instead of its id", async () => {
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     const anchor = await mountAnchor(
       container,
@@ -1080,7 +1143,9 @@ describe('CanvasEditor link bubble label', () => {
   })
 
   it('leaves a web address as written, where the URL is the honest label', async () => {
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     const anchor = await mountAnchor(container, 'https://example.com/docs')
 
@@ -1088,7 +1153,9 @@ describe('CanvasEditor link bubble label', () => {
   })
 
   it('leaves a link written before labels existed as written', async () => {
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     const anchor = await mountAnchor(container, 'memry://note/n1')
 
@@ -1134,7 +1201,9 @@ describe('CanvasEditor element link label', () => {
     mocks.api.elements = [
       { id: 'card-1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } }
     ]
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     const anchor = await mountAnchor(container, `${PROD_DOC}?element=card-1`)
     await act(async () => {
@@ -1153,7 +1222,9 @@ describe('CanvasEditor element link label', () => {
     mocks.api.elements = [
       { id: 'card-1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } }
     ]
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
     const wrapper = container.querySelector('[data-canvas-editor]') as HTMLElement
 
     const anchor = await mountAnchor(container, `${PROD_DOC}?element=card-1`)
@@ -1179,7 +1250,9 @@ describe('CanvasEditor element link label', () => {
       { id: 'r-1', type: 'rectangle' },
       { id: 't-1', type: 'text', text: 'Phase two', containerId: 'r-1' }
     ]
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     const anchor = await mountAnchor(container, `${PROD_DOC}?element=r-1`)
 
@@ -1188,7 +1261,9 @@ describe('CanvasEditor element link label', () => {
 
   it('falls back to a generic name for a shape carrying no text', async () => {
     mocks.api.elements = [{ id: 'r-1', type: 'ellipse' }]
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     const anchor = await mountAnchor(container, `${PROD_DOC}?element=r-1`)
 
@@ -1197,7 +1272,9 @@ describe('CanvasEditor element link label', () => {
 
   it('says so when the linked shape is gone', async () => {
     mocks.api.elements = [{ id: 'other', type: 'rectangle' }]
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
 
     const anchor = await mountAnchor(container, `${PROD_DOC}?element=r-1`)
 
@@ -1262,7 +1339,7 @@ describe('CanvasEditor viewport restore', () => {
 
   it('hands the tab camera to initialData and stands scrollToContent down', () => {
     storedCamera('c1', CAMERA)
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />)
 
     const data = readInitialData()
 
@@ -1278,7 +1355,7 @@ describe('CanvasEditor viewport restore', () => {
   })
 
   it('centres on the drawing when the tab has no camera yet', () => {
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />)
 
     const data = readInitialData()
 
@@ -1288,7 +1365,7 @@ describe('CanvasEditor viewport restore', () => {
 
   it('restores the camera on a canvas that was never drawn on', () => {
     storedCamera('c1', CAMERA)
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     const data = readInitialData()
 
@@ -1299,7 +1376,7 @@ describe('CanvasEditor viewport restore', () => {
   })
 
   it('still hands Excalidraw nothing for an untouched empty canvas', () => {
-    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     expect(readInitialData()).toBeNull()
   })
@@ -1308,20 +1385,20 @@ describe('CanvasEditor viewport restore', () => {
     // A preview tab is reused for the next item the user clicks, so the tab
     // outlives the entity its camera was measured against.
     storedCamera('another-canvas', CAMERA)
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />)
 
     expect(readInitialData()?.scrollToContent).toBe(true)
   })
 
   it('ignores a stored camera an older build could have written badly', () => {
     storedCamera('c1', { scrollX: 10, scrollY: 10, zoom: 900 })
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />)
 
     expect(readInitialData()?.scrollToContent).toBe(true)
   })
 
   it('records a pan/zoom once per throttle window, not once per frame', () => {
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />)
     finishInit()
     mocks.api.viewport = { scrollX: -10, scrollY: -20, zoom: { value: 1.5 } }
 
@@ -1345,7 +1422,7 @@ describe('CanvasEditor viewport restore', () => {
   })
 
   it('ignores the camera Excalidraw reports before initialData is applied', () => {
-    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />)
     // Still initialising: appState is Excalidraw's default (origin, 100%), and
     // recording it would overwrite the stored camera with the origin.
     mocks.api.viewport = { scrollX: 0, scrollY: 0, zoom: { value: 1 } }
@@ -1362,7 +1439,9 @@ describe('CanvasEditor viewport restore', () => {
     // The fake API exposes no camera at all, so a camera in this write can only
     // have come from the ref — which is the point: on a tab switch React
     // destroys the Excalidraw child before this cleanup runs.
-    const { unmount } = render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    const { unmount } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />
+    )
     finishInit()
     mocks.api.viewport = {
       scrollX: CAMERA.scrollX,
@@ -1384,7 +1463,9 @@ describe('CanvasEditor viewport restore', () => {
 
   it('does not rewrite a camera that has not moved', () => {
     storedCamera('c1', CAMERA)
-    const { unmount } = render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    const { unmount } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene={STORED_SCENE} />
+    )
     finishInit()
     mocks.api.viewport = {
       scrollX: CAMERA.scrollX,
@@ -1426,17 +1507,19 @@ describe('CanvasEditor Excalidraw prop identity', () => {
   })
 
   it('hands the surface the same excalidrawAPI and onChange across a re-render', () => {
-    const { rerender } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { rerender } = render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
     const first = { ...mocks.excalidrawProps }
 
-    rerender(<CanvasEditor canvasId="c1" initialScene="" />)
+    rerender(<CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />)
 
     expect(mocks.excalidrawProps.excalidrawAPI).toBe(first.excalidrawAPI)
     expect(mocks.excalidrawProps.onChange).toBe(first.onChange)
   })
 
   it('keeps them stable when the editor re-renders on its own state', () => {
-    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const { container } = render(
+      <CanvasEditor canvasId="c1" initialSha256={null} initialScene="" />
+    )
     const first = { ...mocks.excalidrawProps }
 
     // Opening the link picker is a real setState in the editor — the same kind
@@ -1480,7 +1563,7 @@ describe('CanvasEditor image URLs on Windows', () => {
       elements: [{ id: 'img-1', type: 'image' }],
       files: { f1: { id: 'f1', mimeType: 'image/png', dataURL: CANONICAL } }
     })
-    render(<CanvasEditor canvasId="c1" initialScene={stored} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={stored} />)
 
     const initialData = (mocks.excalidrawProps.initialData as () => { files: unknown })()
     expect(initialData.files).toEqual({
@@ -1500,7 +1583,7 @@ describe('CanvasEditor image URLs on Windows', () => {
         2
       )
     )
-    render(<CanvasEditor canvasId="c1" initialScene={stored} />)
+    render(<CanvasEditor canvasId="c1" initialSha256={null} initialScene={stored} />)
     mocks.api.elements = [
       { id: 'img-1', type: 'image' },
       { id: 'stroke-2', type: 'freedraw' }

@@ -30,6 +30,7 @@ import { prefetchRestoredTabPage } from './lib/launch-restore'
 import { reportLaunchMarks } from './lib/launch-marks'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
+import { installImeCompositionGuard } from './lib/ime-composition-guard'
 import { installNotPortedShim } from './lib/not-ported'
 import { installPortedApi } from './lib/ported-api'
 import { applyStartupState } from './lib/startup'
@@ -79,6 +80,7 @@ commands
   .then((info) => log.info('app info', info))
   .catch((error: unknown) => log.warn('app_info failed', error))
 registerRendererDiagnostics()
+installImeCompositionGuard(window)
 
 // Sanitize a stale or corrupted theme value in localStorage before next-themes
 // reads it. A pre-existing bug elsewhere can write `[object Object]` here,

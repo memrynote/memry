@@ -1,0 +1,17 @@
+-- Did a human pick this tag's colour, or did the palette hand one out?
+--
+-- `getOrCreateTag` colours every tag it mints with `palette[localTagCount % 24]`,
+-- so the same tag name is green on the device where it happened to be the 12th
+-- tag and red where it was the 23rd. That colour then rode the normal sync path
+-- as if the user had chosen it and repainted colours users actually did choose
+-- (report 2026-07-21: "one of my primary tags is green and after updating some
+-- notes I noticed it's now red").
+--
+-- Additive, and existing rows default to 0. Rows written before this column
+-- existed carry auto-minted and hand-picked colours that are indistinguishable,
+-- so we cannot claim a human chose them. 0 is the safe reading: an unauthored
+-- colour is still stored, still displayed, and still travels to devices that do
+-- not have the tag yet — it just may not repaint a colour already sitting on
+-- another device. Choosing the colour once marks it authored and makes it
+-- authoritative everywhere again.
+ALTER TABLE `tag_definitions` ADD `color_authored` integer DEFAULT 0 NOT NULL;

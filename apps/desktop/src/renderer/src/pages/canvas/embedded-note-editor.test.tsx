@@ -8,6 +8,7 @@ import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
 
 const mocks = vi.hoisted(() => ({
   update: vi.fn(),
+  toastError: vi.fn(),
   onMarkdownChange: null as ((markdown: string) => void) | null,
   isNoteLocked: false
 }))
@@ -17,6 +18,7 @@ let currentNote: Note | null = null
 vi.mock('@/hooks/use-notes-query', () => ({
   useNote: () => ({ note: currentNote, isLoading: false, isFetching: false, error: null })
 }))
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 vi.mock('@/services/notes-service', () => ({
   notesService: { update: mocks.update }
 }))
@@ -77,6 +79,7 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 describe('EmbeddedNoteEditor', () => {
   beforeEach(() => {
     mocks.update.mockReset()
+    mocks.toastError.mockReset()
     mocks.update.mockResolvedValue({ success: true })
     mocks.onMarkdownChange = null
     mocks.isNoteLocked = false
@@ -159,5 +162,42 @@ describe('EmbeddedNoteEditor', () => {
     reportLateEdit('typed while closing')
 
     expect(mocks.update).toHaveBeenCalledWith({ id: 'n1', content: 'typed while closing' })
+  })
+
+  // A refused write (a case twin's body, #5742) resolves `{ success: false }`.
+  it('shows a refused save once per run of refusals and keeps the text for the next flush', async () => {
+    vi.useFakeTimers()
+    currentNote = makeNote()
+    mocks.update.mockResolvedValue({ success: false, error: 'Edit refused' })
+    const { unmount } = render(<EmbeddedNoteEditor noteId="n1" />)
+
+    screen.getByTestId('edit').click()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    screen.getByTestId('edit-again').click()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+
+    expect(mocks.update).toHaveBeenCalledTimes(2)
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError).toHaveBeenCalledWith('Edit refused')
+
+    mocks.update.mockResolvedValue({ success: true })
+    unmount()
+    expect(mocks.update).toHaveBeenLastCalledWith({ id: 'n1', content: 'edited again' })
+  })
+
+  it('shows a refused save of an edit reported after unmount', async () => {
+    currentNote = makeNote()
+    mocks.update.mockResolvedValue({ success: false, error: 'Edit refused' })
+    const { unmount } = render(<EmbeddedNoteEditor noteId="n1" />)
+    const reportLateEdit = mocks.onMarkdownChange!
+
+    unmount()
+    reportLateEdit('typed while closing')
+
+    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Edit refused'))
   })
 })

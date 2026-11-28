@@ -579,7 +579,10 @@
       "journalOff": "Dagbok är avstängd i Inställningar.",
       "sendFailed": "Det gick inte att skicka stickyn.",
       "undoExpired": "Det är för sent att ångra.",
-      "undoFailed": "Det gick inte att ångra skickandet."
+      "undoFailed": "Det gick inte att ångra skickandet.",
+      "journalBusy": "Dagens dagboksinlägg sparas fortfarande. Försök igen om en stund.",
+      "folderExcluded": "Mappen Sticky är undantagen. Ta bort den från de undantagna mapparna i Inställningar för att skicka anteckningar.",
+      "projectMissing": "Uppgiftens projekt finns inte. Välj ett standardprojekt i Inställningar eller skicka den som en anteckning."
     },
     "inputLabel": "Sticky-text",
     "dismissError": "Stäng"

@@ -28,6 +28,7 @@ use super::learn::{Learner, order};
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
 use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
+use crate::sync::first_sync_running::FirstSyncRunning;
 use crate::vault::note_file::{NoteFileError, large_by_size, large_file_class, read_note};
 
 /// One open vault's index. A note's journal day is its record's, which the core reads when it
@@ -36,11 +37,13 @@ use crate::vault::note_file::{NoteFileError, large_by_size, large_file_class, re
 /// An unreadable or changed vault config changes no stored day, and a day owed a move of its
 /// file has none.
 pub struct Indexer {
-    root: PathBuf,
+    pub(super) root: PathBuf,
     pub(super) vault: Arc<Vault>,
     pub(super) search: Arc<Search>,
     /// Holds the device key the definitions' records are read under.
     store: Arc<dyn SecureStore>,
+    /// While it is held, the search reindex waits (#5409).
+    pub(super) first_sync: FirstSyncRunning,
 }
 
 /// The definitions a pass types the property values it reads with, and the notes it owes them.
@@ -83,6 +86,8 @@ pub(super) struct Pass {
     pub learned: bool,
     /// The search reindex ran to its end: the body tags are the files' ([`Self::define_tags`]).
     pub reindexed: bool,
+    /// The search reindex was owed and a first sync held it: it stays owed, with no backoff.
+    pub held: bool,
 }
 
 enum Read {
@@ -102,6 +107,7 @@ impl Indexer {
             vault: vault.vault.clone(),
             search: vault.search.clone(),
             store,
+            first_sync: vault.first_sync.clone(),
         }
     }
 
@@ -200,7 +206,8 @@ impl Indexer {
     }
 
     /// Reads and measures `notes` in batches of at most [`BATCH`] files and [`BATCH_BYTES`],
-    /// then brings the search index up to date when `links` is owed, and hands `announce` the
+    /// then brings the search index up to date when `links` is owed and no first sync holds it
+    /// (#5409), and hands `announce` the
     /// links it changed once they are committed, with the relation values `links` holds: those
     /// written since the last announce, this pass's and [`Self::measure_now`]'s. `progress` gets `built`
     /// of `total` first, after each batch and at the end, and none once `stop` is set; `stop`
@@ -226,6 +233,7 @@ impl Indexer {
             written: Vec::new(),
             learned: false,
             reindexed: false,
+            held: false,
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         if total > 0 {
@@ -291,16 +299,25 @@ impl Indexer {
         large.extend(pass.unread.iter().cloned());
         self.search.forget_note_properties(large)?;
         progress(built(&pass, total));
-        if links.is_some() {
-            match self.search.reindex_until(stop)? {
-                Some(mut changed) => {
-                    changed.extend(links.take().unwrap_or_default());
-                    if !changed.is_empty() {
-                        announce(changed);
-                    }
-                    pass.reindexed = true;
+        // Not while a first sync runs (#5409): the reindex takes the `data.db` writer per batch,
+        // and the first sync's bodies pass still waits on each batch. One that started before
+        // it stops, keeping the batches it committed, and the rest stays owed.
+        let held = || self.first_sync.is_running();
+        if let Some(owed) = links {
+            // The links of every batch it committed join the owed ones, so a pass that stops
+            // or fails still announces them with the next one.
+            if held() {
+                pass.held = true;
+            } else if self.search.reindex_until(&|| stop() || held(), owed)? {
+                let changed = links.take().unwrap_or_default();
+                if !changed.is_empty() {
+                    announce(changed);
                 }
-                None => pass.stopped = true,
+                pass.reindexed = true;
+            } else if stop() {
+                pass.stopped = true;
+            } else {
+                pass.held = true;
             }
         }
         // Every note it read is typed with them, and an unread one holds no rows.
@@ -315,12 +332,13 @@ impl Indexer {
     /// Mints a definition for every tag of the notes `only` names, or of every note, that has
     /// none (#4418, Electron's `ensureTagDefinitions` for each file it indexes), once a pass's
     /// search reindex brought the body tags up to date. A pass mints for the files it read; the
-    /// open's pass for every note, which defines the tags of a vault an older build indexed. A
+    /// open's sweep for every note, which defines the tags of a vault an older build indexed. A
     /// mint goes to `defined`: a list read before it showed the name's default colour. A
-    /// failure is logged, and the next pass that reads the file, or the next open, tries again.
-    pub(super) fn define_tags(&self, only: Option<Vec<String>>, defined: &dyn Fn()) {
+    /// failure is logged and answers `false`: the task owes a failed sweep to its next pass,
+    /// and the next pass that reads a file tries that file's tags again.
+    pub(super) fn define_tags(&self, only: Option<Vec<String>>, defined: &dyn Fn()) -> bool {
         if only.as_ref().is_some_and(Vec::is_empty) {
-            return;
+            return true;
         }
         let minted = self.search.used_tags(only).and_then(|tags| {
             let hub =
@@ -332,16 +350,18 @@ impl Indexer {
             hub.define_used(&tags)
         });
         match minted {
-            Ok(0) => {}
+            Ok(0) => true,
             Ok(created) => {
                 tracing::info!(scope = "note_index", created, "tags defined");
                 defined();
+                true
             }
             Err(error) => {
                 tracing::warn!(
                     scope = "note_index",
                     "tags not defined, retried later: {error}"
                 );
+                false
             }
         }
     }

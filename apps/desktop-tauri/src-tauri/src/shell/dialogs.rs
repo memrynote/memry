@@ -73,14 +73,41 @@ pub fn pick_files<R: Runtime>(app: &AppHandle<R>, title: &str) -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
-/// A file to write, or `None` when the user cancelled.
-pub fn save_file<R: Runtime>(app: &AppHandle<R>, title: &str) -> Option<PathBuf> {
+/// Files of the types `filters` name (each a label and its extensions, `*` for any), with no
+/// title, or an empty list when the user cancelled.
+pub fn pick_files_filtered<R: Runtime>(
+    app: &AppHandle<R>,
+    filters: &[(&str, &[&str])],
+) -> Vec<PathBuf> {
+    if let Some(answer) = queued(app, DialogKind::OpenFile) {
+        return answer;
+    }
+    filters
+        .iter()
+        .fold(app.dialog().file(), |dialog, (name, extensions)| {
+            dialog.add_filter(*name, extensions)
+        })
+        .blocking_pick_files()
+        .map(|files| files.into_iter().filter_map(into_path).collect())
+        .unwrap_or_default()
+}
+
+/// A file to write, offered as `default_name` with one filter `(name, extensions)`, or `None`
+/// when the user cancelled.
+pub fn save_file<R: Runtime>(
+    app: &AppHandle<R>,
+    title: &str,
+    default_name: &str,
+    filter: (&str, &[&str]),
+) -> Option<PathBuf> {
     if let Some(answer) = queued(app, DialogKind::SaveFile) {
         return first(answer);
     }
     app.dialog()
         .file()
         .set_title(title)
+        .set_file_name(default_name)
+        .add_filter(filter.0, filter.1)
         .blocking_save_file()
         .and_then(into_path)
 }

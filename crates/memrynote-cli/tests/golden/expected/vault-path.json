@@ -1,0 +1,88 @@
+{
+  "name": "vault-path",
+  "steps": [
+    {
+      "argv": [
+        "locale",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ENOTDIR: not a directory, mkdir '<tmp>/appdata/memry-config.json/.memry'\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{tmp}/appdata/memry-config.json",
+        "locale",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ENOTDIR: not a directory, mkdir '<tmp>/appdata/memry-config.json/.memry'\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{tmp}/appdata/memry-config.json/sub",
+        "--json",
+        "locale",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ENOTDIR: not a directory, mkdir '<tmp>/appdata/memry-config.json/sub/.memry'\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{tmp}/appdata/memry-config.json",
+        "bogus"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ENOTDIR: not a directory, mkdir '<tmp>/appdata/memry-config.json/.memry'\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{tmp}/appdata/memry-config.json",
+        "notes",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ENOTDIR: not a directory, mkdir '<tmp>/appdata/memry-config.json/.memry'\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{vault}",
+        "locale",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "EEXIST: file already exists, mkdir '<vault>/.memry'\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{tmp}/appdata/../vault",
+        "locale"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "EEXIST: file already exists, mkdir '<vault>/.memry'\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[\n  {\n    \"path\": \"<tmp>/appdata/memry-config.json\",\n    \"name\": \"File\",\n    \"isDefault\": true,\n    \"lastOpened\": \"<iso>\"\n  }\n]\n",
+      "stderr": ""
+    }
+  ]
+}

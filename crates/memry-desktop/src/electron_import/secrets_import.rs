@@ -17,15 +17,22 @@
 //! the verifier again on the master key read back from the keychain, generic secrets, and the
 //! device key last. A failure after the first write deletes exactly the entries this run wrote
 //! (the ledger) and nothing it found in place. A generic secret the keychain refuses as `Failed`
-//! (Windows Credential Manager refuses a blob over 2560 bytes) is skipped and listed
-//! (`WriteRefused`); `Locked` stops the phase.
+//! (Windows Credential Manager refuses a blob over 2560 bytes) is read back, since a `Failed`
+//! answer does not prove nothing was stored: absent, it is skipped and listed (`WriteRefused`);
+//! holding Electron's value, it is this run's write and goes in the ledger; anything else stops
+//! the phase with the slot in the ledger (it was empty before this run). `Locked` stops the phase.
+//! The ledger trusts that a slot found empty stays this run's alone, so [`import_secrets`] runs
+//! before any UI that writes secrets: a rollback deletes what it finds there.
 //!
 //! **Reruns.** The phase owns the marker `secrets-import.done` in this app's data dir, written
 //! after a run that ended `Ok`. A run that finds it answers [`SecretsPhase::Done`] without reading
 //! Electron's data: once this app refreshed a token or signed out, Electron's secrets are stale,
-//! and copying them again would fail on the rotated token or sign the user back in. Before the
-//! marker (a crash mid-run, or a marker write that failed), a slot that already holds Electron's
-//! value is left alone and counted as present, so the rerun converges and writes nothing twice.
+//! and copying them again would fail on the rotated token or sign the user back in. After a crash
+//! mid-run, a slot that already holds Electron's value is left alone and counted as present, so
+//! the rerun converges and writes nothing twice. A marker write that failed
+//! ([`SecretsError::DoneMarker`] after the run) is not that case: the import finished, and once
+//! this app has used the session the refresh token has rotated, so a rerun of the import stops on
+//! `TargetOccupied` every time. The caller retries only the marker write then, never the import.
 //!
 //! **Shared refresh token.** The copied refresh token is the one Electron holds, so both apps
 //! share one device's token chain. Reusing a rotated token outside the server's grace window
@@ -50,10 +57,14 @@ use crate::seams::secure_store::{
     AdoptError, Adoption, DeviceIdentityStore, GenericSecrets, KEYS, KeyringStore, SERVICE,
     account, device_account,
 };
-use crate::vault::fs_atomic::atomic_write;
 use checks::{check_device, check_master};
+pub use done::forget_secrets_import;
+use done::{DONE_FILE, mark_done};
+use ledger::{Ledger, Written};
 
 mod checks;
+mod done;
+mod ledger;
 
 /// Electron's service of the five sync secrets (`KEYCHAIN_ENTRIES`).
 const ELECTRON_SYNC: &str = "com.memry.sync";
@@ -61,12 +72,13 @@ const ELECTRON_SYNC: &str = "com.memry.sync";
 const ELECTRON_PREFIXES: [&str; 2] = ["com.memry.", "memry."];
 const DEVICE_KEY_LEN: usize = 64;
 /// Electron's local provider key: `api-key`, `api-key:<MEMRY_DEVICE>` in a dev run
-/// (`local-provider-keychain.ts:6-9`). Every other Electron service names its accounts as this
-/// app does.
+/// (`local-provider-keychain.ts:6-9`). Every other account is copied as Electron named it, which
+/// in production is the bare name this app reads. In a dev run Electron's Readwise, voice,
+/// calendar and OneNote accounts end in the raw `-<MEMRY_DEVICE>`, `-dev-<hash>` for a plain
+/// `pnpm dev`, where this app's [`device_account`] names that device `-dev`: such dev secrets
+/// land under an account this app does not read.
 const LOCAL_PROVIDER: &str = "memry.agent.local-provider";
 const LOCAL_PROVIDER_ACCOUNT: &str = "api-key";
-/// The phase's done marker, in this app's data dir.
-const DONE_FILE: &str = "secrets-import.done";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SecretsMode {
@@ -162,6 +174,8 @@ pub enum SecretsError {
     /// Electron's secrets or a vault's evidence could not be read. Offers Retry.
     #[error("Electron's data could not be read: {0}")]
     Read(String),
+    /// The marker could not be checked (nothing ran) or, after a finished import, not written:
+    /// then only the marker write may be retried (module doc, **Reruns**).
     #[error("the secrets import marker: {0}")]
     DoneMarker(String),
     /// Offers Retry and Sign in again.
@@ -180,8 +194,8 @@ pub enum SecretsError {
     TargetOccupied { kind: &'static str },
     #[error("the keychain: {0}")]
     Keychain(SecureStoreError),
-    /// The rollback after `cause` could not delete `left` entries this run wrote; each holds
-    /// Electron's value, so a rerun finds them in place.
+    /// The rollback after `cause` could not delete `left` entries this run wrote; one that holds
+    /// Electron's value is found in place by a rerun.
     #[error("{cause} (and {left} entries this run wrote could not be removed)")]
     RollbackIncomplete {
         cause: Box<SecretsError>,
@@ -332,46 +346,6 @@ fn plan(
     Ok(plan)
 }
 
-enum Written {
-    Sync(SecureStoreKey),
-    Generic { service: String, account: String },
-}
-
-/// What this run wrote, deleted again in reverse on a failure.
-#[derive(Default)]
-struct Ledger(Vec<Written>);
-
-impl Ledger {
-    fn roll_back(self, keyring: &KeyringStore, cause: SecretsError) -> SecretsError {
-        let mut left = 0;
-        for written in self.0.into_iter().rev() {
-            let result = match &written {
-                Written::Sync(key) => keyring.delete(*key),
-                Written::Generic { service, account } => keyring.delete_secret(service, account),
-            };
-            if let Err(error) = result {
-                left += 1;
-                let what = match &written {
-                    Written::Sync(key) => kind(*key).to_owned(),
-                    Written::Generic { service, .. } => service.clone(),
-                };
-                tracing::warn!(
-                    scope = "ElectronImport",
-                    "the rollback could not remove the {what} this run wrote: {error}"
-                );
-            }
-        }
-        if left == 0 {
-            cause
-        } else {
-            SecretsError::RollbackIncomplete {
-                cause: Box::new(cause),
-                left,
-            }
-        }
-    }
-}
-
 /// Slots that need a write, after reading every target once. Nothing is written yet.
 struct Pending<'a> {
     sync: Vec<&'a (SecureStoreKey, Secret)>,
@@ -430,10 +404,10 @@ pub fn import_secrets(
         Err(error) => return Err(SecretsError::DoneMarker(error.to_string())),
     }
     let (report, evidence) = inputs().map_err(|error| SecretsError::Read(error.to_string()))?;
-    let outcome = run(&report, &evidence, mode, keyring, identity)?;
-    // A failed marker write leaves a finished import: the rerun finds every slot present.
-    atomic_write(&done, b"done\n")
-        .map_err(|error| SecretsError::DoneMarker(error.source.to_string()))?;
+    let (outcome, synced) = run(&report, &evidence, mode, keyring, identity)?;
+    // A failed marker write leaves a finished import. Retry the marker write only: once the
+    // session is used, a rerun of the import finds the rotated refresh token `TargetOccupied`.
+    mark_done(app_dir, &synced)?;
     Ok(SecretsPhase::Ran(outcome))
 }
 
@@ -452,7 +426,7 @@ fn run(
     mode: SecretsMode,
     keyring: &KeyringStore,
     identity: &DeviceIdentityStore,
-) -> Result<SecretsOutcome, SecretsError> {
+) -> Result<(SecretsOutcome, Vec<(SecureStoreKey, Secret)>), SecretsError> {
     let mut plan = plan(report, mode, keyring.device_suffix())?;
     let device_checked = match &plan.device {
         Some(device) => check_device(device, evidence)?,
@@ -498,7 +472,8 @@ fn run(
                 outcome.present += usize::from(device_key == DeviceKey::AlreadyHeld);
                 outcome.device_key = device_key;
             }
-            Ok(outcome)
+            // Every sync slot of the plan now holds Electron's value: written or found present.
+            Ok((outcome, plan.sync))
         }
         Err(error) => Err(ledger.roll_back(keyring, error)),
     }
@@ -532,16 +507,44 @@ fn write(
                 account: slot.account.clone(),
             }),
             Err(SecureStoreError::Failed { what }) => {
-                tracing::warn!(
-                    scope = "ElectronImport",
-                    "the keychain refused the {} secret; it is skipped: {what}",
-                    slot.service
-                );
-                skipped.push(SkippedSecret {
+                let written = || Written::Generic {
                     service: slot.service.clone(),
                     account: slot.account.clone(),
-                    reason: SkipReason::WriteRefused,
-                });
+                };
+                match keyring.get_secret(&slot.service, &slot.account) {
+                    Ok(None) => {
+                        tracing::warn!(
+                            scope = "ElectronImport",
+                            "the keychain refused the {} secret; it is skipped: {what}",
+                            slot.service
+                        );
+                        skipped.push(SkippedSecret {
+                            service: slot.service.clone(),
+                            account: slot.account.clone(),
+                            reason: SkipReason::WriteRefused,
+                        });
+                    }
+                    Ok(Some(held)) if held == *slot.value => ledger.0.push(written()),
+                    Ok(Some(_)) => {
+                        tracing::warn!(
+                            scope = "ElectronImport",
+                            "the keychain refused the {} secret and holds another value: {what}",
+                            slot.service
+                        );
+                        ledger.0.push(written());
+                        return Err(SecureStoreError::Failed {
+                            what: format!(
+                                "the refused {} write read back another value",
+                                slot.service
+                            ),
+                        }
+                        .into());
+                    }
+                    Err(error) => {
+                        ledger.0.push(written());
+                        return Err(error.into());
+                    }
+                }
             }
             Err(error) => return Err(error.into()),
         }

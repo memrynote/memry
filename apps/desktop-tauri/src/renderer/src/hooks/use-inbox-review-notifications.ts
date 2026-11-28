@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { newItemViewState } from '@/contexts/tabs/helpers'
+import { onInboxReviewDue, onInboxReviewOpen } from '@/services/inbox-service'
 
 /**
  * Hook that listens for the scheduled inbox review events and shows a
@@ -38,7 +39,7 @@ export function useInboxReviewNotifications(): void {
 
   // Toast when the OS nudge fires. Depends on `t` so the copy re-localizes.
   useEffect(() => {
-    return window.api.onInboxReviewDue(({ count }) => {
+    return onInboxReviewDue(({ count }) => {
       toast(t('reviewNudge.title', { count }), {
         description: t('reviewNudge.description'),
         action: {
@@ -52,7 +53,7 @@ export function useInboxReviewNotifications(): void {
   // Open the inbox when the user clicks the OS notification. Independent of `t`
   // so a language change never drops this subscription.
   useEffect(() => {
-    return window.api.onInboxReviewOpen(openInbox)
+    return onInboxReviewOpen(openInbox)
   }, [openInbox])
 }
 

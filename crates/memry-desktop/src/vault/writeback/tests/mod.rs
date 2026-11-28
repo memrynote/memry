@@ -10,12 +10,14 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::identity::Adopted;
 use memry_core::domain::notes::journal_day::FileDay;
-use memry_core::markdown::frontmatter::{parse_markdown_note, split_frontmatter_block};
+use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_frontmatter_block};
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::OpenOptions;
@@ -48,9 +50,14 @@ pub(super) struct Fixture {
 
 pub(super) fn fixture() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("vault/.memry/core")).unwrap();
+    fixture_in(dir)
+}
+
+/// The app state of a run over the vault and `data.db` of `dir`.
+fn fixture_in(dir: tempfile::TempDir) -> Fixture {
     let root = dir.path().join("vault");
     let core = root.join(".memry/core");
-    std::fs::create_dir_all(&core).unwrap();
     let store = with_device_key();
     let vault = Arc::new(
         Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap(),
@@ -67,6 +74,7 @@ pub(super) fn fixture() -> Fixture {
         echo.clone(),
         vault.app_settings(store.clone()).ok(),
         own_files.clone(),
+        store.clone(),
     );
     Fixture {
         writer: vault.notes_writer(store.clone()).unwrap(),
@@ -84,6 +92,14 @@ pub(super) fn fixture() -> Fixture {
 }
 
 impl Fixture {
+    /// Quits and starts a new app run: every piece of state this run held in memory is dropped,
+    /// and a new one opens the same vault and `data.db`.
+    pub(super) fn restart(self) -> Fixture {
+        let dir = self._dir;
+        drop((self.pass, self.writer, self.rows, self.vault));
+        fixture_in(dir)
+    }
+
     pub(super) fn write(&self, rel: &str, text: &str) {
         let path = self.root.join(rel);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -107,15 +123,20 @@ impl Fixture {
         id
     }
 
-    /// [`Self::adopt`] for the journal day `date` at `rel`, as the vault tier names it.
+    /// [`Self::adopt`] for the journal day `date` at `rel`, as the vault tier names it: the day
+    /// takes the file's header tags, as the identity's adoption does.
     pub(super) fn adopt_day(&mut self, rel: &str, date: &str, text: &str) -> String {
+        let tags = match parse_markdown_note(text).map(|parsed| parsed.frontmatter) {
+            Ok(YamlValue::Map(map)) => header_tags(&map),
+            _ => Vec::new(),
+        };
         let day = FileDay {
             path: rel,
             date,
             title: date,
             folder_path: None,
             body: "",
-            tags: &[],
+            tags: &tags,
             created_ms: 0,
             modified_ms: 0,
             electron_db_beside: false,
@@ -223,7 +244,8 @@ impl Fixture {
         let now = now_ms();
         db.call_blocking(move |conn| {
             for (at, update) in updates.iter().enumerate() {
-                update_log::append_server_update(conn, &doc_id, first + at as i64, update, now)
+                HeldBody::never_purged(conn, &doc_id)
+                    .and_then(|held| held.append_server_update(first + at as i64, update, now))
                     .unwrap();
             }
             Ok(())
@@ -356,13 +378,20 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 }
 
 mod attachments;
+mod body_waits;
+mod day_note;
+mod day_place;
+mod delete_keep;
 mod deleted;
 mod embeds;
+mod failures;
 mod guards;
 mod journal;
 mod locks;
 mod perf;
+mod place;
 mod reconcile;
 mod schedule;
 mod triggers;
 mod typing;
+mod unfiled;

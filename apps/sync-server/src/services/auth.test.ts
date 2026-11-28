@@ -24,9 +24,12 @@ const createMockStatement = (): MockStatement => {
   return stmt
 }
 
+// What D1 answers for a rotation batch whose conditional INSERT landed.
+const ROTATED = [{ meta: { changes: 1 } }, { meta: { changes: 1 } }]
+
 const createMockDb = () => ({
   prepare: vi.fn().mockReturnValue(createMockStatement()),
-  batch: vi.fn().mockResolvedValue([])
+  batch: vi.fn().mockResolvedValue(ROTATED)
 })
 
 // ============================================================================
@@ -180,7 +183,7 @@ describe('rotateRefreshToken', () => {
       if (query.includes('revoked = 0 AND expires_at > ?')) {
         return selectActiveStmt
       }
-      if (query.includes('revoked = 1 AND rotated_at IS NOT NULL')) {
+      if (query.includes('JOIN refresh_tokens successor')) {
         return selectRecentlyRotatedStmt
       }
       if (
@@ -210,7 +213,7 @@ describe('rotateRefreshToken', () => {
       if (query.includes('revoked = 0 AND expires_at > ?')) {
         return selectActiveStmt
       }
-      if (query.includes('revoked = 1 AND rotated_at IS NOT NULL')) {
+      if (query.includes('JOIN refresh_tokens successor')) {
         return selectRecentlyRotatedStmt
       }
       return createMockStatement()
@@ -243,7 +246,7 @@ describe('rotateRefreshToken', () => {
 
     db.batch
       .mockRejectedValueOnce(new Error('UNIQUE constraint failed: refresh_tokens.token_hash'))
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(ROTATED)
 
     // #when
     const result = await rotateRefreshToken(
@@ -279,7 +282,11 @@ describe('rotateRefreshToken', () => {
       ) {
         return selectLatestActiveStmt
       }
-      if (query.includes('UPDATE refresh_tokens SET revoked = 1, rotated_at = ? WHERE id = ?')) {
+      if (
+        query.includes(
+          'UPDATE refresh_tokens SET revoked = 1, rotated_at = ?, replaced_by = ? WHERE id = ? AND revoked = 0'
+        )
+      ) {
         const stmt = createMockStatement()
         stmt.bind.mockImplementation((...args: unknown[]) => {
           updateBindArgs.push(args)
@@ -294,7 +301,7 @@ describe('rotateRefreshToken', () => {
       .mockRejectedValueOnce(
         new Error('UNIQUE constraint failed: refresh_tokens.user_id, refresh_tokens.device_id')
       )
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(ROTATED)
 
     // #when
     const result = await rotateRefreshToken(
@@ -310,8 +317,8 @@ describe('rotateRefreshToken', () => {
     expect(result).toHaveProperty('refreshToken')
     expect(db.batch).toHaveBeenCalledTimes(2)
     expect(updateBindArgs).toHaveLength(2)
-    expect(updateBindArgs[0][1]).toBe('stale-token-id')
-    expect(updateBindArgs[1][1]).toBe('current-token-id')
+    expect(updateBindArgs[0][2]).toBe('stale-token-id')
+    expect(updateBindArgs[1][2]).toBe('current-token-id')
   })
 
   it('should throw AUTH_TOKEN_ROTATION_FAILED when all retry attempts exhausted', async () => {

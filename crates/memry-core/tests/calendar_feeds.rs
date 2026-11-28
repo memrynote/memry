@@ -84,6 +84,7 @@ fn subscribe_refresh_fail_and_unsubscribe() {
                     start_at: "2026-03-01T00:00:00.000Z".into(),
                     end_at: "2026-04-01T00:00:00.000Z".into(),
                     include_unselected_sources: true,
+                    include_completed_tasks: false,
                     include_external: true,
                     external_providers: None,
                     enabled_property_names: vec![],

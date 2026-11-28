@@ -416,6 +416,55 @@ describe('http-client', () => {
         message: 'errors:sync.requestTimedOut'
       })
     })
+
+    // A token refresh the server rotated was answered during a main-thread
+    // stall. Aborting it on resume lost the new pair and, with it, the session
+    // (incident 2026-11-18).
+    it('keeps an answer that arrived while the main thread was stalled past the timeout', async () => {
+      // #given an answer that lands after the deadline's due time, behind a stall
+      mockFetch.mockImplementation(
+        (_url: string, init: { signal: AbortSignal }) =>
+          new Promise((resolve, reject) => {
+            const answer = setTimeout(() => resolve(createJsonResponse({ ok: true })), 80)
+            init.signal.addEventListener('abort', () => {
+              clearTimeout(answer)
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- fetch rejects with the abort reason, which is what this simulates
+              reject(init.signal.reason)
+            })
+          })
+      )
+
+      // #when the main thread is blocked for over a second past the 50 ms timeout
+      const request = syncFetch('POST', '/auth/refresh', {}, undefined, undefined, 50)
+      const stalledUntil = performance.now() + 1_300
+      while (performance.now() < stalledUntil) {
+        // busy: the event loop cannot run
+      }
+
+      // #then the answer is read, not aborted
+      await expect(request).resolves.toEqual({ ok: true })
+    })
+
+    it('reports a body read cut off by the timeout as a timeout, not a malformed body', async () => {
+      // #given headers arrive but the body never finishes
+      mockFetch.mockImplementation(async (_url: string, init: { signal: AbortSignal }) => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () => {
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- a body read rejects with the abort reason, which is what this simulates
+              reject(init.signal.reason)
+            })
+          })
+      }))
+
+      // #when / #then
+      await expect(
+        syncFetch('POST', '/auth/refresh', {}, undefined, undefined, 25)
+      ).rejects.toMatchObject({ name: 'NetworkError', message: 'errors:sync.requestTimedOut' })
+    })
   })
 
   describe('pushCrdtFullUpdate', () => {

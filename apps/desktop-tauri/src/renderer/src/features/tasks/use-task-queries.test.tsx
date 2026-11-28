@@ -12,7 +12,19 @@ const mocks = vi.hoisted(() => ({
   },
   listeners: {} as Record<string, () => void>,
   syncStatusListener: null as ((event: { status: string }) => void) | null,
+  synced: null as {
+    types: readonly string[] | 'all'
+    callback: (items: Array<{ itemId: string; type: string; itemOperation: string }>) => void
+    onListening?: () => void
+  } | null,
   unsubscribe: vi.fn()
+}))
+
+vi.mock('@/services/sync-service', () => ({
+  onSyncedRecords: vi.fn((types, callback, onListening) => {
+    mocks.synced = { types, callback, onListening }
+    return mocks.unsubscribe
+  })
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -97,11 +109,7 @@ describe('useTaskWorkspaceData', () => {
       mocks.syncStatusListener = callback as (event: { status: string }) => void
       return mocks.unsubscribe
     }) as typeof window.api.onSyncStatusChanged
-    window.api.onItemSynced = vi.fn((callback) => {
-      mocks.listeners.itemSyncedTask = () => callback({ type: 'task', id: 'task-1' })
-      mocks.listeners.itemSyncedProject = () => callback({ type: 'project', id: 'project-1' })
-      return mocks.unsubscribe
-    })
+    mocks.synced = null
     vi.mocked(tasksService.listProjects).mockResolvedValue({
       projects: [
         {
@@ -190,18 +198,50 @@ describe('useTaskWorkspaceData', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.tasks() })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
 
-    act(() => mocks.listeners.itemSyncedProject())
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
+    expect(mocks.synced?.types).toEqual(['task', 'project'])
+    invalidate.mockClear()
+    act(() =>
+      mocks.synced?.callback([{ itemId: 'project-1', type: 'project', itemOperation: 'update' }])
+    )
+    expect(invalidate.mock.calls).toEqual([[{ queryKey: taskKeys.projects() }]])
+    invalidate.mockClear()
+    act(() =>
+      mocks.synced?.callback([
+        { itemId: 'task-1', type: 'task', itemOperation: 'create' },
+        { itemId: 'task-2', type: 'task', itemOperation: 'delete' }
+      ])
+    )
+    expect(invalidate.mock.calls).toEqual([[{ queryKey: taskKeys.tasks() }]])
 
     unmount()
     expect(mocks.unsubscribe).toHaveBeenCalled()
   })
 
-  // A pull on the other machine emits one ITEM_SYNCED per item. If that event
-  // is dropped, nothing else refreshes this list: the app-wide default is
-  // refetchOnWindowFocus: false and there is no interval, so the user has to
-  // restart the app to see the other machine's tasks. Settling out of `syncing`
-  // is the reconcile point that does not depend on the window losing focus.
+  // Tauri's listener goes live only when main answers `listen`, and a page of synced records sent
+  // before then reaches nobody. The subscriber cannot tell which records it missed, so the
+  // workspace is read again once the listener is live.
+  it('reads the workspace again once the synced-records listener is live', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { result } = renderHook(() => useTaskWorkspaceData({ enabled: true }), {
+      wrapper: createWrapper(queryClient)
+    })
+
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    expect(mocks.synced?.onListening).toBeTypeOf('function')
+    act(() => mocks.synced?.onListening?.())
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.tasks() })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
+  })
+
+  // A pull on the other machine emits one synced-records event per committed
+  // page. If that event is dropped, nothing else refreshes this list: the
+  // app-wide default is refetchOnWindowFocus: false and there is no interval,
+  // so the user has to restart the app to see the other machine's tasks.
+  // Settling out of `syncing` is the reconcile point that does not depend on
+  // the window losing focus.
   it('reconciles the workspace when a sync settles', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const { result } = renderHook(() => useTaskWorkspaceData({ enabled: true }), {

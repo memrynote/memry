@@ -101,6 +101,35 @@ pub fn read_log(root: &Path, cutoff: Option<i64>) -> Loaded {
     }
 }
 
+/// The raw lines the app lists ([`super::ActivityLog::list`]), newest first, read from the file
+/// without loading the log or writing anything: for a process that is not the log's owner (the
+/// command line). No retention window applies, as the TypeScript CLI applied none. `None` when
+/// the file exists and cannot be read.
+pub fn listed_on_disk(
+    root: &Path,
+    limit: usize,
+    filter: super::ActivityFilter,
+) -> Option<Vec<String>> {
+    let loaded = read_log(root, None);
+    if !loaded.readable {
+        return None;
+    }
+    Some(
+        loaded
+            .lines
+            .into_iter()
+            .rev()
+            .filter(|line| {
+                line.entry
+                    .as_ref()
+                    .is_some_and(|entry| filter == super::ActivityFilter::All || entry.is_problem())
+            })
+            .take(limit)
+            .map(|line| line.raw)
+            .collect(),
+    )
+}
+
 fn read_lines(root: &Path, cutoff: Option<i64>) -> io::Result<Loaded> {
     let mut loaded = Loaded::empty(true);
     let Some(file) = open_capped(root, LOG_FILE, MAX_LOG_BYTES)? else {

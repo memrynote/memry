@@ -579,7 +579,10 @@
       "journalOff": "A napló ki van kapcsolva a Beállításokban.",
       "sendFailed": "Nem sikerült elküldeni a stickyt.",
       "undoExpired": "Már késő visszavonni.",
-      "undoFailed": "Nem sikerült visszavonni a küldést."
+      "undoFailed": "Nem sikerült visszavonni a küldést.",
+      "journalBusy": "A mai naplóbejegyzés mentése még folyamatban van. Próbálja újra egy pillanat múlva.",
+      "folderExcluded": "A Sticky mappa ki van zárva. A jegyzetek küldéséhez törölje a kizárt mappák közül a Beállításokban.",
+      "projectMissing": "A feladat projektje nem létezik. Válasszon alapértelmezett projektet a Beállításokban, vagy küldje el jegyzetként."
     },
     "inputLabel": "Sticky szövege",
     "dismissError": "Elvetés"

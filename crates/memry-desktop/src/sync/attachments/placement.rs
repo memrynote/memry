@@ -15,7 +15,7 @@ use std::path::Path;
 
 use memry_core::api::errors::StorageError;
 use memry_core::sync::attachments::backfill::embedded_files;
-use memry_core::sync::attachments::queue::{VaultFiles, absolute};
+use memry_core::sync::attachments::queue::VaultFiles;
 use memry_core::sync::attachments::store::{files, upload_queue};
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -120,8 +120,7 @@ fn linked_path(
     }
     let mut linked = Vec::new();
     for file in embedded {
-        if file.rsplit('/').next() == Some(name) && outside_note_folders(conn, vault, owner, &file)?
-        {
+        if file.rsplit('/').next() == Some(name) && outside_note_folders(conn, owner, &file)? {
             linked.push(file);
         }
     }
@@ -133,12 +132,7 @@ fn linked_path(
 
 /// `embeddedFilesOutsideNoteFolders`, for one file: under `attachments/`, a folder that is no
 /// live note's; elsewhere, no file note whose bytes are uploaded or queued.
-fn outside_note_folders(
-    conn: &Connection,
-    vault: &dyn VaultFiles,
-    owner: &str,
-    file: &str,
-) -> Result<bool, StorageError> {
+fn outside_note_folders(conn: &Connection, owner: &str, file: &str) -> Result<bool, StorageError> {
     if let Some(rest) = file.strip_prefix("attachments/") {
         let folder = rest.split('/').next().unwrap_or_default();
         return Ok(folder != owner && !is_live_note(conn, folder)?);
@@ -155,7 +149,7 @@ fn outside_note_folders(
     Ok(match file_note {
         None => true,
         Some((_, Some(_))) => false,
-        Some((id, None)) => !upload_queue::has_pending(conn, &id, &absolute(vault, file))?,
+        Some((id, None)) => !upload_queue::has_pending(conn, &id, file)?,
     })
 }
 

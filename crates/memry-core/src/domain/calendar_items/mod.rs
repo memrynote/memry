@@ -26,14 +26,17 @@ pub fn is_calendar_type(item_type: &str) -> bool {
 }
 
 pub mod colors;
+pub mod event_search;
 pub mod ical;
 pub mod ics;
 pub(crate) mod ics_url;
+pub mod linked_notes;
 pub mod projection;
 pub mod projection_sources;
 pub mod providers;
 pub mod reads;
 pub mod selection;
+pub mod writer_compat;
 pub mod zone;
 
 use std::cmp::Ordering;
