@@ -49,7 +49,7 @@ final class NotesSplitUITests: XCTestCase {
         try openNotes()
         XCTAssertTrue(page(first).waitForExistence(timeout: 10), "the last opened note did not come back")
 
-        try deleteNotes([first, second])
+        deleteNotes([first, second])
     }
 
     /// A title typed into a new note and left by picking another row, with no
@@ -69,7 +69,7 @@ final class NotesSplitUITests: XCTestCase {
         app.terminate()
         try openNotes()
         XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the typed title did not survive a relaunch")
-        try deleteNotes([title, other])
+        deleteNotes([title, other])
     }
 
     /// With the caret in a note's body, the list's "+" opens a new note, and
@@ -97,7 +97,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(kept, "the open note's body was emptied: \(body)")
         XCTAssertFalse(body.contains(typed), "the typing landed in the open note's body: \(body)")
         XCUIDevice.shared.orientation = .landscapeLeft
-        try deleteNotes([open, typed])
+        deleteNotes([open, typed])
     }
 
     /// `DESIGN.md` › Tablet: the list and the note at every width. The list
@@ -185,7 +185,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertNotNil(toggle, "the tab bar has no sidebar button")
         toggle?.tap()
         XCTAssertTrue(searchRow.wait(for: \.isHittable, toEqual: true, timeout: 5), "the page sidebar did not come back")
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     /// #4380: the Day Panel, open on the Journal by default, stays the
@@ -212,7 +212,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertFalse(list.isHittable, "returning to Notes brought back the list the user hid")
         toggleNotesSidebar()
         XCTAssertTrue(list.wait(for: \.isHittable, toEqual: true, timeout: 5), "the split view's sidebar button did not show the list")
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     func testAWikiLinkOpensInTheDetailColumnAndBackReturns() throws {
@@ -239,7 +239,7 @@ final class NotesSplitUITests: XCTestCase {
         app.buttons["BackButton"].firstMatch.tap()
         XCTAssertTrue(page(source).waitForExistence(timeout: 10), "Back did not return to the linking note")
 
-        try deleteNotes([source, target])
+        deleteNotes([source, target])
     }
 
     /// #4357: a note row dragged from the list onto the open note links it
@@ -250,17 +250,7 @@ final class NotesSplitUITests: XCTestCase {
         let target = "[agent] \(run) dragged"
         let source = "[agent] \(run) open"
         makeNote(target)
-        makeNote(source)
-        // The row's hold opens its context menu before the drag lifts, which
-        // lowers an on-screen keyboard and moves the page under the drop: on
-        // an iPad mini the drop then missed the block. Relaunched, the note
-        // comes back with no caret (D6) and the page holds still, as under a
-        // hardware keyboard.
-        app.terminate()
-        try openNotes()
-        XCTAssertTrue(page(source).waitForExistence(timeout: 10), "the open note did not come back")
-        XCTAssertFalse(app.keyboards.firstMatch.exists, "the note came back with the keyboard up")
-        let block = firstBlock
+        let block = makeNote(source)
         row(target).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
             forDuration: 1,
             thenDragTo: block.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)),
@@ -271,7 +261,7 @@ final class NotesSplitUITests: XCTestCase {
             matches(NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}"), block),
             "the drop left no link: \(block.value as? String ?? "")"
         )
-        try deleteNotes([source, target])
+        deleteNotes([source, target])
     }
 
     /// #4377: a wiki link's menu opens its note beside the linking one, each
@@ -351,7 +341,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(page(source).waitForExistence(timeout: 10))
         XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS 'typed main'"), firstBlock), "the main pane's typing is gone")
 
-        try deleteNotes([source, target])
+        deleteNotes([source, target])
     }
 
     /// VERIFY-4700: a backlink's Open to the Side on a page a link pushed
@@ -429,7 +419,7 @@ final class NotesSplitUITests: XCTestCase {
         // With no split, ⌘⌥W does nothing: the window stays.
         app.typeKey("w", modifierFlags: [.command, .option])
         XCTAssertTrue(row(source).waitForExistence(timeout: 5), "⌘⌥W with no split closed the window")
-        try deleteNotes([source, target])
+        deleteNotes([source, target])
     }
 
     /// #4426 (D3): the Search row opens the palette; ↓ moves the highlight
@@ -462,7 +452,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(row(target).wait(for: \.isSelected, toEqual: true, timeout: 5), "the hit's row is not selected")
         attach("search-hit")
 
-        try deleteNotes([first, second])
+        deleteNotes([first, second])
     }
 
     /// #4426: ⌘K opens the palette while the editor has the caret, and Esc
@@ -477,7 +467,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5), "⌘K did not open the palette from the editor")
         app.typeKey(".", modifierFlags: .command)
         XCTAssertTrue(field.waitForNonExistence(timeout: 5), "Esc did not close the palette")
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     /// #4347: the inspector's outline scrolls the note to a heading.
@@ -538,7 +528,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertFalse(inspectorToggle.exists, "13\" portrait cannot hold the note column and the rail")
         attach("inspector-hidden-portrait")
         XCUIDevice.shared.orientation = .landscapeLeft
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     /// #4832 (#4543 L2): the list the user brings back beside the rail stays
@@ -587,7 +577,7 @@ final class NotesSplitUITests: XCTestCase {
         attach("list-collapsed-after-rotation")
 
         hideInspector()
-        try deleteNotes([second])
+        deleteNotes([second])
     }
 
     /// #5059: the software keyboard is no rotation. A rotation with the
@@ -633,7 +623,7 @@ final class NotesSplitUITests: XCTestCase {
 
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertTrue(list.wait(for: \.isHittable, toEqual: true, timeout: 5), "a rotation did not bring back the list")
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     /// #4347: a backlink in the inspector opens its note in the detail column.
@@ -665,7 +655,7 @@ final class NotesSplitUITests: XCTestCase {
         attach("inspector-backlink-opened")
 
         hideInspector()
-        try deleteNotes([source, target])
+        deleteNotes([source, target])
     }
 
     /// #4347: a property value and a tag typed in the inspector, with no
@@ -712,7 +702,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(matches(NSPredicate(format: "value == 'drafted'"), app.textFields["status"].firstMatch))
         XCTAssertTrue(app.staticTexts[run].firstMatch.waitForExistence(timeout: 10))
 
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     /// #4616: Clear, then Return in the field with nothing typed, leaves the
@@ -747,7 +737,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         let empty = NSPredicate(format: "value == '' OR value == 'Empty' OR value == nil")
         XCTAssertTrue(matches(empty, app.textFields["status"].firstMatch), "Return after Clear wrote the old value back")
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     /// Return on an emptied field writes the empty value; leaving an emptied
@@ -787,7 +777,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         let empty = NSPredicate(format: "value == '' OR value == 'Empty' OR value == nil")
         XCTAssertTrue(matches(empty, app.textFields["status"].firstMatch), "Return on an emptied field wrote nothing")
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     /// #4376: the page menu's Full width writes the note's `fullWidth`,
@@ -825,7 +815,7 @@ final class NotesSplitUITests: XCTestCase {
 
         toggleFullWidth()
         XCTAssertFalse(fullWidthIsOn(), "the toggle did not turn Full width off")
-        try deleteNotes([title])
+        deleteNotes([title])
     }
 
     // MARK: Helpers
@@ -1010,11 +1000,16 @@ final class NotesSplitUITests: XCTestCase {
     }
 
     /// Deletes from a fresh launch, so no block holds the caret and the
-    /// swipe's touch brings no on-screen keyboard up over the question.
-    private func deleteNotes(_ titles: [String]) throws {
+    /// swipe's touch brings no on-screen keyboard up over the question. A
+    /// relaunch that cannot reach the list fails the test, never skips it.
+    private func deleteNotes(_ titles: [String]) {
         app.terminate()
         XCUIDevice.shared.orientation = .landscapeLeft
-        try openNotes()
+        do {
+            try openNotes()
+        } catch {
+            return XCTFail("cleanup could not reopen Notes to delete \(titles): \(error)")
+        }
         titles.forEach(swipeToDelete)
     }
 

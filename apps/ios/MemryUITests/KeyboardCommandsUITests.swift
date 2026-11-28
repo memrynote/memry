@@ -58,7 +58,7 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.typeKey(".", modifierFlags: .command)
         XCTAssertTrue(search.waitForNonExistence(timeout: 5))
 
-        try deleteNote(name)
+        deleteNote(name)
     }
 
     func testCommandPaletteRunsNewNote() throws {
@@ -88,7 +88,7 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.typeKey(".", modifierFlags: .command)
         XCTAssertTrue(field.waitForNonExistence(timeout: 5))
 
-        try deleteNote(name)
+        deleteNote(name)
     }
 
     /// REVIEW-4666 M1: a command that presents runs once the palette has gone,
@@ -209,7 +209,7 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.buttons["dayPanel.hide"].firstMatch.tap()
         XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "the panel's hide button did not close it")
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "the closed panel's toolbar button did not come back")
-        try deleteNote(name)
+        deleteNote(name)
     }
 
     /// #4380 (REVIEW-4681 M2): beside the open panel the Journal day keeps
@@ -278,10 +278,15 @@ final class KeyboardCommandsUITests: XCTestCase {
     /// no tap on Delete note: on the iPadOS 26 simulator an open context menu
     /// never reports its animations done, Photos' own included. Relaunched,
     /// no block holds the caret, so the swipe's touch brings no on-screen
-    /// keyboard up over the question.
-    private func deleteNote(_ title: String) throws {
+    /// keyboard up over the question. A relaunch that cannot reach the
+    /// sidebar fails the test, never skips it.
+    private func deleteNote(_ title: String) {
         app.terminate()
-        try openVault()
+        do {
+            try openVault()
+        } catch {
+            return XCTFail("cleanup could not reopen the vault to delete \(title): \(error)")
+        }
         sidebarRow("Notes").tap()
         let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10), "no row for \(title)")
