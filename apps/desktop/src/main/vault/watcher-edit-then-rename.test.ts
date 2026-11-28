@@ -92,12 +92,28 @@ const changeHeard = vi.hoisted(() => ({
 // the set never reaches the app.
 const lostAdds = vi.hoisted(() => new Set<string>())
 const lostChanges = vi.hoisted(() => new Set<string>())
+// Files whose own watcher reports a rename as a change, as kqueue does on a
+// loaded machine when it folds a write and the rename after it into one event.
+const renamesAsChanges = vi.hoisted(() => new Set<string>())
 vi.mock('chokidar', async (importOriginal) => {
   const actual = await importOriginal<typeof Chokidar>()
   return {
     ...actual,
     watch: (...args: Parameters<typeof actual.watch>) => {
       const watcher = actual.watch(...args)
+      const emit = watcher.emit.bind(watcher)
+      watcher.emit = (event, ...emitted) => {
+        const details: unknown = emitted[2]
+        const asChange =
+          event === 'raw' &&
+          emitted[0] === 'rename' &&
+          typeof details === 'object' &&
+          details !== null &&
+          'watchedPath' in details &&
+          typeof details.watchedPath === 'string' &&
+          renamesAsChanges.has(details.watchedPath)
+        return asChange ? emit(event, 'change', ...emitted.slice(1)) : emit(event, ...emitted)
+      }
       const emitWithAll = watcher.emitWithAll.bind(watcher)
       watcher.emitWithAll = (event, emitted) => {
         const lost = { add: lostAdds, change: lostChanges }[event as string]
@@ -200,6 +216,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
   afterEach(async () => {
     lostAdds.clear()
     lostChanges.clear()
+    renamesAsChanges.clear()
     unregisterRenameSyncCallback()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
@@ -392,6 +409,23 @@ describe('an outside edit followed by a rename inside the change debounce', () =
 
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
       expect(feedExternalEditToCrdt).not.toHaveBeenCalled()
+    },
+    80_000
+  )
+
+  it.runIf(process.platform === 'darwin')(
+    "a rename the file's own watcher reports as a change keeps the note id",
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      const renamed = path.join(vault.path, 'Docs/pear.md')
+      lostAdds.add(renamed)
+      renamesAsChanges.add(path.join(vault.path, 'Docs/apple.md'))
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), renamed)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
     80_000
   )
