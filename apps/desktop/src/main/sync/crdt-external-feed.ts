@@ -18,7 +18,9 @@
  * second copy (#2536). The note then owes its file body (#2646): a marker, and
  * a full-state outbox row whose flush merges the server body and applies the
  * file on top of it (`takeOwedFile`). A large-file-class body is never owed,
- * since no doc can take it.
+ * since no doc can take it. With a store, a doc waiting for its server body is
+ * not fed either: its stored body may lack text the file and the server both
+ * hold (`CrdtProvider.takeOfflineEdit`), which the feed would add twice.
  *
  * Used by every main-process body writer: the note command (the agent note
  * tool, `notes.update`, template apply, inbox filing), version restore,
@@ -72,6 +74,8 @@ async function feedDoc(
 ): Promise<boolean> {
   const provider = getCrdtProvider()
   const mergesServerFirst = !provider.hasPersistence() && !provider.isNoteLocalOnly(noteId)
+  const waits = (): boolean =>
+    (mergesServerFirst || provider.hasPersistence()) && provider.isAwaitingMerge(noteId)
 
   const feed = async (): Promise<boolean> => {
     if (wasRecentNetworkUpdate(noteId)) {
@@ -84,16 +88,23 @@ async function feedDoc(
   }
 
   const held = provider.getDoc(noteId)
-  if (held && !(mergesServerFirst && provider.isAwaitingMerge(noteId))) {
+  if (held && !waits()) {
     return feed()
   }
 
   const doc = held ?? (await provider.open(noteId, undefined, { skipSeed: true }))
+  // With no store, a doc this open read is empty unless a merge filled it.
+  const waiting = provider.hasPersistence() && provider.isAwaitingMerge(noteId)
   let owesRow = false
   try {
-    if (!held && doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return await feed()
+    if (!held && !waiting && doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) {
+      return await feed()
+    }
 
-    if (mergesServerFirst && classifyMarkdownContent(markdownContent).sizeClass !== 'large-file') {
+    if (
+      (mergesServerFirst || waiting) &&
+      classifyMarkdownContent(markdownContent).sizeClass !== 'large-file'
+    ) {
       recordOwedFileBody(noteId)
       owesRow = true
     }

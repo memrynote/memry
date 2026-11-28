@@ -23,8 +23,12 @@ export interface CrdtWritebackPort {
   writeBackBeforeClose(noteId: string, doc: Y.Doc, runArmed: boolean): Promise<void>
   /** Whether the running code is inside the note's write-back turn. */
   insideWritebackTurn(noteId: string): boolean
-  /** Feed a file edited while the app was closed into the note's doc (#5319). */
-  ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<void>
+  /**
+   * Feed a file edited while the app was closed into the note's doc (#5319).
+   * Resolves true when it left a file written with no store for after the
+   * server merge, as `waitsForServer` asked (#5698).
+   */
+  ingestOfflineEdit(noteId: string, doc: Y.Doc, waitsForServer: () => boolean): Promise<boolean>
   /** Write the note's doc to its file again after a body writer's file write failed. */
   retryWriteback(noteId: string): void
   flushPendingWritebacks(): Promise<void>

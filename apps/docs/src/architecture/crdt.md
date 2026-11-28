@@ -1060,6 +1060,25 @@ document to its vault `.md` file and re-indexes it for search.
   reads the mark as a pending hash that never matches a file and judges the file by
   `content_hash` alone, which equals the written file. It never takes that file in, and
   its next write-back writes its stored doc over bytes the store lacked.
+- **A session with no store marks every file it writes** — in in-memory mode the store
+  holds none of the session's edits (`holdsDoc` answers false), so each write-back
+  marks its file unstored, and nothing waits for a store that will not answer. The
+  next launch with the store loads an older doc. The edits are in the file, in the
+  outbox until pushed, and on the server once pushed, but not in the store. At open the
+  doc first applies the note's queued outbox updates (`applyQueuedUpdates`), which the
+  outbox still sends once. If the doc then lacks the file's text and the server may
+  hold it as Yjs items, taking the file in now would add that text a second time on
+  every device. So the file is owed (`crdt-owed-file-body`, so no write-back writes over
+  it), the note owes a durable whole-body pull (`unstored_file`), and the doc waits
+  (`awaitingMerge`). The editor shows its loading state, or the vault file read-only
+  while offline or stuck (#5290): the stored body lacks the newest text, and an edit
+  typed into it would be overwritten when the file is taken. After a complete merge,
+  `takeFileAfterMerge` decides the file against the merged doc: a merged doc that
+  covers the file clears the debt, and one that lacks part of it (a push that never
+  landed) takes the file in once and keeps the merged doc as a version. A main-process
+  body writer (`feedExternalEditToCrdt`) does not feed a waiting doc, and owes its body
+  the same way. A note the server never held, a local-only note, and
+  an install that does not sync take the file in at open (`waitsForRemoteBody`).
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the
